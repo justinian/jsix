@@ -1,0 +1,3 @@
+[submodule "external/gnu-efi"]
+	path = external/gnu-efi
+	url = https://github.com/justinian/gnu-efi.git
