@@ -144,6 +144,11 @@ $(BUILD_D)/fs.img: $(BUILD_D)/kernel.efi
 	rm $(TEMPFILE)
 	mv $@.tmp $@
 
+$(BUILD_D)/fs.iso: $(BUILD_D)/fs.img
+	mkdir -p $(BUILD_D)/iso
+	cp $< $(BUILD_D)/iso/
+	xorriso -as mkisofs -R -f -e fs.img -no-emul-boot -o $@ $(BUILD_D)/iso
+
 qemu: $(BUILD_D)/fs.img
 	"$(QEMU)" $(QEMUOPTS)
 
