@@ -72,7 +72,7 @@ INIT_DEP       := $(BUILD_D)/.builddir
 ARCH_SRCS      := $(wildcard $(ARCH_D)/*.s)
 ARCH_SRCS      += $(wildcard $(ARCH_D)/*.c)
 KOBJS          += $(patsubst $(ARCH_D)/%,$(BUILD_D)/arch/%,$(patsubst %,%.o,$(ARCH_SRCS)))
-DEPS           :=
+DEPS           := $(patsubst $(ARCH_D)/%,$(BUILD_D)/arch/%,$(patsubst %,%.d,$(ARCH_SRCS)))
 MOD_TARGETS    :=
 
 PARTED         ?= /sbin/parted
@@ -88,7 +88,7 @@ init: $(INIT_DEP)
 
 $(INIT_DEP):
 	mkdir -p $(BUILD_D) $(patsubst %,$(BUILD_D)/d.%,$(MODULES))
-	mkdir -p $(BUILD_D)/board $(BUILD_D)/arch
+	mkdir -p $(BUILD_D)/arch
 	touch $(INIT_DEP)
 
 clean:
