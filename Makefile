@@ -47,9 +47,13 @@ ASFLAGS        ?=
 
 CFLAGS         ?= 
 CFLAGS         += $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
-CFLAGS         += -DGIT_VERSION="\"$(VERSION)\""
+CFLAGS         += -DGIT_VERSION="L\"$(VERSION)\""
 CFLAGS         += -std=c11 -fno-stack-protector -fpic -fshort-wchar -mno-red-zone
 CFLAGS         += -DEFI_DEBUG=0 -DEFI_DEBUG_CLEAR_MEMORY=0 -DGNU_EFI_USE_MS_ABI -DHAVE_USE_MS_ABI #-DEFI_FUNCTION_WRAPPER 
+
+ifdef MAX_HRES
+CFLAGS         += -DMAX_HRES=$(MAX_HRES)
+endif
 
 LDFLAGS        ?= 
 LDFLAGS        += -L $(BUILD_D) -ggdb
@@ -76,7 +80,7 @@ QEMU           ?= qemu-system-x86_64
 GDBPORT        ?= 27006
 CPUS           ?= 2
 OVMF           ?= assets/ovmf/x64/OVMF.fd 
-QEMUOPTS       := -bios $(OVMF) -hda $(BUILD_D)/fs.img -smp $(CPUS) -m 512 -nographic $(QEMUEXTRA)
+QEMUOPTS       := -bios $(OVMF) -hda $(BUILD_D)/fs.img -smp $(CPUS) -m 512 $(QEMUEXTRA)
 
 
 all: $(BUILD_D)/fs.img
@@ -150,6 +154,9 @@ $(BUILD_D)/fs.iso: $(BUILD_D)/fs.img
 	xorriso -as mkisofs -R -f -e fs.img -no-emul-boot -o $@ $(BUILD_D)/iso
 
 qemu: $(BUILD_D)/fs.img
+	"$(QEMU)" $(QEMUOPTS) -nographic
+
+qemu-window: $(BUILD_D)/fs.img
 	"$(QEMU)" $(QEMUOPTS)
 
 qemu-gdb: $(BUILD_D)/fs.img $(BUILD_D)/kernel.debug.efi
