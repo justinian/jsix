@@ -2,6 +2,7 @@
 #include <efilib.h>
 
 #include "console.h"
+#include "memory.h"
 #include "utility.h"
 
 #ifndef GIT_VERSION
@@ -29,6 +30,24 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 		Print(L"      ConOut: %x\n", SystemTable->ConOut);
 	if (SystemTable->ConOut)
 		Print(L"OutputString: %x\n", SystemTable->ConOut->OutputString);
+
+    dump_memory_map();
+
+	UINTN memmap_size = 0;
+	EFI_MEMORY_DESCRIPTOR *memmap;
+	UINTN memmap_key;
+	UINTN desc_size;
+	UINT32 desc_version;
+
+	memmap = LibMemoryMap(&memmap_size, &memmap_key,
+		&desc_size, &desc_version);
+
+	status = ST->BootServices->ExitBootServices(ImageHandle, memmap_key);
+	CHECK_EFI_STATUS_OR_RETURN(status, "Exiting boot services");
+
+	status = ST->RuntimeServices->SetVirtualAddressMap(
+		memmap_size, desc_size, desc_version, memmap);
+	CHECK_EFI_STATUS_OR_RETURN(status, "Setting memory map");
 
 	while (1) __asm__("hlt");
 	return status;
