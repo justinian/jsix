@@ -25,13 +25,15 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	// From here on out, use CHECK_EFI_STATUS_OR_FAIL instead
 	// because the console is now set up
 
+	/*
 	Print(L" SystemTable: %x\n", SystemTable);
 	if (SystemTable)
-		Print(L"      ConOut: %x\n", SystemTable->ConOut);
+		Print(L"	  ConOut: %x\n", SystemTable->ConOut);
 	if (SystemTable->ConOut)
 		Print(L"OutputString: %x\n", SystemTable->ConOut->OutputString);
+	*/
 
-    dump_memory_map();
+	dump_memory_map();
 
 	UINTN memmap_size = 0;
 	EFI_MEMORY_DESCRIPTOR *memmap;
@@ -39,15 +41,19 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	UINTN desc_size;
 	UINT32 desc_version;
 
+	con_status_begin(L"Exiting boot services");
 	memmap = LibMemoryMap(&memmap_size, &memmap_key,
 		&desc_size, &desc_version);
 
 	status = ST->BootServices->ExitBootServices(ImageHandle, memmap_key);
-	CHECK_EFI_STATUS_OR_RETURN(status, "Exiting boot services");
+	CHECK_EFI_STATUS_OR_FAIL(status);
+	con_status_ok();
 
+	con_status_begin(L"Setting virtual address map");
 	status = ST->RuntimeServices->SetVirtualAddressMap(
 		memmap_size, desc_size, desc_version, memmap);
-	CHECK_EFI_STATUS_OR_RETURN(status, "Setting memory map");
+	CHECK_EFI_STATUS_OR_FAIL(status);
+	con_status_ok();
 
 	while (1) __asm__("hlt");
 	return status;

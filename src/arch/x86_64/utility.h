@@ -10,10 +10,9 @@ const CHAR16 *util_error_message(EFI_STATUS status);
 		return (s); \
 	}
 
-#define CHECK_EFI_STATUS_OR_FAIL(s, msg, ...)   \
+#define CHECK_EFI_STATUS_OR_FAIL(s)   \
 	if (EFI_ERROR((s))) { \
 		con_status_fail(util_error_message(s)); \
-		Print(L"\n" msg, ## __VA_ARGS__ ); \
 		while (1) __asm__("hlt"); \
 	}
 
