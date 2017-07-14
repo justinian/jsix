@@ -80,7 +80,7 @@ QEMU           ?= qemu-system-x86_64
 GDBPORT        ?= 27006
 CPUS           ?= 2
 OVMF           ?= assets/ovmf/x64/OVMF.fd 
-QEMUOPTS       := -bios $(OVMF) -hda $(BUILD_D)/fs.img -smp $(CPUS) -m 512 $(QEMUEXTRA)
+QEMUOPTS       := -bios $(OVMF) -hda $(BUILD_D)/fs.img -smp $(CPUS) -m 512 $(QEMUEXTRA) -d guest_errors
 
 
 all: $(BUILD_D)/fs.img
