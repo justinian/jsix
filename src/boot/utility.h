@@ -2,6 +2,8 @@
 #include <efilib.h>
 #include "console.h"
 
+#define UNUSED __attribute__((unused))
+
 const CHAR16 *util_error_message(EFI_STATUS status);
 
 #define CHECK_EFI_STATUS_OR_RETURN(s, msg, ...)   \

@@ -20,7 +20,9 @@ DEPENDFLAGS    := -MMD
 
 INCLUDES       := -I $(ARCH_D)
 INCLUDES       += -I src/modules
-INCLUDES       += -isystem $(EFI_INCLUDES) -isystem $(EFI_INCLUDES)/$(ARCH) -isystem $(EFI_INCLUDES)/protocol
+INCLUDES       += -isystem $(EFI_INCLUDES)
+INCLUDES       += -isystem $(EFI_INCLUDES)/$(ARCH)
+INCLUDES       += -isystem $(EFI_INCLUDES)/protocol
 
 BASEFLAGS      := -O2 -fpic -nostdlib
 BASEFLAGS      += -ffreestanding -nodefaultlibs
@@ -30,35 +32,39 @@ ifdef CPU
 BASEFLAGS      += -mcpu=$(CPU)
 endif
 
-WARNFLAGS      := -Wall -Wextra -Wshadow -Wcast-align -Wwrite-strings
-WARNFLAGS      += -Winline -Wshadow
-WARNFLAGS      += -Wno-attributes -Wno-deprecated-declarations
-WARNFLAGS      += -Wno-div-by-zero -Wno-endif-labels -Wfloat-equal
-WARNFLAGS      += -Wformat=2 -Wno-format-extra-args -Winit-self
+# Removed Flags:: -Wcast-align
+WARNFLAGS      := -Wall -Werror -Wextra -Wshadow -Wwrite-strings
+WARNFLAGS      += -Wformat=2 -Winit-self -Wfloat-equal -Winline 
 WARNFLAGS      += -Winvalid-pch -Wmissing-format-attribute
-WARNFLAGS      += -Wmissing-include-dirs -Wno-multichar
-WARNFLAGS      += -Wno-sign-compare -Wswitch -Wundef
-WARNFLAGS      += -Wno-pragmas #-Wno-unused-but-set-parameter
-WARNFLAGS      += -Wno-unused-result #-Wno-unused-but-set-variable 
-WARNFLAGS      += -Wwrite-strings -Wdisabled-optimization -Wpointer-arith
-WARNFLAGS      += -Werror
+WARNFLAGS      += -Wmissing-include-dirs -Wswitch -Wundef
+WARNFLAGS      += -Wdisabled-optimization -Wpointer-arith
+
+WARNFLAGS      += -Wno-attributes -Wno-sign-compare -Wno-multichar
+WARNFLAGS      += -Wno-div-by-zero -Wno-endif-labels -Wno-pragmas
+WARNFLAGS      += -Wno-format-extra-args -Wno-unused-result
+WARNFLAGS      += -Wno-deprecated-declarations -Wno-unused-function
+WARNFLAGS      += -Wno-unused-but-set-parameter
 
 ASFLAGS        ?= 
 
-CFLAGS         ?= 
-CFLAGS         += $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
+CFLAGS         := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
+CFLAGS         += -std=c11 -fpic -fshort-wchar
+CFLAGS         += -mno-red-zone -fno-stack-protector 
 CFLAGS         += -DGIT_VERSION="L\"$(VERSION)\""
-CFLAGS         += -std=c11 -fno-stack-protector -fpic -fshort-wchar -mno-red-zone
-CFLAGS         += -DEFI_DEBUG=0 -DEFI_DEBUG_CLEAR_MEMORY=0 -DGNU_EFI_USE_MS_ABI -DHAVE_USE_MS_ABI #-DEFI_FUNCTION_WRAPPER 
+CFLAGS         += -DEFI_DEBUG=0 -DEFI_DEBUG_CLEAR_MEMORY=0
+CFLAGS         += -DGNU_EFI_USE_MS_ABI -DHAVE_USE_MS_ABI
+#CFLAGS        += -DEFI_FUNCTION_WRAPPER 
 
+BOOT_CFLAGS	   := -I src/boot $(CFLAGS)
 ifdef MAX_HRES
-CFLAGS         += -DMAX_HRES=$(MAX_HRES)
+BOOT_CFLAGS    += -DMAX_HRES=$(MAX_HRES)
 endif
 
-LDFLAGS        ?= 
-LDFLAGS        += -L $(BUILD_D) -ggdb
-LDFLAGS        += -nostdlib -znocombreloc -shared -Bsymbolic -fPIC -nostartfiles 
-LDFLAGS        += -L $(EFI_ARCH_DIR)/lib -L $(EFI_ARCH_DIR)/gnuefi
+LDFLAGS        := -L $(BUILD_D) -ggdb -fPIC -shared
+LDFLAGS        += -nostdlib -znocombreloc -Bsymbolic -nostartfiles 
+
+BOOT_LDFLAGS   := $(LDFLAGS)
+BOOT_LDFLAGS   += -L $(EFI_ARCH_DIR)/lib -L $(EFI_ARCH_DIR)/gnuefi
 
 AS             ?= $(CROSS)as
 AR             ?= $(CROSS)ar
@@ -69,6 +75,11 @@ OBJC           := $(CROSS)objcopy
 OBJD           := $(CROSS)objdump
 
 INIT_DEP       := $(BUILD_D)/.builddir
+
+BOOT_SRCS      := $(wildcard src/boot/*.c)
+BOBJS          += $(patsubst src/boot/%,$(BUILD_D)/boot/%,$(patsubst %,%.o,$(BOOT_SRCS)))
+BDEPS          := $(patsubst src/boot/%,$(BUILD_D)/boot/%,$(patsubst %,%.d,$(BOOT_SRCS)))
+
 ARCH_SRCS      := $(wildcard $(ARCH_D)/*.s)
 ARCH_SRCS      += $(wildcard $(ARCH_D)/*.c)
 KOBJS          += $(patsubst $(ARCH_D)/%,$(BUILD_D)/arch/%,$(patsubst %,%.o,$(ARCH_SRCS)))
@@ -80,7 +91,13 @@ QEMU           ?= qemu-system-x86_64
 GDBPORT        ?= 27006
 CPUS           ?= 2
 OVMF           ?= assets/ovmf/x64/OVMF.fd 
-QEMUOPTS       := -bios $(OVMF) -hda $(BUILD_D)/fs.img -smp $(CPUS) -m 512 $(QEMUEXTRA) -d guest_errors
+
+QEMUOPTS       := -pflash $(OVMF)
+QEMUOPTS       += -drive file=$(BUILD_D)/fs.img,format=raw
+QEMUOPTS       += -smp $(CPUS)
+QEMUOPTS       += -m 512
+QEMUOPTS       += -d guest_errors
+QEMUOPTS       += $(QEMUEXTRA)
 
 
 all: $(BUILD_D)/fs.img
@@ -88,6 +105,7 @@ init: $(INIT_DEP)
 
 $(INIT_DEP):
 	mkdir -p $(BUILD_D) $(patsubst %,$(BUILD_D)/d.%,$(MODULES))
+	mkdir -p $(BUILD_D)/boot
 	mkdir -p $(BUILD_D)/arch
 	touch $(INIT_DEP)
 
@@ -108,24 +126,39 @@ $(BUILD_D)/.version:
 $(EFI_LIB):
 	make -C external/gnu-efi all
 
-$(BUILD_D)/kernel.elf: $(KOBJS) $(MOD_TARGETS) $(EFI_LIB)
-	$(LD) $(LDFLAGS) -T $(EFI_LDS) -o $@ \
-		$(EFI_CRT_OBJ) $(KOBJS) $(patsubst %,-l%,$(MODULES)) -lefi -lgnuefi
+$(BUILD_D)/kernel.elf: $(KOBJS) $(MOD_TARGETS) $(ARCH_D)/kernel.ld
+	$(LD) $(LDFLAGS) -T $(ARCH_D)/kernel.ld -o $@ $(KOBJS) $(patsubst %,-l%,$(MODULES))
 
-$(BUILD_D)/kernel.efi: $(BUILD_D)/kernel.elf
+$(BUILD_D)/boot.elf: $(BOBJS) $(EFI_LIB)
+	$(LD) $(BOOT_LDFLAGS) -T $(EFI_LDS) -o $@ \
+		$(EFI_CRT_OBJ) $(BOBJS) $(patsubst %,-l%,$(MODULES)) -lefi -lgnuefi
+
+$(BUILD_D)/boot.efi: $(BUILD_D)/boot.elf
 	objcopy -j .text -j .sdata -j .data -j .dynamic \
 	-j .dynsym  -j .rel -j .rela -j .reloc \
 	--target=efi-app-$(ARCH) $^ $@
 
-$(BUILD_D)/kernel.debug.efi: $(BUILD_D)/kernel.elf
+$(BUILD_D)/boot.debug.efi: $(BUILD_D)/boot.elf
 	objcopy -j .text -j .sdata -j .data -j .dynamic \
 	-j .dynsym  -j .rel -j .rela -j .reloc \
 	-j .debug_info -j .debug_abbrev -j .debug_loc -j .debug_str \
 	-j .debug_aranges -j .debug_line -j .debug_macinfo \
 	--target=efi-app-$(ARCH) $^ $@
 
-$(BUILD_D)/%.dump: $(BUILD_D)/%.efi
+$(BUILD_D)/%.elf.dump: $(BUILD_D)/%.elf
 	$(OBJD) -D -S $< > $@
+
+$(BUILD_D)/%.bin.dump: $(BUILD_D)/%.bin
+	$(OBJD) -D $< > $@
+
+$(BUILD_D)/%.bin: $(BUILD_D)/%.elf
+	$(OBJC) $< -O binary $@
+
+$(BUILD_D)/boot/%.s.o: src/boot/%.s $(INIT_DEP)
+	$(AS) $(ASFLAGS) -o $@ $<
+
+$(BUILD_D)/boot/%.c.o: src/boot/%.c $(INIT_DEP)
+	$(CC) $(BOOT_CFLAGS) -c -o $@ $<
 
 $(BUILD_D)/arch/%.s.o: $(ARCH_D)/%.s $(INIT_DEP)
 	$(AS) $(ASFLAGS) -o $@ $<
@@ -133,7 +166,7 @@ $(BUILD_D)/arch/%.s.o: $(ARCH_D)/%.s $(INIT_DEP)
 $(BUILD_D)/arch/%.c.o: $(ARCH_D)/%.c $(INIT_DEP)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(BUILD_D)/fs.img: $(BUILD_D)/kernel.efi
+$(BUILD_D)/fs.img: $(BUILD_D)/boot.efi $(BUILD_D)/kernel.bin
 	$(eval TEMPFILE := $(shell mktemp --suffix=.img))
 	dd if=/dev/zero of=$@.tmp bs=512 count=93750
 	$(PARTED) $@.tmp -s -a minimal mklabel gpt
@@ -143,7 +176,9 @@ $(BUILD_D)/fs.img: $(BUILD_D)/kernel.efi
 	mformat -i $(TEMPFILE) -h 32 -t 32 -n 64 -c 1
 	mmd -i $(TEMPFILE) ::/EFI
 	mmd -i $(TEMPFILE) ::/EFI/BOOT
-	mcopy -i $(TEMPFILE) $^ ::/EFI/BOOT/BOOTX64.efi
+	mcopy -i $(TEMPFILE) $(BUILD_D)/boot.efi ::/EFI/BOOT/BOOTX64.efi
+	mcopy -i $(TEMPFILE) $(BUILD_D)/kernel.bin ::/kernel.bin
+	mlabel -i $(TEMPFILE) ::Popcorn_OS
 	dd if=$(TEMPFILE) of=$@.tmp bs=512 count=91669 seek=2048 conv=notrunc
 	rm $(TEMPFILE)
 	mv $@.tmp $@
@@ -159,7 +194,7 @@ qemu: $(BUILD_D)/fs.img
 qemu-window: $(BUILD_D)/fs.img
 	"$(QEMU)" $(QEMUOPTS)
 
-qemu-gdb: $(BUILD_D)/fs.img $(BUILD_D)/kernel.debug.efi
+qemu-gdb: $(BUILD_D)/fs.img $(BUILD_D)/boot.debug.efi
 	"$(QEMU)" $(QEMUOPTS) -S -D popcorn-qemu.log -s
 
 # vim: ft=make ts=4

@@ -2,6 +2,7 @@
 #include <efilib.h>
 
 #include "console.h"
+#include "loader.h"
 #include "memory.h"
 #include "utility.h"
 
@@ -21,18 +22,31 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	// be sure if the console was fully set up
 	status = con_initialize(GIT_VERSION);
 	CHECK_EFI_STATUS_OR_RETURN(status, "con_initialize");
-
 	// From here on out, use CHECK_EFI_STATUS_OR_FAIL instead
 	// because the console is now set up
 
-	/*
-	Print(L" SystemTable: %x\n", SystemTable);
-	if (SystemTable)
-		Print(L"	  ConOut: %x\n", SystemTable->ConOut);
-	if (SystemTable->ConOut)
-		Print(L"OutputString: %x\n", SystemTable->ConOut->OutputString);
-	*/
+	// Get info about the image
+	con_status_begin(L"Gathering image information...");
+	EFI_LOADED_IMAGE *info = 0;
+	EFI_GUID image_proto = EFI_LOADED_IMAGE_PROTOCOL_GUID;
+	status = ST->BootServices->HandleProtocol(ImageHandle, &image_proto, (void **)&info);
+    CHECK_EFI_STATUS_OR_FAIL(status);
+	con_status_ok();
 
+	con_status_begin(L"Virtualizing memory...");
+    status = memory_virtualize();
+    CHECK_EFI_STATUS_OR_FAIL(status);
+	con_status_ok();
+
+    con_status_begin(L"Loading kernel into memory...");
+    void *kernel_image = NULL;
+	UINT64 len = 0;
+    status = loader_load_kernel(&kernel_image, &len);
+    CHECK_EFI_STATUS_OR_FAIL(status);
+	Print(L" %u bytes at 0x%x", len, kernel_image);
+    con_status_ok();
+
+    /*
 	dump_memory_map();
 
 	UINTN memmap_size = 0;
@@ -54,6 +68,7 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 		memmap_size, desc_size, desc_version, memmap);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 	con_status_ok();
+    */
 
 	while (1) __asm__("hlt");
 	return status;

@@ -24,18 +24,34 @@ const CHAR16 *memory_type_names[] = {
     L"EfiPersistentMemory",
 };
 
-const CHAR16 *memory_type_name(UINT32 value) {
+static const CHAR16 *memory_type_name(UINT32 value) {
     if (value >= (sizeof(memory_type_names)/sizeof(CHAR16*)))
         return L"Bad Type Value";
     return memory_type_names[value];
 }
 
-EFI_STATUS get_memory_map(EFI_MEMORY_DESCRIPTOR **buffer, UINTN *buffer_size,
+void EFIAPI memory_update_addresses(EFI_EVENT UNUSED *event, void UNUSED *context) {
+    ST->RuntimeServices->ConvertPointer(0, (void **)&BS);
+    ST->RuntimeServices->ConvertPointer(0, (void **)&ST);
+}
+
+EFI_STATUS memory_virtualize() {
+    EFI_STATUS status;
+    EFI_EVENT event;
+
+    status = ST->BootServices->CreateEvent(EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE,
+            TPL_CALLBACK, (EFI_EVENT_NOTIFY)&memory_update_addresses, NULL, &event);
+    CHECK_EFI_STATUS_OR_RETURN(status, "Failed to create memory update event");
+
+    return status;
+}
+
+EFI_STATUS memory_get_map(EFI_MEMORY_DESCRIPTOR **buffer, UINTN *buffer_size,
                           UINTN *key, UINTN *desc_size, UINT32 *desc_version) {
     EFI_STATUS status;
 
     UINTN needs_size = 0;
-    status = BS->GetMemoryMap(&needs_size, 0, key, desc_size, desc_version);
+    status = ST->BootServices->GetMemoryMap(&needs_size, 0, key, desc_size, desc_version);
     if (status != EFI_BUFFER_TOO_SMALL) {
         CHECK_EFI_STATUS_OR_RETURN(status, "Failed to load memory map");
     }
@@ -43,20 +59,20 @@ EFI_STATUS get_memory_map(EFI_MEMORY_DESCRIPTOR **buffer, UINTN *buffer_size,
     // Give some extra buffer to account for changes.
     *buffer_size = needs_size + 256;
     Print(L"Trying to load memory map with size %d.\n", *buffer_size);
-    status = BS->AllocatePool(EfiLoaderData, *buffer_size, (void**)buffer);
+    status = ST->BootServices->AllocatePool(EfiLoaderData, *buffer_size, (void**)buffer);
     CHECK_EFI_STATUS_OR_RETURN(status, "Failed to allocate space for memory map");
 
-    status = BS->GetMemoryMap(buffer_size, *buffer, key, desc_size, desc_version);
+    status = ST->BootServices->GetMemoryMap(buffer_size, *buffer, key, desc_size, desc_version);
     CHECK_EFI_STATUS_OR_RETURN(status, "Failed to load memory map");
     return EFI_SUCCESS;
 }
 
-EFI_STATUS dump_memory_map() {
+EFI_STATUS memory_dump_map() {
     EFI_MEMORY_DESCRIPTOR *buffer;
     UINTN buffer_size, desc_size, key;
     UINT32 desc_version;
 
-    EFI_STATUS status = get_memory_map(&buffer, &buffer_size, &key,
+    EFI_STATUS status = memory_get_map(&buffer, &buffer_size, &key,
         &desc_size, &desc_version);
     CHECK_EFI_STATUS_OR_RETURN(status, "Failed to get memory map");
 
@@ -79,6 +95,6 @@ EFI_STATUS dump_memory_map() {
         d = (EFI_MEMORY_DESCRIPTOR *)((uint8_t *)d + desc_size);
     }
 
-    BS->FreePool(buffer);
+    ST->BootServices->FreePool(buffer);
     return EFI_SUCCESS;
 }
