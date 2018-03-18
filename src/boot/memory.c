@@ -31,7 +31,7 @@ static const CHAR16 *memory_type_name(UINT32 value) {
 }
 
 void EFIAPI memory_update_addresses(EFI_EVENT UNUSED *event, void UNUSED *context) {
-    ST->RuntimeServices->ConvertPointer(0, (void **)&BS);
+    //ST->RuntimeServices->ConvertPointer(0, (void **)&BS);
     ST->RuntimeServices->ConvertPointer(0, (void **)&ST);
 }
 
@@ -90,7 +90,8 @@ EFI_STATUS memory_dump_map() {
 
         Print(L"Type: %s  Attr: 0x%x\n", memory_type_name(d->Type), d->Attribute);
         Print(L"\t Physical  %016llx - %016llx\n", d->PhysicalStart, d->PhysicalStart + size_bytes);
-        Print(L"\t  Virtual  %016llx - %016llx\n\n", d->VirtualStart, d->VirtualStart + size_bytes);
+        if (d->VirtualStart != 0)
+            Print(L"\t  Virtual  %016llx - %016llx\n\n", d->VirtualStart, d->VirtualStart + size_bytes);
 
         d = (EFI_MEMORY_DESCRIPTOR *)((uint8_t *)d + desc_size);
     }

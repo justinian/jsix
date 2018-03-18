@@ -33,21 +33,21 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     CHECK_EFI_STATUS_OR_FAIL(status);
 	con_status_ok();
 
+	// memory_dump_map();
+
+    con_status_begin(L"Loading kernel into memory...");
+    void *kernel_image = NULL;
+	uint64_t kernel_length = 0;
+    status = loader_load_kernel(&kernel_image, &kernel_length);
+    CHECK_EFI_STATUS_OR_FAIL(status);
+	Print(L" %u bytes at 0x%x", kernel_length, kernel_image);
+    con_status_ok();
+
+    /*
 	con_status_begin(L"Virtualizing memory...");
     status = memory_virtualize();
     CHECK_EFI_STATUS_OR_FAIL(status);
 	con_status_ok();
-
-    con_status_begin(L"Loading kernel into memory...");
-    void *kernel_image = NULL;
-	UINT64 len = 0;
-    status = loader_load_kernel(&kernel_image, &len);
-    CHECK_EFI_STATUS_OR_FAIL(status);
-	Print(L" %u bytes at 0x%x", len, kernel_image);
-    con_status_ok();
-
-    /*
-	dump_memory_map();
 
 	UINTN memmap_size = 0;
 	EFI_MEMORY_DESCRIPTOR *memmap;

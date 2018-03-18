@@ -3,73 +3,76 @@
 
 static CHAR16 kernel_name[] = KERNEL_FILENAME;
 
-static EFI_STATUS loader_load_file(EFI_FILE_PROTOCOL *root, void **kernel_image, UINT64 *len) {
-	EFI_STATUS status;
+EFI_STATUS loader_load_kernel(void **kernel_image, uint64_t *length) {
+    if (kernel_image == 0 || length == 0)
+        CHECK_EFI_STATUS_OR_RETURN(EFI_INVALID_PARAMETER, "NULL kernel_image or length pointer");
 
-	EFI_FILE_PROTOCOL *handle = 0;
-	status = root->Open(root, &handle, kernel_name, EFI_FILE_MODE_READ, 0);
-	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to open kernel file handle");
+    EFI_STATUS status;
+    EFI_GUID guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
+    EFI_HANDLE *handles = NULL;
+    UINTN handleCount = 0;
 
-	EFI_FILE_INFO *info = LibFileInfo(handle);
-    if (info->FileSize == 0)
-        return EFI_NOT_FOUND;
+    status = ST->BootServices->LocateHandleBuffer(
+            ByProtocol, &guid, NULL, &handleCount, &handles);
+	CHECK_EFI_STATUS_OR_RETURN(status, "LocateHandleBuffer");
 
-    UINTN count = ((info->FileSize - 1) / 0x1000) + 1;
-    EFI_PHYSICAL_ADDRESS addr = 0x100000; // Try to load the kernel in at 1MiB
-    EFI_MEMORY_TYPE memType = 0xFFFFFFFF;  // Special value to tell the kernel it's here
-    status = ST->BootServices->AllocatePages(AllocateAddress, memType, count, &addr);
-    if (status == EFI_NOT_FOUND) {
-        // couldn't get the address we wanted, try loading the kernel anywhere
-        status = ST->BootServices->AllocatePages(AllocateAnyPages, memType, count, &addr);
+    for (unsigned i=0; i<handleCount; ++i) {
+        EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fileSystem = NULL;
+
+        status = ST->BootServices->HandleProtocol(
+                handles[i], &guid, (void**)&fileSystem);
+        CHECK_EFI_STATUS_OR_RETURN(status, "HandleProtocol");
+
+        EFI_FILE_PROTOCOL *root = NULL;
+        status = fileSystem->OpenVolume(fileSystem, &root);
+        CHECK_EFI_STATUS_OR_RETURN(status, "OpenVolume");
+
+        EFI_FILE_PROTOCOL *file = NULL;
+        status = root->Open(
+                root,
+                &file,
+                kernel_name,
+                EFI_FILE_MODE_READ,
+                EFI_FILE_READ_ONLY|EFI_FILE_HIDDEN|EFI_FILE_SYSTEM);
+
+        if (!EFI_ERROR(status)) {
+            void *buffer = NULL;
+            EFI_GUID file_info_guid = EFI_FILE_INFO_ID;
+            UINTN buffer_size = sizeof(EFI_FILE_INFO) + sizeof(kernel_name);
+
+            status = ST->BootServices->AllocatePool(EfiLoaderCode, buffer_size, &buffer);
+            CHECK_EFI_STATUS_OR_RETURN(status, "Allocating kernel file info memory");
+
+            status = file->GetInfo(file, &file_info_guid, &buffer_size, buffer);
+            CHECK_EFI_STATUS_OR_RETURN(status, "Getting kernel file info");
+
+            buffer_size = ((EFI_FILE_INFO*)buffer)->FileSize;
+
+            status = ST->BootServices->FreePool(buffer);
+            CHECK_EFI_STATUS_OR_RETURN(status, "Freeing kernel file info memory");
+
+            UINTN page_count = ((buffer_size - 1) / 0x1000) + 1;
+            EFI_PHYSICAL_ADDRESS addr = 0x100000; // Try to load the kernel in at 1MiB
+            EFI_MEMORY_TYPE mem_type = 0xFFFFFFFF;  // Special value to tell the kernel it's here
+            status = ST->BootServices->AllocatePages(AllocateAddress, mem_type, page_count, &addr);
+            if (status == EFI_NOT_FOUND) {
+                // couldn't get the address we wanted, try loading the kernel anywhere
+                status = ST->BootServices->AllocatePages(AllocateAnyPages, mem_type, page_count, &addr);
+            }
+            CHECK_EFI_STATUS_OR_RETURN(status, "Allocating kernel pages");
+
+            buffer = (void*)addr;
+            status = file->Read(file, &buffer_size, buffer);
+            CHECK_EFI_STATUS_OR_RETURN(status, "Reading kernel file");
+
+            status = file->Close(file);
+            CHECK_EFI_STATUS_OR_RETURN(status, "Closing kernel file handle");
+
+            *length = buffer_size;
+            *kernel_image = buffer;
+            return EFI_SUCCESS;
+        }
     }
-	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to allocate kernel pages");
-
-    UINTN buffer_size = count * 0x1000;
-    void *buffer = (void*)addr;
-    status = handle->Read(handle, &buffer_size, &buffer);
-	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to read kernel to memory");
-
-	*len = buffer_size;
-	*kernel_image = buffer;
-	return EFI_SUCCESS;
-}
-
-EFI_STATUS loader_load_kernel(void **kernel_image, UINT64 *len) {
-    if (kernel_image == 0 || len == 0)
-        CHECK_EFI_STATUS_OR_RETURN(EFI_INVALID_PARAMETER, "NULL kernel_image pointer or size");
-
-	EFI_STATUS status;
-
-	// First, find all the handles that support the filesystem protocol. Call
-	UINTN size = 0;
-	EFI_GUID fs_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
-	status = ST->BootServices->LocateHandle(ByProtocol, &fs_guid, NULL, &size, NULL);
-	if (status != EFI_BUFFER_TOO_SMALL) {
-		CHECK_EFI_STATUS_OR_RETURN(status, "Failed to find number of filesystem handles");
-	} else if (size == 0) {
-		CHECK_EFI_STATUS_OR_RETURN(EFI_NO_MEDIA, "Found zero filesystem handles");
-	}
-
-	EFI_HANDLE *buffer = 0;
-    status = ST->BootServices->AllocatePool(EfiLoaderData, size, (void**)&buffer);
-	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to allocate buffer of filesystem handles");
-
-	status = ST->BootServices->LocateHandle(ByProtocol, &fs_guid, NULL, &size, buffer);
-	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to find filesystem handles");
-
-	unsigned num_fs = size / sizeof(EFI_HANDLE);
-	EFI_HANDLE *fss = (EFI_HANDLE*)buffer;
-
-	for (unsigned i = 0; i < num_fs; ++i) {
-		EFI_FILE_HANDLE root = LibOpenRoot(fss[i]);
-
-		status = loader_load_file(root, kernel_image, len);
-        if (status == EFI_NOT_FOUND)
-            continue;
-
-		CHECK_EFI_STATUS_OR_RETURN(status, "Failed to load kernel");
-        return EFI_SUCCESS;
-	}
 
     return EFI_NOT_FOUND;
 }

@@ -6,6 +6,10 @@ BUILD_D        := build
 ARCH_D         := src/arch/$(ARCH)
 VERSION        ?= $(shell git describe --dirty --always)
 
+KERNEL_FILENAME:= popcorn.bin
+
+MODULES        := main
+
 
 EFI_DIR        := external/gnu-efi
 EFI_DATA       := $(EFI_DIR)/gnuefi
@@ -33,7 +37,6 @@ BASEFLAGS      += -mcpu=$(CPU)
 endif
 
 # Removed Flags:: -Wcast-align
-WARNFLAGS      := -Wall -Werror -Wextra -Wshadow -Wwrite-strings
 WARNFLAGS      += -Wformat=2 -Winit-self -Wfloat-equal -Winline 
 WARNFLAGS      += -Winvalid-pch -Wmissing-format-attribute
 WARNFLAGS      += -Wmissing-include-dirs -Wswitch -Wundef
@@ -51,6 +54,7 @@ CFLAGS         := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
 CFLAGS         += -std=c11 -fpic -fshort-wchar
 CFLAGS         += -mno-red-zone -fno-stack-protector 
 CFLAGS         += -DGIT_VERSION="L\"$(VERSION)\""
+CFLAGS         += -DKERNEL_FILENAME="L\"$(KERNEL_FILENAME)\""
 CFLAGS         += -DEFI_DEBUG=0 -DEFI_DEBUG_CLEAR_MEMORY=0
 CFLAGS         += -DGNU_EFI_USE_MS_ABI -DHAVE_USE_MS_ABI
 #CFLAGS        += -DEFI_FUNCTION_WRAPPER 
@@ -126,12 +130,9 @@ $(BUILD_D)/.version:
 $(EFI_LIB):
 	make -C external/gnu-efi all
 
-$(BUILD_D)/kernel.elf: $(KOBJS) $(MOD_TARGETS) $(ARCH_D)/kernel.ld
-	$(LD) $(LDFLAGS) -T $(ARCH_D)/kernel.ld -o $@ $(KOBJS) $(patsubst %,-l%,$(MODULES))
-
 $(BUILD_D)/boot.elf: $(BOBJS) $(EFI_LIB)
 	$(LD) $(BOOT_LDFLAGS) -T $(EFI_LDS) -o $@ \
-		$(EFI_CRT_OBJ) $(BOBJS) $(patsubst %,-l%,$(MODULES)) -lefi -lgnuefi
+		$(EFI_CRT_OBJ) $(BOBJS) -lefi -lgnuefi
 
 $(BUILD_D)/boot.efi: $(BUILD_D)/boot.elf
 	objcopy -j .text -j .sdata -j .data -j .dynamic \
@@ -145,20 +146,23 @@ $(BUILD_D)/boot.debug.efi: $(BUILD_D)/boot.elf
 	-j .debug_aranges -j .debug_line -j .debug_macinfo \
 	--target=efi-app-$(ARCH) $^ $@
 
-$(BUILD_D)/%.elf.dump: $(BUILD_D)/%.elf
-	$(OBJD) -D -S $< > $@
-
-$(BUILD_D)/%.bin.dump: $(BUILD_D)/%.bin
-	$(OBJD) -D $< > $@
-
 $(BUILD_D)/%.bin: $(BUILD_D)/%.elf
 	$(OBJC) $< -O binary $@
+
+$(BUILD_D)/boot.dump: $(BUILD_D)/boot.efi
+	$(OBJD) -D -S $< > $@
 
 $(BUILD_D)/boot/%.s.o: src/boot/%.s $(INIT_DEP)
 	$(AS) $(ASFLAGS) -o $@ $<
 
 $(BUILD_D)/boot/%.c.o: src/boot/%.c $(INIT_DEP)
 	$(CC) $(BOOT_CFLAGS) -c -o $@ $<
+
+$(BUILD_D)/kernel.elf: $(KOBJS) $(MOD_TARGETS) $(ARCH_D)/kernel.ld
+	$(LD) $(LDFLAGS) -u kernel_main -T $(ARCH_D)/kernel.ld -o $@ $(KOBJS) $(patsubst %,-l%,$(MODULES))
+
+$(BUILD_D)/kernel.dump: $(BUILD_D)/kernel.elf
+	$(OBJD) -D -S $< > $@
 
 $(BUILD_D)/arch/%.s.o: $(ARCH_D)/%.s $(INIT_DEP)
 	$(AS) $(ASFLAGS) -o $@ $<
@@ -177,7 +181,7 @@ $(BUILD_D)/fs.img: $(BUILD_D)/boot.efi $(BUILD_D)/kernel.bin
 	mmd -i $(TEMPFILE) ::/EFI
 	mmd -i $(TEMPFILE) ::/EFI/BOOT
 	mcopy -i $(TEMPFILE) $(BUILD_D)/boot.efi ::/EFI/BOOT/BOOTX64.efi
-	mcopy -i $(TEMPFILE) $(BUILD_D)/kernel.bin ::/kernel.bin
+	mcopy -i $(TEMPFILE) $(BUILD_D)/kernel.bin ::$(KERNEL_FILENAME)
 	mlabel -i $(TEMPFILE) ::Popcorn_OS
 	dd if=$(TEMPFILE) of=$@.tmp bs=512 count=91669 seek=2048 conv=notrunc
 	rm $(TEMPFILE)

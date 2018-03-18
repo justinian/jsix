@@ -4,7 +4,7 @@ endif
 
 ifndef SOURCES
 	SOURCES := $(wildcard src/modules/$(MOD_NAME)/*.c)
-	SOURCES += $(wildcard src/modules/$(MOD_NAME)/*.S)
+	SOURCES += $(wildcard src/modules/$(MOD_NAME)/*.s)
 endif
 
 ifeq "$(SOURCES)" ""
