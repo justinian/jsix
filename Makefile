@@ -96,7 +96,7 @@ GDBPORT        ?= 27006
 CPUS           ?= 2
 OVMF           ?= assets/ovmf/x64/OVMF.fd 
 
-QEMUOPTS       := -pflash $(OVMF)
+QEMUOPTS       := -pflash $(BUILD_D)/flash.img
 QEMUOPTS       += -drive file=$(BUILD_D)/fs.img,format=raw
 QEMUOPTS       += -smp $(CPUS)
 QEMUOPTS       += -m 512
@@ -170,6 +170,9 @@ $(BUILD_D)/arch/%.s.o: $(ARCH_D)/%.s $(INIT_DEP)
 $(BUILD_D)/arch/%.c.o: $(ARCH_D)/%.c $(INIT_DEP)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+$(BUILD_D)/flash.img: $(OVMF)
+	cp $^ $@
+
 $(BUILD_D)/fs.img: $(BUILD_D)/boot.efi $(BUILD_D)/kernel.bin
 	$(eval TEMPFILE := $(shell mktemp --suffix=.img))
 	dd if=/dev/zero of=$@.tmp bs=512 count=93750
@@ -192,13 +195,13 @@ $(BUILD_D)/fs.iso: $(BUILD_D)/fs.img
 	cp $< $(BUILD_D)/iso/
 	xorriso -as mkisofs -R -f -e fs.img -no-emul-boot -o $@ $(BUILD_D)/iso
 
-qemu: $(BUILD_D)/fs.img
+qemu: $(BUILD_D)/fs.img $(BUILD_D)/flash.img
 	"$(QEMU)" $(QEMUOPTS) -nographic
 
-qemu-window: $(BUILD_D)/fs.img
+qemu-window: $(BUILD_D)/fs.img $(BUILD_D)/flash.img
 	"$(QEMU)" $(QEMUOPTS)
 
-qemu-gdb: $(BUILD_D)/fs.img $(BUILD_D)/boot.debug.efi
+qemu-gdb: $(BUILD_D)/fs.img $(BUILD_D)/boot.debug.efi $(BUILD_D)/flash.img
 	"$(QEMU)" $(QEMUOPTS) -S -D popcorn-qemu.log -s
 
 # vim: ft=make ts=4
