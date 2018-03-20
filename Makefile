@@ -28,7 +28,7 @@ INCLUDES       += -isystem $(EFI_INCLUDES)
 INCLUDES       += -isystem $(EFI_INCLUDES)/$(ARCH)
 INCLUDES       += -isystem $(EFI_INCLUDES)/protocol
 
-BASEFLAGS      := -O2 -fpic -nostdlib
+BASEFLAGS      := -O2 -nostdlib
 BASEFLAGS      += -ffreestanding -nodefaultlibs
 BASEFLAGS      += -fno-builtin -fomit-frame-pointer
 
@@ -51,7 +51,7 @@ WARNFLAGS      += -Wno-unused-but-set-parameter
 ASFLAGS        ?= 
 
 CFLAGS         := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
-CFLAGS         += -std=c11 -fpic -fshort-wchar
+CFLAGS         += -std=c11 -fshort-wchar
 CFLAGS         += -mno-red-zone -fno-stack-protector 
 CFLAGS         += -DGIT_VERSION="L\"$(VERSION)\""
 CFLAGS         += -DKERNEL_FILENAME="L\"$(KERNEL_FILENAME)\""
@@ -64,10 +64,11 @@ ifdef MAX_HRES
 BOOT_CFLAGS    += -DMAX_HRES=$(MAX_HRES)
 endif
 
-LDFLAGS        := -L $(BUILD_D) -ggdb -fPIC -shared
+LDFLAGS        := -L $(BUILD_D) -ggdb -shared
 LDFLAGS        += -nostdlib -znocombreloc -Bsymbolic -nostartfiles 
 
 BOOT_LDFLAGS   := $(LDFLAGS)
+BOOT_LDFLAGS   += -fPIC
 BOOT_LDFLAGS   += -L $(EFI_ARCH_DIR)/lib -L $(EFI_ARCH_DIR)/gnuefi
 
 AS             ?= $(CROSS)as

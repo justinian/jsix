@@ -43,6 +43,9 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	Print(L" %u bytes at 0x%x", kernel_length, kernel_image);
     con_status_ok();
 
+    void (*kernel_main)() = kernel_image;
+    kernel_main();
+
     /*
 	con_status_begin(L"Virtualizing memory...");
     status = memory_virtualize();

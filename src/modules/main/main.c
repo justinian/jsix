@@ -1,4 +1,5 @@
-__attribute__((used))
-int kernel_main() {
-    return 42;
+__attribute__((section(".text.entry")))
+void kernel_main() {
+    volatile int foo = 13;
+    return;
 }

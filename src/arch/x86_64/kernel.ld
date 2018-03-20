@@ -5,22 +5,24 @@ SECTIONS
 
 	.text : {
 		code = .;
+		*(.text.entry)
 		*(.text)
-		. = ALIGN(4096);
 	}
 
-	.data : {
+	.data ALIGN(0x1000) : {
 		 data = .;
 		 *(.data)
 		 *(.rodata)
-		 . = ALIGN(4096);
 	}
 
-	.bss : {
+	.bss ALIGN(0x1000) : {
 		bss = .;
 		*(.bss)
-		. = ALIGN(4096);
 	}
 
-	end = .;
+    .note ALIGN(0x1000) : {
+        *(.note.*)
+    }
+
+    end = ALIGN(4096);
 }
