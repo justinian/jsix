@@ -52,8 +52,8 @@ EFI_STATUS loader_load_kernel(void **kernel_image, uint64_t *length) {
             CHECK_EFI_STATUS_OR_RETURN(status, "Freeing kernel file info memory");
 
             UINTN page_count = ((buffer_size - 1) / 0x1000) + 1;
-            EFI_PHYSICAL_ADDRESS addr = 0x100000; // Try to load the kernel in at 1MiB
-            EFI_MEMORY_TYPE mem_type = 0xFFFFFFFF;  // Special value to tell the kernel it's here
+            EFI_PHYSICAL_ADDRESS addr = KERNEL_PHYS_ADDRESS; // Try to load the kernel in at 1MiB
+            EFI_MEMORY_TYPE mem_type = KERNEL_MEMTYPE;  // Special value to tell the kernel it's here
             status = ST->BootServices->AllocatePages(AllocateAddress, mem_type, page_count, &addr);
             if (status == EFI_NOT_FOUND) {
                 // couldn't get the address we wanted, try loading the kernel anywhere

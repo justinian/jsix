@@ -2,6 +2,7 @@
 #include <efilib.h>
 
 #include "memory.h"
+#include "loader.h"
 #include "utility.h"
 
 const UINTN PAGE_SIZE = 4096;
@@ -30,20 +31,35 @@ static const CHAR16 *memory_type_name(UINT32 value) {
     return memory_type_names[value];
 }
 
-void EFIAPI memory_update_addresses(EFI_EVENT UNUSED *event, void UNUSED *context) {
-    //ST->RuntimeServices->ConvertPointer(0, (void **)&BS);
-    ST->RuntimeServices->ConvertPointer(0, (void **)&ST);
+void EFIAPI memory_update_addresses(EFI_EVENT UNUSED *event, void *context) {
+    ST->RuntimeServices->ConvertPointer(0, (void **)context);
 }
 
-EFI_STATUS memory_virtualize() {
-    EFI_STATUS status;
+EFI_STATUS memory_mark_address_for_update(void **pointer) {
     EFI_EVENT event;
+    EFI_STATUS status;
 
-    status = ST->BootServices->CreateEvent(EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE,
-            TPL_CALLBACK, (EFI_EVENT_NOTIFY)&memory_update_addresses, NULL, &event);
+    status = ST->BootServices->CreateEvent(
+            EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE,
+            TPL_CALLBACK,
+            (EFI_EVENT_NOTIFY)&memory_update_addresses,
+            (void*)pointer,
+            &event);
+
     CHECK_EFI_STATUS_OR_RETURN(status, "Failed to create memory update event");
+}
 
-    return status;
+EFI_STATUS memory_virtualize(void **kernel_addr, EFI_MEMORY_DESCRIPTOR *memory_map,
+                             UINTN memmap_size, UINTN desc_size, UINT32 desc_version) {
+    unsigned count = memmap_size / desc_size;
+    for (unsigned i=0; i<count; ++i) {
+        if (memory_map[i].Type == KERNEL_MEMTYPE)
+            memory_map[i].VirtualStart = (EFI_VIRTUAL_ADDRESS)KERNEL_VIRT_ADDRESS;
+        else
+            memory_map[i].VirtualStart = (EFI_VIRTUAL_ADDRESS)memory_map[i].PhysicalStart;
+    }
+
+    return ST->RuntimeServices->SetVirtualAddressMap(memmap_size, desc_size, desc_version, memory_map);
 }
 
 EFI_STATUS memory_get_map(EFI_MEMORY_DESCRIPTOR **buffer, UINTN *buffer_size,
@@ -58,7 +74,6 @@ EFI_STATUS memory_get_map(EFI_MEMORY_DESCRIPTOR **buffer, UINTN *buffer_size,
 
     // Give some extra buffer to account for changes.
     *buffer_size = needs_size + 256;
-    Print(L"Trying to load memory map with size %d.\n", *buffer_size);
     status = ST->BootServices->AllocatePool(EfiLoaderData, *buffer_size, (void**)buffer);
     CHECK_EFI_STATUS_OR_RETURN(status, "Failed to allocate space for memory map");
 
@@ -88,10 +103,8 @@ EFI_STATUS memory_dump_map() {
     while (d < end) {
         UINTN size_bytes = d->NumberOfPages * PAGE_SIZE;
 
-        Print(L"Type: %s  Attr: 0x%x\n", memory_type_name(d->Type), d->Attribute);
-        Print(L"\t Physical  %016llx - %016llx\n", d->PhysicalStart, d->PhysicalStart + size_bytes);
-        if (d->VirtualStart != 0)
-            Print(L"\t  Virtual  %016llx - %016llx\n\n", d->VirtualStart, d->VirtualStart + size_bytes);
+        Print(L"%23s ", memory_type_name(d->Type));
+        Print(L"%016llx (%3d pages)\n", d->PhysicalStart, size_bytes / 0x1000);
 
         d = (EFI_MEMORY_DESCRIPTOR *)((uint8_t *)d + desc_size);
     }

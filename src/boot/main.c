@@ -33,8 +33,6 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     CHECK_EFI_STATUS_OR_FAIL(status);
 	con_status_ok();
 
-	// memory_dump_map();
-
     con_status_begin(L"Loading kernel into memory...");
     void *kernel_image = NULL;
 	uint64_t kernel_length = 0;
@@ -43,28 +41,46 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	Print(L" %u bytes at 0x%x", kernel_length, kernel_image);
     con_status_ok();
 
+	//memory_dump_map();
+
+	con_status_begin(L"Exiting boot services...");
+	UINTN memmap_size = 0, memmap_key = 0;
+	UINTN desc_size = 0;
+    UINT32 desc_version = 0;
+    EFI_MEMORY_DESCRIPTOR *memory_map;
+
+    status = memory_mark_address_for_update((void**)&ST);
+	CHECK_EFI_STATUS_OR_FAIL(status);
+
+    status = memory_mark_address_for_update((void**)&kernel_image);
+	CHECK_EFI_STATUS_OR_FAIL(status);
+
+    status = memory_get_map(&memory_map,
+            &memmap_size, &memmap_key,
+            &desc_size, &desc_version);
+	CHECK_EFI_STATUS_OR_FAIL(status);
+
+	status = ST->BootServices->ExitBootServices(ImageHandle, memmap_key);
+	CHECK_EFI_STATUS_OR_FAIL(status);
+
+    status = memory_virtualize(
+            &kernel_image,
+            memory_map, memmap_size,
+            desc_size, desc_version);
+
+    CHECK_EFI_STATUS_OR_FAIL(status);
+
     void (*kernel_main)() = kernel_image;
     kernel_main();
 
     /*
+	con_status_ok();
+
 	con_status_begin(L"Virtualizing memory...");
-    status = memory_virtualize();
-    CHECK_EFI_STATUS_OR_FAIL(status);
 	con_status_ok();
 
-	UINTN memmap_size = 0;
-	EFI_MEMORY_DESCRIPTOR *memmap;
-	UINTN memmap_key;
-	UINTN desc_size;
-	UINT32 desc_version;
-
-	con_status_begin(L"Exiting boot services");
-	memmap = LibMemoryMap(&memmap_size, &memmap_key,
-		&desc_size, &desc_version);
-
-	status = ST->BootServices->ExitBootServices(ImageHandle, memmap_key);
-	CHECK_EFI_STATUS_OR_FAIL(status);
-	con_status_ok();
+    void (*kernel_main)() = kernel_image;
+    kernel_main();
 
 	con_status_begin(L"Setting virtual address map");
 	status = ST->RuntimeServices->SetVirtualAddressMap(
