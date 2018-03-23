@@ -28,7 +28,7 @@ INCLUDES       += -isystem $(EFI_INCLUDES)
 INCLUDES       += -isystem $(EFI_INCLUDES)/$(ARCH)
 INCLUDES       += -isystem $(EFI_INCLUDES)/protocol
 
-BASEFLAGS      := -O2 -nostdlib
+BASEFLAGS      := -ggdb -nostdlib
 BASEFLAGS      += -ffreestanding -nodefaultlibs
 BASEFLAGS      += -fno-builtin -fomit-frame-pointer
 
@@ -136,12 +136,12 @@ $(BUILD_D)/boot.elf: $(BOBJS) $(EFI_LIB)
 		$(EFI_CRT_OBJ) $(BOBJS) -lefi -lgnuefi
 
 $(BUILD_D)/boot.efi: $(BUILD_D)/boot.elf
-	objcopy -j .text -j .sdata -j .data -j .dynamic \
+	$(OBJC) -j .text -j .sdata -j .data -j .dynamic \
 	-j .dynsym  -j .rel -j .rela -j .reloc \
 	--target=efi-app-$(ARCH) $^ $@
 
 $(BUILD_D)/boot.debug.efi: $(BUILD_D)/boot.elf
-	objcopy -j .text -j .sdata -j .data -j .dynamic \
+	$(OBJC) -j .text -j .sdata -j .data -j .dynamic \
 	-j .dynsym  -j .rel -j .rela -j .reloc \
 	-j .debug_info -j .debug_abbrev -j .debug_loc -j .debug_str \
 	-j .debug_aranges -j .debug_line -j .debug_macinfo \
@@ -161,6 +161,8 @@ $(BUILD_D)/boot/%.c.o: src/boot/%.c $(INIT_DEP)
 
 $(BUILD_D)/kernel.elf: $(KOBJS) $(MOD_TARGETS) $(ARCH_D)/kernel.ld
 	$(LD) $(LDFLAGS) -u kernel_main -T $(ARCH_D)/kernel.ld -o $@ $(KOBJS) $(patsubst %,-l%,$(MODULES))
+	$(OBJC) --only-keep-debug $@ $@.sym
+	$(OBJC) --strip-debug $@
 
 $(BUILD_D)/kernel.dump: $(BUILD_D)/kernel.elf
 	$(OBJD) -D -S $< > $@
@@ -202,7 +204,7 @@ qemu: $(BUILD_D)/fs.img $(BUILD_D)/flash.img
 qemu-window: $(BUILD_D)/fs.img $(BUILD_D)/flash.img
 	"$(QEMU)" $(QEMUOPTS)
 
-qemu-gdb: $(BUILD_D)/fs.img $(BUILD_D)/boot.debug.efi $(BUILD_D)/flash.img
-	"$(QEMU)" $(QEMUOPTS) -S -D popcorn-qemu.log -s
+qemu-gdb: $(BUILD_D)/fs.img $(BUILD_D)/boot.debug.efi $(BUILD_D)/flash.img $(BUILD_D)/kernel.elf
+	"$(QEMU)" $(QEMUOPTS) -S -D popcorn-qemu.log -s -nographic
 
 # vim: ft=make ts=4
