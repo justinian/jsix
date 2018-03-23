@@ -20,9 +20,9 @@ SECTIONS
 		*(.bss)
 	}
 
-    .note ALIGN(0x1000) : {
-        *(.note.*)
-    }
+	.note ALIGN(0x1000) : {
+		*(.note.*)
+	}
 
-    end = ALIGN(4096);
+	end = ALIGN(4096);
 }

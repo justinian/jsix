@@ -30,64 +30,48 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	EFI_LOADED_IMAGE *info = 0;
 	EFI_GUID image_proto = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 	status = ST->BootServices->HandleProtocol(ImageHandle, &image_proto, (void **)&info);
-    CHECK_EFI_STATUS_OR_FAIL(status);
+	CHECK_EFI_STATUS_OR_FAIL(status);
 	con_status_ok();
 
-    con_status_begin(L"Loading kernel into memory...");
-    void *kernel_image = NULL;
+	con_status_begin(L"Loading kernel into memory...");
+	void *kernel_image = NULL;
 	uint64_t kernel_length = 0;
-    status = loader_load_kernel(&kernel_image, &kernel_length);
-    CHECK_EFI_STATUS_OR_FAIL(status);
+	status = loader_load_kernel(&kernel_image, &kernel_length);
+	CHECK_EFI_STATUS_OR_FAIL(status);
 	Print(L" %u bytes at 0x%x", kernel_length, kernel_image);
-    con_status_ok();
+	con_status_ok();
 
 	//memory_dump_map();
 
 	con_status_begin(L"Exiting boot services...");
 	UINTN memmap_size = 0, memmap_key = 0;
 	UINTN desc_size = 0;
-    UINT32 desc_version = 0;
-    EFI_MEMORY_DESCRIPTOR *memory_map;
+	UINT32 desc_version = 0;
+	EFI_MEMORY_DESCRIPTOR *memory_map;
 
-    status = memory_mark_address_for_update((void**)&ST);
+	status = memory_mark_address_for_update((void**)&ST);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-    status = memory_mark_address_for_update((void**)&kernel_image);
+	status = memory_mark_address_for_update((void**)&kernel_image);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-    status = memory_get_map(&memory_map,
-            &memmap_size, &memmap_key,
-            &desc_size, &desc_version);
+	status = memory_get_map(&memory_map,
+			&memmap_size, &memmap_key,
+			&desc_size, &desc_version);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
 	status = ST->BootServices->ExitBootServices(ImageHandle, memmap_key);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-    status = memory_virtualize(
-            &kernel_image,
-            memory_map, memmap_size,
-            desc_size, desc_version);
+	status = memory_virtualize(
+			&kernel_image,
+			memory_map, memmap_size,
+			desc_size, desc_version);
 
-    CHECK_EFI_STATUS_OR_FAIL(status);
-
-    void (*kernel_main)() = kernel_image;
-    kernel_main();
-
-    /*
-	con_status_ok();
-
-	con_status_begin(L"Virtualizing memory...");
-	con_status_ok();
-
-    void (*kernel_main)() = kernel_image;
-    kernel_main();
-
-	con_status_begin(L"Setting virtual address map");
-	status = ST->RuntimeServices->SetVirtualAddressMap(
-		memmap_size, desc_size, desc_version, memmap);
 	CHECK_EFI_STATUS_OR_FAIL(status);
-	con_status_ok();
-    */
+
+	void (*kernel_main)() = kernel_image;
+	kernel_main();
 
 	while (1) __asm__("hlt");
 	return status;
