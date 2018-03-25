@@ -1,0 +1,21 @@
+---
+Language:        Cpp
+BasedOnStyle:    LLVM
+
+ColumnLimit:     100
+IndentWidth:     4
+TabWidth:        4
+UseTab:          Always
+
+AccessModifierOffset: -4
+
+AlignEscapedNewlinesLeft: true
+
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+
+AlwaysBreakAfterReturnType: AllDefinitions
+AlwaysBreakBeforeMultilineStrings: true
+AlwaysBreakTemplateDeclarations: true
+
+BreakBeforeBraces: Linux

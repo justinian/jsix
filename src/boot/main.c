@@ -7,7 +7,7 @@
 #include "utility.h"
 
 #ifndef GIT_VERSION
-	#define GIT_VERSION L"no version"
+#define GIT_VERSION L"no version"
 #endif
 
 #define KERNEL_MAGIC 0x600db007
@@ -24,7 +24,7 @@ struct kernel_version {
 #pragma pack(pop)
 
 EFI_STATUS
-efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
+efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
 	EFI_STATUS status;
 
@@ -45,19 +45,14 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	CHECK_EFI_STATUS_OR_FAIL(status);
 	Print(L"\n    %u bytes at 0x%x", kernel_length, kernel_image);
 
-	struct kernel_version *version = (struct kernel_version*)kernel_image;
+	struct kernel_version *version = (struct kernel_version *)kernel_image;
 	if (version->magic != KERNEL_MAGIC) {
 		Print(L"\n    bad magic %x", version->magic);
 		CHECK_EFI_STATUS_OR_FAIL(EFI_CRC_ERROR);
 	}
 
-	Print(L"\n    Kernel version %d.%d.%d %x%s",
-			version->major,
-			version->minor,
-			version->patch,
-			version->gitsha & 0x0fffffff,
-			version->gitsha & 0xf0000000 ? "*" : ""
-		 );
+	Print(L"\n    Kernel version %d.%d.%d %x%s", version->major, version->minor, version->patch,
+		  version->gitsha & 0x0fffffff, version->gitsha & 0xf0000000 ? "*" : "");
 	Print(L"\n    Entrypoint %d", version->entrypoint);
 
 	void (*kernel_main)() = version->entrypoint;
@@ -71,29 +66,24 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	UINT32 desc_version = 0;
 	EFI_MEMORY_DESCRIPTOR *memory_map;
 
-	status = memory_mark_address_for_update((void**)&ST);
+	status = memory_mark_address_for_update((void **)&ST);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-	status = memory_mark_address_for_update((void**)&kernel_image);
+	status = memory_mark_address_for_update((void **)&kernel_image);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-	status = memory_mark_address_for_update((void**)&kernel_main);
+	status = memory_mark_address_for_update((void **)&kernel_main);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-	status = memory_get_map(&memory_map,
-			&memmap_size, &memmap_key,
-			&desc_size, &desc_version);
+	status = memory_get_map(&memory_map, &memmap_size, &memmap_key, &desc_size, &desc_version);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
 	status = ST->BootServices->ExitBootServices(ImageHandle, memmap_key);
 	CHECK_EFI_STATUS_OR_ASSERT(status, 0);
 
-	status = memory_virtualize(
-			memory_map, memmap_size,
-			desc_size, desc_version);
+	status = memory_virtualize(memory_map, memmap_size, desc_size, desc_version);
 	CHECK_EFI_STATUS_OR_ASSERT(status, 0);
 
 	kernel_main();
 	return EFI_LOAD_ERROR;
 }
-
