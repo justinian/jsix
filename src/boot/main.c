@@ -10,6 +10,19 @@
 	#define GIT_VERSION L"no version"
 #endif
 
+#define KERNEL_MAGIC 0x600db007
+
+#pragma pack(push, 1)
+struct kernel_version {
+	uint32_t magic;
+	uint8_t major;
+	uint8_t minor;
+	uint16_t patch;
+	uint32_t gitsha;
+	void *entrypoint;
+};
+#pragma pack(pop)
+
 EFI_STATUS
 efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
@@ -26,19 +39,39 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	// because the console is now set up
 
 	// Get info about the image
+	/*
 	con_status_begin(L"Gathering image information...");
 	EFI_LOADED_IMAGE *info = 0;
 	EFI_GUID image_proto = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 	status = ST->BootServices->HandleProtocol(ImageHandle, &image_proto, (void **)&info);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 	con_status_ok();
+	*/
 
 	con_status_begin(L"Loading kernel into memory...");
 	void *kernel_image = NULL;
 	uint64_t kernel_length = 0;
 	status = loader_load_kernel(&kernel_image, &kernel_length);
 	CHECK_EFI_STATUS_OR_FAIL(status);
-	Print(L" %u bytes at 0x%x", kernel_length, kernel_image);
+	Print(L"\n    %u bytes at 0x%x", kernel_length, kernel_image);
+
+	struct kernel_version *version = (struct kernel_version*)kernel_image;
+	if (version->magic != KERNEL_MAGIC) {
+		Print(L"\n    bad magic %x", version->magic);
+		CHECK_EFI_STATUS_OR_FAIL(EFI_CRC_ERROR);
+	}
+
+	Print(L"\n    Kernel version %d.%d.%d %x%s",
+			version->major,
+			version->minor,
+			version->patch,
+			version->gitsha & 0x0fffffff,
+			version->gitsha & 0xf0000000 ? "*" : ""
+		 );
+
+	Print(L"\n    Entrypoint %d", version->entrypoint);
+
+	void (*kernel_main)() = version->entrypoint;
 	con_status_ok();
 
 	//memory_dump_map();
@@ -53,6 +86,9 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
 	status = memory_mark_address_for_update((void**)&kernel_image);
+	CHECK_EFI_STATUS_OR_FAIL(status);
+
+	status = memory_mark_address_for_update((void**)&kernel_main);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
 	status = memory_get_map(&memory_map,
@@ -70,10 +106,7 @@ efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-	void (*kernel_main)() = kernel_image;
 	kernel_main();
-
-	while (1) __asm__("hlt");
-	return status;
+	return EFI_LOAD_ERROR;
 }
 

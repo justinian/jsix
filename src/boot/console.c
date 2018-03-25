@@ -62,16 +62,16 @@ con_initialize (const CHAR16 *version)
 	CHECK_EFI_STATUS_OR_RETURN(status, "ClearScreen");
 
 	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTCYAN);
-	ST->ConOut->OutputString(ST->ConOut, (CHAR16*)L"Popcorn OS ");
+	ST->ConOut->OutputString(ST->ConOut, (CHAR16*)L"Popcorn loader ");
 
 	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTMAGENTA);
 	ST->ConOut->OutputString(ST->ConOut, (CHAR16*)version);
 
 	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTGRAY);
-	ST->ConOut->OutputString(ST->ConOut, (CHAR16*)L" booting...\r\n");
+	ST->ConOut->OutputString(ST->ConOut, (CHAR16*)L" booting...\r\n\n");
 
 	con_status_begin(L"Setting console display mode: ");
-	Print(L"%ux%u (%ux%u chars)",
+	Print(L"\n    %ux%u (%ux%u chars)",
 		gfx_out_proto->Mode->Info->HorizontalResolution,
 		gfx_out_proto->Mode->Info->VerticalResolution,
 		ROWS, COLS);
@@ -91,14 +91,14 @@ void
 con_status_ok ()
 {
 	UINTN row = ST->ConOut->Mode->CursorRow;
-	ST->ConOut->SetCursorPosition(ST->ConOut, COLS-8, row);
+	ST->ConOut->SetCursorPosition(ST->ConOut, 4, ++row);
 	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTGRAY);
 	ST->ConOut->OutputString(ST->ConOut, (CHAR16*)L"[");
 	ST->ConOut->SetAttribute(ST->ConOut, EFI_GREEN);
 	ST->ConOut->OutputString(ST->ConOut, (CHAR16*)L"  ok  ");
 	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTGRAY);
 	ST->ConOut->OutputString(ST->ConOut, (CHAR16*)L"]\r");
-	ST->ConOut->SetCursorPosition(ST->ConOut, 0, row+1);
+	ST->ConOut->SetCursorPosition(ST->ConOut, 0, ++row+1);
 }
 
 void

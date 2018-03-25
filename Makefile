@@ -5,6 +5,7 @@ include src/arch/$(ARCH)/config.mk
 BUILD_D        := build
 ARCH_D         := src/arch/$(ARCH)
 VERSION        ?= $(shell git describe --dirty --always)
+GITSHA         ?= $(shell git rev-parse --short HEAD)
 
 KERNEL_FILENAME:= popcorn.bin
 
@@ -48,7 +49,8 @@ WARNFLAGS      += -Wno-format-extra-args -Wno-unused-result
 WARNFLAGS      += -Wno-deprecated-declarations -Wno-unused-function
 WARNFLAGS      += -Wno-unused-but-set-parameter
 
-ASFLAGS        ?= 
+ASFLAGS        ?=
+ASFLAGS        += -p $(BUILD_D)/versions.s
 
 CFLAGS         := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
 CFLAGS         += -std=c11 -fshort-wchar
@@ -64,14 +66,13 @@ ifdef MAX_HRES
 BOOT_CFLAGS    += -DMAX_HRES=$(MAX_HRES)
 endif
 
-LDFLAGS        := -L $(BUILD_D) -ggdb -shared
+LDFLAGS        := -L $(BUILD_D) -ggdb
 LDFLAGS        += -nostdlib -znocombreloc -Bsymbolic -nostartfiles 
 
-BOOT_LDFLAGS   := $(LDFLAGS)
-BOOT_LDFLAGS   += -fPIC
+BOOT_LDFLAGS   := $(LDFLAGS) -shared
 BOOT_LDFLAGS   += -L $(EFI_ARCH_DIR)/lib -L $(EFI_ARCH_DIR)/gnuefi
 
-AS             ?= $(CROSS)as
+AS             ?= $(CROSS)nasm
 AR             ?= $(CROSS)ar
 CC             ?= $(CROSS)gcc
 CXX            ?= $(CROSS)g++
@@ -120,10 +121,16 @@ clean:
 dist-clean: clean
 	make -C external/gnu-efi clean
 
-.PHONY: all clean dist-clean init
+dump: $(BUILD_D)/kernel.dump
+	vim $<
+
+.PHONY: all clean dist-clean init dump
 
 $(BUILD_D)/.version:
 	echo '$(VERSION)' | cmp -s - $@ || echo '$(VERSION)' > $@
+
+$(BUILD_D)/versions.s:
+	./parse_version.py "$(VERSION)" "$(GITSHA)" > $@
 
 -include x $(patsubst %,src/modules/%/module.mk,$(MODULES))
 -include x $(DEPS)
@@ -153,21 +160,20 @@ $(BUILD_D)/%.bin: $(BUILD_D)/%.elf
 $(BUILD_D)/boot.dump: $(BUILD_D)/boot.efi
 	$(OBJD) -D -S $< > $@
 
-$(BUILD_D)/boot/%.s.o: src/boot/%.s $(INIT_DEP)
+$(BUILD_D)/boot/%.s.o: src/boot/%.s $(BUILD_D)/versions.s $(INIT_DEP)
 	$(AS) $(ASFLAGS) -o $@ $<
 
 $(BUILD_D)/boot/%.c.o: src/boot/%.c $(INIT_DEP)
 	$(CC) $(BOOT_CFLAGS) -c -o $@ $<
 
 $(BUILD_D)/kernel.elf: $(KOBJS) $(MOD_TARGETS) $(ARCH_D)/kernel.ld
-	$(LD) $(LDFLAGS) -u kernel_main -T $(ARCH_D)/kernel.ld -o $@ $(KOBJS) $(patsubst %,-l%,$(MODULES))
+	$(LD) $(LDFLAGS) -u _header -T $(ARCH_D)/kernel.ld -o $@ $(patsubst %,-l%,$(MODULES)) $(KOBJS)
 	$(OBJC) --only-keep-debug $@ $@.sym
-	$(OBJC) --strip-debug $@
 
 $(BUILD_D)/kernel.dump: $(BUILD_D)/kernel.elf
 	$(OBJD) -D -S $< > $@
 
-$(BUILD_D)/arch/%.s.o: $(ARCH_D)/%.s $(INIT_DEP)
+$(BUILD_D)/arch/%.s.o: $(ARCH_D)/%.s $(BUILD_D)/versions.s $(INIT_DEP)
 	$(AS) $(ASFLAGS) -o $@ $<
 
 $(BUILD_D)/arch/%.c.o: $(ARCH_D)/%.c $(INIT_DEP)

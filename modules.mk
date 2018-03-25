@@ -16,13 +16,16 @@ MOD_BUILD_D	:= $(BUILD_D)/d.$(MOD_NAME)
 MOD_LIBNAME	:= $(BUILD_D)/lib$(MOD_NAME).a
 MOD_TARGETS	+= $(MOD_LIBNAME)
 
-OBJS_$(MOD_NAME) := $(patsubst %.c,build/d.%.o,$(patsubst src/modules/%,%,$(SOURCES)))
+OBJS_$(MOD_NAME) := $(patsubst %,build/d.%.o,$(patsubst src/modules/%,%,$(SOURCES)))
 
 $(MOD_LIBNAME): $(OBJS_$(MOD_NAME))
 	$(AR) cr $@ $(OBJS_$(MOD_NAME))
 
-$(MOD_BUILD_D)/%.o: $(MOD_SRC_D)/%.c $(INIT_DEP)
+$(MOD_BUILD_D)/%.c.o: $(MOD_SRC_D)/%.c $(INIT_DEP)
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(MOD_BUILD_D)/%.s.o: $(MOD_SRC_D)/%.s $(BUILD_D)/versions.s $(INIT_DEP)
+	$(AS) $(ASFLAGS) -o $@ $<
 
 DEPS += $(patsubst %.o,%.d,$(OBJS_$(MOD_NAME)))
 

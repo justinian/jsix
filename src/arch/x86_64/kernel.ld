@@ -1,11 +1,15 @@
-ENTRY(kernel_main)
+ENTRY(_start)
 SECTIONS
 {
 	. = 0x100000;
 
+	.header : {
+		header = .;
+		KEEP(*(.header))
+	}
+
 	.text : {
 		code = .;
-		*(.text.entry)
 		*(.text)
 	}
 
@@ -24,5 +28,5 @@ SECTIONS
 		*(.note.*)
 	}
 
-	end = ALIGN(4096);
+	kernel_end = ALIGN(4096);
 }
