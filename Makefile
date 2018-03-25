@@ -95,7 +95,7 @@ MOD_TARGETS    :=
 PARTED         ?= /sbin/parted
 QEMU           ?= qemu-system-x86_64
 GDBPORT        ?= 27006
-CPUS           ?= 2
+CPUS           ?= 1
 OVMF           ?= assets/ovmf/x64/OVMF.fd 
 
 QEMUOPTS       := -pflash $(BUILD_D)/flash.img
@@ -211,6 +211,6 @@ qemu-window: $(BUILD_D)/fs.img $(BUILD_D)/flash.img
 	"$(QEMU)" $(QEMUOPTS)
 
 qemu-gdb: $(BUILD_D)/fs.img $(BUILD_D)/boot.debug.efi $(BUILD_D)/flash.img $(BUILD_D)/kernel.elf
-	"$(QEMU)" $(QEMUOPTS) -S -D popcorn-qemu.log -s -nographic
+	"$(QEMU)" $(QEMUOPTS) -d mmu,guest_errors,page -D popcorn.log -s -nographic
 
 # vim: ft=make ts=4
