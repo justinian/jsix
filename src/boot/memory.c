@@ -26,13 +26,19 @@ const CHAR16 *memory_type_names[] = {
 };
 
 static const CHAR16 *memory_type_name(UINT32 value) {
-	if (value >= (sizeof(memory_type_names)/sizeof(CHAR16*)))
+	if (value >= (sizeof(memory_type_names)/sizeof(CHAR16*))) {
+		if (value == KERNEL_MEMTYPE)
+			return L"Kernel Image";
 		return L"Bad Type Value";
+	}
 	return memory_type_names[value];
 }
 
 void EFIAPI memory_update_addresses(EFI_EVENT UNUSED *event, void *context) {
-	ST->RuntimeServices->ConvertPointer(0, (void **)context);
+	EFI_STATUS status;
+	status = ST->RuntimeServices->ConvertPointer(0, (void **)context);
+
+	CHECK_EFI_STATUS_OR_ASSERT(status, *((void**)context));
 }
 
 EFI_STATUS memory_mark_address_for_update(void **pointer) {
@@ -46,17 +52,29 @@ EFI_STATUS memory_mark_address_for_update(void **pointer) {
 			(void*)pointer,
 			&event);
 
-	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to create memory update event");
+	CHECK_EFI_STATUS_OR_ASSERT(status, pointer);
 }
 
-EFI_STATUS memory_virtualize(void **kernel_addr, EFI_MEMORY_DESCRIPTOR *memory_map,
-							 UINTN memmap_size, UINTN desc_size, UINT32 desc_version) {
-	unsigned count = memmap_size / desc_size;
-	for (unsigned i=0; i<count; ++i) {
-		if (memory_map[i].Type == KERNEL_MEMTYPE)
-			memory_map[i].VirtualStart = (EFI_VIRTUAL_ADDRESS)KERNEL_VIRT_ADDRESS;
-		else
-			memory_map[i].VirtualStart = (EFI_VIRTUAL_ADDRESS)memory_map[i].PhysicalStart;
+EFI_STATUS
+memory_virtualize(
+		EFI_MEMORY_DESCRIPTOR *memory_map,
+		UINTN memmap_size,
+		UINTN desc_size,
+		UINT32 desc_version) {
+
+	EFI_MEMORY_DESCRIPTOR *end = (EFI_MEMORY_DESCRIPTOR *)((uint8_t *)memory_map + memmap_size);
+	EFI_MEMORY_DESCRIPTOR *d = memory_map;
+	while (d < end) {
+		if (d->Type == KERNEL_MEMTYPE) {
+			//d->VirtualStart = (EFI_VIRTUAL_ADDRESS)KERNEL_VIRT_ADDRESS;
+			d->VirtualStart = (EFI_VIRTUAL_ADDRESS)d->PhysicalStart;
+			d->Attribute |= EFI_MEMORY_RUNTIME;
+		}
+		else /*if (d->Attribute & EFI_MEMORY_RUNTIME)*/ {
+			d->VirtualStart = (EFI_VIRTUAL_ADDRESS)d->PhysicalStart;
+		}
+
+		d = (EFI_MEMORY_DESCRIPTOR *)((uint8_t *)d + desc_size);
 	}
 
 	return ST->RuntimeServices->SetVirtualAddressMap(memmap_size, desc_size, desc_version, memory_map);
@@ -101,10 +119,9 @@ EFI_STATUS memory_dump_map() {
 	EFI_MEMORY_DESCRIPTOR *end = (EFI_MEMORY_DESCRIPTOR *)((uint8_t *)buffer + buffer_size);
 	EFI_MEMORY_DESCRIPTOR *d = buffer;
 	while (d < end) {
-		UINTN size_bytes = d->NumberOfPages * PAGE_SIZE;
-
-		Print(L"%23s ", memory_type_name(d->Type));
-		Print(L"%016llx (%3d pages)\n", d->PhysicalStart, size_bytes / 0x1000);
+		int runtime = (d->Attribute & EFI_MEMORY_RUNTIME) == EFI_MEMORY_RUNTIME;
+		Print(L"%23s%s ", memory_type_name(d->Type), runtime ? L"*" : L" ");
+		Print(L"%016llx (%3d pages)\n", d->PhysicalStart, d->NumberOfPages);
 
 		d = (EFI_MEMORY_DESCRIPTOR *)((uint8_t *)d + desc_size);
 	}

@@ -4,7 +4,6 @@
 EFI_STATUS memory_mark_address_for_update(void **pointer);
 
 EFI_STATUS memory_virtualize(
-	void **kernel_image,
 	EFI_MEMORY_DESCRIPTOR *memory_map,
 	UINTN memmap_size,
 	UINTN desc_size,
