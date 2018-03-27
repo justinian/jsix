@@ -4,12 +4,14 @@ section .header
 align 4
 global _header
 _header:
-	dd MAGIC
-	db VERSION_MAJOR
+	dd MAGIC			; Kernel header magic
+	dw 1				; Header version 1
+	dw 1				; Kernel header length
+	db VERSION_MAJOR	; Kernel version
 	db VERSION_MINOR
 	dw VERSION_PATCH
 	dd VERSION_GITSHA
-	dq _start
+	dq _start			; Kernel entrypoint
 
 section .text
 align 16
