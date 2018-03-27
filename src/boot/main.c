@@ -20,7 +20,7 @@
 
 
 #pragma pack(push, 1)
-struct kernel_version {
+struct kernel_header {
 	uint32_t magic;
 	uint16_t version;
 	uint16_t length;
@@ -54,14 +54,6 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
 	EFI_STATUS status;
 
-	UINTN memmap_size = 0;
-	UINTN memmap_key = 0;
-	UINTN desc_size = 0;
-	UINTN newmap_size = 0;
-	UINTN data_length = 0;
-
-	UINT32 desc_version = 0;
-
 
 	InitializeLib(ImageHandle, SystemTable);
 
@@ -74,11 +66,14 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	// because the console is now set up
 
 	con_status_begin(L"Computing needed data pages...");
-	status = memory_get_map_size(&data_length);
+	UINTN data_length = 0;
+	status = memory_get_map_length(&data_length);
+
 	size_t header_size = sizeof(struct popcorn_data);
 	const size_t header_align = alignof(struct popcorn_data);
 	if (header_size % header_align)
 		header_size += header_align - (header_size % header_align);
+
 	data_length += header_size;
 	con_status_ok();
 
@@ -90,7 +85,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	Print(L"\n    %u bytes at 0x%x", kernel_length, kernel_image);
 	Print(L"\n    %u data bytes at 0x%x", data_length, kernel_data);
 
-	struct kernel_version *version = (struct kernel_version *)kernel_image;
+	struct kernel_header *version = (struct kernel_header *)kernel_image;
 	if (version->magic != KERNEL_HEADER_MAGIC) {
 		Print(L"\n    bad magic %x", version->magic);
 		CHECK_EFI_STATUS_OR_FAIL(EFI_CRC_ERROR);
@@ -114,42 +109,16 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	data_header->memory_map = (EFI_MEMORY_DESCRIPTOR *)(data_header + 1);
 	data_header->runtime = SystemTable->RuntimeServices;
 
-	// Get info about this image
-	con_status_begin(L"Gathering image information...");
-	EFI_LOADED_IMAGE *info = 0;
-	EFI_GUID image_proto = EFI_LOADED_IMAGE_PROTOCOL_GUID;
-	status = ST->BootServices->HandleProtocol(ImageHandle, &image_proto, (void **)&info);
-	CHECK_EFI_STATUS_OR_FAIL(status);
-	con_status_ok();
-
-	EFI_MEMORY_DESCRIPTOR *memory_map;
-
-	/*
-	memory_get_map(&memory_map, &memmap_size, &memmap_key, &desc_size, &desc_version);
-	memory_dump_map(memory_map, memmap_size, desc_size);
-	*/
-
 	con_status_begin(L"Exiting boot services...");
 
-	status = memory_mark_address_for_update((void **)&ST);
+	struct memory_map map;
+	map.entries = data_header->memory_map;
+	map.length = (data_length - header_size);
+
+	status = memory_get_map(&map);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-	status = memory_mark_address_for_update((void **)&kernel_image);
-	CHECK_EFI_STATUS_OR_FAIL(status);
-
-	status = memory_mark_address_for_update((void **)&kernel_main);
-	CHECK_EFI_STATUS_OR_FAIL(status);
-
-	status = memory_mark_address_for_update((void **)&kernel_data);
-	CHECK_EFI_STATUS_OR_FAIL(status);
-
-	status = memory_get_map(&memory_map, &memmap_size, &memmap_key, &desc_size, &desc_version);
-	CHECK_EFI_STATUS_OR_FAIL(status);
-
-	status = memory_copy_map(memory_map, data_header->memory_map, memmap_size, desc_size, info->ImageBase, &newmap_size);
-	CHECK_EFI_STATUS_OR_FAIL(status);
-
-	status = ST->BootServices->ExitBootServices(ImageHandle, memmap_key);
+	status = ST->BootServices->ExitBootServices(ImageHandle, map.key);
 	CHECK_EFI_STATUS_OR_ASSERT(status, 0);
 
 	kernel_main();

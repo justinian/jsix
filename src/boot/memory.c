@@ -39,28 +39,6 @@ memory_type_name(UINT32 value)
 	return memory_type_names[value];
 }
 
-void EFIAPI
-memory_update_addresses(EFI_EVENT UNUSED *event, void *context)
-{
-	EFI_STATUS status;
-	status = ST->RuntimeServices->ConvertPointer(0, (void **)context);
-
-	CHECK_EFI_STATUS_OR_ASSERT(status, *((void **)context));
-}
-
-EFI_STATUS
-memory_mark_address_for_update(void **pointer)
-{
-	EFI_EVENT event;
-	EFI_STATUS status;
-
-	status = ST->BootServices->CreateEvent(EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE, TPL_CALLBACK,
-										   (EFI_EVENT_NOTIFY)&memory_update_addresses,
-										   (void *)pointer, &event);
-
-	CHECK_EFI_STATUS_OR_ASSERT(status, pointer);
-}
-
 void
 copy_desc(EFI_MEMORY_DESCRIPTOR *src, EFI_MEMORY_DESCRIPTOR *dst, size_t len)
 {
@@ -72,38 +50,7 @@ copy_desc(EFI_MEMORY_DESCRIPTOR *src, EFI_MEMORY_DESCRIPTOR *dst, size_t len)
 }
 
 EFI_STATUS
-memory_copy_map(EFI_MEMORY_DESCRIPTOR *oldmap, EFI_MEMORY_DESCRIPTOR *newmap, size_t oldmap_size,
-				size_t desc_size, void *this_image, size_t *newmap_size)
-{
-	size_t count = 0;
-
-	EFI_MEMORY_DESCRIPTOR *s;
-	EFI_MEMORY_DESCRIPTOR *end = INCREMENT_DESC(oldmap, oldmap_size);
-	for (s = oldmap; s < end; s = INCREMENT_DESC(s, desc_size)) {
-		if (this_image != (void *)s->PhysicalStart &&
-			s->Type == EfiLoaderCode ||
-			s->Type == EfiLoaderData ||
-			s->Type == EfiBootServicesCode ||
-			s->Type == EfiBootServicesData ||
-			s->Type == EfiConventionalMemory) {
-			// These are memory types we don't need to keep
-			continue;
-		}
-
-		s->Attribute |= EFI_MEMORY_RUNTIME;
-		s->VirtualStart = (EFI_VIRTUAL_ADDRESS)(s->PhysicalStart + VIRTUAL_OFFSET);
-
-		EFI_MEMORY_DESCRIPTOR *d = INCREMENT_DESC(newmap, count*desc_size);
-		copy_desc(s, d, desc_size);
-		++count;
-	}
-
-	*newmap_size = desc_size * count;
-	return EFI_SUCCESS;
-}
-
-EFI_STATUS
-memory_get_map_size(size_t *size)
+memory_get_map_length(size_t *size)
 {
 	if (size == NULL)
 		return EFI_INVALID_PARAMETER;
@@ -120,43 +67,40 @@ memory_get_map_size(size_t *size)
 }
 
 EFI_STATUS
-memory_get_map(EFI_MEMORY_DESCRIPTOR **buffer, size_t *buffer_size, size_t *key, size_t *desc_size,
-			   UINT32 *desc_version)
+memory_get_map(struct memory_map *map)
 {
 	EFI_STATUS status;
 
+	if (map == NULL)
+		return EFI_INVALID_PARAMETER;
+
 	size_t needs_size = 0;
-	status = ST->BootServices->GetMemoryMap(&needs_size, 0, key, desc_size, desc_version);
-	if (status != EFI_BUFFER_TOO_SMALL) {
-		CHECK_EFI_STATUS_OR_RETURN(status, "Failed to load memory map");
-	}
+	status = memory_get_map_length(&needs_size);
+	if (EFI_ERROR(status)) return status;
 
-	// Give some extra buffer to account for changes.
-	*buffer_size = needs_size + 256;
-	status = ST->BootServices->AllocatePool(EfiLoaderData, *buffer_size, (void **)buffer);
-	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to allocate space for memory map");
+	if (map->length < needs_size)
+		return EFI_BUFFER_TOO_SMALL;
 
-	status = ST->BootServices->GetMemoryMap(buffer_size, *buffer, key, desc_size, desc_version);
+	status = ST->BootServices->GetMemoryMap(&map->length, map->entries, &map->key, &map->size, &map->version);
 	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to load memory map");
 	return EFI_SUCCESS;
 }
 
 EFI_STATUS
-memory_dump_map(EFI_MEMORY_DESCRIPTOR *memory_map, size_t memmap_size, size_t desc_size)
+memory_dump_map(struct memory_map *map)
 {
-	const size_t count = memmap_size / desc_size;
+	if (map == NULL)
+		return EFI_INVALID_PARAMETER;
+
+	const size_t count = map->length / map->size;
 
 	Print(L"Memory map:\n");
-	Print(L"\t	Descriptor Count: %d (%d bytes)\n", count, memmap_size);
-	Print(L"\t   Descriptor Size: %d bytes\n", desc_size);
-	Print(L"\t       Type offset: %d\n", offsetof(EFI_MEMORY_DESCRIPTOR, Type));
-	Print(L"\t   Physical offset: %d\n", offsetof(EFI_MEMORY_DESCRIPTOR, PhysicalStart));
-	Print(L"\t    Virtual offset: %d\n", offsetof(EFI_MEMORY_DESCRIPTOR, VirtualStart));
-	Print(L"\t      Pages offset: %d\n", offsetof(EFI_MEMORY_DESCRIPTOR, NumberOfPages));
-	Print(L"\t       Attr offset: %d\n\n", offsetof(EFI_MEMORY_DESCRIPTOR, Attribute));
+	Print(L"\t	Descriptor Count: %d (%d bytes)\n", count, map->length);
+	Print(L"\t   Descriptor Size: %d bytes\n", map->size);
+	Print(L"\t       Type offset: %d\n\n", offsetof(EFI_MEMORY_DESCRIPTOR, Type));
 
-	EFI_MEMORY_DESCRIPTOR *end = INCREMENT_DESC(memory_map, memmap_size);
-	EFI_MEMORY_DESCRIPTOR *d = memory_map;
+	EFI_MEMORY_DESCRIPTOR *end = INCREMENT_DESC(map->entries, map->length);
+	EFI_MEMORY_DESCRIPTOR *d = map->entries;
 	while (d < end) {
 		int runtime = (d->Attribute & EFI_MEMORY_RUNTIME) == EFI_MEMORY_RUNTIME;
 		Print(L"%23s%s ", memory_type_name(d->Type), runtime ? L"*" : L" ");
@@ -164,7 +108,7 @@ memory_dump_map(EFI_MEMORY_DESCRIPTOR *memory_map, size_t memmap_size, size_t de
 		Print(L"%016llx ", d->VirtualStart);
 		Print(L"[%4d]\n", d->NumberOfPages);
 
-		d = INCREMENT_DESC(d, desc_size);
+		d = INCREMENT_DESC(d, map->size);
 	}
 
 	return EFI_SUCCESS;
