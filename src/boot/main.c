@@ -121,6 +121,6 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	status = ST->BootServices->ExitBootServices(ImageHandle, map.key);
 	CHECK_EFI_STATUS_OR_ASSERT(status, 0);
 
-	kernel_main();
+	kernel_main(data_header);
 	return EFI_LOAD_ERROR;
 }
