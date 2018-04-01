@@ -217,6 +217,7 @@ con_printf(const CHAR16 *fmt, ...)
 	con_out->OutputString(con_out, buffer);
 
 	va_end(args);
+	return count;
 }
 
 void
