@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "console.h"
+#include "guids.h"
 #include "utility.h"
 
 size_t ROWS = 0;
@@ -22,9 +23,7 @@ con_initialize(EFI_SYSTEM_TABLE *system_table, const CHAR16 *version)
 	con_out = system_table->ConOut;
 
 	EFI_GRAPHICS_OUTPUT_PROTOCOL *gfx_out_proto;
-	EFI_GUID gfx_out_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
-
-	status = bootsvc->LocateProtocol(&gfx_out_guid, NULL, (void **)&gfx_out_proto);
+	status = bootsvc->LocateProtocol(&guid_gfx_out, NULL, (void **)&gfx_out_proto);
 	CHECK_EFI_STATUS_OR_RETURN(status, "LocateProtocol gfx");
 
 	const uint32_t modes = gfx_out_proto->Mode->MaxMode;

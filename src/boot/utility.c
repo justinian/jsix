@@ -1,57 +1,62 @@
 #include <efi.h>
 
-struct {
+struct error_code_desc {
     EFI_STATUS code;
-    CHAR16 *desc;
-} ErrorCodeTable[] = {
-	{  EFI_SUCCESS,                L"Success"},
-	{  EFI_LOAD_ERROR,             L"Load Error"},
-	{  EFI_INVALID_PARAMETER,      L"Invalid Parameter"},
-	{  EFI_UNSUPPORTED,            L"Unsupported"},
-	{  EFI_BAD_BUFFER_SIZE,        L"Bad Buffer Size"},
-	{  EFI_BUFFER_TOO_SMALL,       L"Buffer Too Small"},
-	{  EFI_NOT_READY,              L"Not Ready"},
-	{  EFI_DEVICE_ERROR,           L"Device Error"},
-	{  EFI_WRITE_PROTECTED,        L"Write Protected"},
-	{  EFI_OUT_OF_RESOURCES,       L"Out of Resources"},
-	{  EFI_VOLUME_CORRUPTED,       L"Volume Corrupt"},
-	{  EFI_VOLUME_FULL,            L"Volume Full"},
-	{  EFI_NO_MEDIA,               L"No Media"},
-	{  EFI_MEDIA_CHANGED,          L"Media changed"},
-	{  EFI_NOT_FOUND,              L"Not Found"},
-	{  EFI_ACCESS_DENIED,          L"Access Denied"},
-	{  EFI_NO_RESPONSE,            L"No Response"},
-	{  EFI_NO_MAPPING,             L"No mapping"},
-	{  EFI_TIMEOUT,                L"Time out"},
-	{  EFI_NOT_STARTED,            L"Not started"},
-	{  EFI_ALREADY_STARTED,        L"Already started"},
-	{  EFI_ABORTED,                L"Aborted"},
-	{  EFI_ICMP_ERROR,             L"ICMP Error"},
-	{  EFI_TFTP_ERROR,             L"TFTP Error"},
-	{  EFI_PROTOCOL_ERROR,         L"Protocol Error"},
-	{  EFI_INCOMPATIBLE_VERSION,   L"Incompatible Version"},
-	{  EFI_SECURITY_VIOLATION,     L"Security Policy Violation"},
-	{  EFI_CRC_ERROR,              L"CRC Error"},
-	{  EFI_END_OF_MEDIA,           L"End of Media"},
-	{  EFI_END_OF_FILE,            L"End of File"},
-	{  EFI_INVALID_LANGUAGE,       L"Invalid Languages"},
-	{  EFI_COMPROMISED_DATA,       L"Compromised Data"},
+    CHAR16 *name;
+};
 
-	// warnings
-	{  EFI_WARN_UNKOWN_GLYPH,      L"Warning Unknown Glyph"},
-	{  EFI_WARN_DELETE_FAILURE,    L"Warning Delete Failure"},
-	{  EFI_WARN_WRITE_FAILURE,     L"Warning Write Failure"},
-	{  EFI_WARN_BUFFER_TOO_SMALL,  L"Warning Buffer Too Small"},
-	{  0, NULL}
-} ;
+// Based off the gnu-efi table
+struct error_code_desc error_table[] = {
+	{ EFI_SUCCESS,               L"Success" },
+	{ EFI_LOAD_ERROR,            L"Load Error" },
+	{ EFI_INVALID_PARAMETER,     L"Invalid Parameter" },
+	{ EFI_UNSUPPORTED,           L"Unsupported" },
+	{ EFI_BAD_BUFFER_SIZE,       L"Bad Buffer Size" },
+	{ EFI_BUFFER_TOO_SMALL,      L"Buffer Too Small" },
+	{ EFI_NOT_READY,             L"Not Ready" },
+	{ EFI_DEVICE_ERROR,          L"Device Error" },
+	{ EFI_WRITE_PROTECTED,       L"Write Protected" },
+	{ EFI_OUT_OF_RESOURCES,      L"Out of Resources" },
+	{ EFI_VOLUME_CORRUPTED,      L"Volume Corrupt" },
+	{ EFI_VOLUME_FULL,           L"Volume Full" },
+	{ EFI_NO_MEDIA,              L"No Media" },
+	{ EFI_MEDIA_CHANGED,         L"Media changed" },
+	{ EFI_NOT_FOUND,             L"Not Found" },
+	{ EFI_ACCESS_DENIED,         L"Access Denied" },
+	{ EFI_NO_RESPONSE,           L"No Response" },
+	{ EFI_NO_MAPPING,            L"No mapping" },
+	{ EFI_TIMEOUT,               L"Time out" },
+	{ EFI_NOT_STARTED,           L"Not started" },
+	{ EFI_ALREADY_STARTED,       L"Already started" },
+	{ EFI_ABORTED,               L"Aborted" },
+	{ EFI_ICMP_ERROR,            L"ICMP Error" },
+	{ EFI_TFTP_ERROR,            L"TFTP Error" },
+	{ EFI_PROTOCOL_ERROR,        L"Protocol Error" },
+	{ EFI_INCOMPATIBLE_VERSION,  L"Incompatible Version" },
+	{ EFI_SECURITY_VIOLATION,    L"Security Policy Violation" },
+	{ EFI_CRC_ERROR,             L"CRC Error" },
+	{ EFI_END_OF_MEDIA,          L"End of Media" },
+	{ EFI_END_OF_FILE,           L"End of File" },
+	{ EFI_INVALID_LANGUAGE,      L"Invalid Languages" },
+	{ EFI_COMPROMISED_DATA,      L"Compromised Data" },
+
+	{ EFI_WARN_UNKOWN_GLYPH,     L"Warning Unknown Glyph" },
+	{ EFI_WARN_DELETE_FAILURE,   L"Warning Delete Failure" },
+	{ EFI_WARN_WRITE_FAILURE,    L"Warning Write Failure" },
+	{ EFI_WARN_BUFFER_TOO_SMALL, L"Warning Buffer Too Small" },
+	{ 0, NULL }
+};
 
 const CHAR16 *
 util_error_message(EFI_STATUS status)
 {
 	int32_t i = -1;
-	while (ErrorCodeTable[++i].desc != NULL) {
-		if (ErrorCodeTable[i].code == status) return ErrorCodeTable[i].desc;
+	while (error_table[++i].name != NULL) {
+		if (error_table[i].code == status) return error_table[i].name;
 	}
 
-	return L"Unknown";
+	if (EFI_ERROR(status))
+		return L"Unknown Error";
+	else
+		return L"Unknown Warning";
 }

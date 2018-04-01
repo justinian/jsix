@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 #include "console.h"
+#include "guids.h"
 #include "loader.h"
 #include "memory.h"
 #include "utility.h"
@@ -44,16 +45,10 @@ struct popcorn_data {
 
 	EFI_MEMORY_DESCRIPTOR *memory_map;
 	EFI_RUNTIME_SERVICES *runtime;
+	void *acpi_table;
 }
 __attribute__((aligned(_Alignof(EFI_MEMORY_DESCRIPTOR))));
 #pragma pack(pop)
-
-int is_guid(EFI_GUID *a, EFI_GUID *b)
-{
-	uint64_t *ai = (uint64_t *)a;
-	uint64_t *bi = (uint64_t *)b;
-	return ai[0] == bi[0] && ai[1] == bi[1];
-}
 
 EFI_STATUS
 efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
@@ -67,14 +62,17 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	CHECK_EFI_STATUS_OR_RETURN(status, "con_initialize");
 	// From here on out, we can use CHECK_EFI_STATUS_OR_FAIL instead
 
-	EFI_GUID acpi1_guid = ACPI_TABLE_GUID;
-	EFI_GUID acpi2_guid = {0x8868e871,0xe4f1,0x11d3,{0xbc,0x22,0x00,0x80,0xc7,0x3c,0x88,0x81}};
-
-
 	// Find ACPI tables. Ignore ACPI 1.0 if a 2.0 table is found.
 	//
+	void *acpi_table = NULL;
 	for (size_t i=0; i<system_table->NumberOfTableEntries; ++i) {
 		EFI_CONFIGURATION_TABLE *efi_table = &system_table->ConfigurationTable[i];
+		if (is_guid(&efi_table->VendorGuid, &guid_acpi2)) {
+			acpi_table = efi_table->VendorTable;
+			break;
+		} else if (is_guid(&efi_table->VendorGuid, &guid_acpi1)) {
+			// Mark a v1 table with the LSB high
+			acpi_table = (void *)((intptr_t)efi_table->VendorTable | 0x1);
 		}
 	}
 
@@ -126,6 +124,7 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	data_header->flags = 0;
 	data_header->memory_map = (EFI_MEMORY_DESCRIPTOR *)(data_header + 1);
 	data_header->runtime = system_table->RuntimeServices;
+	data_header->acpi_table = acpi_table;
 
 	// Save the memory map and tell the firmware we're taking control.
 	//

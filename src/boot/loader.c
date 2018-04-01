@@ -1,3 +1,4 @@
+#include "guids.h"
 #include "loader.h"
 #include "utility.h"
 
@@ -18,17 +19,16 @@ loader_load_kernel(
 		CHECK_EFI_STATUS_OR_RETURN(EFI_INVALID_PARAMETER, "NULL kernel_data or length pointer");
 
 	EFI_STATUS status;
-	EFI_GUID guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
 	EFI_HANDLE *handles = NULL;
 	UINTN handleCount = 0;
 
-	status = bootsvc->LocateHandleBuffer(ByProtocol, &guid, NULL, &handleCount, &handles);
+	status = bootsvc->LocateHandleBuffer(ByProtocol, &guid_simple_filesystem, NULL, &handleCount, &handles);
 	CHECK_EFI_STATUS_OR_RETURN(status, "LocateHandleBuffer");
 
 	for (unsigned i = 0; i < handleCount; ++i) {
 		EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fileSystem = NULL;
 
-		status = bootsvc->HandleProtocol(handles[i], &guid, (void **)&fileSystem);
+		status = bootsvc->HandleProtocol(handles[i], &guid_simple_filesystem, (void **)&fileSystem);
 		CHECK_EFI_STATUS_OR_RETURN(status, "HandleProtocol");
 
 		EFI_FILE_PROTOCOL *root = NULL;
@@ -41,13 +41,12 @@ loader_load_kernel(
 
 		if (!EFI_ERROR(status)) {
 			void *buffer = NULL;
-			EFI_GUID file_info_guid = EFI_FILE_INFO_ID;
 			UINTN buffer_size = sizeof(EFI_FILE_INFO) + sizeof(kernel_name);
 
 			status = bootsvc->AllocatePool(EfiLoaderCode, buffer_size, &buffer);
 			CHECK_EFI_STATUS_OR_RETURN(status, "Allocating kernel file info memory");
 
-			status = file->GetInfo(file, &file_info_guid, &buffer_size, buffer);
+			status = file->GetInfo(file, &guid_file_info, &buffer_size, buffer);
 			CHECK_EFI_STATUS_OR_RETURN(status, "Getting kernel file info");
 
 			buffer_size = ((EFI_FILE_INFO *)buffer)->FileSize;
