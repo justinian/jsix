@@ -65,7 +65,6 @@ loader_load_kernel(
 					bootsvc->AllocatePages(AllocateAnyPages, mem_type, page_count, &addr);
 			}
 			CHECK_EFI_STATUS_OR_RETURN(status, "Allocating kernel pages");
-			con_printf(L"\n    Allocating %u pages at 0x%x", page_count, addr);
 
 			buffer = (void *)addr;
 			status = file->Read(file, &buffer_size, buffer);
@@ -87,7 +86,6 @@ loader_load_kernel(
 					bootsvc->AllocatePages(AllocateAnyPages, mem_type, page_count, &addr);
 			}
 			CHECK_EFI_STATUS_OR_RETURN(status, "Allocating kernel data pages");
-			con_printf(L"\n    Allocating %u pages at 0x%x", page_count, addr);
 
 			*data_length = page_count * 0x1000;
 			*kernel_data = (void *)addr;

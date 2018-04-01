@@ -68,14 +68,6 @@ con_initialize(EFI_SYSTEM_TABLE *system_table, const CHAR16 *version)
 	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
 	con_out->OutputString(con_out, (CHAR16 *)L" booting...\r\n\n");
 
-	con_status_begin(L"Setting console display mode: ");
-	con_printf(L"\n    %ux%u (%ux%u chars)",
-			gfx_out_proto->Mode->Info->HorizontalResolution,
-			gfx_out_proto->Mode->Info->VerticalResolution,
-			ROWS, COLS);
-
-	con_status_ok();
-
 	return status;
 }
 
@@ -230,34 +222,26 @@ con_status_begin(const CHAR16 *message)
 void
 con_status_ok()
 {
-	UINTN row = con_out->Mode->CursorRow;
-	con_out->SetCursorPosition(con_out, 4, ++row);
 	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
 	con_out->OutputString(con_out, (CHAR16 *)L"[");
 	con_out->SetAttribute(con_out, EFI_GREEN);
 	con_out->OutputString(con_out, (CHAR16 *)L"  ok  ");
 	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (CHAR16 *)L"]\r");
-
-	con_out->SetCursorPosition(con_out, 0, ++row + 1);
+	con_out->OutputString(con_out, (CHAR16 *)L"]\r\n");
 }
 
 void
 con_status_fail(const CHAR16 *error)
 {
-	UINTN row = con_out->Mode->CursorRow;
-	con_out->SetCursorPosition(con_out, COLS - 8, row);
 	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
 	con_out->OutputString(con_out, (CHAR16 *)L"[");
 	con_out->SetAttribute(con_out, EFI_LIGHTRED);
 	con_out->OutputString(con_out, (CHAR16 *)L"failed");
 	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (CHAR16 *)L"]\r");
+	con_out->OutputString(con_out, (CHAR16 *)L"]\r\n");
 
-	con_out->SetCursorPosition(con_out, 2, row + 1);
 	con_out->SetAttribute(con_out, EFI_RED);
 	con_out->OutputString(con_out, (CHAR16 *)error);
-
-	con_out->SetCursorPosition(con_out, 0, row + 2);
 	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
+	con_out->OutputString(con_out, (CHAR16 *)L"\r\n");
 }
