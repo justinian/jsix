@@ -1,24 +1,30 @@
 #include <efi.h>
 #include <efilib.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "console.h"
 #include "utility.h"
 
-UINTN ROWS = 0;
-UINTN COLS = 0;
+size_t ROWS = 0;
+size_t COLS = 0;
+
+static EFI_SIMPLE_TEXT_OUT_PROTOCOL *con_out = 0;
+
+const CHAR16 digits[] = {u'0', u'1', u'2', u'3', u'4', u'5', u'6', u'7', u'8', u'9', u'a', u'b', u'c', u'd', u'e', u'f'};
 
 EFI_STATUS
-con_initialize(const CHAR16 *version)
+con_initialize(EFI_SYSTEM_TABLE *system_table, const CHAR16 *version)
 {
 	EFI_STATUS status;
 
-	Print(L"Setting console display mode...\n");
+	EFI_BOOT_SERVICES *bootsvc = system_table->BootServices;
+	con_out = system_table->ConOut;
 
 	EFI_GRAPHICS_OUTPUT_PROTOCOL *gfx_out_proto;
 	EFI_GUID gfx_out_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
 
-	status = ST->BootServices->LocateProtocol(&gfx_out_guid, NULL, (void **)&gfx_out_proto);
+	status = bootsvc->LocateProtocol(&gfx_out_guid, NULL, (void **)&gfx_out_proto);
 	CHECK_EFI_STATUS_OR_RETURN(status, "LocateProtocol gfx");
 
 	const uint32_t modes = gfx_out_proto->Mode->MaxMode;
@@ -47,64 +53,210 @@ con_initialize(const CHAR16 *version)
 	status = gfx_out_proto->SetMode(gfx_out_proto, best);
 	CHECK_EFI_STATUS_OR_RETURN(status, "SetMode %d/%d", best, modes);
 
-	status = ST->ConOut->QueryMode(ST->ConOut, ST->ConOut->Mode->Mode, &COLS, &ROWS);
+	status = con_out->QueryMode(con_out, con_out->Mode->Mode, &COLS, &ROWS);
 	CHECK_EFI_STATUS_OR_RETURN(status, "QueryMode");
 
-	status = ST->ConOut->ClearScreen(ST->ConOut);
+	status = con_out->ClearScreen(con_out);
 	CHECK_EFI_STATUS_OR_RETURN(status, "ClearScreen");
 
-	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTCYAN);
-	ST->ConOut->OutputString(ST->ConOut, (CHAR16 *)L"Popcorn loader ");
+	con_out->SetAttribute(con_out, EFI_LIGHTCYAN);
+	con_out->OutputString(con_out, (CHAR16 *)L"Popcorn loader ");
 
-	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTMAGENTA);
-	ST->ConOut->OutputString(ST->ConOut, (CHAR16 *)version);
+	con_out->SetAttribute(con_out, EFI_LIGHTMAGENTA);
+	con_out->OutputString(con_out, (CHAR16 *)version);
 
-	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTGRAY);
-	ST->ConOut->OutputString(ST->ConOut, (CHAR16 *)L" booting...\r\n\n");
+	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
+	con_out->OutputString(con_out, (CHAR16 *)L" booting...\r\n\n");
 
 	con_status_begin(L"Setting console display mode: ");
-	Print(L"\n    %ux%u (%ux%u chars)", gfx_out_proto->Mode->Info->HorizontalResolution,
-		  gfx_out_proto->Mode->Info->VerticalResolution, ROWS, COLS);
+	con_printf(L"\n    %ux%u (%ux%u chars)",
+			gfx_out_proto->Mode->Info->HorizontalResolution,
+			gfx_out_proto->Mode->Info->VerticalResolution,
+			ROWS, COLS);
+
 	con_status_ok();
 
 	return status;
 }
 
+size_t
+con_wstrlen(const CHAR16 *s)
+{
+	size_t count = 0;
+	while (s && *s++) count++;
+	return count;
+}
+
+size_t
+con_print_hex(uint32_t n)
+{
+	CHAR16 buffer[9];
+	CHAR16 *p = buffer;
+	for (int i = 7; i >= 0; --i) {
+		uint8_t nibble = (n & (0xf << (i*4))) >> (i*4);
+		*p++ = digits[nibble];
+	}
+	*p = 0;
+	con_out->OutputString(con_out, buffer);
+	return 8;
+}
+
+size_t
+con_print_long_hex(uint64_t n)
+{
+	CHAR16 buffer[17];
+	CHAR16 *p = buffer;
+	for (int i = 15; i >= 0; --i) {
+		uint8_t nibble = (n & (0xf << (i*4))) >> (i*4);
+		*p++ = digits[nibble];
+	}
+	*p = 0;
+	con_out->OutputString(con_out, buffer);
+	return 16;
+}
+
+size_t
+con_print_dec(uint32_t n)
+{
+	CHAR16 buffer[11];
+	CHAR16 *p = buffer + 10;
+	*p-- = 0;
+	do {
+		*p-- = digits[n % 10];
+		n /= 10;
+	} while (n != 0);
+
+	con_out->OutputString(con_out, ++p);
+	return 10 - (p - buffer);
+}
+
+size_t
+con_print_long_dec(uint64_t n)
+{
+	CHAR16 buffer[21];
+	CHAR16 *p = buffer + 20;
+	*p-- = 0;
+	do {
+		*p-- = digits[n % 10];
+		n /= 10;
+	} while (n != 0);
+
+	con_out->OutputString(con_out, ++p);
+	return 20 - (p - buffer);
+}
+
+size_t
+con_printf(const CHAR16 *fmt, ...)
+{
+	CHAR16 buffer[256];
+	const CHAR16 *r = fmt;
+	CHAR16 *w = buffer;
+	va_list args;
+	size_t count = 0;
+
+	va_start(args, fmt);
+
+	while (r && *r) {
+		if (*r != L'%') {
+			count++;
+			*w++ = *r++;
+			continue;
+		}
+
+		*w = 0;
+		con_out->OutputString(con_out, buffer);
+		w = buffer;
+
+		r++; // chomp the %
+
+		switch (*r++) {
+			case L'%':
+				con_out->OutputString(con_out, L"%");
+				count++;
+				break;
+
+			case L'x':
+				count += con_print_hex(va_arg(args, uint32_t));
+				break;
+
+			case L'd':
+			case L'u':
+				count += con_print_dec(va_arg(args, uint32_t));
+				break;
+
+			case L's':
+				{
+					CHAR16 *s = va_arg(args, CHAR16*);
+					count += con_wstrlen(s);
+					con_out->OutputString(con_out, s);
+				}
+				break;
+
+			case L'l':
+				switch (*r++) {
+					case L'x':
+						count += con_print_long_hex(va_arg(args, uint64_t));
+						break;
+
+					case L'd':
+					case L'u':
+						count += con_print_long_dec(va_arg(args, uint64_t));
+						break;
+
+					default:
+						break;
+				}
+				break;
+
+			default:
+				break;
+		}
+	}
+
+	*w = 0;
+	con_out->OutputString(con_out, buffer);
+
+	va_end(args);
+}
+
 void
 con_status_begin(const CHAR16 *message)
 {
-	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTGRAY);
-	ST->ConOut->OutputString(ST->ConOut, (CHAR16 *)message);
+	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
+	con_out->OutputString(con_out, (CHAR16 *)message);
 }
 
 void
 con_status_ok()
 {
-	UINTN row = ST->ConOut->Mode->CursorRow;
-	ST->ConOut->SetCursorPosition(ST->ConOut, 4, ++row);
-	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTGRAY);
-	ST->ConOut->OutputString(ST->ConOut, (CHAR16 *)L"[");
-	ST->ConOut->SetAttribute(ST->ConOut, EFI_GREEN);
-	ST->ConOut->OutputString(ST->ConOut, (CHAR16 *)L"  ok  ");
-	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTGRAY);
-	ST->ConOut->OutputString(ST->ConOut, (CHAR16 *)L"]\r");
-	ST->ConOut->SetCursorPosition(ST->ConOut, 0, ++row + 1);
+	UINTN row = con_out->Mode->CursorRow;
+	con_out->SetCursorPosition(con_out, 4, ++row);
+	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
+	con_out->OutputString(con_out, (CHAR16 *)L"[");
+	con_out->SetAttribute(con_out, EFI_GREEN);
+	con_out->OutputString(con_out, (CHAR16 *)L"  ok  ");
+	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
+	con_out->OutputString(con_out, (CHAR16 *)L"]\r");
+
+	con_out->SetCursorPosition(con_out, 0, ++row + 1);
 }
 
 void
 con_status_fail(const CHAR16 *error)
 {
-	UINTN row = ST->ConOut->Mode->CursorRow;
-	ST->ConOut->SetCursorPosition(ST->ConOut, COLS - 8, row);
-	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTGRAY);
-	ST->ConOut->OutputString(ST->ConOut, (CHAR16 *)L"[");
-	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTRED);
-	ST->ConOut->OutputString(ST->ConOut, (CHAR16 *)L"failed");
-	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTGRAY);
-	ST->ConOut->OutputString(ST->ConOut, (CHAR16 *)L"]\r");
-	ST->ConOut->SetCursorPosition(ST->ConOut, 2, row + 1);
-	ST->ConOut->SetAttribute(ST->ConOut, EFI_RED);
-	ST->ConOut->OutputString(ST->ConOut, (CHAR16 *)error);
-	ST->ConOut->SetCursorPosition(ST->ConOut, 0, row + 2);
-	ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTGRAY);
+	UINTN row = con_out->Mode->CursorRow;
+	con_out->SetCursorPosition(con_out, COLS - 8, row);
+	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
+	con_out->OutputString(con_out, (CHAR16 *)L"[");
+	con_out->SetAttribute(con_out, EFI_LIGHTRED);
+	con_out->OutputString(con_out, (CHAR16 *)L"failed");
+	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
+	con_out->OutputString(con_out, (CHAR16 *)L"]\r");
+
+	con_out->SetCursorPosition(con_out, 2, row + 1);
+	con_out->SetAttribute(con_out, EFI_RED);
+	con_out->OutputString(con_out, (CHAR16 *)error);
+
+	con_out->SetCursorPosition(con_out, 0, row + 2);
+	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
 }

@@ -9,6 +9,6 @@ struct memory_map {
 	EFI_MEMORY_DESCRIPTOR *entries;
 };
 
-EFI_STATUS memory_get_map_length(size_t *size);
-EFI_STATUS memory_get_map(struct memory_map *map);
+EFI_STATUS memory_get_map_length(EFI_BOOT_SERVICES *bootsvc, size_t *size);
+EFI_STATUS memory_get_map(EFI_BOOT_SERVICES *bootsvc, struct memory_map *map);
 EFI_STATUS memory_dump_map(struct memory_map *map);
