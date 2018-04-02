@@ -1,4 +1,4 @@
-#include <efi.h>
+#include "utility.h"
 
 struct error_code_desc {
     EFI_STATUS code;
@@ -60,3 +60,12 @@ util_error_message(EFI_STATUS status)
 	else
 		return L"Unknown Warning";
 }
+
+size_t
+wstrlen(const CHAR16 *s)
+{
+	size_t count = 0;
+	while (s && *s++) count++;
+	return count;
+}
+

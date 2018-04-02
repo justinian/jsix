@@ -1,97 +1,147 @@
 #include "guids.h"
 #include "loader.h"
+#include "memory.h"
 #include "utility.h"
 
+#define PAGE_SIZE 0x1000
+
 static CHAR16 kernel_name[] = KERNEL_FILENAME;
+static CHAR16 font_name[] = KERNEL_FONT;
+
+EFI_STATUS
+loader_alloc_pages(
+	EFI_BOOT_SERVICES *bootsvc,
+	EFI_MEMORY_TYPE mem_type,
+	size_t *length,
+	void **pages,
+	void **next)
+{
+	EFI_STATUS status;
+
+	size_t page_count = ((*length - 1) / PAGE_SIZE) + 1;
+	EFI_PHYSICAL_ADDRESS addr = (EFI_PHYSICAL_ADDRESS)*pages;
+
+	status = bootsvc->AllocatePages(AllocateAddress, mem_type, page_count, &addr);
+	if (status == EFI_NOT_FOUND || status == EFI_OUT_OF_RESOURCES) {
+		// couldn't get the address we wanted, try loading the kernel anywhere
+		status =
+			bootsvc->AllocatePages(AllocateAnyPages, mem_type, page_count, &addr);
+	}
+	CHECK_EFI_STATUS_OR_RETURN(status, L"Allocating kernel pages type %x", mem_type);
+
+	*length = page_count * PAGE_SIZE;
+	*pages = (void *)addr;
+	*next = (void*)(addr + *length);
+
+	return EFI_SUCCESS;
+}
+
+EFI_STATUS
+loader_load_file(
+	EFI_BOOT_SERVICES *bootsvc,
+	EFI_FILE_PROTOCOL *root,
+	const CHAR16 *filename,
+	EFI_MEMORY_TYPE mem_type,
+	void **data,
+	size_t *length,
+	void **next)
+{
+	EFI_STATUS status;
+
+	EFI_FILE_PROTOCOL *file = NULL;
+	status = root->Open(root, &file, (CHAR16 *)filename, EFI_FILE_MODE_READ,
+						EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+
+	if (status == EFI_NOT_FOUND)
+		return status;
+
+	CHECK_EFI_STATUS_OR_RETURN(status, L"Opening file %s", filename);
+
+	char info[sizeof(EFI_FILE_INFO) + 100];
+	size_t info_length = sizeof(info);
+
+	status = file->GetInfo(file, &guid_file_info, &info_length, info);
+	CHECK_EFI_STATUS_OR_RETURN(status, L"Getting file info");
+
+	*length = ((EFI_FILE_INFO *)info)->FileSize;
+
+	status = loader_alloc_pages(bootsvc, mem_type, length, data, next);
+	CHECK_EFI_STATUS_OR_RETURN(status, L"Allocating pages");
+
+	status = file->Read(file, length, *data);
+	CHECK_EFI_STATUS_OR_RETURN(status, L"Reading file");
+
+	status = file->Close(file);
+	CHECK_EFI_STATUS_OR_RETURN(status, L"Closing file handle");
+
+	return EFI_SUCCESS;
+}
+	
 
 EFI_STATUS
 loader_load_kernel(
 	EFI_BOOT_SERVICES *bootsvc,
-	void **kernel_image,
-	uint64_t *kernel_length,
-	void **kernel_data,
-	uint64_t *data_length)
+	struct loader_data *data)
 {
-	if (kernel_image == 0 || kernel_length == 0)
-		CHECK_EFI_STATUS_OR_RETURN(EFI_INVALID_PARAMETER, "NULL kernel_image or length pointer");
-
-	if (kernel_data == 0 || data_length == 0)
-		CHECK_EFI_STATUS_OR_RETURN(EFI_INVALID_PARAMETER, "NULL kernel_data or length pointer");
+	if (data == NULL)
+		CHECK_EFI_STATUS_OR_RETURN(EFI_INVALID_PARAMETER, L"NULL loader_data");
 
 	EFI_STATUS status;
 	EFI_HANDLE *handles = NULL;
-	UINTN handleCount = 0;
+	size_t handleCount = 0;
 
 	status = bootsvc->LocateHandleBuffer(ByProtocol, &guid_simple_filesystem, NULL, &handleCount, &handles);
-	CHECK_EFI_STATUS_OR_RETURN(status, "LocateHandleBuffer");
+	CHECK_EFI_STATUS_OR_RETURN(status, L"LocateHandleBuffer");
 
 	for (unsigned i = 0; i < handleCount; ++i) {
 		EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fileSystem = NULL;
 
 		status = bootsvc->HandleProtocol(handles[i], &guid_simple_filesystem, (void **)&fileSystem);
-		CHECK_EFI_STATUS_OR_RETURN(status, "HandleProtocol");
+		CHECK_EFI_STATUS_OR_RETURN(status, L"HandleProtocol");
 
 		EFI_FILE_PROTOCOL *root = NULL;
 		status = fileSystem->OpenVolume(fileSystem, &root);
-		CHECK_EFI_STATUS_OR_RETURN(status, "OpenVolume");
+		CHECK_EFI_STATUS_OR_RETURN(status, L"OpenVolume");
 
-		EFI_FILE_PROTOCOL *file = NULL;
-		status = root->Open(root, &file, kernel_name, EFI_FILE_MODE_READ,
-							EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+		void *next = NULL;
 
-		if (!EFI_ERROR(status)) {
-			void *buffer = NULL;
-			UINTN buffer_size = sizeof(EFI_FILE_INFO) + sizeof(kernel_name);
+		data->kernel_image = (void *)KERNEL_PHYS_ADDRESS;
+		status = loader_load_file(
+				bootsvc,
+				root,
+				kernel_name,
+				KERNEL_MEMTYPE,
+				&data->kernel_image,
+				&data->kernel_image_length,
+				&next);
+		if (status == EFI_NOT_FOUND)
+			continue;
 
-			status = bootsvc->AllocatePool(EfiLoaderCode, buffer_size, &buffer);
-			CHECK_EFI_STATUS_OR_RETURN(status, "Allocating kernel file info memory");
+		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_load_file: %s", kernel_name);
 
-			status = file->GetInfo(file, &guid_file_info, &buffer_size, buffer);
-			CHECK_EFI_STATUS_OR_RETURN(status, "Getting kernel file info");
+		data->screen_font = next;
+		status = loader_load_file(
+				bootsvc,
+				root,
+				font_name,
+				KERNEL_FONT_MEMTYPE,
+				&data->screen_font,
+				&data->screen_font_length,
+				&next);
 
-			buffer_size = ((EFI_FILE_INFO *)buffer)->FileSize;
+		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_load_file: %s", font_name);
 
-			status = bootsvc->FreePool(buffer);
-			CHECK_EFI_STATUS_OR_RETURN(status, "Freeing kernel file info memory");
+		data->kernel_data = next;
+		data->kernel_data_length += PAGE_SIZE; // extra page for map growth
+		status = loader_alloc_pages(
+				bootsvc,
+				KERNEL_DATA_MEMTYPE,
+				&data->kernel_data_length,
+				&data->kernel_data,
+				&next);
+		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_alloc_pages: kernel data");
 
-			UINTN page_count = ((buffer_size - 1) / 0x1000) + 1;
-			EFI_PHYSICAL_ADDRESS addr = KERNEL_PHYS_ADDRESS;
-			EFI_MEMORY_TYPE mem_type = KERNEL_MEMTYPE; // Special value to tell the kernel it's here
-			status = bootsvc->AllocatePages(AllocateAddress, mem_type, page_count, &addr);
-			if (status == EFI_NOT_FOUND) {
-				// couldn't get the address we wanted, try loading the kernel anywhere
-				status =
-					bootsvc->AllocatePages(AllocateAnyPages, mem_type, page_count, &addr);
-			}
-			CHECK_EFI_STATUS_OR_RETURN(status, "Allocating kernel pages");
-
-			buffer = (void *)addr;
-			status = file->Read(file, &buffer_size, buffer);
-			CHECK_EFI_STATUS_OR_RETURN(status, "Reading kernel file");
-
-			status = file->Close(file);
-			CHECK_EFI_STATUS_OR_RETURN(status, "Closing kernel file handle");
-
-			*kernel_length = buffer_size;
-			*kernel_image = buffer;
-
-			addr += page_count * 0x1000; // Get the next page after the kernel pages
-			mem_type = KERNEL_DATA_MEMTYPE; // Special value for kernel data
-			page_count = ((*data_length - 1) / 0x1000) + 1;
-			status = bootsvc->AllocatePages(AllocateAddress, mem_type, page_count, &addr);
-			if (status == EFI_NOT_FOUND) {
-				// couldn't get the address we wanted, try loading anywhere
-				status =
-					bootsvc->AllocatePages(AllocateAnyPages, mem_type, page_count, &addr);
-			}
-			CHECK_EFI_STATUS_OR_RETURN(status, "Allocating kernel data pages");
-
-			*data_length = page_count * 0x1000;
-			*kernel_data = (void *)addr;
-			bootsvc->SetMem(*kernel_data, *data_length, 0);
-
-			return EFI_SUCCESS;
-		}
+		return EFI_SUCCESS;
 	}
 
 	return EFI_NOT_FOUND;

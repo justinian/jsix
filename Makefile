@@ -8,6 +8,7 @@ VERSION        ?= $(shell git describe --dirty --always)
 GITSHA         ?= $(shell git rev-parse --short HEAD)
 
 KERNEL_FILENAME:= popcorn.bin
+KERNEL_FONT    := assets/fonts/tamsyn10x20r.psf
 
 MODULES        := main
 
@@ -183,7 +184,10 @@ $(BUILD_D)/arch/%.c.o: $(ARCH_D)/%.c $(INIT_DEP)
 $(BUILD_D)/flash.img: $(OVMF)
 	cp $^ $@
 
-$(BUILD_D)/fs.img: $(BUILD_D)/boot.efi $(BUILD_D)/kernel.bin
+$(BUILD_D)/screenfont.psf: $(KERNEL_FONT)
+	cp $^ $@
+
+$(BUILD_D)/fs.img: $(BUILD_D)/boot.efi $(BUILD_D)/kernel.bin $(BUILD_D)/screenfont.psf
 	$(eval TEMPFILE := $(shell mktemp --suffix=.img))
 	dd if=/dev/zero of=$@.tmp bs=512 count=93750
 	$(PARTED) $@.tmp -s -a minimal mklabel gpt
@@ -195,6 +199,7 @@ $(BUILD_D)/fs.img: $(BUILD_D)/boot.efi $(BUILD_D)/kernel.bin
 	mmd -i $(TEMPFILE) ::/EFI/BOOT
 	mcopy -i $(TEMPFILE) $(BUILD_D)/boot.efi ::/EFI/BOOT/BOOTX64.efi
 	mcopy -i $(TEMPFILE) $(BUILD_D)/kernel.bin ::$(KERNEL_FILENAME)
+	mcopy -i $(TEMPFILE) $(BUILD_D)/screenfont.psf ::screenfont.psf
 	mlabel -i $(TEMPFILE) ::Popcorn_OS
 	dd if=$(TEMPFILE) of=$@.tmp bs=512 count=91669 seek=2048 conv=notrunc
 	rm $(TEMPFILE)

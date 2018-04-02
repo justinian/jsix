@@ -39,13 +39,28 @@ struct popcorn_data {
 	uint16_t version;
 	uint16_t length;
 
-	uint16_t data_pages;
-	uint16_t _reserverd;
+	uint32_t _reserved0;
 	uint32_t flags;
+
+	void *font;
+	size_t font_length;
+
+	void *data;
+	size_t data_length;
 
 	EFI_MEMORY_DESCRIPTOR *memory_map;
 	EFI_RUNTIME_SERVICES *runtime;
+
 	void *acpi_table;
+
+	void *frame_buffer;
+	size_t frame_buffer_size;
+	uint32_t hres;
+	uint32_t vres;
+	uint32_t rmask;
+	uint32_t gmask;
+	uint32_t bmask;
+	uint32_t _reserved1;
 }
 __attribute__((aligned(_Alignof(EFI_MEMORY_DESCRIPTOR))));
 #pragma pack(pop)
@@ -95,13 +110,16 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	uint64_t kernel_length = 0;
 	con_printf(L"Loading kernel into memory...\r\n");
 
-	status = loader_load_kernel(bootsvc, &kernel_image, &kernel_length, &kernel_data, &data_length);
+	struct loader_data load;
+	load.kernel_data_length = data_length;
+	status = loader_load_kernel(bootsvc, &load);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-	con_printf(L"    %u bytes at 0x%x\r\n", kernel_length, kernel_image);
-	con_printf(L"    %u data bytes at 0x%x\r\n", data_length, kernel_data);
+	con_printf(L"    %u image bytes at 0x%x\r\n", load.kernel_image_length, load.kernel_image);
+	con_printf(L"    %u font bytes at 0x%x\r\n", load.screen_font_length, load.screen_font);
+	con_printf(L"    %u data bytes at 0x%x\r\n", load.kernel_data_length, load.kernel_data);
 
-	struct kernel_header *version = (struct kernel_header *)kernel_image;
+	struct kernel_header *version = (struct kernel_header *)load.kernel_image;
 	if (version->magic != KERNEL_HEADER_MAGIC) {
 		con_printf(L"    bad magic %x\r\n", version->magic);
 		CHECK_EFI_STATUS_OR_FAIL(EFI_CRC_ERROR);
@@ -115,22 +133,45 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 
 	// Set up the kernel data pages to pass to the kernel
 	//
-	struct popcorn_data *data_header = (struct popcorn_data *)kernel_data; 
+	struct popcorn_data *data_header = (struct popcorn_data *)load.kernel_data; 
+
 	data_header->magic = DATA_HEADER_MAGIC;
 	data_header->version = DATA_HEADER_VERSION;
 	data_header->length = sizeof(struct popcorn_data);
-	data_header->data_pages = data_length / 0x1000;
-	data_header->_reserverd = 0;
+
 	data_header->flags = 0;
+
+	data_header->font = load.screen_font;
+	data_header->font_length = load.screen_font_length;
+
+	data_header->data = load.screen_font;
+	data_header->data_length = load.screen_font_length;
+
 	data_header->memory_map = (EFI_MEMORY_DESCRIPTOR *)(data_header + 1);
 	data_header->runtime = system_table->RuntimeServices;
 	data_header->acpi_table = acpi_table;
+
+	data_header->_reserved0 = 0;
+	data_header->_reserved1 = 0;
+
+	// Figure out the framebuffer (if any) and add that to the data header
+	//
+	status = con_get_framebuffer(
+			bootsvc, 
+			&data_header->frame_buffer,
+			&data_header->frame_buffer_size,
+			&data_header->hres,
+			&data_header->vres,
+			&data_header->rmask,
+			&data_header->gmask,
+			&data_header->bmask);
+	CHECK_EFI_STATUS_OR_FAIL(status);
 
 	// Save the memory map and tell the firmware we're taking control.
 	//
 	struct memory_map map;
 	map.entries = data_header->memory_map;
-	map.length = (data_length - header_size);
+	map.length = (load.kernel_data_length - header_size);
 
 	status = memory_get_map(bootsvc, &map);
 	CHECK_EFI_STATUS_OR_FAIL(status);
