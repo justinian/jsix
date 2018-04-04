@@ -8,7 +8,7 @@ VERSION        ?= $(shell git describe --dirty --always)
 GITSHA         ?= $(shell git rev-parse --short HEAD)
 
 KERNEL_FILENAME:= popcorn.bin
-KERNEL_FONT    := assets/fonts/tamsyn10x20r.psf
+KERNEL_FONT    := assets/fonts/tamsyn8x16r.psf
 
 MODULES        := main
 
