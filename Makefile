@@ -26,6 +26,7 @@ DEPENDFLAGS    := -MMD
 
 INCLUDES       := -I $(ARCH_D)
 INCLUDES       += -I src/modules
+INCLUDES       += -I src/include
 INCLUDES       += -isystem $(EFI_INCLUDES)
 INCLUDES       += -isystem $(EFI_INCLUDES)/$(ARCH)
 INCLUDES       += -isystem $(EFI_INCLUDES)/protocol
@@ -33,6 +34,7 @@ INCLUDES       += -isystem $(EFI_INCLUDES)/protocol
 BASEFLAGS      := -ggdb -nostdlib
 BASEFLAGS      += -ffreestanding -nodefaultlibs
 BASEFLAGS      += -fno-builtin -fomit-frame-pointer
+BASEFLAGS      += -mno-red-zone -fno-stack-protector 
 
 ifdef CPU
 BASEFLAGS      += -mcpu=$(CPU)
@@ -54,14 +56,16 @@ ASFLAGS        ?=
 ASFLAGS        += -p $(BUILD_D)/versions.s
 
 CFLAGS         := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
-CFLAGS         += -std=c11 -fshort-wchar
-CFLAGS         += -mno-red-zone -fno-stack-protector 
-CFLAGS         += -DGIT_VERSION="L\"$(VERSION)\""
-CFLAGS         += -DKERNEL_FILENAME="L\"$(KERNEL_FILENAME)\""
-CFLAGS         += -DEFI_DEBUG=0 -DEFI_DEBUG_CLEAR_MEMORY=0
-CFLAGS         += -DGNU_EFI_USE_MS_ABI -DHAVE_USE_MS_ABI
+CFLAGS         += -std=c11
 
-BOOT_CFLAGS	   := -I src/boot $(CFLAGS) -fPIC
+CXXFLAGS       := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
+CXXFLAGS       += -std=c++14
+
+BOOT_CFLAGS	   := -I src/boot $(CFLAGS) -fPIC -fshort-wchar
+BOOT_CFLAGS    += -DGIT_VERSION="L\"$(VERSION)\""
+BOOT_CFLAGS    += -DKERNEL_FILENAME="L\"$(KERNEL_FILENAME)\""
+BOOT_CFLAGS    += -DGNU_EFI_USE_MS_ABI -DHAVE_USE_MS_ABI
+BOOT_CFLAGS    += -DEFI_DEBUG=0 -DEFI_DEBUG_CLEAR_MEMORY=0
 #BOOT_CFLAGS   += -DEFI_FUNCTION_WRAPPER
 
 ifdef MAX_HRES

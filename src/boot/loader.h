@@ -22,8 +22,12 @@
 #define KERNEL_DATA_MEMTYPE 0x80000002
 #endif
 
-#ifndef KERNEL_DATA_PAGES
-#define KERNEL_DATA_PAGES 1
+#ifndef KERNEL_LOG_MEMTYPE
+#define KERNEL_LOG_MEMTYPE 0x80000003
+#endif
+
+#ifndef KERNEL_LOG_PAGES
+#define KERNEL_LOG_PAGES 4
 #endif
 
 #ifndef KERNEL_FILENAME
@@ -35,14 +39,17 @@
 #endif
 
 struct loader_data {
-	void *kernel_image;
-	size_t kernel_image_length;
+	void *kernel;
+	size_t kernel_length;
 
-	void *kernel_data;
-	size_t kernel_data_length;
+	void *font;
+	size_t font_length;
 
-	void *screen_font;
-	size_t screen_font_length;
+	void *data;
+	size_t data_length;
+
+	void *log;
+	size_t log_length;
 };
 
 EFI_STATUS loader_load_kernel(EFI_BOOT_SERVICES *bootsvc, struct loader_data *data);

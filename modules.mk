@@ -4,6 +4,7 @@ endif
 
 ifndef SOURCES
 	SOURCES := $(wildcard src/modules/$(MOD_NAME)/*.c)
+	SOURCES += $(wildcard src/modules/$(MOD_NAME)/*.cpp)
 	SOURCES += $(wildcard src/modules/$(MOD_NAME)/*.s)
 endif
 
@@ -23,6 +24,9 @@ $(MOD_LIBNAME): $(OBJS_$(MOD_NAME))
 
 $(MOD_BUILD_D)/%.c.o: $(MOD_SRC_D)/%.c $(INIT_DEP)
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(MOD_BUILD_D)/%.cpp.o: $(MOD_SRC_D)/%.cpp $(INIT_DEP)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(MOD_BUILD_D)/%.s.o: $(MOD_SRC_D)/%.s $(BUILD_D)/versions.s $(INIT_DEP)
 	$(AS) $(ASFLAGS) -o $@ $<

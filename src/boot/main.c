@@ -5,6 +5,7 @@
 
 #include "console.h"
 #include "guids.h"
+#include "kernel_data.h"
 #include "loader.h"
 #include "memory.h"
 #include "utility.h"
@@ -15,10 +16,6 @@
 
 #define KERNEL_HEADER_MAGIC   0x600db007
 #define KERNEL_HEADER_VERSION 1
-
-#define DATA_HEADER_MAGIC     0x600dda7a
-#define DATA_HEADER_VERSION   1
-
 
 #pragma pack(push, 1)
 struct kernel_header {
@@ -33,36 +30,6 @@ struct kernel_header {
 
 	void *entrypoint;
 };
-
-struct popcorn_data {
-	uint32_t magic;
-	uint16_t version;
-	uint16_t length;
-
-	uint32_t _reserved0;
-	uint32_t flags;
-
-	void *font;
-	size_t font_length;
-
-	void *data;
-	size_t data_length;
-
-	EFI_MEMORY_DESCRIPTOR *memory_map;
-	EFI_RUNTIME_SERVICES *runtime;
-
-	void *acpi_table;
-
-	void *frame_buffer;
-	size_t frame_buffer_size;
-	uint32_t hres;
-	uint32_t vres;
-	uint32_t rmask;
-	uint32_t gmask;
-	uint32_t bmask;
-	uint32_t _reserved1;
-}
-__attribute__((aligned(_Alignof(EFI_MEMORY_DESCRIPTOR))));
 #pragma pack(pop)
 
 EFI_STATUS
@@ -104,6 +71,7 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 
 	data_length += header_size;
 
+
 	// Load the kernel image from disk and check it
 	//
 	void *kernel_image = NULL, *kernel_data = NULL;
@@ -111,29 +79,31 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	con_printf(L"Loading kernel into memory...\r\n");
 
 	struct loader_data load;
-	load.kernel_data_length = data_length;
+	load.data_length = data_length;
 	status = loader_load_kernel(bootsvc, &load);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-	con_printf(L"    %u image bytes at 0x%x\r\n", load.kernel_image_length, load.kernel_image);
-	con_printf(L"    %u font bytes at 0x%x\r\n", load.screen_font_length, load.screen_font);
-	con_printf(L"    %u data bytes at 0x%x\r\n", load.kernel_data_length, load.kernel_data);
+	con_printf(L"    %u image bytes at 0x%x\r\n", load.kernel_length, load.kernel);
+	con_printf(L"    %u font bytes at 0x%x\r\n", load.font_length, load.font);
+	con_printf(L"    %u data bytes at 0x%x\r\n", load.data_length, load.data);
+	con_printf(L"    %u log bytes at 0x%x\r\n", load.log_length, load.log);
 
-	struct kernel_header *version = (struct kernel_header *)load.kernel_image;
+	struct kernel_header *version = (struct kernel_header *)load.kernel;
 	if (version->magic != KERNEL_HEADER_MAGIC) {
 		con_printf(L"    bad magic %x\r\n", version->magic);
 		CHECK_EFI_STATUS_OR_FAIL(EFI_CRC_ERROR);
 	}
 
-	con_printf(L"    Kernel version %d.%d.%d %x%s\r\n", version->major, version->minor, version->patch,
-		  version->gitsha & 0x0fffffff, version->gitsha & 0xf0000000 ? "*" : "");
+	con_printf(L"    Kernel version %d.%d.%d %x%s\r\n",
+            version->major, version->minor, version->patch, version->gitsha & 0x0fffffff,
+            version->gitsha & 0xf0000000 ? "*" : "");
 	con_printf(L"    Entrypoint 0x%x\r\n", version->entrypoint);
 
 	void (*kernel_main)() = version->entrypoint;
 
 	// Set up the kernel data pages to pass to the kernel
 	//
-	struct popcorn_data *data_header = (struct popcorn_data *)load.kernel_data; 
+	struct popcorn_data *data_header = (struct popcorn_data *)load.data; 
 
 	data_header->magic = DATA_HEADER_MAGIC;
 	data_header->version = DATA_HEADER_VERSION;
@@ -141,11 +111,14 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 
 	data_header->flags = 0;
 
-	data_header->font = load.screen_font;
-	data_header->font_length = load.screen_font_length;
+	data_header->font = load.font;
+	data_header->font_length = load.font_length;
 
-	data_header->data = load.screen_font;
-	data_header->data_length = load.screen_font_length;
+	data_header->data = load.data;
+	data_header->data_length = load.data_length;
+
+	data_header->log = load.log;
+	data_header->log_length = load.log_length;
 
 	data_header->memory_map = (EFI_MEMORY_DESCRIPTOR *)(data_header + 1);
 	data_header->runtime = system_table->RuntimeServices;
@@ -171,7 +144,7 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	//
 	struct memory_map map;
 	map.entries = data_header->memory_map;
-	map.length = (load.kernel_data_length - header_size);
+	map.length = (load.data_length - header_size);
 
 	status = memory_get_map(bootsvc, &map);
 	CHECK_EFI_STATUS_OR_FAIL(status);

@@ -27,7 +27,9 @@ loader_alloc_pages(
 		status =
 			bootsvc->AllocatePages(AllocateAnyPages, mem_type, page_count, &addr);
 	}
-	CHECK_EFI_STATUS_OR_RETURN(status, L"Allocating kernel pages type %x", mem_type);
+	CHECK_EFI_STATUS_OR_RETURN(status,
+            L"Allocating %d kernel pages type %x",
+            page_count, mem_type);
 
 	*length = page_count * PAGE_SIZE;
 	*pages = (void *)addr;
@@ -105,41 +107,51 @@ loader_load_kernel(
 
 		void *next = NULL;
 
-		data->kernel_image = (void *)KERNEL_PHYS_ADDRESS;
+		data->kernel = (void *)KERNEL_PHYS_ADDRESS;
 		status = loader_load_file(
 				bootsvc,
 				root,
 				kernel_name,
 				KERNEL_MEMTYPE,
-				&data->kernel_image,
-				&data->kernel_image_length,
+				&data->kernel,
+				&data->kernel_length,
 				&next);
 		if (status == EFI_NOT_FOUND)
 			continue;
 
 		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_load_file: %s", kernel_name);
 
-		data->screen_font = next;
+		data->font = next;
 		status = loader_load_file(
 				bootsvc,
 				root,
 				font_name,
 				KERNEL_FONT_MEMTYPE,
-				&data->screen_font,
-				&data->screen_font_length,
+				&data->font,
+				&data->font_length,
 				&next);
 
 		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_load_file: %s", font_name);
 
-		data->kernel_data = next;
-		data->kernel_data_length += PAGE_SIZE; // extra page for map growth
+		data->data = next;
+		data->data_length += PAGE_SIZE; // extra page for map growth
 		status = loader_alloc_pages(
 				bootsvc,
 				KERNEL_DATA_MEMTYPE,
-				&data->kernel_data_length,
-				&data->kernel_data,
+				&data->data_length,
+				&data->data,
 				&next);
 		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_alloc_pages: kernel data");
+
+		data->log = next;
+		data->log_length = KERNEL_LOG_PAGES;
+		status = loader_alloc_pages(
+				bootsvc,
+				KERNEL_LOG_MEMTYPE,
+				&data->log_length,
+				&data->log,
+				&next);
+		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_alloc_pages: kernel log");
 
 		return EFI_SUCCESS;
 	}

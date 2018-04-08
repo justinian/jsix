@@ -20,7 +20,7 @@ screen_init(
 	uint32_t bmask,
 	struct screen *s)
 {
-	s->data = frame_buffer;
+	s->data = static_cast<uint32_t *>(frame_buffer);
 	s->hres = hres;
 	s->vres = vres;
 	s->rmask = rmask;
