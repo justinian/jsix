@@ -13,32 +13,22 @@ extern "C" {
 void
 kernel_main(popcorn_data *header)
 {
-	struct screen screen;
-	struct font font;
-	int status = 0;
-
-	status = font_init(header->font, &font);
-
-	status = screen_init(
-		header->frame_buffer,
-		header->hres,
-		header->vres,
-		header->rmask,
-		header->gmask,
-		header->bmask,
-		&screen);
+	font f = font::load(header->font);
+	screen s{
+        header->frame_buffer,
+        header->hres,
+        header->vres,
+        header->rmask,
+        header->gmask,
+        header->bmask};
 
 	uint32_t color = header->gmask;
-	uint32_t perline = header->hres / font.width;
+	uint32_t perline = header->hres / f.width();
 	const char message[] = "Hello, I am text rendered by the kernel! :-D  ";
 	for (int i=0; i<sizeof(message); ++i) {
-		font_draw(
-			&font,
-			&screen,
-			message[i],
-			color,
-			(i % perline) * font.width + 10,
-			(i / perline) * font.height + 10);
+        f.draw_glyph(s, message[i], color,
+			(i % perline) * f.width() + 10,
+			(i / perline) * f.height() + 10);
 	}
 
 	do_the_set_registers(header);

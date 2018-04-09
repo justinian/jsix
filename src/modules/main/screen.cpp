@@ -1,42 +1,28 @@
-#include "font.h"
 #include "screen.h"
 
-int
-screen_fill(struct screen *s, uint32_t color)
+screen::color_masks::color_masks(pixel_t r, pixel_t g, pixel_t b) : r(r), g(g), b(b) {}
+screen::resolution::resolution(coord_t w, coord_t h) : w(w), h(h) {}
+
+screen::screen(
+        void *framebuffer,
+        coord_t hres, coord_t vres, 
+        pixel_t rmask, pixel_t gmask, pixel_t bmask) :
+    m_framebuffer(static_cast<pixel_t *>(framebuffer)),
+    m_masks(rmask, gmask, bmask),
+    m_resolution(hres, vres)
 {
-	const size_t len = s->hres * s->vres;
+}
+
+void
+screen::fill(pixel_t color)
+{
+	const size_t len = m_resolution.size();
 	for (size_t i = 0; i < len; ++i)
-		s->data[i] = 0;
-	return 0;
+		m_framebuffer[i] = color;
 }
 
-int
-screen_init(
-	void *frame_buffer,
-	uint32_t hres,
-	uint32_t vres,
-	uint32_t rmask,
-	uint32_t gmask,
-	uint32_t bmask,
-	struct screen *s)
+void
+screen::draw_pixel(coord_t x, coord_t y, pixel_t color)
 {
-	s->data = static_cast<uint32_t *>(frame_buffer);
-	s->hres = hres;
-	s->vres = vres;
-	s->rmask = rmask;
-	s->gmask = gmask;
-	s->bmask = bmask;
-
-	return screen_fill(s, 0);
-}
-
-int
-screen_pixel(
-	struct screen *s,
-	uint32_t x,
-	uint32_t y,
-	uint32_t color)
-{
-	s->data[x + y*s->hres] = color;
-	return 0;
+	m_framebuffer[x + y * m_resolution.w] = color;
 }

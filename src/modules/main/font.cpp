@@ -1,5 +1,4 @@
 #include "font.h"
-#include "screen.h"
 
 /* PSF2 header format
  * Taken from the Linux KBD documentation
@@ -7,18 +6,15 @@
  */
 
 const static uint8_t magic[] = {0x72, 0xb5, 0x4a, 0x86};
+const static uint32_t max_version = 0;
+
+const static uint8_t unicode_sep = 0xff;
+const static uint8_t unicode_start = 0xfe;
 
 /* bits used in flags */
 enum psf2_flags {
 	psf2_has_unicode = 0x00000001
 };
-
-/* max version recognized so far */
-#define PSF2_MAXVERSION 0
-
-/* UTF8 separators */
-#define PSF2_SEPARATOR  0xFF
-#define PSF2_STARTSEQ   0xFE
 
 struct psf2_header {
 	uint8_t magic[4];
@@ -30,52 +26,59 @@ struct psf2_header {
 	uint32_t height, width; // max dimensions of glyphs
 };
 
-int
-font_init(void *header, struct font *font)
+font
+font::load(void const *data)
 {
-	struct psf2_header *psf2 = (struct psf2_header *)header;
+	psf2_header const *psf2 = static_cast<psf2_header const *>(data);
 	for (int i = 0; i < sizeof(magic); ++i) {
 		if (psf2->magic[i] != magic[i]) {
-			return 1;
+			return font{};
 		}
 	}
 
-	if (font == 0)
-		return 2;
-
-	font->height = psf2->height;
-	font->width = psf2->width;
-	font->charsize = psf2->charsize;
-	font->count = psf2->length;
-	font->data = (uint8_t *)header + psf2->header_size;
-	return 0;
+    uint8_t const *font_data = static_cast<uint8_t const *>(data) + psf2->header_size;
+    return font{
+            psf2->height,
+            psf2->width,
+            psf2->length,
+            font_data};
 }
 
-int
-font_draw(
-	struct font *f,
-    struct screen *s,
-    uint32_t glyph,
-	uint32_t color,
-    uint32_t x,
-    uint32_t y)
-{
-	const uint32_t height = f->height;
-	const uint32_t width = f->width;
-	const uint32_t bwidth = (width+7)/8;
-	uint8_t *data = f->data + (glyph * f->charsize);
+font::font() :
+    m_height(0),
+    m_width(0),
+    m_count(0),
+    m_data(nullptr)
+{}
 
-	for (int dy = 0; dy < f->height; ++dy) {
+font::font(unsigned height, unsigned width, unsigned count, uint8_t const *data) :
+    m_height(height),
+    m_width(width),
+    m_count(count),
+    m_data(data)
+{}
+
+void
+font::draw_glyph(
+        screen &s,
+        uint32_t glyph,
+        screen::pixel_t color,
+        screen::coord_t x,
+        screen::coord_t y) const
+{
+	unsigned bwidth = (m_width+7)/8;
+	uint8_t const *data = m_data + (glyph * glyph_bytes());
+
+	for (int dy = 0; dy < m_height; ++dy) {
 		for (int dx = 0; dx < bwidth; ++dx) {
 			uint8_t byte = data[dy * bwidth + dx];
 			for (int i = 0; i < 8; ++i) {
-				if (dx*8 + i >= width) continue;
+				if (dx*8 + i >= m_width) continue;
 				const uint8_t mask = 1 << (7-i);
 				uint32_t c = (byte & mask) ? color : 0;
-				screen_pixel(s, x + dx*8 + i, y + dy, c);
+				s.draw_pixel(x + dx*8 + i, y + dy, c);
 			}
 		}
 	}
-	return 0;
 }
 
