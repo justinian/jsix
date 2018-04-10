@@ -2,38 +2,37 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "util.h"
+
 class screen
 {
 public:
-	using coord_t = uint32_t;
 	using pixel_t = uint32_t;
 
 	screen(
 		void *framebuffer,
-		coord_t hres, coord_t vres,
+		unsigned hres, unsigned vres,
 		pixel_t rmask, pixel_t gmask, pixel_t bmask);
 
+	screen(const screen &other);
 
+	unsigned width() const { return m_resolution.x; }
+	unsigned height() const { return m_resolution.y; }
 
 	void fill(pixel_t color);
 	void draw_pixel(unsigned x, unsigned y, pixel_t color);
 
-    struct color_masks {
-        pixel_t r, g, b;
-        color_masks(pixel_t r, pixel_t g, pixel_t b);
-    };
 	screen() = delete;
-	screen(const screen &) = delete;
 
-    struct resolution {
-        coord_t w, h;
-        resolution(coord_t w, coord_t h);
-        coord_t size() const { return w * h; }
-    };
+	struct color_masks {
+		pixel_t r, g, b;
+		color_masks(pixel_t r, pixel_t g, pixel_t b);
+		color_masks(const color_masks &other);
+	};
 
 private:
-    pixel_t *m_framebuffer;
-    color_masks m_masks;
-    resolution m_resolution;
+	pixel_t *m_framebuffer;
+	color_masks m_masks;
+	coord<unsigned> m_resolution;
 };
 
