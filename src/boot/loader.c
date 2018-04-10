@@ -28,8 +28,8 @@ loader_alloc_pages(
 			bootsvc->AllocatePages(AllocateAnyPages, mem_type, page_count, &addr);
 	}
 	CHECK_EFI_STATUS_OR_RETURN(status,
-            L"Allocating %d kernel pages type %x",
-            page_count, mem_type);
+		L"Allocating %d kernel pages type %x",
+		page_count, mem_type);
 
 	*length = page_count * PAGE_SIZE;
 	*pages = (void *)addr;

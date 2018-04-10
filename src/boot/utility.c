@@ -1,8 +1,8 @@
 #include "utility.h"
 
 struct error_code_desc {
-    EFI_STATUS code;
-    CHAR16 *name;
+	EFI_STATUS code;
+	CHAR16 *name;
 };
 
 // Based off the gnu-efi table

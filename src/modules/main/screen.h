@@ -5,24 +5,25 @@
 class screen
 {
 public:
-    using coord_t = uint32_t;
-    using pixel_t = uint32_t;
+	using coord_t = uint32_t;
+	using pixel_t = uint32_t;
 
-    screen(
-        void *framebuffer,
-        coord_t hres, coord_t vres,
-        pixel_t rmask, pixel_t gmask, pixel_t bmask);
+	screen(
+		void *framebuffer,
+		coord_t hres, coord_t vres,
+		pixel_t rmask, pixel_t gmask, pixel_t bmask);
 
-    void fill(pixel_t color);
-    void draw_pixel(coord_t x, coord_t y, pixel_t color);
 
-    screen() = delete;
-    screen(const screen &) = delete;
+
+	void fill(pixel_t color);
+	void draw_pixel(unsigned x, unsigned y, pixel_t color);
 
     struct color_masks {
         pixel_t r, g, b;
         color_masks(pixel_t r, pixel_t g, pixel_t b);
     };
+	screen() = delete;
+	screen(const screen &) = delete;
 
     struct resolution {
         coord_t w, h;

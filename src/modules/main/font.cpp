@@ -19,10 +19,10 @@ enum psf2_flags {
 struct psf2_header {
 	uint8_t magic[4];
 	uint32_t version;
-	uint32_t header_size;   // offset of bitmaps in file
+	uint32_t header_size;	// offset of bitmaps in file
 	uint32_t flags;
-	uint32_t length;        // number of glyphs
-	uint32_t charsize;      // number of bytes for each character
+	uint32_t length;		// number of glyphs
+	uint32_t charsize;		// number of bytes for each character
 	uint32_t height, width; // max dimensions of glyphs
 };
 
@@ -36,35 +36,32 @@ font::load(void const *data)
 		}
 	}
 
-    uint8_t const *font_data = static_cast<uint8_t const *>(data) + psf2->header_size;
-    return font{
-            psf2->height,
-            psf2->width,
-            psf2->length,
-            font_data};
+	uint8_t const *font_data = static_cast<uint8_t const *>(data) + psf2->header_size;
+	return font{
+			psf2->height,
+			psf2->width,
+			psf2->length,
+			font_data};
 }
 
 font::font() :
-    m_height(0),
-    m_width(0),
-    m_count(0),
-    m_data(nullptr)
+	m_count(0),
+	m_data(nullptr)
 {}
 
 font::font(unsigned height, unsigned width, unsigned count, uint8_t const *data) :
-    m_height(height),
-    m_width(width),
-    m_count(count),
-    m_data(data)
+	m_size(width, height),
+	m_count(count),
+	m_data(data)
 {}
 
 void
 font::draw_glyph(
-        screen &s,
-        uint32_t glyph,
-        screen::pixel_t color,
-        screen::coord_t x,
-        screen::coord_t y) const
+		screen &s,
+		uint32_t glyph,
+		screen::pixel_t color,
+		unsigned x,
+		unsigned y) const
 {
 	unsigned bwidth = (m_width+7)/8;
 	uint8_t const *data = m_data + (glyph * glyph_bytes());

@@ -95,8 +95,8 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	}
 
 	con_printf(L"    Kernel version %d.%d.%d %x%s\r\n",
-            version->major, version->minor, version->patch, version->gitsha & 0x0fffffff,
-            version->gitsha & 0xf0000000 ? "*" : "");
+			version->major, version->minor, version->patch, version->gitsha & 0x0fffffff,
+			version->gitsha & 0xf0000000 ? "*" : "");
 	con_printf(L"    Entrypoint 0x%x\r\n", version->entrypoint);
 
 	void (*kernel_main)() = version->entrypoint;

@@ -6,8 +6,8 @@
 #include "screen.h"
 
 extern "C" {
-    void do_the_set_registers(popcorn_data *header);
-    void kernel_main(popcorn_data *header);
+	void do_the_set_registers(popcorn_data *header);
+	void kernel_main(popcorn_data *header);
 }
 
 void
