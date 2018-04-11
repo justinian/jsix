@@ -144,7 +144,7 @@ loader_load_kernel(
 		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_alloc_pages: kernel data");
 
 		data->log = next;
-		data->log_length = KERNEL_LOG_PAGES;
+		data->log_length = KERNEL_LOG_PAGES * PAGE_SIZE;
 		status = loader_alloc_pages(
 				bootsvc,
 				KERNEL_LOG_MEMTYPE,

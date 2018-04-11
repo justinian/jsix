@@ -8,8 +8,6 @@
 
 #define INCREMENT_DESC(p, b)  (EFI_MEMORY_DESCRIPTOR*)(((uint8_t*)(p))+(b))
 
-const size_t PAGE_SIZE = 4096;
-
 const CHAR16 *memory_type_names[] = {
 	L"EfiReservedMemoryType",
 	L"EfiLoaderCode",

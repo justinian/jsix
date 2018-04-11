@@ -2,6 +2,8 @@
 #include <efi.h>
 #include <stddef.h>
 
+#define PAGE_SIZE 0x1000
+
 #ifndef KERNEL_PHYS_ADDRESS
 #define KERNEL_PHYS_ADDRESS 0x100000
 #endif
