@@ -10,8 +10,8 @@
 #include "memory.h"
 #include "utility.h"
 
-#ifndef GIT_VERSION
-#define GIT_VERSION L"no version"
+#ifndef GIT_VERSION_WIDE
+#define GIT_VERSION_WIDE L"no version"
 #endif
 
 #define KERNEL_HEADER_MAGIC   0x600db007
@@ -40,7 +40,7 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 
 	// When checking console initialization, use CHECK_EFI_STATUS_OR_RETURN
 	// because we can't be sure if the console was fully set up
-	status = con_initialize(system_table, GIT_VERSION);
+	status = con_initialize(system_table, GIT_VERSION_WIDE);
 	CHECK_EFI_STATUS_OR_RETURN(status, "con_initialize");
 	// From here on out, we can use CHECK_EFI_STATUS_OR_FAIL instead
 

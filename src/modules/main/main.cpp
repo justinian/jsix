@@ -32,15 +32,10 @@ kernel_main(popcorn_data *header)
 {
 	console cons = load_console(header);
 
-	const int times = 38;
-	char message[] = " 000  Hello, I am text rendered by the kernel! :-D\n";
-	for (int i = 0; i < times; ++i) {
-		cons.set_color(i, 0);
-		message[1] = '0' + ((i / 100) % 10);
-		message[2] = '0' + ((i / 10) % 10);
-		message[3] = '0' + (i % 10);
-		cons.puts(message);
-	}
+	cons.set_color(0x21, 0x00);
+	cons.puts("Popcorn OS ");
+	cons.set_color(0x08, 0x00);
+	cons.puts(GIT_VERSION " booting...\n");
 
 	do_the_set_registers(header);
 }
