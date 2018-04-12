@@ -11,10 +11,10 @@ extern "C" {
 	void kernel_main(popcorn_data *header);
 }
 
-void
-kernel_main(popcorn_data *header)
+console
+load_console(const popcorn_data *header)
 {
-	console cons{
+	return console{
 		font::load(header->font),
 		screen{
 			header->frame_buffer,
@@ -25,10 +25,17 @@ kernel_main(popcorn_data *header)
 			header->bmask},
 		header->log,
 		header->log_length};
+}
 
-	const int times = 50;
+void
+kernel_main(popcorn_data *header)
+{
+	console cons = load_console(header);
+
+	const int times = 38;
 	char message[] = " 000  Hello, I am text rendered by the kernel! :-D\n";
 	for (int i = 0; i < times; ++i) {
+		cons.set_color(i, 0);
 		message[1] = '0' + ((i / 100) % 10);
 		message[2] = '0' + ((i / 10) % 10);
 		message[3] = '0' + (i % 10);

@@ -19,20 +19,22 @@ public:
 	unsigned width() const { return m_resolution.x; }
 	unsigned height() const { return m_resolution.y; }
 
+	pixel_t color(uint8_t r, uint8_t g, uint8_t b) const;
+
 	void fill(pixel_t color);
 	void draw_pixel(unsigned x, unsigned y, pixel_t color);
 
 	screen() = delete;
 
+private:
 	struct color_masks {
+		uint8_t rshift, gshift, bshift;
 		pixel_t r, g, b;
 		color_masks(pixel_t r, pixel_t g, pixel_t b);
 		color_masks(const color_masks &other);
 	};
 
-private:
 	pixel_t *m_framebuffer;
 	color_masks m_masks;
 	coord<unsigned> m_resolution;
 };
-
