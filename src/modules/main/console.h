@@ -22,7 +22,10 @@ public:
 	template <typename T>
 	void put_hex(T x);
 
-	void put_dec(uint32_t x);
+	template <typename T>
+	void put_dec(T x);
+
+	static console * get() { return default_console; }
 
 private:
 	char * line_pointer(unsigned line);
@@ -42,6 +45,8 @@ private:
 	char *m_data;
 	uint16_t *m_attrs;
 	screen::pixel_t *m_palette;
+
+	static console *default_console;
 };
 
 extern const char digits[];
@@ -56,4 +61,18 @@ void console::put_hex(T x)
 	}
 	message[chars] = 0;
 	puts(message);
+}
+
+template <typename T>
+void console::put_dec(T x)
+{
+	static const int chars = sizeof(x) * 3;
+	char message[chars + 1];
+	char *p = message + chars;
+	*p-- = 0;
+	do {
+		*p-- = digits[x % 10];
+		x /= 10;
+	} while (x != 0);
+	puts(++p);
 }

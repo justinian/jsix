@@ -2,6 +2,8 @@
 
 const char digits[] = "0123456789abcdef";
 
+console *console::default_console = nullptr;
+
 console::console(const font &f, const screen &s, void *scratch, size_t len) :
 	m_font(f),
 	m_screen(s),
@@ -73,6 +75,9 @@ console::console(const font &f, const screen &s, void *scratch, size_t len) :
 	}
 
 	repaint();
+
+	if (default_console == nullptr)
+		default_console = this;
 }
 
 char *
