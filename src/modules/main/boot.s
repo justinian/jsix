@@ -17,6 +17,8 @@ section .text
 align 16
 global _start:function (_start.end - _start)
 _start:
+	cli
+
 	extern kernel_main
 	call kernel_main
 
@@ -26,3 +28,13 @@ _start:
 	hlt
 	jmp .hang
 .end:
+
+global interrupts_enable
+interrupts_enable:
+	sti
+	ret
+
+global interrupts_disable
+interrupts_disable:
+	cli
+	ret

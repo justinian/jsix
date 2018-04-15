@@ -3,6 +3,7 @@
 
 #include "console.h"
 #include "font.h"
+#include "interrupts.h"
 #include "kernel_data.h"
 #include "screen.h"
 
@@ -27,6 +28,8 @@ load_console(const popcorn_data *header)
 		header->log_length};
 }
 
+extern "C" { void isr31(); }
+
 void
 kernel_main(popcorn_data *header)
 {
@@ -37,5 +40,14 @@ kernel_main(popcorn_data *header)
 	cons.set_color(0x08, 0x00);
 	cons.puts(GIT_VERSION " booting...\n");
 
+	interrupts_init();
+	interrupts_enable();
+
+	cons.puts("Interrupts initialized.\n");
+
+	// isr31();
+ 	__asm__ __volatile__("int $31");
+
+	cons.puts("boogity!");
 	do_the_set_registers(header);
 }
