@@ -21,7 +21,7 @@ __kernel_assert(const char *file, unsigned line, const char *message)
 		"movq %2, %%r10;"
 		"movq $0, %%rdx;"
 		"divq %%rdx;"
-		:
+		: // no outputs
 		: "r"((uint64_t)line), "r"(file), "r"(message)
 		: "rax", "rdx", "r8", "r9", "r10");
 
