@@ -28,8 +28,6 @@ load_console(const popcorn_data *header)
 		header->log_length};
 }
 
-extern "C" { void isr31(); }
-
 void
 kernel_main(popcorn_data *header)
 {
@@ -46,7 +44,6 @@ kernel_main(popcorn_data *header)
 	cons.puts("Interrupts initialized.\n");
 
 	// int x = 1 / 0;
-	// isr31();
 	__asm__ __volatile__("int $15");
 
 	cons.puts("boogity!");
