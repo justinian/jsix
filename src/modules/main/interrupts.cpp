@@ -177,6 +177,7 @@ isr_handler(registers regs)
 	print_reg(" ef", regs.eflags);
 	print_reg("esp", regs.user_esp);
 	print_reg(" ss", regs.ss);
+	while(1) asm("hlt");
 }
 
 

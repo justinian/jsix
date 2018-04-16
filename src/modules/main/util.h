@@ -11,3 +11,9 @@ struct coord {
 [[noreturn]] void __kernel_assert(const char *file, unsigned line, const char *message);
 
 #define kassert(stmt, message)  if(!(stmt)) { __kernel_assert(__FILE__, __LINE__, (message)); } else {}
+
+constexpr uint32_t byteswap(uint32_t x)
+{
+	return ((x >> 24) & 0x000000ff) | ((x >>  8) & 0x0000ff00)
+		| ((x <<  8) & 0x00ff0000) | ((x << 24) & 0xff000000);
+}
