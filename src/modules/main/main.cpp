@@ -45,8 +45,9 @@ kernel_main(popcorn_data *header)
 
 	cons.puts("Interrupts initialized.\n");
 
+	// int x = 1 / 0;
 	// isr31();
- 	__asm__ __volatile__("int $31");
+	__asm__ __volatile__("int $15");
 
 	cons.puts("boogity!");
 	do_the_set_registers(header);

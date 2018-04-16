@@ -109,9 +109,6 @@ interrupts_init()
 {
 	uint8_t *p;
 
-	gdt_load();
-	gdt_dump(g_gdtr);
-
 	p = reinterpret_cast<uint8_t *>(&g_gdt_table);
 	for (int i = 0; i < sizeof(g_gdt_table); ++i) p[i] = 0;
 
@@ -127,9 +124,6 @@ interrupts_init()
 	set_gdt_entry(7, 0, 0xfffff,  true, gdt_flags::rw | gdt_flags::ex);
 
 	gdt_write();
-	gdt_load();
-	gdt_dump(g_gdtr);
-
 	p = reinterpret_cast<uint8_t *>(&g_idt_table);
 	for (int i = 0; i < sizeof(g_idt_table); ++i) p[i] = 0;
 
@@ -154,10 +148,35 @@ struct registers
 void
 isr_handler(registers regs)
 {
-	console::get()->puts("received interrupt: ");
-	console::get()->put_dec(regs.interrupt);
+	console *cons = console::get();
+
+	cons->puts("received interrupt:\n");
+
+#define print_reg(name, value) \
+	cons->puts("         " name ": "); \
+	cons->put_hex((value)); \
+	cons->puts("\n");
+
+	print_reg("ISR", regs.interrupt);
+	print_reg("ERR", regs.errorcode);
 	console::get()->puts("\n");
-	while(1);
+
+	print_reg(" ds", regs.ds);
+	print_reg("rdi", regs.rdi);
+	print_reg("rsi", regs.rsi);
+	print_reg("rbp", regs.rbp);
+	print_reg("rsp", regs.rsp);
+	print_reg("rbx", regs.rbx);
+	print_reg("rdx", regs.rdx);
+	print_reg("rcx", regs.rcx);
+	print_reg("rax", regs.rax);
+	console::get()->puts("\n");
+
+	print_reg("rip", regs.rip);
+	print_reg(" cs", regs.cs);
+	print_reg(" ef", regs.eflags);
+	print_reg("esp", regs.user_esp);
+	print_reg(" ss", regs.ss);
 }
 
 

@@ -78,6 +78,7 @@ isr_handler_prelude:
 	push rcx
 	push rdx
 	push rbx
+	push rsp
 	push rbp
 	push rsi
 	push rdi
@@ -102,11 +103,12 @@ isr_handler_prelude:
 	pop rdi
 	pop rsi
 	pop rbp
+	pop rsp
 	pop rbx
 	pop rdx
 	pop rcx
 	pop rax
 
-	add rsp, 8		; because the ISRs added err/num
+	add rsp, 16		; because the ISRs added err/num
 	sti
 	iretq
