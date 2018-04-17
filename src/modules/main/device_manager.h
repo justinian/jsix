@@ -15,8 +15,8 @@ public:
 	uint8_t * io_apic() const;
 
 private:
-	uint8_t *m_local_apic;
-	uint8_t *m_io_apic;
+	uint32_t *m_local_apic;
+	uint32_t *m_io_apic;
 
 	uint32_t m_global_interrupt_base;
 

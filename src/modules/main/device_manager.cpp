@@ -123,9 +123,10 @@ device_manager::load_apic(const acpi_apic *apic)
 {
 	console *cons = console::get();
 
-	m_local_apic = reinterpret_cast<uint8_t *>(apic->local_address);
+	m_local_apic = reinterpret_cast<uint32_t *>(apic->local_address);
 	cons->puts(" ");
 	cons->put_hex(apic->local_address);
+
 
 	uint8_t const *p = apic->controller_data;
 	uint8_t const *end = p + acpi_table_entries(apic, 1);
@@ -142,7 +143,7 @@ device_manager::load_apic(const acpi_apic *apic)
 			break;
 
 		case 1: // I/O APIC
-			m_io_apic = reinterpret_cast<uint8_t *>(read_from<uint32_t>(p+4));
+			m_io_apic = reinterpret_cast<uint32_t *>(read_from<uint32_t>(p+4));
 			m_global_interrupt_base = read_from<uint32_t>(p+8);
 			cons->puts(" ");
 			cons->put_hex((uint64_t)m_io_apic);
