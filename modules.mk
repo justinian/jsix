@@ -29,7 +29,7 @@ $(MOD_BUILD_D)/%.cpp.o: $(MOD_SRC_D)/%.cpp $(INIT_DEP)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(MOD_BUILD_D)/%.s.o: $(MOD_SRC_D)/%.s $(BUILD_D)/versions.s $(INIT_DEP)
-	$(AS) $(ASFLAGS) -o $@ $<
+	$(AS) $(ASFLAGS) -i $(MOD_SRC_D)/ -o $@ $<
 
 DEPS += $(patsubst %.o,%.d,$(OBJS_$(MOD_NAME)))
 

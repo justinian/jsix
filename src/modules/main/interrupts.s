@@ -21,59 +21,7 @@ gdt_load:
 	sgdt [g_gdtr]
 	ret
 
-%macro ISR_NOERRCODE 1
-	global isr%1
-	isr%1:
-		cli
-		push byte 0
-		push byte %1
-		jmp isr_handler_prelude
-%endmacro
-
-%macro ISR_ERRCODE 1
-	global isr%1
-	isr%1:
-		cli
-		push byte %1
-		jmp isr_handler_prelude
-%endmacro
-
-ISR_NOERRCODE  0
-ISR_NOERRCODE  1
-ISR_NOERRCODE  2
-ISR_NOERRCODE  3
-ISR_NOERRCODE  4
-ISR_NOERRCODE  5
-ISR_NOERRCODE  6
-ISR_NOERRCODE  7
-ISR_ERRCODE    8
-ISR_NOERRCODE  9
-ISR_ERRCODE   10
-ISR_ERRCODE   11
-ISR_ERRCODE   12
-ISR_ERRCODE   13
-ISR_ERRCODE   14
-ISR_NOERRCODE 15
-ISR_NOERRCODE 16
-ISR_NOERRCODE 17
-ISR_NOERRCODE 18
-ISR_NOERRCODE 19
-ISR_NOERRCODE 20
-ISR_NOERRCODE 21
-ISR_NOERRCODE 22
-ISR_NOERRCODE 23
-ISR_NOERRCODE 24
-ISR_NOERRCODE 25
-ISR_NOERRCODE 26
-ISR_NOERRCODE 27
-ISR_NOERRCODE 28
-ISR_NOERRCODE 29
-ISR_NOERRCODE 30
-ISR_NOERRCODE 31
-
-extern isr_handler
-global isr_handler_prelude
-isr_handler_prelude:
+%macro push_all_and_segments 0
 	push rax
 	push rcx
 	push rdx
@@ -83,17 +31,11 @@ isr_handler_prelude:
 	push rsi
 	push rdi
 
-	mov ax, ds		; Save the data segment register
+	mov ax, ds
 	push rax
+%endmacro
 
-	mov ax, 0x10	; load the kernel data segment
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-
-	call isr_handler
-
+%macro pop_all_and_segments 0
 	pop rax
 	mov ds, ax
 	mov es, ax
@@ -108,7 +50,72 @@ isr_handler_prelude:
 	pop rdx
 	pop rcx
 	pop rax
+%endmacro
+
+%macro load_kernel_segments 0
+	mov ax, 0x10	; load the kernel data segment
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
+%endmacro
+
+extern isr_handler
+global isr_handler_prelude
+isr_handler_prelude:
+	push_all_and_segments
+	load_kernel_segments
+
+	call isr_handler
+
+	pop_all_and_segments
 
 	add rsp, 16		; because the ISRs added err/num
 	sti
 	iretq
+
+extern irq_handler
+global irq_handler_prelude
+irq_handler_prelude:
+	push_all_and_segments
+	load_kernel_segments
+
+	call irq_handler
+
+	pop_all_and_segments
+
+	add rsp, 16		; because the ISRs added err/num
+	sti
+	iretq
+
+%macro EMIT_ISR 2
+	global %1
+	%1:
+		cli
+		push byte 0
+		push byte %2
+		jmp isr_handler_prelude
+%endmacro
+
+%macro EMIT_EISR 2
+	global %1
+	%1:
+		cli
+		push byte %2
+		jmp isr_handler_prelude
+%endmacro
+
+%macro EMIT_IRQ 2
+	global %1
+	%1:
+		cli
+		push byte 0
+		push byte %2
+		jmp irq_handler_prelude
+%endmacro
+
+%define EISR(i, name)     EMIT_EISR name, i
+%define  ISR(i, name)     EMIT_ISR name, i
+%define  IRQ(i, q, name)  EMIT_IRQ name, i
+
+%include "interrupt_isrs.inc"

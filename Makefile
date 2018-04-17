@@ -169,7 +169,7 @@ $(BUILD_D)/boot.dump: $(BUILD_D)/boot.efi
 	$(OBJD) -D -S $< > $@
 
 $(BUILD_D)/boot/%.s.o: src/boot/%.s $(BUILD_D)/versions.s $(INIT_DEP)
-	$(AS) $(ASFLAGS) -o $@ $<
+	$(AS) $(ASFLAGS) -i src/boot/ -o $@ $<
 
 $(BUILD_D)/boot/%.c.o: src/boot/%.c $(INIT_DEP)
 	$(CC) $(BOOT_CFLAGS) -c -o $@ $<
@@ -182,7 +182,7 @@ $(BUILD_D)/kernel.dump: $(BUILD_D)/kernel.elf
 	$(OBJD) -D -S $< > $@
 
 $(BUILD_D)/arch/%.s.o: $(ARCH_D)/%.s $(BUILD_D)/versions.s $(INIT_DEP)
-	$(AS) $(ASFLAGS) -o $@ $<
+	$(AS) $(ASFLAGS) -i $(ARCH_D)/ -o $@ $<
 
 $(BUILD_D)/arch/%.c.o: $(ARCH_D)/%.c $(INIT_DEP)
 	$(CC) $(CFLAGS) -c -o $@ $<

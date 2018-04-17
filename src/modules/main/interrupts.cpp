@@ -68,9 +68,14 @@ extern "C" {
 	void gdt_load();
 
 	void isr_handler(registers);
+	void irq_handler(registers);
 
-#define ISR(i, name)  extern void name ()
+#define ISR(i, name)     extern void name ()
+#define EISR(i, name)    extern void name ()
+#define IRQ(i, q, name)  extern void name ()
 #include "interrupt_isrs.inc"
+#undef IRQ
+#undef EISR
 #undef ISR
 }
 
@@ -130,8 +135,12 @@ interrupts_init()
 	g_idtr.limit = sizeof(g_idt_table) - 1;
 	g_idtr.base = reinterpret_cast<uint64_t>(&g_idt_table);
 
-#define ISR(i, name)  set_idt_entry(i, reinterpret_cast<uint64_t>(& name), 0x38, 0x8e);
+#define ISR(i, name)     set_idt_entry(i, reinterpret_cast<uint64_t>(& name), 0x38, 0x8e);
+#define EISR(i, name)    set_idt_entry(i, reinterpret_cast<uint64_t>(& name), 0x38, 0x8e);
+#define IRQ(i, q, name)  set_idt_entry(i, reinterpret_cast<uint64_t>(& name), 0x38, 0x8e);
 #include "interrupt_isrs.inc"
+#undef IRQ
+#undef EISR
 #undef ISR
 
 	idt_write();
@@ -145,17 +154,47 @@ struct registers
 	uint64_t rip, cs, eflags, user_esp, ss;
 };
 
+#define print_reg(name, value) \
+	cons->puts("         " name ": "); \
+	cons->put_hex((value)); \
+	cons->puts("\n");
+
 void
 isr_handler(registers regs)
 {
 	console *cons = console::get();
 
-	cons->puts("received interrupt:\n");
+	cons->puts("received ISR interrupt:\n");
 
-#define print_reg(name, value) \
-	cons->puts("         " name ": "); \
-	cons->put_hex((value)); \
-	cons->puts("\n");
+	print_reg("ISR", regs.interrupt);
+	print_reg("ERR", regs.errorcode);
+	console::get()->puts("\n");
+
+	print_reg(" ds", regs.ds);
+	print_reg("rdi", regs.rdi);
+	print_reg("rsi", regs.rsi);
+	print_reg("rbp", regs.rbp);
+	print_reg("rsp", regs.rsp);
+	print_reg("rbx", regs.rbx);
+	print_reg("rdx", regs.rdx);
+	print_reg("rcx", regs.rcx);
+	print_reg("rax", regs.rax);
+	console::get()->puts("\n");
+
+	print_reg("rip", regs.rip);
+	print_reg(" cs", regs.cs);
+	print_reg(" ef", regs.eflags);
+	print_reg("esp", regs.user_esp);
+	print_reg(" ss", regs.ss);
+	while(1) asm("hlt");
+}
+
+void
+irq_handler(registers regs)
+{
+	console *cons = console::get();
+
+	cons->puts("received IRQ interrupt:\n");
 
 	print_reg("ISR", regs.interrupt);
 	print_reg("ERR", regs.errorcode);
