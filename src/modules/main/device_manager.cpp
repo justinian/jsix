@@ -47,7 +47,8 @@ acpi_table_header::validate(uint32_t expected_type) const
 	return !expected_type || (expected_type == type);
 }
 
-device_manager::device_manager(const void *root_table)
+device_manager::device_manager(const void *root_table) :
+	m_local_apic(nullptr)
 {
 	console *cons = console::get();
 
@@ -98,8 +99,58 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 
 		cons->puts(" ");
 		put_sig(cons, header->type);
+
 		kassert(header->validate(), "Table failed validation.");
+
+		switch (header->type) {
+		case acpi_apic::type_id:
+			load_apic(reinterpret_cast<const acpi_apic *>(header));
+			break;
+
+		default:
+			break;
+		}
 	}
 
 	cons->puts("\n");
+}
+
+template <typename T>
+T read_from(const uint8_t *p) { return *reinterpret_cast<const T *>(p); }
+
+void
+device_manager::load_apic(const acpi_apic *apic)
+{
+	console *cons = console::get();
+
+	m_local_apic = reinterpret_cast<uint8_t *>(apic->local_address);
+	cons->puts(" ");
+	cons->put_hex(apic->local_address);
+
+	uint8_t const *p = apic->controller_data;
+	uint8_t const *end = p + acpi_table_entries(apic, 1);
+
+	while (p < end) {
+		const uint8_t type = p[0];
+		const uint8_t length = p[1];
+
+		cons->puts(" ");
+		cons->put_hex(type);
+
+		switch (type) {
+		case 0: // Local APIC
+			break;
+
+		case 1: // I/O APIC
+			m_io_apic = reinterpret_cast<uint8_t *>(read_from<uint32_t>(p+4));
+			m_global_interrupt_base = read_from<uint32_t>(p+8);
+			cons->puts(" ");
+			cons->put_hex((uint64_t)m_io_apic);
+			cons->puts(" ");
+			cons->put_hex(m_global_interrupt_base);
+			break;
+		}
+
+		p += length;
+	}
 }

@@ -25,13 +25,6 @@ struct acpi_table_header
 	acpi_table_header header;
 
 
-struct acpi_xsdt
-{
-	TABLE_HEADER('XSDT');
-	acpi_table_header *headers[0];
-} __attribute__ ((packed));
-
-
 template <typename T>
 bool acpi_validate(const T *t) { return t->header.validate(T::type_id); }
 
@@ -40,4 +33,19 @@ size_t acpi_table_entries(const T *t, size_t size)
 {
 	return (t->header.length - sizeof(T)) / size;
 }
+
+
+struct acpi_xsdt
+{
+	TABLE_HEADER('XSDT');
+	acpi_table_header *headers[0];
+} __attribute__ ((packed));
+
+struct acpi_apic
+{
+	TABLE_HEADER('APIC');
+	uint32_t local_address;
+	uint32_t flags;
+	uint8_t controller_data[0];
+} __attribute__ ((packed));
 
