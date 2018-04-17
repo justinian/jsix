@@ -3,6 +3,7 @@ ARCH           ?= x86_64
 include src/arch/$(ARCH)/config.mk
 
 BUILD_D        := build
+KERN_D         := src/kernel
 ARCH_D         := src/arch/$(ARCH)
 VERSION        ?= $(shell git describe --dirty --always)
 GITSHA         ?= $(shell git rev-parse --short HEAD)
@@ -10,7 +11,7 @@ GITSHA         ?= $(shell git rev-parse --short HEAD)
 KERNEL_FILENAME:= popcorn.bin
 KERNEL_FONT    := assets/fonts/tamsyn8x16r.psf
 
-MODULES        := main
+MODULES        :=
 
 
 EFI_DIR        := external/gnu-efi
@@ -92,12 +93,15 @@ INIT_DEP       := $(BUILD_D)/.builddir
 
 BOOT_SRCS      := $(wildcard src/boot/*.c)
 BOBJS          += $(patsubst src/boot/%,$(BUILD_D)/boot/%,$(patsubst %,%.o,$(BOOT_SRCS)))
-BDEPS          := $(patsubst src/boot/%,$(BUILD_D)/boot/%,$(patsubst %,%.d,$(BOOT_SRCS)))
 
-ARCH_SRCS      := $(wildcard $(ARCH_D)/*.s)
-ARCH_SRCS      += $(wildcard $(ARCH_D)/*.c)
-KOBJS          += $(patsubst $(ARCH_D)/%,$(BUILD_D)/arch/%,$(patsubst %,%.o,$(ARCH_SRCS)))
-DEPS           := $(patsubst $(ARCH_D)/%,$(BUILD_D)/arch/%,$(patsubst %,%.d,$(ARCH_SRCS)))
+KERN_SRCS      := $(wildcard $(KERN_D)/*.s)
+KERN_SRCS      += $(wildcard $(KERN_D)/*.c)
+KERN_SRCS      += $(wildcard $(KERN_D)/*.cpp)
+KERN_SRCS      += $(wildcard $(ARCH_D)/*.s)
+KERN_SRCS      += $(wildcard $(ARCH_D)/*.c)
+
+KERN_OBJS      := $(patsubst src/%, $(BUILD_D)/%, $(patsubst %,%.o,$(KERN_SRCS)))
+
 MOD_TARGETS    :=
 
 PARTED         ?= /sbin/parted
@@ -120,11 +124,16 @@ init: $(INIT_DEP)
 $(INIT_DEP):
 	mkdir -p $(BUILD_D) $(patsubst %,$(BUILD_D)/d.%,$(MODULES))
 	mkdir -p $(BUILD_D)/boot
-	mkdir -p $(BUILD_D)/arch
+	mkdir -p $(patsubst src/%,$(BUILD_D)/%,$(ARCH_D))
+	mkdir -p $(patsubst src/%,$(BUILD_D)/%,$(KERN_D))
 	touch $(INIT_DEP)
 
 clean:
 	rm -rf $(BUILD_D)/* $(BUILD_D)/.version $(BUILD_D)/.builddir
+
+vars:
+	@echo "KERN_SRCS: " $(KERN_SRCS)
+	@echo "KERN_OBJS: " $(KERN_OBJS)
 
 dist-clean: clean
 	make -C external/gnu-efi clean
@@ -132,7 +141,7 @@ dist-clean: clean
 dump: $(BUILD_D)/kernel.dump
 	vim $<
 
-.PHONY: all clean dist-clean init dump
+.PHONY: all clean dist-clean init dump vars
 
 $(BUILD_D)/.version:
 	echo '$(VERSION)' | cmp -s - $@ || echo '$(VERSION)' > $@
@@ -141,7 +150,7 @@ $(BUILD_D)/versions.s:
 	./parse_version.py "$(VERSION)" "$(GITSHA)" > $@
 
 -include x $(patsubst %,src/modules/%/module.mk,$(MODULES))
--include x $(DEPS)
+-include x $(shell find $(BUILD_D) -type f -name '*.d')
 
 $(EFI_LIB):
 	make -C external/gnu-efi all
@@ -174,18 +183,21 @@ $(BUILD_D)/boot/%.s.o: src/boot/%.s $(BUILD_D)/versions.s $(INIT_DEP)
 $(BUILD_D)/boot/%.c.o: src/boot/%.c $(INIT_DEP)
 	$(CC) $(BOOT_CFLAGS) -c -o $@ $<
 
-$(BUILD_D)/kernel.elf: $(KOBJS) $(MOD_TARGETS) $(ARCH_D)/kernel.ld
-	$(LD) $(LDFLAGS) -u _header -T $(ARCH_D)/kernel.ld -o $@ $(patsubst %,-l%,$(MODULES)) $(KOBJS)
+$(BUILD_D)/kernel.elf: $(KERN_OBJS) $(MOD_TARGETS) $(ARCH_D)/kernel.ld
+	$(LD) $(LDFLAGS) -u _header -T $(ARCH_D)/kernel.ld -o $@ $(patsubst %,-l%,$(MODULES)) $(KERN_OBJS)
 	$(OBJC) --only-keep-debug $@ $@.sym
 
 $(BUILD_D)/kernel.dump: $(BUILD_D)/kernel.elf
 	$(OBJD) -D -S $< > $@
 
-$(BUILD_D)/arch/%.s.o: $(ARCH_D)/%.s $(BUILD_D)/versions.s $(INIT_DEP)
-	$(AS) $(ASFLAGS) -i $(ARCH_D)/ -o $@ $<
+$(BUILD_D)/%.s.o: src/%.s $(BUILD_D)/versions.s $(INIT_DEP)
+	$(AS) $(ASFLAGS) -i $(ARCH_D)/ -i $(KERN_D)/ -o $@ $<
 
-$(BUILD_D)/arch/%.c.o: $(ARCH_D)/%.c $(INIT_DEP)
+$(BUILD_D)/%.c.o: src/%.c $(INIT_DEP)
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(BUILD_D)/%.cpp.o: src/%.cpp $(INIT_DEP)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(BUILD_D)/flash.img: $(OVMF)
 	cp $^ $@
