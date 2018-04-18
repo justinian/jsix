@@ -3,7 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "util.h"
+#include "kutil/coord.h"
+#include "kutil/misc.h"
 
 struct acpi_table_header
 {
@@ -21,7 +22,7 @@ struct acpi_table_header
 } __attribute__ ((packed));
 
 #define TABLE_HEADER(signature) \
-	static const uint32_t type_id = byteswap(signature); \
+	static const uint32_t type_id = kutil::byteswap(signature); \
 	acpi_table_header header;
 
 

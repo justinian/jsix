@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "util.h"
+#include "kutil/coord.h"
 
 class screen
 {
@@ -36,5 +36,5 @@ private:
 
 	pixel_t *m_framebuffer;
 	color_masks m_masks;
-	coord<unsigned> m_resolution;
+	kutil::coord<unsigned> m_resolution;
 };

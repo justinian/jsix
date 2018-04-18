@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "kutil/memory.h"
 #include "console.h"
 #include "interrupts.h"
 
@@ -112,10 +113,8 @@ set_idt_entry(uint8_t i, uint64_t addr, uint16_t selector, uint8_t flags)
 void
 interrupts_init()
 {
-	uint8_t *p;
-
-	p = reinterpret_cast<uint8_t *>(&g_gdt_table);
-	for (int i = 0; i < sizeof(g_gdt_table); ++i) p[i] = 0;
+	kutil::memset(&g_gdt_table, 0, sizeof(g_gdt_table));
+	kutil::memset(&g_idt_table, 0, sizeof(g_idt_table));
 
 	g_gdtr.limit = sizeof(g_gdt_table) - 1;
 	g_gdtr.base = reinterpret_cast<uint64_t>(&g_gdt_table);
@@ -129,8 +128,6 @@ interrupts_init()
 	set_gdt_entry(7, 0, 0xfffff,  true, gdt_flags::rw | gdt_flags::ex);
 
 	gdt_write();
-	p = reinterpret_cast<uint8_t *>(&g_idt_table);
-	for (int i = 0; i < sizeof(g_idt_table); ++i) p[i] = 0;
 
 	g_idtr.limit = sizeof(g_idt_table) - 1;
 	g_idtr.base = reinterpret_cast<uint64_t>(&g_idt_table);

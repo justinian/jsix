@@ -11,7 +11,7 @@ GITSHA         ?= $(shell git rev-parse --short HEAD)
 KERNEL_FILENAME:= popcorn.bin
 KERNEL_FONT    := assets/fonts/tamsyn8x16r.psf
 
-MODULES        :=
+MODULES        := kutil
 
 
 EFI_DIR        := external/gnu-efi
@@ -184,7 +184,7 @@ $(BUILD_D)/boot/%.c.o: src/boot/%.c $(INIT_DEP)
 	$(CC) $(BOOT_CFLAGS) -c -o $@ $<
 
 $(BUILD_D)/kernel.elf: $(KERN_OBJS) $(MOD_TARGETS) $(ARCH_D)/kernel.ld
-	$(LD) $(LDFLAGS) -u _header -T $(ARCH_D)/kernel.ld -o $@ $(patsubst %,-l%,$(MODULES)) $(KERN_OBJS)
+	$(LD) $(LDFLAGS) -u _header -T $(ARCH_D)/kernel.ld -o $@ $(KERN_OBJS) $(patsubst %,-l%,$(MODULES))
 	$(OBJC) --only-keep-debug $@ $@.sym
 
 $(BUILD_D)/kernel.dump: $(BUILD_D)/kernel.elf

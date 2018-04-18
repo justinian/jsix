@@ -1,8 +1,8 @@
 #pragma once
 
+#include "kutil/coord.h"
 #include "font.h"
 #include "screen.h"
-#include "util.h"
 
 struct console_data;
 
@@ -34,8 +34,8 @@ private:
 	font m_font;
 	screen m_screen;
 
-	coord<unsigned> m_size;
-	coord<unsigned> m_pos;
+	kutil::coord<unsigned> m_size;
+	kutil::coord<unsigned> m_pos;
 	screen::pixel_t m_fg, m_bg;
 	uint16_t m_attr;
 

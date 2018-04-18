@@ -1,2 +1,2 @@
-MOD_NAME := main
+MOD_NAME := kutil
 include modules.mk

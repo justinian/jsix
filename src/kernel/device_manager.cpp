@@ -1,10 +1,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "kutil/memory.h"
 #include "acpi_tables.h"
+#include "assert.h"
 #include "device_manager.h"
 #include "console.h"
-#include "util.h"
 
 static const char expected_signature[] = "RSD PTR ";
 
@@ -32,7 +33,8 @@ struct acpi2_rsdp
 } __attribute__ ((packed));
 
 
-uint8_t acpi_checksum(const void *p, size_t len, size_t off = 0)
+uint8_t
+acpi_checksum(const void *p, size_t len, size_t off = 0)
 {
 	uint8_t sum = 0;
 	const uint8_t *c = reinterpret_cast<const uint8_t *>(p);
@@ -115,9 +117,6 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 	cons->puts("\n");
 }
 
-template <typename T>
-T read_from(const uint8_t *p) { return *reinterpret_cast<const T *>(p); }
-
 void
 device_manager::load_apic(const acpi_apic *apic)
 {
@@ -143,8 +142,8 @@ device_manager::load_apic(const acpi_apic *apic)
 			break;
 
 		case 1: // I/O APIC
-			m_io_apic = reinterpret_cast<uint32_t *>(read_from<uint32_t>(p+4));
-			m_global_interrupt_base = read_from<uint32_t>(p+8);
+			m_io_apic = reinterpret_cast<uint32_t *>(kutil::read_from<uint32_t>(p+4));
+			m_global_interrupt_base = kutil::read_from<uint32_t>(p+8);
 			cons->puts(" ");
 			cons->put_hex((uint64_t)m_io_apic);
 			cons->puts(" ");

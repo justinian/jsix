@@ -1,8 +1,8 @@
 #pragma once
 #include <stdint.h>
 
+#include "kutil/coord.h"
 #include "screen.h"
-#include "util.h"
 
 class font
 {
@@ -28,7 +28,7 @@ private:
 	font();
 	font(unsigned height, unsigned width, unsigned count, uint8_t const *data);
 
-	coord<unsigned> m_size;
+	kutil::coord<unsigned> m_size;
 	unsigned m_count;
 	uint8_t const *m_data;
 };

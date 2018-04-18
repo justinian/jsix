@@ -1,5 +1,5 @@
+#include "assert.h"
 #include "console.h"
-#include "util.h"
 
 [[noreturn]] void
 __kernel_assert(const char *file, unsigned line, const char *message)
