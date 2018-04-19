@@ -37,12 +37,15 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 {
 	EFI_STATUS status;
 	EFI_BOOT_SERVICES *bootsvc = system_table->BootServices;
+	EFI_RUNTIME_SERVICES *runsvc = system_table->RuntimeServices;
 
 	// When checking console initialization, use CHECK_EFI_STATUS_OR_RETURN
 	// because we can't be sure if the console was fully set up
 	status = con_initialize(system_table, GIT_VERSION_WIDE);
 	CHECK_EFI_STATUS_OR_RETURN(status, "con_initialize");
 	// From here on out, we can use CHECK_EFI_STATUS_OR_FAIL instead
+
+	memory_init_pointer_fixup(bootsvc, runsvc);
 
 	// Find ACPI tables. Ignore ACPI 1.0 if a 2.0 table is found.
 	//
@@ -100,10 +103,12 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	con_printf(L"    Entrypoint 0x%x\r\n", version->entrypoint);
 
 	void (*kernel_main)() = version->entrypoint;
+	memory_mark_pointer_fixup((void **)&kernel_main);
 
 	// Set up the kernel data pages to pass to the kernel
 	//
 	struct popcorn_data *data_header = (struct popcorn_data *)load.data; 
+	memory_mark_pointer_fixup((void **)&data_header);
 
 	data_header->magic = DATA_HEADER_MAGIC;
 	data_header->version = DATA_HEADER_VERSION;
@@ -113,16 +118,24 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 
 	data_header->font = load.font;
 	data_header->font_length = load.font_length;
+	memory_mark_pointer_fixup((void **)&data_header->font);
 
 	data_header->data = load.data;
 	data_header->data_length = load.data_length;
+	memory_mark_pointer_fixup((void **)&data_header->data);
 
 	data_header->log = load.log;
 	data_header->log_length = load.log_length;
+	memory_mark_pointer_fixup((void **)&data_header->log);
 
 	data_header->memory_map = (EFI_MEMORY_DESCRIPTOR *)(data_header + 1);
-	data_header->runtime = system_table->RuntimeServices;
+	memory_mark_pointer_fixup((void **)&data_header->memory_map);
+
+	data_header->runtime = runsvc;
+	memory_mark_pointer_fixup((void **)&data_header->runtime);
+
 	data_header->acpi_table = acpi_table;
+	memory_mark_pointer_fixup((void **)&data_header->acpi_table);
 
 	data_header->_reserved0 = 0;
 	data_header->_reserved1 = 0;
@@ -139,6 +152,7 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 			&data_header->gmask,
 			&data_header->bmask);
 	CHECK_EFI_STATUS_OR_FAIL(status);
+	memory_mark_pointer_fixup((void **)&data_header->frame_buffer);
 
 	// Save the memory map and tell the firmware we're taking control.
 	//
@@ -153,6 +167,8 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 
 	status = bootsvc->ExitBootServices(image_handle, map.key);
 	CHECK_EFI_STATUS_OR_ASSERT(status, 0);
+
+	memory_virtualize(runsvc, &map);
 
 	// Hand control to the kernel
 	//

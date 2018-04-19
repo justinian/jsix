@@ -1,7 +1,8 @@
 ENTRY(_start)
 SECTIONS
 {
-	. = 0x100000;
+	OFFSET = 0xFFFF800000000000;
+	. = OFFSET + 0x100000;
 
 	.header : {
 		header = .;

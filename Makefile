@@ -58,13 +58,14 @@ ASFLAGS        += -p $(BUILD_D)/versions.s
 
 CFLAGS         := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
 CFLAGS         += -DGIT_VERSION="\"$(VERSION)\""
-CFLAGS         += -std=c11
+CFLAGS         += -std=c11 -mcmodel=large
 
 CXXFLAGS       := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
 CXXFLAGS       += -DGIT_VERSION="\"$(VERSION)\""
-CXXFLAGS       += -std=c++14
+CXXFLAGS       += -std=c++14 -mcmodel=large
 
-BOOT_CFLAGS	   := -I src/boot $(CFLAGS) -fPIC -fshort-wchar
+BOOT_CFLAGS    := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
+BOOT_CFLAGS    += -std=c11 -I src/boot -fPIC -fshort-wchar
 BOOT_CFLAGS    += -DKERNEL_FILENAME="L\"$(KERNEL_FILENAME)\""
 BOOT_CFLAGS    += -DGIT_VERSION_WIDE="L\"$(VERSION)\""
 BOOT_CFLAGS    += -DGNU_EFI_USE_MS_ABI -DHAVE_USE_MS_ABI

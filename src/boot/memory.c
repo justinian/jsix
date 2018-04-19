@@ -8,6 +8,10 @@
 
 #define INCREMENT_DESC(p, b)  (EFI_MEMORY_DESCRIPTOR*)(((uint8_t*)(p))+(b))
 
+size_t fixup_pointer_index = 0;
+void **fixup_pointers[64];
+uint64_t *new_pml4 = 0;
+
 const CHAR16 *memory_type_names[] = {
 	L"EfiReservedMemoryType",
 	L"EfiLoaderCode",
@@ -35,6 +39,49 @@ memory_type_name(UINT32 value)
 		else return L"Bad Type Value";
 	}
 	return memory_type_names[value];
+}
+
+void EFIAPI
+memory_update_marked_addresses(EFI_EVENT UNUSED *event, void *context)
+{
+	EFI_RUNTIME_SERVICES *runsvc = (EFI_RUNTIME_SERVICES*)context;
+	for (size_t i = 0; i < fixup_pointer_index; ++i) {
+		if (fixup_pointers[i])
+			runsvc->ConvertPointer(0, fixup_pointers[i]);
+	}
+}
+
+EFI_STATUS
+memory_init_pointer_fixup(EFI_BOOT_SERVICES *bootsvc, EFI_RUNTIME_SERVICES *runsvc)
+{
+	EFI_STATUS status;
+	EFI_EVENT event;
+
+	status = bootsvc->CreateEvent(
+			EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE,
+			TPL_CALLBACK,
+			(EFI_EVENT_NOTIFY)&memory_update_marked_addresses,
+			runsvc,
+			&event);
+
+	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to initialize pointer update event.");
+
+	// Reserve a page for our replacement PML4
+	EFI_PHYSICAL_ADDRESS addr = 0;
+	status = bootsvc->AllocatePages(AllocateAnyPages, EfiLoaderData, 1, &addr);
+	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to allocate PML4 page.");
+
+	new_pml4 = (uint64_t *)addr;
+}
+
+void
+memory_mark_pointer_fixup(void **p)
+{
+	if (fixup_pointer_index == 0) {
+		const size_t count = sizeof(fixup_pointers) / sizeof(void*);
+		for (size_t i = 0; i < count; ++i) fixup_pointers[i] = 0;
+	}
+	fixup_pointers[fixup_pointer_index++] = p;
 }
 
 void
@@ -110,4 +157,51 @@ memory_dump_map(struct memory_map *map)
 	}
 
 	return EFI_SUCCESS;
+}
+
+void
+memory_virtualize(EFI_RUNTIME_SERVICES *runsvc, struct memory_map *map)
+{
+	memory_mark_pointer_fixup((void **)&runsvc);
+	memory_mark_pointer_fixup((void **)&map);
+
+	// Get the pointer to the start of PML4
+	uint64_t* cr3 = 0;
+	__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (cr3) );
+
+	// PML4 is indexed with bits 39:47 of the virtual address
+	uint64_t offset = (KERNEL_VIRT_ADDRESS >> 39) & 0x1ff;
+
+	// Double map the lower half pages that are present into the higher half
+	for (unsigned i = 0; i < offset; ++i) {
+		if (cr3[i] & 0x1)
+			new_pml4[i] = new_pml4[offset+i] = cr3[i];
+		else
+			new_pml4[i] = new_pml4[offset+i] = 0;
+	}
+
+	// Write our new PML4 pointer back to CR3
+	__asm__ __volatile__ ( "mov %0, %%cr3" :: "r" (new_pml4) );
+
+	EFI_MEMORY_DESCRIPTOR *end = INCREMENT_DESC(map->entries, map->length);
+	EFI_MEMORY_DESCRIPTOR *d = map->entries;
+	while (d < end) {
+		switch (d->Type) {
+		case KERNEL_MEMTYPE:
+		case KERNEL_FONT_MEMTYPE:
+		case KERNEL_DATA_MEMTYPE:
+		case KERNEL_LOG_MEMTYPE:
+			d->Attribute |= EFI_MEMORY_RUNTIME;
+			d->VirtualStart = d->PhysicalStart + KERNEL_VIRT_ADDRESS;
+			break;
+
+		default:
+			if (d->Attribute & EFI_MEMORY_RUNTIME) {
+				d->VirtualStart = d->PhysicalStart;
+			}
+		}
+		d = INCREMENT_DESC(d, map->size);
+	}
+
+	runsvc->SetVirtualAddressMap(map->length, map->size, map->version, map->entries);
 }

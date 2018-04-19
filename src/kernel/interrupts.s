@@ -3,22 +3,22 @@ extern g_gdtr
 
 global idt_write
 idt_write:
-	lidt [g_idtr]
+	lidt [rel g_idtr]
 	ret
 
 global idt_load
 idt_load:
-	sidt [g_idtr]
+	sidt [rel g_idtr]
 	ret
 
 global gdt_write
 gdt_write:
-	lgdt [g_gdtr]
+	lgdt [rel g_gdtr]
 	ret
 
 global gdt_load
 gdt_load:
-	sgdt [g_gdtr]
+	sgdt [rel g_gdtr]
 	ret
 
 %macro push_all_and_segments 0
