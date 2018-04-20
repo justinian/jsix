@@ -26,6 +26,9 @@ struct popcorn_data {
 	size_t log_length;
 
 	void *memory_map;
+	size_t memory_map_length;
+	size_t memory_map_desc_size;
+
 	void *runtime;
 
 	void *acpi_table;

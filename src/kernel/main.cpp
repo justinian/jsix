@@ -6,6 +6,7 @@
 #include "font.h"
 #include "interrupts.h"
 #include "kernel_data.h"
+#include "memory.h"
 #include "screen.h"
 
 extern "C" {
@@ -40,6 +41,10 @@ void
 kernel_main(popcorn_data *header)
 {
 	console cons = load_console(header);
+	memory_manager::create(
+			header->memory_map,
+			header->memory_map_length,
+			header->memory_map_desc_size);
 
 	interrupts_init();
 	interrupts_enable();

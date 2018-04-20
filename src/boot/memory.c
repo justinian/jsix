@@ -68,7 +68,7 @@ memory_init_pointer_fixup(EFI_BOOT_SERVICES *bootsvc, EFI_RUNTIME_SERVICES *runs
 
 	// Reserve a page for our replacement PML4
 	EFI_PHYSICAL_ADDRESS addr = 0;
-	status = bootsvc->AllocatePages(AllocateAnyPages, EfiLoaderData, 1, &addr);
+	status = bootsvc->AllocatePages(AllocateAnyPages, EfiLoaderData, 4, &addr);
 	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to allocate PML4 page.");
 
 	new_pml4 = (uint64_t *)addr;
@@ -192,12 +192,10 @@ memory_virtualize(EFI_RUNTIME_SERVICES *runsvc, struct memory_map *map)
 		case KERNEL_DATA_MEMTYPE:
 		case KERNEL_LOG_MEMTYPE:
 			d->Attribute |= EFI_MEMORY_RUNTIME;
-			d->VirtualStart = d->PhysicalStart + KERNEL_VIRT_ADDRESS;
-			break;
 
 		default:
 			if (d->Attribute & EFI_MEMORY_RUNTIME) {
-				d->VirtualStart = d->PhysicalStart;
+				d->VirtualStart = d->PhysicalStart + KERNEL_VIRT_ADDRESS;
 			}
 		}
 		d = INCREMENT_DESC(d, map->size);

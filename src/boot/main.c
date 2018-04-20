@@ -163,6 +163,9 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	status = memory_get_map(bootsvc, &map);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
+	data_header->memory_map_length = map.length;
+	data_header->memory_map_desc_size = map.size;
+
 	// bootsvc->Stall(5000000);
 
 	status = bootsvc->ExitBootServices(image_handle, map.key);
