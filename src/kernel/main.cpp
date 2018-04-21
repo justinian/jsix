@@ -41,6 +41,7 @@ void
 kernel_main(popcorn_data *header)
 {
 	console cons = load_console(header);
+
 	memory_manager::create(
 			header->memory_map,
 			header->memory_map_length,

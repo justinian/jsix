@@ -2,6 +2,8 @@
 
 #include <stddef.h>
 
+struct page_block;
+
 class memory_manager
 {
 public:
@@ -10,7 +12,7 @@ public:
 	static memory_manager * get() { return s_instance; }
 
 private:
-	memory_manager(void *efi_runtime, void *memory_map, size_t map_length);
+	memory_manager(page_block *free, page_block *used, void *scratch, size_t scratch_len);
 
 	memory_manager() = delete;
 	memory_manager(const memory_manager &) = delete;
