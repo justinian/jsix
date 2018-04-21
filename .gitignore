@@ -3,3 +3,4 @@ build
 *.bak
 tags
 .gdbinit
+popcorn.log
