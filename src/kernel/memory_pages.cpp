@@ -11,7 +11,7 @@ page_block::list_consolidate()
 		page_block *next = cur->next;
 
 		if (next && cur->flags == next->flags &&
-			cur->end() == next->physical_address)
+			cur->physical_end() == next->physical_address)
 		{
 			cur->count += next->count;
 			cur->next = next->next;
@@ -59,16 +59,4 @@ page_block::list_dump(const char *name)
 	cons->puts("  Total: ");
 	cons->put_dec(count);
 	cons->puts("\n");
-}
-
-void
-page_table_indices::dump()
-{
-	console *cons = console::get();
-	cons->puts("{");
-	for (int i = 0; i < 4; ++i) {
-		if (i) cons->puts(", ");
-		cons->put_dec(index[i]);
-	}
-	cons->puts("}");
 }

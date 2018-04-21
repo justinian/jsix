@@ -142,76 +142,23 @@ count_table_pages_needed(page_block *used)
 
 }
 
-void
-memory_manager::create(const void *memory_map, size_t map_length, size_t desc_length)
+uint64_t
+gather_block_lists(
+		uint64_t scratch,
+		const void *memory_map,
+		size_t map_length,
+		size_t desc_length,
+		page_block **free_head,
+		page_block **used_head)
 {
-	console *cons = console::get();
+	int i = 0;
+	page_block **free = free_head;
+	page_block **used = used_head;
 
-	// The bootloader reserved 4 pages for page tables, which we'll use to bootstrap.
-	// The first one is the already-installed PML4, so grab it from CR3.
-	page_table *tables = nullptr;
-	__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (tables) );
-
-	// Now go through EFi's memory map and find a 4MiB region of free space to
-	// use as a scratch space. We'll use the 2MiB that fits naturally aligned
-	// into a single page table.
-	efi_memory_descriptor const *desc =
-		reinterpret_cast<efi_memory_descriptor const *>(memory_map);
+	page_block *block_list = reinterpret_cast<page_block *>(scratch);
+	efi_memory_descriptor const *desc = reinterpret_cast<efi_memory_descriptor const *>(memory_map);
 	efi_memory_descriptor const *end = desc_incr(desc, map_length);
 
-	while (desc < end) {
-		if (desc->type == efi_memory_type::available && desc->pages >= 1024)
-			break;
-
-		desc = desc_incr(desc, desc_length);
-	}
-	kassert(desc < end, "Couldn't find 4MiB of contiguous scratch space.");
-
-	uint64_t free_region = (desc->physical_start & 0x1fffff) == 0 ?
-		desc->physical_start :
-		desc->physical_start + 0x1fffff & ~0x1fffffull;
-
-	// Offset-map this region into the higher half.
-	uint64_t next_free = free_region + 0xffff800000000000;
-
-	cons->puts("Found region: ");
-	cons->put_hex(free_region);
-	cons->puts("\n");
-
-	// We'll need to copy any existing tables (except the PML4 which the
-	// bootloader gave us) into our 4 reserved pages so we can edit them.
-	page_table_indices fr_idx{free_region};
-	fr_idx[0] += 256; // Flip the highest bit of the address
-
-	if (tables[0].entries[fr_idx[0]] & 0x1) {
-		page_table *old_pdpt = tables[0].next(fr_idx[0]);
-		for (int i = 0; i < 512; ++i) tables[1].entries[i] = old_pdpt->entries[i];
-	} else {
-		for (int i = 0; i < 512; ++i) tables[1].entries[i] = 0;
-	}
-	tables[0].entries[fr_idx[0]] = reinterpret_cast<uint64_t>(&tables[1]) | 0xb;
-
-	if (tables[1].entries[fr_idx[1]] & 0x1) {
-		page_table *old_pdt = tables[1].next(fr_idx[1]);
-		for (int i = 0; i < 512; ++i) tables[2].entries[i] = old_pdt->entries[i];
-	} else {
-		for (int i = 0; i < 512; ++i) tables[2].entries[i] = 0;
-	}
-	tables[1].entries[fr_idx[1]] = reinterpret_cast<uint64_t>(&tables[2]) | 0xb;
-
-	for (int i = 0; i < 512; ++i)
-		tables[3].entries[i] = (free_region + 0x1000 * i) | 0xb;
-	tables[2].entries[fr_idx[2]] = reinterpret_cast<uint64_t>(&tables[3]) | 0xb;
-
-	// We now have 2MiB starting at "free_region" to bootstrap ourselves. Start by
-	// taking inventory of free pages.
-	page_block *block_list = reinterpret_cast<page_block *>(next_free);
-
-	int i = 0;
-	page_block *free_head = nullptr, **free = &free_head;
-	page_block *used_head = nullptr, **used = &used_head;
-
-	desc = reinterpret_cast<efi_memory_descriptor const *>(memory_map);
 	while (desc < end) {
 		page_block *block = &block_list[i++];
 		block->physical_address = desc->physical_start;
@@ -228,18 +175,16 @@ memory_manager::create(const void *memory_map, size_t map_length, size_t desc_le
 		case efi_memory_type::boot_services_code:
 		case efi_memory_type::boot_services_data:
 		case efi_memory_type::available:
-			if (free_region >= block->physical_address && free_region < block->end()) {
+			if (scratch >= block->physical_address && scratch < block->physical_end()) {
 				// This is the scratch memory block, split off what we're not using
 				block->virtual_address = block->physical_address + 0xffff800000000000;
-
-				block->flags = page_block_flags::used
-					| page_block_flags::mapped
-					| page_block_flags::pending_free;
+				block->flags = page_block_flags::used | page_block_flags::mapped;
 
 				if (block->count > 1024) {
 					page_block *rest = &block_list[i++];
 					rest->physical_address = desc->physical_start + (1024*0x1000);
 					rest->virtual_address = 0;
+					rest->flags = page_block_flags::free;
 					rest->count = desc->pages - 1024;
 					rest->next = nullptr;
 					*free = rest;
@@ -278,9 +223,71 @@ memory_manager::create(const void *memory_map, size_t map_length, size_t desc_le
 		desc = desc_incr(desc, desc_length);
 	}
 
-	// Update the pointer to the next free page
-	next_free += i * sizeof(page_block);
-	next_free = ((next_free - 1) & ~0xfffull) + 0x1000;
+	return reinterpret_cast<uint64_t>(&block_list[i]);
+}
+
+void
+memory_manager::create(const void *memory_map, size_t map_length, size_t desc_length)
+{
+	console *cons = console::get();
+
+	// The bootloader reserved 4 pages for page tables, which we'll use to bootstrap.
+	// The first one is the already-installed PML4, so grab it from CR3.
+	page_table *tables = nullptr;
+	__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (tables) );
+
+	// Now go through EFi's memory map and find a 4MiB region of free space to
+	// use as a scratch space. We'll use the 2MiB that fits naturally aligned
+	// into a single page table.
+	efi_memory_descriptor const *desc =
+		reinterpret_cast<efi_memory_descriptor const *>(memory_map);
+	efi_memory_descriptor const *end = desc_incr(desc, map_length);
+
+	while (desc < end) {
+		if (desc->type == efi_memory_type::available && desc->pages >= 1024)
+			break;
+
+		desc = desc_incr(desc, desc_length);
+	}
+	kassert(desc < end, "Couldn't find 4MiB of contiguous scratch space.");
+
+	uint64_t free_region = page_table_align(desc->physical_start);
+
+	// Offset-map this region into the higher half.
+	uint64_t next_free = free_region + 0xffff800000000000;
+
+	// We'll need to copy any existing tables (except the PML4 which the
+	// bootloader gave us) into our 4 reserved pages so we can edit them.
+	page_table_indices fr_idx{free_region};
+	fr_idx[0] += 256; // Flip the highest bit of the address
+
+	if (tables[0].entries[fr_idx[0]] & 0x1) {
+		page_table *old_pdpt = tables[0].next(fr_idx[0]);
+		for (int i = 0; i < 512; ++i) tables[1].entries[i] = old_pdpt->entries[i];
+	} else {
+		for (int i = 0; i < 512; ++i) tables[1].entries[i] = 0;
+	}
+	tables[0].entries[fr_idx[0]] = reinterpret_cast<uint64_t>(&tables[1]) | 0xb;
+
+	if (tables[1].entries[fr_idx[1]] & 0x1) {
+		page_table *old_pdt = tables[1].next(fr_idx[1]);
+		for (int i = 0; i < 512; ++i) tables[2].entries[i] = old_pdt->entries[i];
+	} else {
+		for (int i = 0; i < 512; ++i) tables[2].entries[i] = 0;
+	}
+	tables[1].entries[fr_idx[1]] = reinterpret_cast<uint64_t>(&tables[2]) | 0xb;
+
+	for (int i = 0; i < 512; ++i)
+		tables[3].entries[i] = (free_region + 0x1000 * i) | 0xb;
+	tables[2].entries[fr_idx[2]] = reinterpret_cast<uint64_t>(&tables[3]) | 0xb;
+
+	// We now have 2MiB starting at "free_region" to bootstrap ourselves. Start by
+	// taking inventory of free pages.
+	page_block *free_head = nullptr;
+	page_block *used_head = nullptr;
+	next_free = gather_block_lists(next_free, memory_map, map_length, desc_length,
+			&free_head, &used_head);
+	next_free = page_align(next_free);
 
 	// Now go back through these lists and consolidate
 	free_head->list_consolidate();
@@ -290,7 +297,7 @@ memory_manager::create(const void *memory_map, size_t map_length, size_t desc_le
 	// what the kernel actually has mapped.
 	unsigned table_page_count = count_table_pages_needed(used_head);
 
-	cons->puts("To map currently-mapped pages, we need ");
-	cons->put_dec(table_page_count);
-	cons->puts(" pages of tables.\n");
+	page_table *pages = reinterpret_cast<page_table *>(next_free);
+	next_free += table_page_count * 0x1000;
+
 }
