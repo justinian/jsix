@@ -1,21 +1,23 @@
 #pragma once
+/// \file memory.h
+/// The block memory manager and related definitions.
 
 #include <stddef.h>
 
-struct page_block;
-
+/// Manager for allocation of virtual memory.
 class memory_manager
 {
 public:
+	memory_manager();
 
-	static void create(const void *memory_map, size_t map_length, size_t desc_length);
-	static memory_manager * get() { return s_instance; }
-
-private:
-	memory_manager(page_block *free, page_block *used, void *scratch, size_t scratch_len);
-
-	memory_manager() = delete;
 	memory_manager(const memory_manager &) = delete;
 
-	static memory_manager * s_instance;
+private:
+	friend class page_manager;
 };
+
+extern memory_manager g_memory_manager;
+
+/// Bootstrap the memory managers.
+void memory_initialize_managers(const void *memory_map, size_t map_length, size_t desc_length);
+

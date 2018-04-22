@@ -1,13 +1,23 @@
+#include "assert.h"
 #include "console.h"
 #include "memory_pages.h"
+
+page_manager g_page_manager;
+
+page_manager::page_manager() :
+	m_free(nullptr),
+	m_used(nullptr),
+	m_pool(nullptr)
+{
+	kassert(this == &g_page_manager, "Attempt to create another page_manager.");
+}
+
 
 page_block *
 page_block::list_consolidate()
 {
-	page_block *cur = this;
 	page_block *freed_head = nullptr, **freed = &freed_head;
-
-	while (cur) {
+	for (page_block *cur = this; cur; cur = cur->next) {
 		page_block *next = cur->next;
 
 		if (next && cur->flags == next->flags &&
@@ -21,8 +31,6 @@ page_block::list_consolidate()
 			freed = &next->next;
 			continue;
 		}
-
-		cur = next;
 	}
 
 	return freed_head;

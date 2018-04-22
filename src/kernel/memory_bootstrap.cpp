@@ -227,7 +227,7 @@ gather_block_lists(
 }
 
 void
-memory_manager::create(const void *memory_map, size_t map_length, size_t desc_length)
+memory_initialize_managers(const void *memory_map, size_t map_length, size_t desc_length)
 {
 	console *cons = console::get();
 

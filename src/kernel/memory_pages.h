@@ -1,25 +1,51 @@
 #pragma once
 /// \file memory_pages.h
-/// Structures related to handling memory paging.
+/// The page memory manager and related definitions.
 
 #include <stdint.h>
 
 #include "kutil/enum_bitfields.h"
 
+class page_block;
+
+
+/// Manager for allocation of physical pages.
+class page_manager
+{
+public:
+	page_manager();
+
+	page_manager(const page_manager &) = delete;
+
+private:
+	friend void memory_initialize_managers(const void *, size_t, size_t);
+
+	/// Set up the memory manager from bootstraped memory
+	static void init(page_block *free, page_block *used, uint64_t scratch);
+
+	/// Initialize the virtual memory manager based on this object's state
+	void init_memory_manager();
+
+	page_block *m_free; ///< Free pages list
+	page_block *m_used; ///< In-use pages list
+	page_block *m_pool; ///< Cache of unused page_block structs
+};
+
+/// Global page manager.
+extern page_manager g_page_manager;
+
+
 /// Flags used by `page_block`.
 enum class page_block_flags : uint32_t
 {
-	// Not a flag value, but for comparison
-	free         = 0x00000000,
+	free         = 0x00000000,  ///< Not a flag, value for free memory
+	used         = 0x00000001,  ///< Memory is in use
+	mapped       = 0x00000002,  ///< Memory is mapped to virtual address
+	pending_free = 0x00000004,  ///< Memory should be freed
 
-	used         = 0x00000001,
-	mapped       = 0x00000002,
-	pending_free = 0x00000004,
-
-	nonvolatile  = 0x00000010,
-	acpi_wait    = 0x00000020,
-
-	permanent    = 0x80000000,
+	nonvolatile  = 0x00000010,  ///< Memory is non-volatile storage
+	acpi_wait    = 0x00000020,  ///< Memory should be freed after ACPI init
+	permanent    = 0x80000000,  ///< Memory is permanently unusable
 
 	max_flags
 };
@@ -66,6 +92,7 @@ struct page_table_indices
 	uint64_t & operator[](size_t i) { return index[i]; }
 	uint64_t index[4]; ///< Indices for each level of tables.
 };
+
 
 /// Calculate a page-aligned address.
 /// \arg p    The address to align.

@@ -42,7 +42,7 @@ kernel_main(popcorn_data *header)
 {
 	console cons = load_console(header);
 
-	memory_manager::create(
+	memory_initialize_managers(
 			header->memory_map,
 			header->memory_map_length,
 			header->memory_map_desc_size);
