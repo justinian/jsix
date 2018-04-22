@@ -16,18 +16,21 @@ class page_manager
 public:
 	page_manager();
 
+	static const uint64_t page_size = 0x1000;
+	static const uint64_t high_offset = 0xffff800000000000;
+
 	page_manager(const page_manager &) = delete;
 
 private:
 	friend void memory_initialize_managers(const void *, size_t, size_t);
 
 	/// Set up the memory manager from bootstraped memory
-	static void init(
+	void init(
 			page_block *free,
 			page_block *used,
 			page_block *block_cache,
 			uint64_t scratch_start,
-			uint64_t scratch_length,
+			uint64_t scratch_pages,
 			uint64_t scratch_cur);
 
 	/// Initialize the virtual memory manager based on this object's state
@@ -73,8 +76,8 @@ struct page_block
 	page_block *next;
 
 	bool has_flag(page_block_flags f) const { return bitfield_contains(flags, f); }
-	uint64_t physical_end() const { return physical_address + (count * 0x1000); }
-	uint64_t virtual_end() const { return virtual_address + (count * 0x1000); }
+	uint64_t physical_end() const { return physical_address + (count * page_manager::page_size); }
+	uint64_t virtual_end() const { return virtual_address + (count * page_manager::page_size); }
 
 	/// Traverse the list, joining adjacent blocks where possible.
 	/// \returns  A linked list of freed page_block structures.
@@ -106,7 +109,10 @@ struct page_table_indices
 /// Calculate a page-aligned address.
 /// \arg p    The address to align.
 /// \returns  The next page-aligned address _after_ `p`.
-template <typename T> inline T page_align(T p)       { return ((p - 1) & ~0xfffull) + 0x1000; }
+template <typename T> inline T page_align(T p)
+{
+	return ((p - 1) & ~(page_manager::page_size - 1)) + page_manager::page_size;
+}
 
 /// Calculate a page-table-aligned address. That is, an address that is
 /// page-aligned to the first page in a page table.

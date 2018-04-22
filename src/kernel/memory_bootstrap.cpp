@@ -119,7 +119,7 @@ count_table_pages_needed(page_block *used)
 			continue;
 
 		page_table_indices start{cur->virtual_address};
-		page_table_indices end{cur->virtual_address + (cur->count * 0x1000)};
+		page_table_indices end{cur->virtual_address + (cur->count * page_manager::page_size)};
 
 		counts[1] +=
 			((start[0] == last_idx[0]) ? 0 : 1) +
@@ -178,12 +178,12 @@ gather_block_lists(
 		case efi_memory_type::available:
 			if (scratch >= block->physical_address && scratch < block->physical_end()) {
 				// This is the scratch memory block, split off what we're not using
-				block->virtual_address = block->physical_address + 0xffff800000000000;
+				block->virtual_address = block->physical_address + page_manager::high_offset;
 				block->flags = page_block_flags::used | page_block_flags::mapped;
 
 				if (block->count > 1024) {
 					page_block *rest = &block_list[i++];
-					rest->physical_address = desc->physical_start + (1024*0x1000);
+					rest->physical_address = desc->physical_start + (1024*page_manager::page_size);
 					rest->virtual_address = 0;
 					rest->flags = page_block_flags::free;
 					rest->count = desc->pages - 1024;
@@ -262,7 +262,7 @@ unsigned page_in(page_table *pml4, uint64_t phys_addr, uint64_t virt_addr, uint6
 
 				for (; idx[3] < 512; idx[3] += 1) {
 					tables[3]->entries[idx[3]] = phys_addr | 0xb;
-					phys_addr += 0x1000;
+					phys_addr += page_manager::page_size;
 					if (--count == 0) return pages_consumed;
 				}
 			}
@@ -316,7 +316,7 @@ memory_initialize_managers(const void *memory_map, size_t map_length, size_t des
 	// Offset-map this region into the higher half.
 	uint64_t free_region_start = desc->physical_start;
 	uint64_t free_region = page_table_align(free_region_start);
-	uint64_t next_free = free_region + 0xffff800000000000;
+	uint64_t next_free = free_region + page_manager::high_offset;
 	cons->puts("Skipping ");
 	cons->put_dec(free_region - free_region_start);
 	cons->puts(" bytes to get page-table-aligned.\n");
@@ -378,11 +378,11 @@ memory_initialize_managers(const void *memory_map, size_t map_length, size_t des
 		consumed_pages += page_in(pml4, cur->physical_address, cur->virtual_address,
 				cur->count, pages + consumed_pages);
 	}
-	next_free += (consumed_pages * 0x1000);
+	next_free += (consumed_pages * page_manager::page_size);
 
 	// We now have all used memory mapped ourselves. Let the page_manager take
 	// over from here.
-	page_manager::init(
+	g_page_manager.init(
 			free_head, used_head, cache_head,
-			free_region_start, 1024 * 0x1000, next_free);
+			free_region_start, 1024, next_free);
 }
