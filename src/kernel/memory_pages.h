@@ -2,24 +2,26 @@
 /// \file memory_pages.h
 /// The page memory manager and related definitions.
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "kutil/enum_bitfields.h"
 
 struct page_block;
-struct free_page;
+struct free_page_header;
 
 
 /// Manager for allocation of physical pages.
 class page_manager
 {
 public:
-	page_manager();
-
 	static const uint64_t page_size = 0x1000;
 	static const uint64_t high_offset = 0xffff800000000000;
 
-	page_manager(const page_manager &) = delete;
+	page_manager();
+
+	void * map_pages(uint64_t address, unsigned count);
+	void unmap_pages(uint64_t address, unsigned count);
 
 private:
 	friend void memory_initialize_managers(const void *, size_t, size_t);
@@ -36,16 +38,29 @@ private:
 	/// Initialize the virtual memory manager based on this object's state
 	void init_memory_manager();
 
+	/// Create a `page_block` struct or pull one from the cache.
+	/// \returns  An empty `page_block` struct
+	page_block * get_block();
+
+	/// Return a list of `page_block` structs to the cache.
+	/// \arg block   A list of `page_block` structs
+	void free_blocks(page_block *block);
+
+	/// Consolidate the free and used block lists. Return freed blocks
+	/// to the cache.
+	void consolidate_blocks();
+
 	page_block *m_free; ///< Free pages list
 	page_block *m_used; ///< In-use pages list
 
 	page_block *m_block_cache; ///< Cache of unused page_block structs
-	free_page *m_page_cache; ///< Cache of free pages to use for tables
+	free_page_header *m_page_cache; ///< Cache of free pages to use for tables
+
+	page_manager(const page_manager &) = delete;
 };
 
 /// Global page manager.
 extern page_manager g_page_manager;
-
 
 /// Flags used by `page_block`.
 enum class page_block_flags : uint32_t
@@ -75,9 +90,35 @@ struct page_block
 	page_block_flags flags;
 	page_block *next;
 
-	bool has_flag(page_block_flags f) const { return bitfield_contains(flags, f); }
-	uint64_t physical_end() const { return physical_address + (count * page_manager::page_size); }
-	uint64_t virtual_end() const { return virtual_address + (count * page_manager::page_size); }
+	inline bool has_flag(page_block_flags f) const { return bitfield_contains(flags, f); }
+	inline uint64_t physical_end() const { return physical_address + (count * page_manager::page_size); }
+	inline uint64_t virtual_end() const { return virtual_address + (count * page_manager::page_size); }
+	inline bool contains(uint64_t vaddr) const { return vaddr >= virtual_address && vaddr < virtual_end(); }
+
+	/// Helper to zero out a block and optionally set the next pointer.
+	/// \arg next  [optional] The value for the `next` pointer
+	void zero(page_block *set_next = nullptr);
+
+	/// Helper to copy a bock from another block
+	/// \arg other  The block to copy from
+	void copy(page_block *other);
+
+	/// \name Linked list functions
+	/// Functions to act on a `page_block *` as a linked list
+	/// @{
+
+	/// Count the items in this linked list.
+	/// \returns  The number of entries in the list.
+	size_t list_count();
+
+	/// Append the gien block or list to this lit.
+	/// \arg list  The list to append to the current list
+	void list_append(page_block *list);
+
+	/// Sorted-insert of a block into the list.
+	/// \arg block  The single block to insert
+	/// \returns    The new list head
+	page_block * list_insert(page_block *block);
 
 	/// Traverse the list, joining adjacent blocks where possible.
 	/// \returns  A linked list of freed page_block structures.
@@ -85,7 +126,20 @@ struct page_block
 
 	/// Traverse the list, printing debug info on this list.
 	/// \arg name  [optional] String to print as the name of this list
-	void list_dump(const char *name = nullptr);
+	/// \arg show_permanent [optional] If false, hide unmapped blocks
+	void list_dump(const char *name = nullptr, bool show_unmapped = false);
+
+	/// @}
+};
+
+
+/// Struct to allow easy accessing of a memory page being used as a page table.
+struct page_table
+{
+	uint64_t entries[512];
+	inline page_table * next(int i) const {
+		return reinterpret_cast<page_table *>(entries[i] & ~0xfffull);
+	}
 };
 
 
@@ -119,3 +173,26 @@ template <typename T> inline T page_align(T p)
 /// \arg p    The address to align.
 /// \returns  The next page-table-aligned address _after_ `p`.
 template <typename T> inline T page_table_align(T p) { return ((p - 1) & ~0x1fffffull) + 0x200000; }
+
+/// Low-level routine for mapping a number of pages into the given page table.
+/// \arg pml4       The root page table to map into
+/// \arg phys_addr  The starting physical address of the pages to be mapped
+/// \arg virt_addr  The starting virtual address ot the memory to be mapped
+/// \arg count      The number of pages to map
+/// \arg free_pages A pointer to a list of free, mapped pages to use for new page tables.
+/// \returns        The number of pages consumed from `free_pages`.
+unsigned page_in(
+		page_table *pml4,
+		uint64_t phys_addr,
+		uint64_t virt_addr,
+		uint64_t count,
+		page_table *free_pages);
+
+/// Low-level routine for unmapping a number of pages from the given page table.
+/// \arg pml4       The root page table for this mapping
+/// \arg virt_addr  The starting virtual address ot the memory to be unmapped
+/// \arg count      The number of pages to unmap
+void page_out(
+		page_table *pml4,
+		uint64_t virt_addr,
+		uint64_t count);
