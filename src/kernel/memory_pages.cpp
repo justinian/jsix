@@ -4,14 +4,6 @@
 
 page_manager g_page_manager;
 
-page_manager::page_manager() :
-	m_free(nullptr),
-	m_used(nullptr),
-	m_pool(nullptr)
-{
-	kassert(this == &g_page_manager, "Attempt to create another page_manager.");
-}
-
 
 page_block *
 page_block::list_consolidate()
@@ -67,4 +59,25 @@ page_block::list_dump(const char *name)
 	cons->puts("  Total: ");
 	cons->put_dec(count);
 	cons->puts("\n");
+}
+
+
+page_manager::page_manager() :
+	m_free(nullptr),
+	m_used(nullptr),
+	m_block_cache(nullptr),
+	m_page_cache(nullptr)
+{
+	kassert(this == &g_page_manager, "Attempt to create another page_manager.");
+}
+
+void
+page_manager::init(
+	page_block *free,
+	page_block *used,
+	page_block *block_cache,
+	uint64_t scratch_start,
+	uint64_t scratch_length,
+	uint64_t scratch_cur)
+{
 }

@@ -6,7 +6,8 @@
 
 #include "kutil/enum_bitfields.h"
 
-class page_block;
+struct page_block;
+struct free_page;
 
 
 /// Manager for allocation of physical pages.
@@ -21,14 +22,22 @@ private:
 	friend void memory_initialize_managers(const void *, size_t, size_t);
 
 	/// Set up the memory manager from bootstraped memory
-	static void init(page_block *free, page_block *used, uint64_t scratch);
+	static void init(
+			page_block *free,
+			page_block *used,
+			page_block *block_cache,
+			uint64_t scratch_start,
+			uint64_t scratch_length,
+			uint64_t scratch_cur);
 
 	/// Initialize the virtual memory manager based on this object's state
 	void init_memory_manager();
 
 	page_block *m_free; ///< Free pages list
 	page_block *m_used; ///< In-use pages list
-	page_block *m_pool; ///< Cache of unused page_block structs
+
+	page_block *m_block_cache; ///< Cache of unused page_block structs
+	free_page *m_page_cache; ///< Cache of free pages to use for tables
 };
 
 /// Global page manager.
