@@ -93,6 +93,7 @@ struct page_block
 	inline bool has_flag(page_block_flags f) const { return bitfield_contains(flags, f); }
 	inline uint64_t physical_end() const { return physical_address + (count * page_manager::page_size); }
 	inline uint64_t virtual_end() const { return virtual_address + (count * page_manager::page_size); }
+
 	inline bool contains(uint64_t vaddr) const { return vaddr >= virtual_address && vaddr < virtual_end(); }
 
 	/// Helper to zero out a block and optionally set the next pointer.
@@ -115,10 +116,15 @@ struct page_block
 	/// \arg list  The list to append to the current list
 	void list_append(page_block *list);
 
-	/// Sorted-insert of a block into the list.
+	/// Sorted-insert of a block into the list by physical address.
 	/// \arg block  The single block to insert
 	/// \returns    The new list head
-	page_block * list_insert(page_block *block);
+	page_block * list_insert_physical(page_block *block);
+
+	/// Sorted-insert of a block into the list by virtual address.
+	/// \arg block  The single block to insert
+	/// \returns    The new list head
+	page_block * list_insert_virtual(page_block *block);
 
 	/// Traverse the list, joining adjacent blocks where possible.
 	/// \returns  A linked list of freed page_block structures.

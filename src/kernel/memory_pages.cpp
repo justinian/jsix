@@ -28,11 +28,29 @@ page_block::list_append(page_block *list)
 }
 
 page_block *
-page_block::list_insert(page_block *block)
+page_block::list_insert_physical(page_block *block)
 {
 	page_block *cur = this;
 	page_block **prev = nullptr;
 	while (cur->physical_address < block->physical_address) {
+		prev = &cur->next;
+		cur = cur->next;
+	}
+
+	block->next = cur;
+	if (prev) {
+		*prev = block;
+		return this;
+	}
+	return block;
+}
+
+page_block *
+page_block::list_insert_virtual(page_block *block)
+{
+	page_block *cur = this;
+	page_block **prev = nullptr;
+	while (cur->virtual_address < block->virtual_address) {
 		prev = &cur->next;
 		cur = cur->next;
 	}
@@ -219,30 +237,53 @@ page_manager::unmap_pages(uint64_t address, unsigned count)
 
 	kassert(cur, "Couldn't find existing mapped pages to unmap");
 
-	uint64_t leading = address - cur->virtual_address;
-	uint64_t trailing = cur->virtual_end() - (address + page_size*count);
+	uint64_t end = address + page_size * count;
 
-	if (leading) {
-		page_block *lead_block = get_block();
-		lead_block->copy(cur);
-		lead_block->next = cur;
-		lead_block->count = leading / page_size;
-		*prev = lead_block;
-		prev = &lead_block->next;
+	while (cur && cur->contains(address)) {
+		uint64_t leading = address - cur->virtual_address;
+		uint64_t trailing =
+			end > cur->virtual_end() ?
+			0 : (cur->virtual_end() - end);
+
+		if (leading) {
+			uint64_t pages = leading / page_size;
+
+			page_block *lead_block = get_block();
+			lead_block->copy(cur);
+			lead_block->next = cur;
+			lead_block->count = pages;
+
+			cur->count -= pages;
+			cur->physical_address += leading;
+			cur->virtual_address += leading;
+
+			*prev = lead_block;
+			prev = &lead_block->next;
+		}
+
+		if (trailing) {
+			uint64_t pages = trailing / page_size;
+
+			page_block *trail_block = get_block();
+			trail_block->copy(cur);
+			trail_block->next = cur->next;
+			trail_block->count = pages;
+
+			cur->count -= pages;
+
+			cur->next = trail_block;
+		}
+
+		address += cur->count * page_size;
+		page_block *next = cur->next;
+
+		*prev = cur->next;
+		cur->next = nullptr;
+		cur->flags = cur->flags & ~(page_block_flags::used | page_block_flags::mapped);
+		m_free->list_insert_physical(cur);
+
+		cur = next;
 	}
-
-	if (trailing) {
-		page_block *trail_block = get_block();
-		trail_block->copy(cur);
-		trail_block->next = cur->next;
-		trail_block->count = trailing / page_size;
-		cur->next = trail_block;
-	}
-
-	*prev = cur->next;
-	cur->next = nullptr;
-	cur->flags = cur->flags & ~(page_block_flags::used | page_block_flags::mapped);
-	m_free->list_insert(cur);
 }
 
 void
