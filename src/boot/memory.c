@@ -66,10 +66,11 @@ memory_init_pointer_fixup(EFI_BOOT_SERVICES *bootsvc, EFI_RUNTIME_SERVICES *runs
 
 	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to initialize pointer update event.");
 
-	// Reserve a page for our replacement PML4
+	// Reserve a page for our replacement PML4, plus some pages for the kernel to use
+	// as page tables while it gets started.
 	EFI_PHYSICAL_ADDRESS addr = 0;
-	status = bootsvc->AllocatePages(AllocateAnyPages, EfiLoaderData, 4, &addr);
-	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to allocate PML4 page.");
+	status = bootsvc->AllocatePages(AllocateAnyPages, EfiLoaderData, 16, &addr);
+	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to allocate page table pages.");
 
 	new_pml4 = (uint64_t *)addr;
 }

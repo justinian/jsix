@@ -12,62 +12,73 @@ struct free_page_header
 };
 
 size_t
-page_block::list_count()
+page_block::length(page_block *list)
 {
 	size_t i = 0;
-	for (page_block *b = this; b; b = b->next) ++i;
+	for (page_block *b = list; b; b = b->next) ++i;
 	return i;
 }
 
-void
-page_block::list_append(page_block *list)
+page_block *
+page_block::append(page_block *list, page_block *extra)
 {
-	page_block *cur = this;
-	while (cur->next) cur = cur->next;
-	cur->next = list;
+	if (list == nullptr) return extra;
+	else if (extra == nullptr) return list;
+
+	page_block *cur = list;
+	while (cur->next)
+		cur = cur->next;
+	cur->next = extra;
+	return list;
 }
 
 page_block *
-page_block::list_insert_physical(page_block *block)
+page_block::insert_physical(page_block *list, page_block *block)
 {
-	page_block *cur = this;
-	page_block **prev = nullptr;
-	while (cur->physical_address < block->physical_address) {
-		prev = &cur->next;
+	if (list == nullptr) return block;
+	else if (block == nullptr) return list;
+
+	page_block *cur = list;
+	page_block *prev = nullptr;
+	while (cur && cur->physical_address < block->physical_address) {
+		prev = cur;
 		cur = cur->next;
 	}
 
 	block->next = cur;
 	if (prev) {
-		*prev = block;
-		return this;
+		prev->next = block;
+		return list;
 	}
 	return block;
 }
 
 page_block *
-page_block::list_insert_virtual(page_block *block)
+page_block::insert_virtual(page_block *list, page_block *block)
 {
-	page_block *cur = this;
-	page_block **prev = nullptr;
-	while (cur->virtual_address < block->virtual_address) {
-		prev = &cur->next;
+	if (list == nullptr) return block;
+	else if (block == nullptr) return list;
+
+	page_block *cur = list;
+	page_block *prev = nullptr;
+	while (cur && cur->virtual_address < block->virtual_address) {
+		prev = cur;
 		cur = cur->next;
 	}
 
 	block->next = cur;
 	if (prev) {
-		*prev = block;
-		return this;
+		prev->next = block;
+		return list;
 	}
 	return block;
 }
 
 page_block *
-page_block::list_consolidate()
+page_block::consolidate(page_block *list)
 {
 	page_block *freed = nullptr;
-	page_block *cur = this;
+	page_block *cur = list;
 
 	while (cur) {
 		page_block *next = cur->next;
@@ -93,7 +104,7 @@ page_block::list_consolidate()
 }
 
 void
-page_block::list_dump(const char *name, bool show_unmapped)
+page_block::dump(page_block *list, const char *name, bool show_unmapped)
 {
 	console *cons = console::get();
 	cons->puts("Block list");
@@ -104,12 +115,14 @@ page_block::list_dump(const char *name, bool show_unmapped)
 	cons->puts(":\n");
 
 	int count = 0;
-	for (page_block *cur = this; cur; cur = cur->next) {
+	for (page_block *cur = list; cur; cur = cur->next) {
 		count += 1;
 		if (!(show_unmapped || cur->has_flag(page_block_flags::mapped)))
 			continue;
 
-		cons->puts("  ");
+		cons->puts("  [");
+		cons->put_hex((uint64_t)cur);
+		cons->puts("]  ");
 		cons->put_hex(cur->physical_address);
 		cons->puts(" ");
 		cons->put_hex((uint32_t)cur->flags);
@@ -165,31 +178,33 @@ page_manager::init(
 	page_block *block_cache,
 	uint64_t scratch_start,
 	uint64_t scratch_pages,
-	uint64_t scratch_cur)
+	uint64_t page_table_start,
+	uint64_t page_table_pages)
 {
 	m_free = free;
 	m_used = used;
 	m_block_cache = block_cache;
 
-	kassert(scratch_cur == page_align(scratch_cur),
-			"Current scratch space pointer is not page-aligned.");
+	// For now we're ignoring that we've got the scratch pages
+	// allocated, full of page_block structs. Eventually hand
+	// control of that to a slab allocator.
 
-	uint64_t scratch_end = scratch_start + page_size * scratch_pages;
-	uint64_t unused_pages = (scratch_end - scratch_cur) / page_size;
-
-	console *cons = console::get();
-
-	unmap_pages(scratch_cur, unused_pages);
-	consolidate_blocks();
-
-	uint64_t scratch_aligned_start = page_table_align(scratch_start);
-	if (scratch_aligned_start != scratch_start) {
-		free_page_header *header =
-			reinterpret_cast<free_page_header *>(scratch_start);
-		header->count = (scratch_aligned_start - scratch_start) / page_size;
+	m_page_cache = nullptr;
+	for (unsigned i = 0; i < page_table_pages; ++i) {
+		uint64_t addr = page_table_start + (i * page_size);
+		free_page_header *header = reinterpret_cast<free_page_header *>(addr);
+		header->count = 1;
 		header->next = m_page_cache;
 		m_page_cache = header;
 	}
+
+	console *cons = console::get();
+
+	consolidate_blocks();
+	page_block::dump(m_used, "used before map", true);
+
+	//map_pages(0xf0000000 + high_offset, 120);
+
 }
 
 void
@@ -223,6 +238,7 @@ page_manager::get_block()
 void *
 page_manager::map_pages(uint64_t address, unsigned count)
 {
+	page_table *pml4 = get_pml4();
 }
 
 void
@@ -237,7 +253,8 @@ page_manager::unmap_pages(uint64_t address, unsigned count)
 
 	kassert(cur, "Couldn't find existing mapped pages to unmap");
 
-	uint64_t end = address + page_size * count;
+	uint64_t size = page_size * count;
+	uint64_t end = address + size;
 
 	while (cur && cur->contains(address)) {
 		uint64_t leading = address - cur->virtual_address;
@@ -268,6 +285,8 @@ page_manager::unmap_pages(uint64_t address, unsigned count)
 			trail_block->copy(cur);
 			trail_block->next = cur->next;
 			trail_block->count = pages;
+			trail_block->physical_address += size;
+			trail_block->virtual_address += size;
 
 			cur->count -= pages;
 
@@ -279,8 +298,9 @@ page_manager::unmap_pages(uint64_t address, unsigned count)
 
 		*prev = cur->next;
 		cur->next = nullptr;
+		cur->virtual_address = 0;
 		cur->flags = cur->flags & ~(page_block_flags::used | page_block_flags::mapped);
-		m_free->list_insert_physical(cur);
+		m_free = page_block::insert_physical(m_free, cur);
 
 		cur = next;
 	}
@@ -289,8 +309,8 @@ page_manager::unmap_pages(uint64_t address, unsigned count)
 void
 page_manager::consolidate_blocks()
 {
-	m_block_cache->list_append(m_free->list_consolidate());
-	m_block_cache->list_append(m_used->list_consolidate());
+	m_block_cache = page_block::append(m_block_cache, page_block::consolidate(m_free));
+	m_block_cache = page_block::append(m_block_cache, page_block::consolidate(m_used));
 }
 
 static unsigned
@@ -304,6 +324,18 @@ check_needs_page(page_table *table, unsigned index, page_table **free_pages)
 	for (int i=0; i<512; ++i) new_table->entries[i] = 0;
 	table->entries[index] = reinterpret_cast<uint64_t>(new_table) | 0xb;
 	return 1;
+}
+
+static uint64_t
+pt_to_phys(page_table *pt)
+{
+	return reinterpret_cast<uint64_t>(pt) - page_manager::page_offset;
+}
+
+static page_table *
+pt_from_phys(uint64_t p)
+{
+	return reinterpret_cast<page_table *>((p + page_manager::page_offset) & ~0xfffull);
 }
 
 unsigned

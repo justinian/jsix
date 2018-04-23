@@ -8,6 +8,7 @@
 #include "kutil/enum_bitfields.h"
 
 struct page_block;
+struct page_table;
 struct free_page_header;
 
 
@@ -15,12 +16,26 @@ struct free_page_header;
 class page_manager
 {
 public:
+	/// Size of a single page.
 	static const uint64_t page_size = 0x1000;
+
+	/// Start of the higher half.
 	static const uint64_t high_offset = 0xffff800000000000;
+
+	/// Offset from physical where page tables are mapped.
+	static const uint64_t page_offset = 0xffffff8000000000;
 
 	page_manager();
 
+	/// Allocate and map pages into virtual memory.
+	/// \arg address  The virtual address at which to map the pages
+	/// \arg count    The number of pages to map
+	/// \returns      A pointer to the start of the mapped region
 	void * map_pages(uint64_t address, unsigned count);
+
+	/// Unmap existing pages from memory.
+	/// \arg address  The virtual address of the memory to unmap
+	/// \arg count    The number of pages to unmap
 	void unmap_pages(uint64_t address, unsigned count);
 
 private:
@@ -33,7 +48,8 @@ private:
 			page_block *block_cache,
 			uint64_t scratch_start,
 			uint64_t scratch_pages,
-			uint64_t scratch_cur);
+			uint64_t page_table_start,
+			uint64_t page_table_pages);
 
 	/// Initialize the virtual memory manager based on this object's state
 	void init_memory_manager();
@@ -49,6 +65,24 @@ private:
 	/// Consolidate the free and used block lists. Return freed blocks
 	/// to the cache.
 	void consolidate_blocks();
+
+	/// Helper to read the PML4 table from CR3.
+	/// \returns  A pointer to the current PML4 table.
+	static inline page_table * get_pml4()
+	{
+		uint64_t pml4 = 0;
+		__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (pml4) );
+		pml4 &= ~0xfffull;
+		return reinterpret_cast<page_table *>(pml4);
+	}
+
+	/// Helper to set the PML4 table pointer in CR3.
+	/// \arg pml4  A pointer to the PML4 table to install.
+	static inline void set_pml4(page_table *pml4)
+	{
+		__asm__ __volatile__ ( "mov %0, %%cr3" ::
+				"r" (reinterpret_cast<uint64_t>(pml4) & ~0xfffull) );
+	}
 
 	page_block *m_free; ///< Free pages list
 	page_block *m_used; ///< In-use pages list
@@ -95,6 +129,7 @@ struct page_block
 	inline uint64_t virtual_end() const { return virtual_address + (count * page_manager::page_size); }
 
 	inline bool contains(uint64_t vaddr) const { return vaddr >= virtual_address && vaddr < virtual_end(); }
+	inline bool contains_physical(uint64_t addr) const { return addr >= physical_address && addr < physical_end(); }
 
 	/// Helper to zero out a block and optionally set the next pointer.
 	/// \arg next  [optional] The value for the `next` pointer
@@ -104,39 +139,48 @@ struct page_block
 	/// \arg other  The block to copy from
 	void copy(page_block *other);
 
-	/// \name Linked list functions
+	/// \name Page block linked list functions
 	/// Functions to act on a `page_block *` as a linked list
 	/// @{
 
-	/// Count the items in this linked list.
-	/// \returns  The number of entries in the list.
-	size_t list_count();
+	/// Count the items in the given linked list.
+	/// \arg list  The list to count
+	/// \returns   The number of entries in the list.
+	static size_t length(page_block *list);
 
-	/// Append the gien block or list to this lit.
-	/// \arg list  The list to append to the current list
-	void list_append(page_block *list);
+	/// Append a block or list to the given list.
+	/// \arg list   The list to append to
+	/// \arg extra  The list or block to be appended 
+	/// \returns    The new list head
+	static page_block * append(page_block *list, page_block *extra);
 
 	/// Sorted-insert of a block into the list by physical address.
+	/// \arg list   The list to insert into
 	/// \arg block  The single block to insert
 	/// \returns    The new list head
-	page_block * list_insert_physical(page_block *block);
+	static page_block * insert_physical(page_block *list, page_block *block);
 
 	/// Sorted-insert of a block into the list by virtual address.
+	/// \arg list   The list to insert into
 	/// \arg block  The single block to insert
 	/// \returns    The new list head
-	page_block * list_insert_virtual(page_block *block);
+	static page_block * insert_virtual(page_block *list, page_block *block);
 
 	/// Traverse the list, joining adjacent blocks where possible.
-	/// \returns  A linked list of freed page_block structures.
-	page_block * list_consolidate();
+	/// \arg list  The list to consolidate
+	/// \returns   A linked list of freed page_block structures.
+	static page_block * consolidate(page_block *list);
 
 	/// Traverse the list, printing debug info on this list.
+	/// \arg list  The list to print
 	/// \arg name  [optional] String to print as the name of this list
 	/// \arg show_permanent [optional] If false, hide unmapped blocks
-	void list_dump(const char *name = nullptr, bool show_unmapped = false);
+	static void dump(page_block *list, const char *name = nullptr, bool show_unmapped = false);
 
 	/// @}
+
 };
+
 
 
 /// Struct to allow easy accessing of a memory page being used as a page table.
