@@ -256,12 +256,12 @@ gather_block_lists(
 		}
 
 		if (block->has_flag(page_block_flags::used)) {
-			if (block->virtual_address == block->physical_address)
+			if (block->virtual_address || !block->physical_address)
 				block->flags |= page_block_flags::mapped;
 
-			used = page_block::insert_virtual(used, block);
+			used = page_block::insert(used, block);
 		} else {
-			free = page_block::insert_physical(free, block);
+			free = page_block::insert(free, block);
 		}
 
 		desc = desc_incr(desc, desc_length);
@@ -415,7 +415,7 @@ memory_initialize_managers(const void *memory_map, size_t map_length, size_t des
 	// Add it to the used list
 	removed->virtual_address = free_region_start_virt;
 	removed->flags = page_block_flags::used;
-	used_head = page_block::insert_virtual(used_head, removed);
+	used_head = page_block::insert(used_head, removed);
 
 	// Pull out the block that represents the rest
 	uint64_t free_next_phys = free_region_start_phys + used;
@@ -436,7 +436,7 @@ memory_initialize_managers(const void *memory_map, size_t map_length, size_t des
 	// Record that we're about to remap it into the page table address space
 	removed->virtual_address = pt_start_virt;
 	removed->flags = page_block_flags::used;
-	used_head = page_block::insert_virtual(used_head, removed);
+	used_head = page_block::insert(used_head, removed);
 
 	// Actually remap them into page table space
 	page_out(&tables[0], free_next, remaining_pages);

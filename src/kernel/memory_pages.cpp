@@ -33,14 +33,14 @@ page_block::append(page_block *list, page_block *extra)
 }
 
 page_block *
-page_block::insert_physical(page_block *list, page_block *block)
+page_block::insert(page_block *list, page_block *block)
 {
 	if (list == nullptr) return block;
 	else if (block == nullptr) return list;
 
 	page_block *cur = list;
 	page_block *prev = nullptr;
-	while (cur && cur->physical_address < block->physical_address) {
+	while (cur && page_block::compare(block, cur) > 0) {
 		prev = cur;
 		cur = cur->next;
 	}
@@ -53,25 +53,20 @@ page_block::insert_physical(page_block *list, page_block *block)
 	return block;
 }
 
-page_block *
-page_block::insert_virtual(page_block *list, page_block *block)
+int
+page_block::compare(const page_block *lhs, const page_block *rhs)
 {
-	if (list == nullptr) return block;
-	else if (block == nullptr) return list;
+	if (lhs->virtual_address < rhs->virtual_address)
+		return -1;
+	else if (lhs->virtual_address > rhs->virtual_address)
+		return 1;
 
-	page_block *cur = list;
-	page_block *prev = nullptr;
-	while (cur && cur->virtual_address < block->virtual_address) {
-		prev = cur;
-		cur = cur->next;
-	}
+	if (lhs->physical_address < rhs->physical_address)
+		return -1;
+	else if (lhs->physical_address > rhs->physical_address)
+		return 1;
 
-	block->next = cur;
-	if (prev) {
-		prev->next = block;
-		return list;
-	}
-	return block;
+	return 0;
 }
 
 page_block *
@@ -300,7 +295,7 @@ page_manager::unmap_pages(uint64_t address, unsigned count)
 		cur->next = nullptr;
 		cur->virtual_address = 0;
 		cur->flags = cur->flags & ~(page_block_flags::used | page_block_flags::mapped);
-		m_free = page_block::insert_physical(m_free, cur);
+		m_free = page_block::insert(m_free, cur);
 
 		cur = next;
 	}

@@ -154,17 +154,17 @@ struct page_block
 	/// \returns    The new list head
 	static page_block * append(page_block *list, page_block *extra);
 
-	/// Sorted-insert of a block into the list by physical address.
+	/// Sorted-insert of a block into the list by address.
 	/// \arg list   The list to insert into
 	/// \arg block  The single block to insert
 	/// \returns    The new list head
-	static page_block * insert_physical(page_block *list, page_block *block);
+	static page_block * insert(page_block *list, page_block *block);
 
-	/// Sorted-insert of a block into the list by virtual address.
-	/// \arg list   The list to insert into
-	/// \arg block  The single block to insert
-	/// \returns    The new list head
-	static page_block * insert_virtual(page_block *list, page_block *block);
+	/// Compare two blocks by address.
+	/// \arg lhs   The left-hand comparator
+	/// \arg rhs   The right-hand comparator
+	/// \returns   <0 if lhs is sorts earlier, >0 if lhs sorts later, 0 for equal
+	static int compare(const page_block *lhs, const page_block *rhs);
 
 	/// Traverse the list, joining adjacent blocks where possible.
 	/// \arg list  The list to consolidate
