@@ -19,6 +19,7 @@ global _start:function (_start.end - _start)
 _start:
 	cli
 
+	mov rsp, stack_end
 	extern kernel_main
 	call kernel_main
 
@@ -38,3 +39,8 @@ global interrupts_disable
 interrupts_disable:
 	cli
 	ret
+
+section .bss
+stack_begin:
+	resb 0x4000 ; 16KiB stack space
+stack_end:
