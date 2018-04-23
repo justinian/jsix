@@ -1,4 +1,5 @@
 #include "console.h"
+#include "io.h"
 
 const char digits[] = "0123456789abcdef";
 
@@ -78,6 +79,18 @@ console::console(const font &f, const screen &s, void *scratch, size_t len) :
 
 	if (default_console == nullptr)
 		default_console = this;
+}
+
+static bool
+serial_ready()
+{
+	return (inb(COM1 + 5) & 0x20) != 0;
+}
+
+static void
+serial_write(char c) {
+	while (!serial_ready());
+	outb(COM1, c);
 }
 
 char *
@@ -171,6 +184,7 @@ console::puts(const char *message)
 			break;
 
 		case '\n':
+			serial_write('\r');
 			m_pos.x = 0;
 			m_pos.y++;
 			break;
@@ -191,6 +205,7 @@ console::puts(const char *message)
 			scroll(1);
 			line = line_pointer(m_pos.y);
 		}
+		serial_write(c);
 	}
 
 	return count;
