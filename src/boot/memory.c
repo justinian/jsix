@@ -73,6 +73,7 @@ memory_init_pointer_fixup(EFI_BOOT_SERVICES *bootsvc, EFI_RUNTIME_SERVICES *runs
 	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to allocate page table pages.");
 
 	new_pml4 = (uint64_t *)addr;
+	return EFI_SUCCESS;
 }
 
 void
