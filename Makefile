@@ -76,7 +76,7 @@ ifdef MAX_HRES
 BOOT_CFLAGS    += -DMAX_HRES=$(MAX_HRES)
 endif
 
-LDFLAGS        := -L $(BUILD_D) -ggdb
+LDFLAGS        := -L $(BUILD_D) -g
 LDFLAGS        += -nostdlib -znocombreloc -Bsymbolic -nostartfiles 
 
 BOOT_LDFLAGS   := $(LDFLAGS) -shared
