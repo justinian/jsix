@@ -4,20 +4,17 @@
 #include "font.h"
 #include "screen.h"
 
-struct console_data;
+class console_out_screen;
 
 class console
 {
 public:
-	console(const font &f, const screen &s, void *scratch, size_t len);
-
-	void repaint();
-	void scroll(unsigned lines);
+	console();
 
 	void set_color(uint8_t fg, uint8_t bg);
 
-	size_t puts(const char *message);
-	size_t printf(const char *fmt, ...);
+	void puts(const char *message);
+	void printf(const char *fmt, ...);
 
 	template <typename T>
 	void put_hex(T x);
@@ -25,29 +22,19 @@ public:
 	template <typename T>
 	void put_dec(T x);
 
-	static console * get() { return default_console; }
+	static console * get();
 
 private:
-	char * line_pointer(unsigned line);
-	uint16_t * attr_pointer(unsigned line);
-
-	font m_font;
-	screen m_screen;
-
-	kutil::coord<unsigned> m_size;
-	kutil::coord<unsigned> m_pos;
-	screen::pixel_t m_fg, m_bg;
-	uint16_t m_attr;
-
-	size_t m_first;
-	size_t m_length;
-
-	char *m_data;
-	uint16_t *m_attrs;
-	screen::pixel_t *m_palette;
-
-	static console *default_console;
+	console_out_screen *m_screen;
 };
+
+extern console g_console;
+inline console * console::get() { return &g_console; }
+
+
+console_out_screen * console_get_screen_out(
+		const font &f, const screen &s, void *scratch, size_t len);
+
 
 extern const char digits[];
 

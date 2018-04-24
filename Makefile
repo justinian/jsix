@@ -51,7 +51,6 @@ WARNFLAGS      += -Wno-attributes -Wno-sign-compare -Wno-multichar
 WARNFLAGS      += -Wno-div-by-zero -Wno-endif-labels -Wno-pragmas
 WARNFLAGS      += -Wno-format-extra-args -Wno-unused-result
 WARNFLAGS      += -Wno-deprecated-declarations -Wno-unused-function
-WARNFLAGS      += -Wno-unused-but-set-parameter
 
 ASFLAGS        ?=
 ASFLAGS        += -p $(BUILD_D)/versions.s
@@ -62,7 +61,7 @@ CFLAGS         += -std=c11 -mcmodel=large
 
 CXXFLAGS       := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
 CXXFLAGS       += -DGIT_VERSION="\"$(VERSION)\""
-CXXFLAGS       += -std=c++14 -mcmodel=large
+CXXFLAGS       += -std=c++14 -mcmodel=large -fno-rtti
 
 BOOT_CFLAGS    := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
 BOOT_CFLAGS    += -std=c11 -I src/boot -fPIC -fshort-wchar

@@ -14,6 +14,9 @@ extern "C" {
 	void kernel_main(popcorn_data *header);
 }
 
+inline void * operator new (size_t, void *p) throw() { return p; }
+
+/*
 console
 load_console(const popcorn_data *header)
 {
@@ -36,11 +39,12 @@ load_console(const popcorn_data *header)
 
 	return cons;
 }
+*/
 
 void
 kernel_main(popcorn_data *header)
 {
-	console cons = load_console(header);
+	console *cons = new (&g_console) console();
 
 	memory_initialize_managers(
 			header->memory_map,
@@ -50,13 +54,13 @@ kernel_main(popcorn_data *header)
 	interrupts_init();
 	interrupts_enable();
 
-	cons.puts("Interrupts initialized.\n");
+	g_console.puts("Interrupts initialized.\n");
 
 	device_manager devices(header->acpi_table);
 
 	// int x = 1 / 0;
 	// __asm__ __volatile__("int $15");
 
-	cons.puts("boogity!");
+	g_console.puts("boogity!");
 	do_the_set_registers(header);
 }
