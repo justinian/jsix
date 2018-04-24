@@ -145,7 +145,7 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	status = con_get_framebuffer(
 			bootsvc, 
 			&data_header->frame_buffer,
-			&data_header->frame_buffer_size,
+			&data_header->frame_buffer_length,
 			&data_header->hres,
 			&data_header->vres,
 			&data_header->rmask,

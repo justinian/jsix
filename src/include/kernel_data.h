@@ -34,7 +34,7 @@ struct popcorn_data {
 	void *acpi_table;
 
 	void *frame_buffer;
-	size_t frame_buffer_size;
+	size_t frame_buffer_length;
 	uint32_t hres;
 	uint32_t vres;
 	uint32_t rmask;
