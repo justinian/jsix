@@ -38,6 +38,12 @@ public:
 	/// \arg count    The number of pages to unmap
 	void unmap_pages(uint64_t address, unsigned count);
 
+	/// Mark a pointer and range to be offset-mapped. This pointer will
+	/// automatically get updated once page_manager::init() is called.
+	/// \arg pointer  Pointer to a pointer to the memory area to be mapped
+	/// \arg length   Length of the memory area to be mapped
+	void mark_offset_pointer(void **pointer, size_t length);
+
 private:
 	friend void memory_initialize_managers(const void *, size_t, size_t);
 
@@ -45,11 +51,7 @@ private:
 	void init(
 			page_block *free,
 			page_block *used,
-			page_block *block_cache,
-			uint64_t scratch_start,
-			uint64_t scratch_pages,
-			uint64_t page_table_start,
-			uint64_t page_table_pages);
+			page_block *block_cache);
 
 	/// Initialize the virtual memory manager based on this object's state
 	void init_memory_manager();
@@ -62,6 +64,15 @@ private:
 	/// \arg block   A list of `page_block` structs
 	void free_blocks(page_block *block);
 
+	/// Allocate a page for a page table, or pull one from the cache
+	/// \returns  An empty page mapped in page space
+	page_table * get_table_page();
+
+	/// Return a set of mapped contiguous pages to the page cache.
+	/// \arg pages  Pointer to the first page to be returned
+	/// \arg count  Number of pages in the range
+	void free_table_pages(void *pages, size_t count);
+
 	/// Consolidate the free and used block lists. Return freed blocks
 	/// to the cache.
 	void consolidate_blocks();
@@ -72,23 +83,54 @@ private:
 	{
 		uint64_t pml4 = 0;
 		__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (pml4) );
-		pml4 &= ~0xfffull;
-		return reinterpret_cast<page_table *>(pml4);
+		return reinterpret_cast<page_table *>((pml4 & ~0xfffull) + page_offset);
 	}
 
 	/// Helper to set the PML4 table pointer in CR3.
 	/// \arg pml4  A pointer to the PML4 table to install.
 	static inline void set_pml4(page_table *pml4)
 	{
-		__asm__ __volatile__ ( "mov %0, %%cr3" ::
-				"r" (reinterpret_cast<uint64_t>(pml4) & ~0xfffull) );
+		uint64_t p = reinterpret_cast<uint64_t>(pml4) - page_offset;
+		__asm__ __volatile__ ( "mov %0, %%cr3" :: "r" (p & ~0xfffull) );
 	}
+
+	/// Helper function to allocate a new page table. If table entry `i` in
+	/// table `base` is empty, allocate a new page table and point `base[i]` at
+	/// it.
+	/// \arg base  Existing page table being indexed into
+	/// \arg i     Index into the existing table to check
+	void check_needs_page(page_table *base, unsigned i);
+
+	/// Low-level routine for mapping a number of pages into the given page table.
+	/// \arg pml4       The root page table to map into
+	/// \arg phys_addr  The starting physical address of the pages to be mapped
+	/// \arg virt_addr  The starting virtual address ot the memory to be mapped
+	/// \arg count      The number of pages to map
+	void page_in(
+			page_table *pml4,
+			uint64_t phys_addr,
+			uint64_t virt_addr,
+			uint64_t count);
+
+	/// Low-level routine for unmapping a number of pages from the given page table.
+	/// \arg pml4       The root page table for this mapping
+	/// \arg virt_addr  The starting virtual address ot the memory to be unmapped
+	/// \arg count      The number of pages to unmap
+	void page_out(
+			page_table *pml4,
+			uint64_t virt_addr,
+			uint64_t count);
 
 	page_block *m_free; ///< Free pages list
 	page_block *m_used; ///< In-use pages list
 
 	page_block *m_block_cache; ///< Cache of unused page_block structs
 	free_page_header *m_page_cache; ///< Cache of free pages to use for tables
+
+	static const unsigned marked_pointer_max = 16;
+	unsigned m_marked_pointer_count;
+	void **m_marked_pointers[marked_pointer_max];
+	size_t m_marked_pointer_lengths[marked_pointer_max];
 
 	page_manager(const page_manager &) = delete;
 };
@@ -102,10 +144,12 @@ enum class page_block_flags : uint32_t
 	free         = 0x00000000,  ///< Not a flag, value for free memory
 	used         = 0x00000001,  ///< Memory is in use
 	mapped       = 0x00000002,  ///< Memory is mapped to virtual address
-	pending_free = 0x00000004,  ///< Memory should be freed
 
-	nonvolatile  = 0x00000010,  ///< Memory is non-volatile storage
-	acpi_wait    = 0x00000020,  ///< Memory should be freed after ACPI init
+	mmio         = 0x00000010,  ///< Memory is a MMIO region
+	nonvolatile  = 0x00000020,  ///< Memory is non-volatile storage
+
+	pending_free = 0x10000000,  ///< Memory should be freed
+	acpi_wait    = 0x40000000,  ///< Memory should be freed after ACPI init
 	permanent    = 0x80000000,  ///< Memory is permanently unusable
 
 	max_flags
@@ -186,10 +230,21 @@ struct page_block
 /// Struct to allow easy accessing of a memory page being used as a page table.
 struct page_table
 {
+	using pm = page_manager;
+
 	uint64_t entries[512];
-	inline page_table * next(int i) const {
-		return reinterpret_cast<page_table *>(entries[i] & ~0xfffull);
+
+	inline page_table * get(int i) const {
+		uint64_t entry = entries[i];
+		if ((entry & 0x1) == 0) return nullptr;
+		return reinterpret_cast<page_table *>((entry & ~0xfffull) + pm::page_offset);
 	}
+
+	inline void set(int i, page_table *p, uint16_t flags) {
+		entries[i] = (reinterpret_cast<uint64_t>(p) - pm::page_offset) | (flags & 0xfff);
+	}
+
+	void dump(int level = 4, uint64_t offset = page_manager::page_offset);
 };
 
 
@@ -224,25 +279,3 @@ template <typename T> inline T page_align(T p)
 /// \returns  The next page-table-aligned address _after_ `p`.
 template <typename T> inline T page_table_align(T p) { return ((p - 1) & ~0x1fffffull) + 0x200000; }
 
-/// Low-level routine for mapping a number of pages into the given page table.
-/// \arg pml4       The root page table to map into
-/// \arg phys_addr  The starting physical address of the pages to be mapped
-/// \arg virt_addr  The starting virtual address ot the memory to be mapped
-/// \arg count      The number of pages to map
-/// \arg free_pages A pointer to a list of free, mapped pages to use for new page tables.
-/// \returns        The number of pages consumed from `free_pages`.
-unsigned page_in(
-		page_table *pml4,
-		uint64_t phys_addr,
-		uint64_t virt_addr,
-		uint64_t count,
-		page_table *free_pages);
-
-/// Low-level routine for unmapping a number of pages from the given page table.
-/// \arg pml4       The root page table for this mapping
-/// \arg virt_addr  The starting virtual address ot the memory to be unmapped
-/// \arg count      The number of pages to unmap
-void page_out(
-		page_table *pml4,
-		uint64_t virt_addr,
-		uint64_t count);

@@ -5,6 +5,19 @@
 page_manager g_page_manager;
 
 
+static uint64_t
+pt_to_phys(page_table *pt)
+{
+	return reinterpret_cast<uint64_t>(pt) - page_manager::page_offset;
+}
+
+static page_table *
+pt_from_phys(uint64_t p)
+{
+	return reinterpret_cast<page_table *>((p + page_manager::page_offset) & ~0xfffull);
+}
+
+
 struct free_page_header
 {
 	free_page_header *next;
@@ -102,12 +115,7 @@ void
 page_block::dump(page_block *list, const char *name, bool show_unmapped)
 {
 	console *cons = console::get();
-	cons->puts("Block list");
-	if (name) {
-		cons->puts(" ");
-		cons->puts(name);
-	}
-	cons->puts(":\n");
+	cons->printf("Block list %s:\n", name);
 
 	int count = 0;
 	for (page_block *cur = list; cur; cur = cur->next) {
@@ -115,25 +123,25 @@ page_block::dump(page_block *list, const char *name, bool show_unmapped)
 		if (!(show_unmapped || cur->has_flag(page_block_flags::mapped)))
 			continue;
 
-		cons->puts("  [");
-		cons->put_hex((uint64_t)cur);
-		cons->puts("]  ");
-		cons->put_hex(cur->physical_address);
-		cons->puts(" ");
-		cons->put_hex((uint32_t)cur->flags);
+		cons->printf("  %lx %x [%6d]",
+				cur->physical_address,
+				cur->flags,
+				cur->count);
+
 		if (cur->virtual_address) {
-			cons->puts(" ");
-			cons->put_hex(cur->virtual_address);
+			page_table_indices start{cur->virtual_address};
+			page_table_indices end{cur->virtual_address + cur->count * page_manager::page_size - 1};
+			cons->printf(" %lx (%d,%d,%d,%d)-(%d,%d,%d,%d)",
+					cur->virtual_address,
+					start[0], start[1], start[2], start[3],
+					end[0], end[1], end[2], end[3]);
 		}
-		cons->puts(" [");
-		cons->put_dec(cur->count);
-		cons->puts("]\n");
+
+		cons->printf("\n");
 
 	}
 
-	cons->puts("  Total: ");
-	cons->put_dec(count);
-	cons->puts("\n");
+	cons->printf("  Total: %d\n");
 }
 
 void
@@ -170,11 +178,7 @@ void
 page_manager::init(
 	page_block *free,
 	page_block *used,
-	page_block *block_cache,
-	uint64_t scratch_start,
-	uint64_t scratch_pages,
-	uint64_t page_table_start,
-	uint64_t page_table_pages)
+	page_block *block_cache)
 {
 	m_free = free;
 	m_used = used;
@@ -184,22 +188,54 @@ page_manager::init(
 	// allocated, full of page_block structs. Eventually hand
 	// control of that to a slab allocator.
 
-	m_page_cache = nullptr;
-	for (unsigned i = 0; i < page_table_pages; ++i) {
-		uint64_t addr = page_table_start + (i * page_size);
-		free_page_header *header = reinterpret_cast<free_page_header *>(addr);
-		header->count = 1;
-		header->next = m_page_cache;
-		m_page_cache = header;
+	page_table *pml4 = get_pml4();
+
+	// Fix up the offset-marked pointers
+	for (unsigned i = 0; i < m_marked_pointer_count; ++i) {
+		uint64_t p = reinterpret_cast<uint64_t>(m_marked_pointers[i]);
+		uint64_t v = p + page_offset;
+		uint64_t c = (m_marked_pointer_lengths[i] / page_size) + 1;
+
+		// TODO: cleanly search/split this as a block out of used/free if possible
+		page_block *block = get_block();
+
+		// TODO: page-align
+		block->physical_address = p;
+		block->virtual_address = v;
+		block->count = c;
+		block->flags =
+			page_block_flags::used |
+			page_block_flags::mapped |
+			page_block_flags::mmio;
+
+		m_used = page_block::insert(m_used, block);
+		page_in(pml4, p, v, c);
 	}
 
-	console *cons = console::get();
-
 	consolidate_blocks();
-	page_block::dump(m_used, "used before map", true);
 
 	//map_pages(0xf0000000 + high_offset, 120);
 
+}
+
+void
+page_manager::mark_offset_pointer(void **pointer, size_t length)
+{
+	m_marked_pointers[m_marked_pointer_count] = pointer;
+	m_marked_pointer_lengths[m_marked_pointer_count++] = length;
+}
+
+page_block *
+page_manager::get_block()
+{
+	page_block *block = m_block_cache;
+	if (block) {
+		m_block_cache = block->next;
+		block->next = 0;
+		return block;
+	} else {
+		kassert(0, "NYI: page_manager::get_block() needed to allocate.");
+	}
 }
 
 void
@@ -217,17 +253,36 @@ page_manager::free_blocks(page_block *block)
 	m_block_cache = block;
 }
 
-page_block *
-page_manager::get_block()
+page_table *
+page_manager::get_table_page()
 {
-	page_block *block = m_block_cache;
-	if (block) {
-		m_block_cache = block->next;
-		block->next = 0;
-		return block;
+	free_page_header *page = m_page_cache;
+	if (page) {
+		m_page_cache = page->next;
+		return reinterpret_cast<page_table *>(page);
 	} else {
-		kassert(0, "NYI: page_manager::get_block() needed to allocate.");
+		kassert(0, "NYI: page_manager::get_table_page() needed to allocate.");
 	}
+}
+
+void
+page_manager::free_table_pages(void *pages, size_t count)
+{
+	uint64_t start = reinterpret_cast<uint64_t>(pages);
+	for (size_t i = 0; i < count; ++i) {
+		uint64_t addr = start + (i * page_size);
+		free_page_header *header = reinterpret_cast<free_page_header *>(addr);
+		header->count = 1;
+		header->next = m_page_cache;
+		m_page_cache = header;
+	}
+}
+
+void
+page_manager::consolidate_blocks()
+{
+	m_block_cache = page_block::append(m_block_cache, page_block::consolidate(m_free));
+	m_block_cache = page_block::append(m_block_cache, page_block::consolidate(m_used));
 }
 
 void *
@@ -302,63 +357,37 @@ page_manager::unmap_pages(uint64_t address, unsigned count)
 }
 
 void
-page_manager::consolidate_blocks()
+page_manager::check_needs_page(page_table *table, unsigned index)
 {
-	m_block_cache = page_block::append(m_block_cache, page_block::consolidate(m_free));
-	m_block_cache = page_block::append(m_block_cache, page_block::consolidate(m_used));
-}
+	if (table->entries[index] & 0x1 == 1) return;
 
-static unsigned
-check_needs_page(page_table *table, unsigned index, page_table **free_pages)
-{
-	if (table->entries[index] & 0x1 == 1) return 0;
-
-	kassert(*free_pages, "check_needs_page needed to allocate but had no free pages");
-
-	page_table *new_table = (*free_pages)++;
+	page_table *new_table = get_table_page();
 	for (int i=0; i<512; ++i) new_table->entries[i] = 0;
-	table->entries[index] = reinterpret_cast<uint64_t>(new_table) | 0xb;
-	return 1;
+	table->entries[index] = pt_to_phys(new_table) | 0xb;
 }
 
-static uint64_t
-pt_to_phys(page_table *pt)
-{
-	return reinterpret_cast<uint64_t>(pt) - page_manager::page_offset;
-}
-
-static page_table *
-pt_from_phys(uint64_t p)
-{
-	return reinterpret_cast<page_table *>((p + page_manager::page_offset) & ~0xfffull);
-}
-
-unsigned
-page_in(page_table *pml4, uint64_t phys_addr, uint64_t virt_addr, uint64_t count, page_table *free_pages)
+void
+page_manager::page_in(page_table *pml4, uint64_t phys_addr, uint64_t virt_addr, uint64_t count)
 {
 	page_table_indices idx{virt_addr};
 	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
 
-	unsigned pages_consumed = 0;
 	for (; idx[0] < 512; idx[0] += 1) {
-		pages_consumed += check_needs_page(tables[0], idx[0], &free_pages);
-		tables[1] = reinterpret_cast<page_table *>(
-				tables[0]->entries[idx[0]] & ~0xfffull);
+		check_needs_page(tables[0], idx[0]);
+		tables[1] = tables[0]->get(idx[0]);
 
 		for (; idx[1] < 512; idx[1] += 1, idx[2] = 0, idx[3] = 0) {
-			pages_consumed += check_needs_page(tables[1], idx[1], &free_pages);
-			tables[2] = reinterpret_cast<page_table *>(
-					tables[1]->entries[idx[1]] & ~0xfffull);
+			check_needs_page(tables[1], idx[1]);
+			tables[2] = tables[1]->get(idx[1]);
 
 			for (; idx[2] < 512; idx[2] += 1, idx[3] = 0) {
-				pages_consumed += check_needs_page(tables[2], idx[2], &free_pages);
-				tables[3] = reinterpret_cast<page_table *>(
-						tables[2]->entries[idx[2]] & ~0xfffull);
+				check_needs_page(tables[2], idx[2]);
+				tables[3] = tables[2]->get(idx[2]);
 
 				for (; idx[3] < 512; idx[3] += 1) {
 					tables[3]->entries[idx[3]] = phys_addr | 0xb;
 					phys_addr += page_manager::page_size;
-					if (--count == 0) return pages_consumed;
+					if (--count == 0) return;
 				}
 			}
 		}
@@ -368,7 +397,7 @@ page_in(page_table *pml4, uint64_t phys_addr, uint64_t virt_addr, uint64_t count
 }
 
 void
-page_out(page_table *pml4, uint64_t virt_addr, uint64_t count)
+page_manager::page_out(page_table *pml4, uint64_t virt_addr, uint64_t count)
 {
 	page_table_indices idx{virt_addr};
 	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
@@ -395,4 +424,45 @@ page_out(page_table *pml4, uint64_t virt_addr, uint64_t count)
 
 	kassert(0, "Ran to end of page_out");
 }
+
+
+void
+page_table::dump(int level, uint64_t offset)
+{
+	console *cons = console::get();
+	cons->printf("Level %d page table @ %lx (off %lx):\n", level, this, offset);
+	for (int i=0; i<512; ++i) {
+		uint64_t ent = entries[i];
+		if (ent == 0) continue;
+
+		cons->printf("  %3d: %lx ", i, ent);
+		if (ent & 0x1 == 0) {
+			cons->printf("  NOT PRESENT\n");
+			continue;
+		}
+
+		if ((level == 2 || level == 3) && (ent & 0x80) == 0x80) {
+			cons->printf("  -> Large page at %lx\n", ent & ~0xfffull);
+			continue;
+		} else if (level == 1) {
+			cons->printf("  -> Page at %lx\n", (ent & ~0xfffull));
+		} else {
+			cons->printf("  -> Level %d table at %lx\n", level - 1, (ent & ~0xfffull) + offset);
+			continue;
+		}
+	}
+	cons->printf("\n");
+
+	if (--level > 0) {
+		for (int i=0; i<512; ++i) {
+			uint64_t ent = entries[i];
+			if ((ent & 0x1) == 0) continue;
+			if ((ent & 0x80)) continue;
+
+			page_table *next = reinterpret_cast<page_table *>((ent & ~0xffful) + offset); 
+			next->dump(level, offset);
+		}
+	}
+}
+
 

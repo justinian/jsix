@@ -7,6 +7,7 @@
 #include "interrupts.h"
 #include "kernel_data.h"
 #include "memory.h"
+#include "memory_pages.h"
 #include "screen.h"
 
 extern "C" {
@@ -45,6 +46,9 @@ void
 kernel_main(popcorn_data *header)
 {
 	console *cons = new (&g_console) console();
+
+	page_manager *pager = new (&g_page_manager) page_manager;
+	pager->mark_offset_pointer(&header->frame_buffer, header->frame_buffer_length);
 
 	memory_initialize_managers(
 			header->memory_map,

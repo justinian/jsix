@@ -273,7 +273,8 @@ gather_block_lists(
 }
 
 page_block *
-fill_page_with_blocks(uint64_t start) {
+fill_page_with_blocks(uint64_t start)
+{
 	uint64_t end = page_align(start);
 	uint64_t count = (end - start) / sizeof(page_block);
 	if (count == 0) return nullptr;
@@ -294,7 +295,8 @@ copy_new_table(page_table *base, unsigned index, page_table *new_table)
 	if(entry & 0x80) return;
 
 	if (entry & 0x1) {
-		page_table *old_next = base->next(index);
+		page_table *old_next = reinterpret_cast<page_table *>(
+				base->entries[index] & ~0xffful);
 		for (int i = 0; i < 512; ++i) new_table->entries[i] = old_next->entries[i];
 	} else {
 		for (int i = 0; i < 512; ++i) new_table->entries[i] = 0;
@@ -348,6 +350,58 @@ find_efi_free_aligned_pages(const void *memory_map, size_t map_length, size_t de
 	return start_phys;
 }
 
+static unsigned
+check_needs_page_ident(page_table *table, unsigned index, page_table **free_pages)
+{
+	if (table->entries[index] & 0x1 == 1) return 0;
+
+	kassert(*free_pages, "check_needs_page_ident needed to allocate but had no free pages");
+
+	page_table *new_table = (*free_pages)++;
+	for (int i=0; i<512; ++i) new_table->entries[i] = 0;
+	table->entries[index] = reinterpret_cast<uint64_t>(new_table) | 0xb;
+	return 1;
+}
+
+static unsigned
+page_in_ident(
+		page_table *pml4,
+		uint64_t phys_addr,
+		uint64_t virt_addr,
+		uint64_t count,
+		page_table *free_pages)
+{
+	page_table_indices idx{virt_addr};
+	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
+
+	unsigned pages_consumed = 0;
+	for (; idx[0] < 512; idx[0] += 1) {
+		pages_consumed += check_needs_page_ident(tables[0], idx[0], &free_pages);
+		tables[1] = reinterpret_cast<page_table *>(
+				tables[0]->entries[idx[0]] & ~0xfffull);
+
+		for (; idx[1] < 512; idx[1] += 1, idx[2] = 0, idx[3] = 0) {
+			pages_consumed += check_needs_page_ident(tables[1], idx[1], &free_pages);
+			tables[2] = reinterpret_cast<page_table *>(
+					tables[1]->entries[idx[1]] & ~0xfffull);
+
+			for (; idx[2] < 512; idx[2] += 1, idx[3] = 0) {
+				pages_consumed += check_needs_page_ident(tables[2], idx[2], &free_pages);
+				tables[3] = reinterpret_cast<page_table *>(
+						tables[2]->entries[idx[2]] & ~0xfffull);
+
+				for (; idx[3] < 512; idx[3] += 1) {
+					tables[3]->entries[idx[3]] = phys_addr | 0xb;
+					phys_addr += page_manager::page_size;
+					if (--count == 0) return pages_consumed;
+				}
+			}
+		}
+	}
+
+	kassert(0, "Ran to end of page_in_ident");
+}
+
 void
 memory_initialize_managers(const void *memory_map, size_t map_length, size_t desc_length)
 {
@@ -355,7 +409,9 @@ memory_initialize_managers(const void *memory_map, size_t map_length, size_t des
 
 	// The bootloader reserved 16 pages for page tables, which we'll use to bootstrap.
 	// The first one is the already-installed PML4, so grab it from CR3.
-	page_table *tables = page_manager::get_pml4();
+	uint64_t cr3;
+	__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (cr3) );
+	page_table *tables = reinterpret_cast<page_table *>(cr3 & ~0xfffull);
 
 	// Now go through EFi's memory map and find a region of scratch space.
 	const unsigned want_pages = 32;
@@ -375,7 +431,7 @@ memory_initialize_managers(const void *memory_map, size_t map_length, size_t des
 	copy_new_table(&tables[0], fr_idx[0], &tables[1]);
 	copy_new_table(&tables[1], fr_idx[1], &tables[2]);
 	copy_new_table(&tables[2], fr_idx[2], &tables[3]);
-	page_in(&tables[0], free_region_start_phys, free_region_start_virt, want_pages, nullptr);
+	page_in_ident(&tables[0], free_region_start_phys, free_region_start_virt, want_pages, nullptr);
 
 	// We now have pages starting at "free_next" to bootstrap ourselves. Start by
 	// taking inventory of free pages.
@@ -384,6 +440,9 @@ memory_initialize_managers(const void *memory_map, size_t map_length, size_t des
 	free_next = gather_block_lists(
 			free_next, memory_map, map_length, desc_length,
 			&free_head, &used_head);
+
+	page_block::dump(used_head, "original used", true);
+	page_block::dump(free_head, "original free", true);
 
 	// Unused page_block structs go here - finish out the current page with them
 	page_block *cache_head = fill_page_with_blocks(free_next);
@@ -414,7 +473,7 @@ memory_initialize_managers(const void *memory_map, size_t map_length, size_t des
 
 	// Add it to the used list
 	removed->virtual_address = free_region_start_virt;
-	removed->flags = page_block_flags::used;
+	removed->flags = page_block_flags::used | page_block_flags::mapped;
 	used_head = page_block::insert(used_head, removed);
 
 	// Pull out the block that represents the rest
@@ -435,43 +494,45 @@ memory_initialize_managers(const void *memory_map, size_t map_length, size_t des
 
 	// Record that we're about to remap it into the page table address space
 	removed->virtual_address = pt_start_virt;
-	removed->flags = page_block_flags::used;
+	removed->flags = page_block_flags::used | page_block_flags::mapped;
 	used_head = page_block::insert(used_head, removed);
 
+	page_manager *pm = &g_page_manager;
+
 	// Actually remap them into page table space
-	page_out(&tables[0], free_next, remaining_pages);
+	pm->page_out(&tables[0], free_next, remaining_pages);
 
 	page_table_indices pg_idx{pt_start_virt};
 	copy_new_table(&tables[0], pg_idx[0], &tables[4]);
 	copy_new_table(&tables[4], pg_idx[1], &tables[5]);
 	copy_new_table(&tables[5], pg_idx[2], &tables[6]);
 
-	page_in(&tables[0], pt_start_phys, pt_start_virt, remaining_pages, tables + 4);
+	page_in_ident(&tables[0], pt_start_phys, pt_start_virt, remaining_pages, tables + 4);
 
-	// Ok, now build an acutal set of kernel page tables that just contains
-	// what the kernel actually has mapped.
-	page_table *pages = reinterpret_cast<page_table *>(pt_start_virt);
-	unsigned consumed_pages = 1; // We're about to make a PML4, start with 1
-
-	// Finally, remap the existing mappings, but making everything writable
+	// Finally, build an acutal set of kernel page tables that just contains
+	// what the kernel actually has mapped, but making everything writable
 	// (especially the page tables themselves)
-	page_table *pml4 = pages++;
+	page_table *pml4 = reinterpret_cast<page_table *>(pt_start_virt);
 	for (int i=0; i<512; ++i) pml4->entries[i] = 0;
+
+	// Give the rest to the page_manager's cache for use in page_in
+	pm->free_table_pages(pml4 + 1, remaining_pages - 1);
 
 	for (page_block *cur = used_head; cur; cur = cur->next) {
 		if (!cur->has_flag(page_block_flags::mapped)) continue;
-		consumed_pages += page_in(pml4, cur->physical_address, cur->virtual_address,
-				cur->count, pages + consumed_pages);
+		pm->page_in(pml4, cur->physical_address, cur->virtual_address, cur->count);
 	}
-	free_next += (consumed_pages * page_manager::page_size);
 
+	page_block::dump(used_head, "used", true);
+	page_block::dump(free_head, "free", true);
+
+	cons->printf("free_region_start: %lx [%3d]\n", free_region_start_virt, used_pages);
+
+	pml4->dump();
 	// Put our new PML4 into CR3 to start using it
-	// page_manager::set_pml4(pml4);
+	page_manager::set_pml4(pml4);
 
 	// We now have all used memory mapped ourselves. Let the page_manager take
 	// over from here.
-	g_page_manager.init(
-			free_head, used_head, cache_head,
-			free_region_start_virt, used_pages,
-			free_next, remaining_pages - consumed_pages);
+	g_page_manager.init(free_head, used_head, cache_head);
 }

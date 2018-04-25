@@ -14,8 +14,6 @@ public:
 
 private:
 	friend class page_manager;
-
-
 };
 
 extern memory_manager g_memory_manager;
