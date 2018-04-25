@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include "console.h"
 #include "io.h"
 
@@ -246,4 +247,64 @@ console::puts(const char *message)
 		serial_write(c);
 		if (c == '\n') serial_write('\r');
 	}
+}
+
+void console::printf(const char *fmt, ...)
+{
+	static const unsigned buf_size = 256;
+	char buffer[256];
+
+	const char *r = fmt;
+	char *w = buffer;
+	char *wend = buffer + buf_size;
+
+	va_list args;
+	va_start(args, fmt);
+
+#define flush() do { *w = 0; puts(buffer); w = buffer; } while(0)
+
+	while (r && *r) {
+		if (w == wend) flush();
+
+		if (*r != '%') {
+			*w++ = *r++;
+			continue;
+		}
+
+		flush();
+
+		r++; // chomp the %
+		switch (*r++) {
+			case '%': *w = '%'; break;
+
+			case 'x': put_hex<uint32_t>(va_arg(args, uint32_t)); break;
+
+			case 'd':
+			case 'u': put_dec<uint32_t>(va_arg(args, uint32_t)); break;
+
+			case 's': {
+					const char *s = va_arg(args, const char*);
+					if (s) puts(s);
+				}
+				break;
+
+			case 'l':
+				switch (*r++) {
+					case 'x': put_hex<uint64_t>(va_arg(args, uint64_t)); break;
+
+					case 'd':
+					case 'u': put_dec<uint32_t>(va_arg(args, uint64_t)); break;
+
+					default:
+						break;
+				}
+				break;
+
+			default:
+				break;
+		}
+	}
+
+	flush();
+	va_end(args);
 }
