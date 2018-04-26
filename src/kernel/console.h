@@ -17,10 +17,12 @@ public:
 	void printf(const char *fmt, ...);
 
 	template <typename T>
-	void put_hex(T x);
+	void put_hex(T x, int width = 0);
 
 	template <typename T>
-	void put_dec(T x);
+	void put_dec(T x, int width = 0);
+
+	void set_screen(console_out_screen *out) { m_screen = out; }
 
 	static console * get();
 
@@ -39,7 +41,7 @@ console_out_screen * console_get_screen_out(
 extern const char digits[];
 
 template <typename T>
-void console::put_hex(T x)
+void console::put_hex(T x, int width)
 {
 	static const int chars = sizeof(x) * 2;
 	char message[chars + 1];
@@ -47,19 +49,27 @@ void console::put_hex(T x)
 		message[chars - i - 1] = digits[(x >> (i*4)) & 0xf];
 	}
 	message[chars] = 0;
+
+	if (width > chars) for(int i=0; i<(width-chars); ++i) puts(" ");
 	puts(message);
+	if (-width > chars) for(int i=0; i<(-width-chars); ++i) puts(" ");
 }
 
 template <typename T>
-void console::put_dec(T x)
+void console::put_dec(T x, int width)
 {
 	static const int chars = sizeof(x) * 3;
 	char message[chars + 1];
 	char *p = message + chars;
+	int length = 0;
 	*p-- = 0;
 	do {
 		*p-- = digits[x % 10];
 		x /= 10;
+		length += 1;
 	} while (x != 0);
+
+	if (width > length) for(int i=0; i<(width-length); ++i) puts(" ");
 	puts(++p);
+	if (-width > length) for(int i=0; i<(-width-length); ++i) puts(" ");
 }

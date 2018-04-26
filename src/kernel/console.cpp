@@ -244,6 +244,7 @@ console::puts(const char *message)
 	while (message && *message) {
 		char c = *message++;
 		if (m_screen) m_screen->putc(c);
+
 		serial_write(c);
 		if (c == '\n') serial_write('\r');
 	}
@@ -271,37 +272,60 @@ void console::printf(const char *fmt, ...)
 			continue;
 		}
 
+		r++; // chomp the %
 		flush();
 
-		r++; // chomp the %
-		switch (*r++) {
-			case '%': *w = '%'; break;
+		bool done = false;
+		bool right = true;
+		int width = 0;
 
-			case 'x': put_hex<uint32_t>(va_arg(args, uint32_t)); break;
+		while (!done) {
+			char c = *r++;
+			switch (c) {
+				case '%': *w = '%'; done = true; break;
 
-			case 'd':
-			case 'u': put_dec<uint32_t>(va_arg(args, uint32_t)); break;
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9': width = width * 10 + (c - '0'); break;
 
-			case 's': {
-					const char *s = va_arg(args, const char*);
-					if (s) puts(s);
-				}
-				break;
+				case '-': right = !right; break;
 
-			case 'l':
-				switch (*r++) {
-					case 'x': put_hex<uint64_t>(va_arg(args, uint64_t)); break;
+				case 'x': put_hex<uint32_t>(va_arg(args, uint32_t), right ? width : -width); done = true; break;
 
-					case 'd':
-					case 'u': put_dec<uint32_t>(va_arg(args, uint64_t)); break;
+				case 'd':
+				case 'u': put_dec<uint32_t>(va_arg(args, uint32_t), right ? width : -width); done = true; break;
 
-					default:
-						break;
-				}
-				break;
+				case 's': {
+						const char *s = va_arg(args, const char*);
+						if (s) puts(s);
+					}
+					done = true;
+					break;
 
-			default:
-				break;
+				case 'l':
+					switch (*r++) {
+						case 'x': put_hex<uint64_t>(va_arg(args, uint64_t), right ? width : -width); done = true; break;
+
+						case 'd':
+						case 'u': put_dec<uint32_t>(va_arg(args, uint64_t), right ? width : -width); done = true; break;
+
+						default:
+							done = true;
+							break;
+					}
+					break;
+
+				default:
+					done = true;
+					break;
+			}
 		}
 	}
 
