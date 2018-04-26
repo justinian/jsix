@@ -141,7 +141,7 @@ page_block::dump(page_block *list, const char *name, bool show_unmapped)
 
 	}
 
-	cons->printf("  Total: %d\n");
+	cons->printf("  Total: %d\n", count);
 }
 
 void
