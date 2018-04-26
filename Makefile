@@ -115,6 +115,7 @@ QEMUOPTS       += -drive file=$(BUILD_D)/fs.img,format=raw
 QEMUOPTS       += -smp $(CPUS)
 QEMUOPTS       += -m 512
 QEMUOPTS       += -d guest_errors
+QEMUOPTS       += -no-reboot
 QEMUOPTS       += $(QEMUEXTRA)
 
 
