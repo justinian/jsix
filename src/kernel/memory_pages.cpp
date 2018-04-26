@@ -6,15 +6,17 @@
 
 page_manager g_page_manager;
 
+using addr_t = page_manager::addr_t;
 
-static uint64_t
+
+static addr_t
 pt_to_phys(page_table *pt)
 {
-	return reinterpret_cast<uint64_t>(pt) - page_manager::page_offset;
+	return reinterpret_cast<addr_t>(pt) - page_manager::page_offset;
 }
 
 static page_table *
-pt_from_phys(uint64_t p)
+pt_from_phys(addr_t p)
 {
 	return reinterpret_cast<page_table *>((p + page_manager::page_offset) & ~0xfffull);
 }
@@ -194,9 +196,9 @@ page_manager::init(
 
 	// Fix up the offset-marked pointers
 	for (unsigned i = 0; i < m_marked_pointer_count; ++i) {
-		uint64_t p = reinterpret_cast<uint64_t>(m_marked_pointers[i]);
-		uint64_t v = p + page_offset;
-		uint64_t c = (m_marked_pointer_lengths[i] / page_size) + 1;
+		addr_t p = reinterpret_cast<addr_t>(m_marked_pointers[i]);
+		addr_t v = p + page_offset;
+		addr_t c = (m_marked_pointer_lengths[i] / page_size) + 1;
 
 		// TODO: cleanly search/split this as a block out of used/free if possible
 		page_block *block = get_block();
@@ -216,11 +218,8 @@ page_manager::init(
 
 	consolidate_blocks();
 
-	page_block::dump(m_used, "used before map", true);
-	page_block::dump(m_free, "free before map", true);
-	map_pages(0xf0000000 + high_offset, 120);
-	page_block::dump(m_used, "used after map", true);
-	page_block::dump(m_free, "free after map", true);
+	page_block::dump(m_used, "used", true);
+	page_block::dump(m_free, "free", true);
 
 }
 
@@ -263,9 +262,9 @@ page_table *
 page_manager::get_table_page()
 {
 	if (!m_page_cache) {
-		uint64_t phys = 0;
-		uint64_t n = pop_pages(32, &phys);
-		uint64_t virt = phys + page_offset;
+		addr_t phys = 0;
+		size_t n = pop_pages(32, &phys);
+		addr_t virt = phys + page_offset;
 
 		page_block *block = get_block();
 		block->physical_address = phys;
@@ -278,7 +277,7 @@ page_manager::get_table_page()
 		m_page_cache = reinterpret_cast<free_page_header *>(virt);
 
 		// The last one needs to be null, so do n-1
-		uint64_t end = virt + (n-1) * page_size;
+		addr_t end = virt + (n-1) * page_size;
 		while (virt < end) {
 			reinterpret_cast<free_page_header *>(virt)->next =
 				reinterpret_cast<free_page_header *>(virt + page_size);
@@ -297,9 +296,9 @@ page_manager::get_table_page()
 void
 page_manager::free_table_pages(void *pages, size_t count)
 {
-	uint64_t start = reinterpret_cast<uint64_t>(pages);
+	addr_t start = reinterpret_cast<addr_t>(pages);
 	for (size_t i = 0; i < count; ++i) {
-		uint64_t addr = start + (i * page_size);
+		addr_t addr = start + (i * page_size);
 		free_page_header *header = reinterpret_cast<free_page_header *>(addr);
 		header->count = 1;
 		header->next = m_page_cache;
@@ -315,7 +314,7 @@ page_manager::consolidate_blocks()
 }
 
 void *
-page_manager::map_pages(uint64_t address, unsigned count)
+page_manager::map_pages(addr_t address, size_t count)
 {
 	void *ret = reinterpret_cast<void *>(address);
 	page_table *pml4 = get_pml4();
@@ -323,7 +322,7 @@ page_manager::map_pages(uint64_t address, unsigned count)
 	while (count) {
 		kassert(m_free, "page_manager::map_pages ran out of free pages!");
 
-		uint64_t phys = 0;
+		addr_t phys = 0;
 		size_t n = pop_pages(count, &phys);
 
 		page_block *block = get_block();
@@ -342,7 +341,7 @@ page_manager::map_pages(uint64_t address, unsigned count)
 }
 
 void
-page_manager::unmap_pages(uint64_t address, unsigned count)
+page_manager::unmap_pages(addr_t address, size_t count)
 {
 	page_block **prev = &m_used;
 	page_block *cur = m_used;
@@ -353,17 +352,17 @@ page_manager::unmap_pages(uint64_t address, unsigned count)
 
 	kassert(cur, "Couldn't find existing mapped pages to unmap");
 
-	uint64_t size = page_size * count;
-	uint64_t end = address + size;
+	size_t size = page_size * count;
+	addr_t end = address + size;
 
 	while (cur && cur->contains(address)) {
-		uint64_t leading = address - cur->virtual_address;
-		uint64_t trailing =
+		size_t leading = address - cur->virtual_address;
+		size_t trailing =
 			end > cur->virtual_end() ?
 			0 : (cur->virtual_end() - end);
 
 		if (leading) {
-			uint64_t pages = leading / page_size;
+			size_t pages = leading / page_size;
 
 			page_block *lead_block = get_block();
 			lead_block->copy(cur);
@@ -379,7 +378,7 @@ page_manager::unmap_pages(uint64_t address, unsigned count)
 		}
 
 		if (trailing) {
-			uint64_t pages = trailing / page_size;
+			size_t pages = trailing / page_size;
 
 			page_block *trail_block = get_block();
 			trail_block->copy(cur);
@@ -417,7 +416,7 @@ page_manager::check_needs_page(page_table *table, unsigned index)
 }
 
 void
-page_manager::page_in(page_table *pml4, uint64_t phys_addr, uint64_t virt_addr, uint64_t count)
+page_manager::page_in(page_table *pml4, addr_t phys_addr, addr_t virt_addr, size_t count)
 {
 	page_table_indices idx{virt_addr};
 	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
@@ -447,7 +446,7 @@ page_manager::page_in(page_table *pml4, uint64_t phys_addr, uint64_t virt_addr, 
 }
 
 void
-page_manager::page_out(page_table *pml4, uint64_t virt_addr, uint64_t count)
+page_manager::page_out(page_table *pml4, addr_t virt_addr, size_t count)
 {
 	page_table_indices idx{virt_addr};
 	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
@@ -476,7 +475,7 @@ page_manager::page_out(page_table *pml4, uint64_t virt_addr, uint64_t count)
 }
 
 size_t
-page_manager::pop_pages(size_t count, uint64_t *address)
+page_manager::pop_pages(size_t count, addr_t *address)
 {
 	kassert(m_free, "page_manager::pop_pages ran out of free pages!");
 

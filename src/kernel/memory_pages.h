@@ -16,14 +16,16 @@ struct free_page_header;
 class page_manager
 {
 public:
+	using addr_t = uint64_t;
+
 	/// Size of a single page.
-	static const uint64_t page_size = 0x1000;
+	static const size_t page_size = 0x1000;
 
 	/// Start of the higher half.
-	static const uint64_t high_offset = 0xffff800000000000;
+	static const addr_t high_offset = 0xffff800000000000;
 
 	/// Offset from physical where page tables are mapped.
-	static const uint64_t page_offset = 0xffffff8000000000;
+	static const addr_t page_offset = 0xffffff8000000000;
 
 	page_manager();
 
@@ -31,12 +33,12 @@ public:
 	/// \arg address  The virtual address at which to map the pages
 	/// \arg count    The number of pages to map
 	/// \returns      A pointer to the start of the mapped region
-	void * map_pages(uint64_t address, unsigned count);
+	void * map_pages(addr_t address, size_t count);
 
 	/// Unmap existing pages from memory.
 	/// \arg address  The virtual address of the memory to unmap
 	/// \arg count    The number of pages to unmap
-	void unmap_pages(uint64_t address, unsigned count);
+	void unmap_pages(addr_t address, size_t count);
 
 	/// Mark a pointer and range to be offset-mapped. This pointer will
 	/// automatically get updated once page_manager::init() is called.
@@ -81,7 +83,7 @@ private:
 	/// \returns  A pointer to the current PML4 table.
 	static inline page_table * get_pml4()
 	{
-		uint64_t pml4 = 0;
+		addr_t pml4 = 0;
 		__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (pml4) );
 		return reinterpret_cast<page_table *>((pml4 & ~0xfffull) + page_offset);
 	}
@@ -90,7 +92,7 @@ private:
 	/// \arg pml4  A pointer to the PML4 table to install.
 	static inline void set_pml4(page_table *pml4)
 	{
-		uint64_t p = reinterpret_cast<uint64_t>(pml4) - page_offset;
+		addr_t p = reinterpret_cast<addr_t>(pml4) - page_offset;
 		__asm__ __volatile__ ( "mov %0, %%cr3" :: "r" (p & ~0xfffull) );
 	}
 
@@ -108,9 +110,9 @@ private:
 	/// \arg count      The number of pages to map
 	void page_in(
 			page_table *pml4,
-			uint64_t phys_addr,
-			uint64_t virt_addr,
-			uint64_t count);
+			addr_t phys_addr,
+			addr_t virt_addr,
+			size_t count);
 
 	/// Low-level routine for unmapping a number of pages from the given page table.
 	/// \arg pml4       The root page table for this mapping
@@ -118,8 +120,8 @@ private:
 	/// \arg count      The number of pages to unmap
 	void page_out(
 			page_table *pml4,
-			uint64_t virt_addr,
-			uint64_t count);
+			addr_t virt_addr,
+			size_t count);
 
 	/// Get free pages from the free list. Only pages from the first free block
 	/// are returned, so the number may be less than requested, but they will
@@ -127,7 +129,7 @@ private:
 	/// \arg count    The maximum number of pages to get
 	/// \arg address  [out] The address of the first page
 	/// \returns      The number of pages retrieved
-	size_t pop_pages(size_t count, uint64_t *address);
+	size_t pop_pages(size_t count, addr_t *address);
 
 	page_block *m_free; ///< Free pages list
 	page_block *m_used; ///< In-use pages list
@@ -170,18 +172,20 @@ IS_BITFIELD(page_block_flags);
 /// linked list of such structures.
 struct page_block
 {
-	uint64_t physical_address;
-	uint64_t virtual_address;
+	using addr_t = page_manager::addr_t;
+
+	addr_t physical_address;
+	addr_t virtual_address;
 	uint32_t count;
 	page_block_flags flags;
 	page_block *next;
 
 	inline bool has_flag(page_block_flags f) const { return bitfield_contains(flags, f); }
-	inline uint64_t physical_end() const { return physical_address + (count * page_manager::page_size); }
-	inline uint64_t virtual_end() const { return virtual_address + (count * page_manager::page_size); }
+	inline addr_t physical_end() const { return physical_address + (count * page_manager::page_size); }
+	inline addr_t virtual_end() const { return virtual_address + (count * page_manager::page_size); }
 
-	inline bool contains(uint64_t vaddr) const { return vaddr >= virtual_address && vaddr < virtual_end(); }
-	inline bool contains_physical(uint64_t addr) const { return addr >= physical_address && addr < physical_end(); }
+	inline bool contains(addr_t vaddr) const { return vaddr >= virtual_address && vaddr < virtual_end(); }
+	inline bool contains_physical(addr_t addr) const { return addr >= physical_address && addr < physical_end(); }
 
 	/// Helper to zero out a block and optionally set the next pointer.
 	/// \arg next  [optional] The value for the `next` pointer
