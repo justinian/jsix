@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "assert.h"
 #include "console.h"
 #include "memory_pages.h"
@@ -214,7 +216,11 @@ page_manager::init(
 
 	consolidate_blocks();
 
-	//map_pages(0xf0000000 + high_offset, 120);
+	page_block::dump(m_used, "used before map", true);
+	page_block::dump(m_free, "free before map", true);
+	map_pages(0xf0000000 + high_offset, 120);
+	page_block::dump(m_used, "used after map", true);
+	page_block::dump(m_free, "free after map", true);
 
 }
 
@@ -256,13 +262,36 @@ page_manager::free_blocks(page_block *block)
 page_table *
 page_manager::get_table_page()
 {
-	free_page_header *page = m_page_cache;
-	if (page) {
-		m_page_cache = page->next;
-		return reinterpret_cast<page_table *>(page);
-	} else {
-		kassert(0, "NYI: page_manager::get_table_page() needed to allocate.");
+	if (!m_page_cache) {
+		uint64_t phys = 0;
+		uint64_t n = pop_pages(32, &phys);
+		uint64_t virt = phys + page_offset;
+
+		page_block *block = get_block();
+		block->physical_address = phys;
+		block->virtual_address = virt;
+		block->count = n;
+		page_block::insert(m_used, block);
+
+		page_in(get_pml4(), phys, virt, n);
+
+		m_page_cache = reinterpret_cast<free_page_header *>(virt);
+
+		// The last one needs to be null, so do n-1
+		uint64_t end = virt + (n-1) * page_size;
+		while (virt < end) {
+			reinterpret_cast<free_page_header *>(virt)->next =
+				reinterpret_cast<free_page_header *>(virt + page_size);
+			virt += page_size;
+		}
+		reinterpret_cast<free_page_header *>(virt)->next = nullptr;
+
+		g_console.printf("Mappd %d new page table pages at %lx\n", n, phys);
 	}
+
+	free_page_header *page = m_page_cache;
+	m_page_cache = page->next;
+	return reinterpret_cast<page_table *>(page);
 }
 
 void
@@ -288,7 +317,28 @@ page_manager::consolidate_blocks()
 void *
 page_manager::map_pages(uint64_t address, unsigned count)
 {
+	void *ret = reinterpret_cast<void *>(address);
 	page_table *pml4 = get_pml4();
+
+	while (count) {
+		kassert(m_free, "page_manager::map_pages ran out of free pages!");
+
+		uint64_t phys = 0;
+		size_t n = pop_pages(count, &phys);
+
+		page_block *block = get_block();
+		block->physical_address = phys;
+		block->virtual_address = address;
+		block->count = n;
+		page_block::insert(m_used, block);
+
+		page_in(pml4, phys, address, n);
+
+		address += n * page_size;
+		count -= n;
+	}
+
+	return ret;
 }
 
 void
@@ -423,6 +473,27 @@ page_manager::page_out(page_table *pml4, uint64_t virt_addr, uint64_t count)
 	}
 
 	kassert(0, "Ran to end of page_out");
+}
+
+size_t
+page_manager::pop_pages(size_t count, uint64_t *address)
+{
+	kassert(m_free, "page_manager::pop_pages ran out of free pages!");
+
+	unsigned n = std::min(count, static_cast<size_t>(m_free->count));
+	*address = m_free->physical_address;
+
+	m_free->physical_address += n * page_size;
+	m_free->count -= n;
+	if (m_free->count == 0) {
+		page_block *block = m_free;
+		m_free = m_free->next;
+
+		block->zero(m_block_cache);
+		m_block_cache = block;
+	}
+
+	return n;
 }
 
 

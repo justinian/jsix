@@ -121,6 +121,14 @@ private:
 			uint64_t virt_addr,
 			uint64_t count);
 
+	/// Get free pages from the free list. Only pages from the first free block
+	/// are returned, so the number may be less than requested, but they will
+	/// be contiguous. Pages will not be mapped into virtual memory.
+	/// \arg count    The maximum number of pages to get
+	/// \arg address  [out] The address of the first page
+	/// \returns      The number of pages retrieved
+	size_t pop_pages(size_t count, uint64_t *address);
+
 	page_block *m_free; ///< Free pages list
 	page_block *m_used; ///< In-use pages list
 
