@@ -243,7 +243,12 @@ gather_block_lists(
 			break;
 
 		case efi_memory_type::acpi_reclaim:
-			block->flags = page_block_flags::used | page_block_flags::acpi_wait;
+			block->flags =
+				page_block_flags::used |
+				page_block_flags::mapped |
+				page_block_flags::acpi_wait;
+
+			block->virtual_address = block->physical_address;
 			break;
 
 		case efi_memory_type::persistent:
@@ -441,9 +446,6 @@ memory_initialize_managers(const void *memory_map, size_t map_length, size_t des
 			free_next, memory_map, map_length, desc_length,
 			&free_head, &used_head);
 
-	page_block::dump(used_head, "original used", true);
-	page_block::dump(free_head, "original free", true);
-
 	// Unused page_block structs go here - finish out the current page with them
 	page_block *cache_head = fill_page_with_blocks(free_next);
 	free_next = page_align(free_next);
@@ -526,9 +528,6 @@ memory_initialize_managers(const void *memory_map, size_t map_length, size_t des
 	page_block::dump(used_head, "used", true);
 	page_block::dump(free_head, "free", true);
 
-	cons->printf("free_region_start: %lx [%3d]\n", free_region_start_virt, used_pages);
-
-	pml4->dump();
 	// Put our new PML4 into CR3 to start using it
 	page_manager::set_pml4(pml4);
 

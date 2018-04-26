@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "kutil/memory.h"
 #include "console.h"
 #include "device_manager.h"
 #include "font.h"
@@ -14,8 +15,6 @@ extern "C" {
 	void do_the_set_registers(popcorn_data *header);
 	void kernel_main(popcorn_data *header);
 }
-
-inline void * operator new (size_t, void *p) throw() { return p; }
 
 /*
 console

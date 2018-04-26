@@ -3,6 +3,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+
+inline void * operator new (size_t, void *p) throw() { return p; }
+
+
 namespace kutil {
 
 void * memset(void *p, uint8_t v, size_t n);

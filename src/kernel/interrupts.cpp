@@ -163,8 +163,12 @@ isr_handler(registers regs)
 
 	cons->puts("received ISR interrupt:\n");
 
+	uint64_t cr2 = 0;
+	__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
+
 	print_reg("ISR", regs.interrupt);
 	print_reg("ERR", regs.errorcode);
+	print_reg("CR2", cr2);
 	console::get()->puts("\n");
 
 	print_reg(" ds", regs.ds);

@@ -50,10 +50,10 @@ acpi_table_header::validate(uint32_t expected_type) const
 }
 
 device_manager::device_manager(const void *root_table) :
-	m_local_apic(nullptr)
+	m_local_apic(nullptr),
+	m_io_apic(nullptr),
+	m_global_interrupt_base(0)
 {
-	console *cons = console::get();
-
 	kassert(root_table != 0, "ACPI root table pointer is null.");
 
 	const acpi1_rsdp *acpi1 =
