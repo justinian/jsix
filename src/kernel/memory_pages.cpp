@@ -196,15 +196,15 @@ page_manager::init(
 
 	// Fix up the offset-marked pointers
 	for (unsigned i = 0; i < m_marked_pointer_count; ++i) {
-		addr_t p = reinterpret_cast<addr_t>(m_marked_pointers[i]);
-		addr_t v = p + page_offset;
+		addr_t *p = reinterpret_cast<addr_t *>(m_marked_pointers[i]);
+		addr_t v = *p + page_offset;
 		addr_t c = (m_marked_pointer_lengths[i] / page_size) + 1;
 
 		// TODO: cleanly search/split this as a block out of used/free if possible
 		page_block *block = get_block();
 
 		// TODO: page-align
-		block->physical_address = p;
+		block->physical_address = *p;
 		block->virtual_address = v;
 		block->count = c;
 		block->flags =
@@ -212,8 +212,11 @@ page_manager::init(
 			page_block_flags::mapped |
 			page_block_flags::mmio;
 
+		console::get()->printf("Fixing up pointer %lx [%3d] -> %lx\n", *p, c, v);
+
 		m_used = page_block::insert(m_used, block);
-		page_in(pml4, p, v, c);
+		page_in(pml4, *p, v, c);
+		*p = v;
 	}
 
 	consolidate_blocks();
