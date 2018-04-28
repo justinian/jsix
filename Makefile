@@ -61,7 +61,8 @@ CFLAGS         += -std=c11 -mcmodel=large
 
 CXXFLAGS       := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
 CXXFLAGS       += -DGIT_VERSION="\"$(VERSION)\""
-CXXFLAGS       += -std=c++14 -mcmodel=large -fno-rtti
+CXXFLAGS       += -std=c++14 -mcmodel=large
+CXXFLAGS       += -fno-exceptions -fno-rtti
 
 BOOT_CFLAGS    := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
 BOOT_CFLAGS    += -std=c11 -I src/boot -fPIC -fshort-wchar
@@ -112,9 +113,8 @@ OVMF           ?= assets/ovmf/x64/OVMF.fd
 
 QEMUOPTS       := -pflash $(BUILD_D)/flash.img
 QEMUOPTS       += -drive file=$(BUILD_D)/fs.img,format=raw
-QEMUOPTS       += -smp $(CPUS)
-QEMUOPTS       += -m 512
-QEMUOPTS       += -d guest_errors
+QEMUOPTS       += -smp $(CPUS) -m 512
+QEMUOPTS       += -d mmu,guest_errors,int -D popcorn.log 
 QEMUOPTS       += -no-reboot
 QEMUOPTS       += $(QEMUEXTRA)
 
@@ -139,10 +139,7 @@ vars:
 dist-clean: clean
 	make -C external/gnu-efi clean
 
-dump: $(BUILD_D)/kernel.dump
-	vim $<
-
-.PHONY: all clean dist-clean init dump vars
+.PHONY: all clean dist-clean init vars
 
 $(BUILD_D)/.version:
 	echo '$(VERSION)' | cmp -s - $@ || echo '$(VERSION)' > $@
@@ -187,9 +184,7 @@ $(BUILD_D)/boot/%.c.o: src/boot/%.c $(INIT_DEP)
 $(BUILD_D)/kernel.elf: $(KERN_OBJS) $(MOD_TARGETS) $(ARCH_D)/kernel.ld
 	$(LD) $(LDFLAGS) -u _header -T $(ARCH_D)/kernel.ld -o $@ $(KERN_OBJS) $(patsubst %,-l%,$(MODULES))
 	$(OBJC) --only-keep-debug $@ $@.sym
-
-$(BUILD_D)/kernel.dump: $(BUILD_D)/kernel.elf
-	$(OBJD) -D -S $< > $@
+	$(OBJD) -D -S $@ > $@.dump
 
 $(BUILD_D)/%.s.o: src/%.s $(BUILD_D)/versions.s $(INIT_DEP)
 	$(AS) $(ASFLAGS) -i $(ARCH_D)/ -i $(KERN_D)/ -o $@ $<
@@ -230,12 +225,15 @@ $(BUILD_D)/fs.iso: $(BUILD_D)/fs.img
 	xorriso -as mkisofs -R -f -e fs.img -no-emul-boot -o $@ $(BUILD_D)/iso
 
 qemu: $(BUILD_D)/fs.img $(BUILD_D)/flash.img
+	-rm popcorn.log
 	"$(QEMU)" $(QEMUOPTS) -nographic
 
 qemu-window: $(BUILD_D)/fs.img $(BUILD_D)/flash.img
+	-rm popcorn.log
 	"$(QEMU)" $(QEMUOPTS)
 
 qemu-gdb: $(BUILD_D)/fs.img $(BUILD_D)/boot.debug.efi $(BUILD_D)/flash.img $(BUILD_D)/kernel.elf
-	"$(QEMU)" $(QEMUOPTS) -d mmu,guest_errors,page -D popcorn.log -s -nographic
+	-rm popcorn.log
+	"$(QEMU)" $(QEMUOPTS) -s -nographic
 
 # vim: ft=make ts=4
