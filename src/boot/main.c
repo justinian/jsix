@@ -27,8 +27,6 @@ struct kernel_header {
 	uint8_t minor;
 	uint16_t patch;
 	uint32_t gitsha;
-
-	void *entrypoint;
 };
 #pragma pack(pop)
 
@@ -77,8 +75,6 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 
 	// Load the kernel image from disk and check it
 	//
-	void *kernel_image = NULL, *kernel_data = NULL;
-	uint64_t kernel_length = 0;
 	con_printf(L"Loading kernel into memory...\r\n");
 
 	struct loader_data load;
@@ -89,7 +85,6 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	con_printf(L"    %u image bytes at 0x%x\r\n", load.kernel_length, load.kernel);
 	con_printf(L"    %u font bytes at 0x%x\r\n", load.font_length, load.font);
 	con_printf(L"    %u data bytes at 0x%x\r\n", load.data_length, load.data);
-	con_printf(L"    %u log bytes at 0x%x\r\n", load.log_length, load.log);
 
 	struct kernel_header *version = (struct kernel_header *)load.kernel;
 	if (version->magic != KERNEL_HEADER_MAGIC) {
@@ -100,9 +95,9 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	con_printf(L"    Kernel version %d.%d.%d %x%s\r\n",
 			version->major, version->minor, version->patch, version->gitsha & 0x0fffffff,
 			version->gitsha & 0xf0000000 ? "*" : "");
-	con_printf(L"    Entrypoint 0x%x\r\n", version->entrypoint);
+	con_printf(L"    Entrypoint 0x%x\r\n", load.kernel_entry);
 
-	void (*kernel_main)() = version->entrypoint;
+	void (*kernel_main)() = load.kernel_entry;
 	memory_mark_pointer_fixup((void **)&kernel_main);
 
 	// Set up the kernel data pages to pass to the kernel
@@ -123,10 +118,6 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	data_header->data = load.data;
 	data_header->data_length = load.data_length;
 	memory_mark_pointer_fixup((void **)&data_header->data);
-
-	data_header->log = load.log;
-	data_header->log_length = load.log_length;
-	memory_mark_pointer_fixup((void **)&data_header->log);
 
 	data_header->memory_map = (EFI_MEMORY_DESCRIPTOR *)(data_header + 1);
 	memory_mark_pointer_fixup((void **)&data_header->memory_map);

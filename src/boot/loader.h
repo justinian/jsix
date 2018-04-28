@@ -28,20 +28,12 @@
 #define KERNEL_DATA_MEMTYPE 0x80000002
 #endif
 
-#ifndef KERNEL_LOG_MEMTYPE
-#define KERNEL_LOG_MEMTYPE 0x80000003
-#endif
-
-#ifndef KERNEL_LOG_PAGES
-#define KERNEL_LOG_PAGES 4
-#endif
-
 #ifndef KERNEL_PT_MEMTYPE
 #define KERNEL_PT_MEMTYPE 0x80000004
 #endif
 
 #ifndef KERNEL_FILENAME
-#define KERNEL_FILENAME L"kernel.bin"
+#define KERNEL_FILENAME L"kernel.elf"
 #endif
 
 #ifndef KERNEL_FONT
@@ -50,6 +42,7 @@
 
 struct loader_data {
 	void *kernel;
+	void *kernel_entry;
 	size_t kernel_length;
 
 	void *font;
@@ -57,9 +50,6 @@ struct loader_data {
 
 	void *data;
 	size_t data_length;
-
-	void *log;
-	size_t log_length;
 };
 
 EFI_STATUS loader_load_kernel(EFI_BOOT_SERVICES *bootsvc, struct loader_data *data);

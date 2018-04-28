@@ -192,7 +192,6 @@ memory_virtualize(EFI_RUNTIME_SERVICES *runsvc, struct memory_map *map)
 		case KERNEL_MEMTYPE:
 		case KERNEL_FONT_MEMTYPE:
 		case KERNEL_DATA_MEMTYPE:
-		case KERNEL_LOG_MEMTYPE:
 			d->Attribute |= EFI_MEMORY_RUNTIME;
 
 		default:

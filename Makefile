@@ -8,7 +8,7 @@ ARCH_D         := src/arch/$(ARCH)
 VERSION        ?= $(shell git describe --dirty --always)
 GITSHA         ?= $(shell git rev-parse --short HEAD)
 
-KERNEL_FILENAME:= popcorn.bin
+KERNEL_FILENAME:= popcorn.elf
 KERNEL_FONT    := assets/fonts/tamsyn8x16r.psf
 
 MODULES        := kutil
@@ -169,9 +169,6 @@ $(BUILD_D)/boot.debug.efi: $(BUILD_D)/boot.elf
 	-j .debug_aranges -j .debug_line -j .debug_macinfo \
 	--target=efi-app-$(ARCH) $^ $@
 
-$(BUILD_D)/%.bin: $(BUILD_D)/%.elf
-	$(OBJC) $< -O binary $@
-
 $(BUILD_D)/boot.dump: $(BUILD_D)/boot.efi
 	$(OBJD) -D -S $< > $@
 
@@ -201,7 +198,7 @@ $(BUILD_D)/flash.img: $(OVMF)
 $(BUILD_D)/screenfont.psf: $(KERNEL_FONT)
 	cp $^ $@
 
-$(BUILD_D)/fs.img: $(BUILD_D)/boot.efi $(BUILD_D)/kernel.bin $(BUILD_D)/screenfont.psf
+$(BUILD_D)/fs.img: $(BUILD_D)/boot.efi $(BUILD_D)/kernel.elf $(BUILD_D)/screenfont.psf
 	$(eval TEMPFILE := $(shell mktemp --suffix=.img))
 	dd if=/dev/zero of=$@.tmp bs=512 count=93750
 	$(PARTED) $@.tmp -s -a minimal mklabel gpt
@@ -212,7 +209,7 @@ $(BUILD_D)/fs.img: $(BUILD_D)/boot.efi $(BUILD_D)/kernel.bin $(BUILD_D)/screenfo
 	mmd -i $(TEMPFILE) ::/EFI
 	mmd -i $(TEMPFILE) ::/EFI/BOOT
 	mcopy -i $(TEMPFILE) $(BUILD_D)/boot.efi ::/EFI/BOOT/BOOTX64.efi
-	mcopy -i $(TEMPFILE) $(BUILD_D)/kernel.bin ::$(KERNEL_FILENAME)
+	mcopy -i $(TEMPFILE) $(BUILD_D)/kernel.elf ::$(KERNEL_FILENAME)
 	mcopy -i $(TEMPFILE) $(BUILD_D)/screenfont.psf ::screenfont.psf
 	mlabel -i $(TEMPFILE) ::Popcorn_OS
 	dd if=$(TEMPFILE) of=$@.tmp bs=512 count=91669 seek=2048 conv=notrunc

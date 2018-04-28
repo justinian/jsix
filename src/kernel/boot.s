@@ -6,12 +6,11 @@ global _header
 _header:
 	dd MAGIC			; Kernel header magic
 	dw 1				; Header version 1
-	dw 1				; Kernel header length
+	dw 16				; Kernel header length
 	db VERSION_MAJOR	; Kernel version
 	db VERSION_MINOR
 	dw VERSION_PATCH
 	dd VERSION_GITSHA
-	dq _start			; Kernel entrypoint
 
 section .text
 align 16

@@ -22,9 +22,6 @@ struct popcorn_data {
 	void *data;
 	size_t data_length;
 
-	void *log;
-	size_t log_length;
-
 	void *memory_map;
 	size_t memory_map_length;
 	size_t memory_map_desc_size;
