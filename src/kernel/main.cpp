@@ -54,6 +54,10 @@ kernel_main(popcorn_data *header)
 			header->memory_map_length,
 			header->memory_map_desc_size);
 
+	size_t n = 5000;
+	void *p = kalloc(n);
+	g_console.printf("kalloc'd %d bytes at %lx\n", n, p);
+
 	interrupts_init();
 	interrupts_enable();
 

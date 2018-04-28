@@ -2,6 +2,7 @@
 
 #include "assert.h"
 #include "console.h"
+#include "memory.h"
 #include "memory_pages.h"
 
 page_manager g_page_manager;
@@ -224,6 +225,18 @@ page_manager::init(
 	page_block::dump(m_used, "used", true);
 	page_block::dump(m_free, "free", true);
 
+	// Initialize the kernel memory manager
+	addr_t end = 0;
+	for (page_block *b = m_used; b; b = b->next) {
+		if (b->virtual_address < page_offset)
+			end = b->virtual_end();
+		else
+			break;
+
+	}
+	new (&g_kernel_memory_manager) memory_manager(
+			reinterpret_cast<void *>(end),
+			page_offset - end);
 }
 
 void
