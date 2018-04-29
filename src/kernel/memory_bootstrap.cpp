@@ -1,6 +1,5 @@
 #include "kutil/memory.h"
 #include "assert.h"
-#include "console.h"
 #include "memory.h"
 #include "memory_pages.h"
 
@@ -410,8 +409,6 @@ page_in_ident(
 void
 memory_initialize_managers(const void *memory_map, size_t map_length, size_t desc_length)
 {
-	console *cons = console::get();
-
 	// The bootloader reserved 16 pages for page tables, which we'll use to bootstrap.
 	// The first one is the already-installed PML4, so grab it from CR3.
 	uint64_t cr3;
@@ -524,9 +521,6 @@ memory_initialize_managers(const void *memory_map, size_t map_length, size_t des
 		if (!cur->has_flag(page_block_flags::mapped)) continue;
 		pm->page_in(pml4, cur->physical_address, cur->virtual_address, cur->count);
 	}
-
-	page_block::dump(used_head, "used", true);
-	page_block::dump(free_head, "free", true);
 
 	// Put our new PML4 into CR3 to start using it
 	page_manager::set_pml4(pml4);

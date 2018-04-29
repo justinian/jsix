@@ -1,5 +1,4 @@
 #include "assert.h"
-#include "console.h"
 #include "memory.h"
 #include "memory_pages.h"
 

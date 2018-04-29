@@ -5,7 +5,7 @@
 #include "acpi_tables.h"
 #include "assert.h"
 #include "device_manager.h"
-#include "console.h"
+#include "log.h"
 
 static const char expected_signature[] = "RSD PTR ";
 
@@ -78,12 +78,9 @@ device_manager::device_manager(const void *root_table) :
 }
 
 static void
-put_sig(console *cons, uint32_t type)
+put_sig(char *into, uint32_t type)
 {
-	char sig[5] = {0,0,0,0,0};
-	for (int j=0; j<4; ++j)
-		sig[j] = reinterpret_cast<char *>(&type)[j];
-	cons->puts(sig);
+	for (int j=0; j<4; ++j) into[j] = reinterpret_cast<char *>(&type)[j];
 }
 
 void
@@ -91,16 +88,18 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 {
 	kassert(xsdt && acpi_validate(xsdt), "Invalid ACPI XSDT.");
 
-	console *cons = console::get();
-	cons->puts("ACPI 2.0 tables loading: ");
-	put_sig(cons, xsdt->header.type);
+	char sig[5] = {0,0,0,0,0};
+	log::info(logs::devices, "ACPI 2.0 tables loading:");
+
+	put_sig(sig, xsdt->header.type);
+	log::info(logs::devices, "  Found table %s", sig);
 
 	size_t num_tables = acpi_table_entries(xsdt, sizeof(void*));
 	for (size_t i = 0; i < num_tables; ++i) {
 		const acpi_table_header *header = xsdt->headers[i];
 
-		cons->puts(" ");
-		put_sig(cons, header->type);
+		put_sig(sig, header->type);
+		log::info(logs::devices, "  Found table %s", sig);
 
 		kassert(header->validate(), "Table failed validation.");
 
@@ -113,19 +112,13 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 			break;
 		}
 	}
-
-	cons->puts("\n");
 }
 
 void
 device_manager::load_apic(const acpi_apic *apic)
 {
-	console *cons = console::get();
-
 	m_local_apic = reinterpret_cast<uint32_t *>(apic->local_address);
-	cons->puts(" ");
-	cons->put_hex(apic->local_address);
-
+	log::info(logs::devices, "    APIC local address %lx", apic->local_address);
 
 	uint8_t const *p = apic->controller_data;
 	uint8_t const *end = p + acpi_table_entries(apic, 1);
@@ -134,8 +127,7 @@ device_manager::load_apic(const acpi_apic *apic)
 		const uint8_t type = p[0];
 		const uint8_t length = p[1];
 
-		cons->puts(" ");
-		cons->put_hex(type);
+		log::debug(logs::devices, "    APIC entry type %d", type);
 
 		switch (type) {
 		case 0: // Local APIC
@@ -144,10 +136,8 @@ device_manager::load_apic(const acpi_apic *apic)
 		case 1: // I/O APIC
 			m_io_apic = reinterpret_cast<uint32_t *>(kutil::read_from<uint32_t>(p+4));
 			m_global_interrupt_base = kutil::read_from<uint32_t>(p+8);
-			cons->puts(" ");
-			cons->put_hex((uint64_t)m_io_apic);
-			cons->puts(" ");
-			cons->put_hex(m_global_interrupt_base);
+			log::info(logs::devices, "    IO APIC address %lx base %d",
+					m_io_apic, m_global_interrupt_base);
 			break;
 		}
 

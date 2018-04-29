@@ -4,6 +4,7 @@
 #include "kutil/memory.h"
 #include "console.h"
 #include "interrupts.h"
+#include "log.h"
 
 enum class gdt_flags : uint8_t
 {
@@ -141,6 +142,9 @@ interrupts_init()
 #undef ISR
 
 	idt_write();
+	log::info(logs::interrupt, "Interrupts enabled.");
+	gdt_dump(g_gdtr);
+	idt_dump(g_idtr);
 }
 
 struct registers
@@ -151,17 +155,16 @@ struct registers
 	uint64_t rip, cs, eflags, user_esp, ss;
 };
 
-#define print_reg(name, value) \
-	cons->puts("         " name ": "); \
-	cons->put_hex((value)); \
-	cons->puts("\n");
+#define print_reg(name, value) cons->printf("         %s: %lx\n", name, (value));
 
 void
 isr_handler(registers regs)
 {
 	console *cons = console::get();
 
-	cons->puts("received ISR interrupt:\n");
+	cons->set_color(9);
+	cons->puts("\nReceived ISR interrupt:\n");
+	cons->set_color();
 
 	uint64_t cr2 = 0;
 	__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
@@ -169,7 +172,7 @@ isr_handler(registers regs)
 	print_reg("ISR", regs.interrupt);
 	print_reg("ERR", regs.errorcode);
 	print_reg("CR2", cr2);
-	console::get()->puts("\n");
+	cons->puts("\n");
 
 	print_reg(" ds", regs.ds);
 	print_reg("rdi", regs.rdi);
@@ -180,7 +183,7 @@ isr_handler(registers regs)
 	print_reg("rdx", regs.rdx);
 	print_reg("rcx", regs.rcx);
 	print_reg("rax", regs.rax);
-	console::get()->puts("\n");
+	cons->puts("\n");
 
 	print_reg("rip", regs.rip);
 	print_reg(" cs", regs.cs);
@@ -195,11 +198,13 @@ irq_handler(registers regs)
 {
 	console *cons = console::get();
 
-	cons->puts("received IRQ interrupt:\n");
+	cons->set_color(9);
+	cons->puts("\nReceived IRQ interrupt:\n");
+	cons->set_color();
 
 	print_reg("ISR", regs.interrupt);
 	print_reg("ERR", regs.errorcode);
-	console::get()->puts("\n");
+	cons->puts("\n");
 
 	print_reg(" ds", regs.ds);
 	print_reg("rdi", regs.rdi);
@@ -210,7 +215,7 @@ irq_handler(registers regs)
 	print_reg("rdx", regs.rdx);
 	print_reg("rcx", regs.rcx);
 	print_reg("rax", regs.rax);
-	console::get()->puts("\n");
+	cons->puts("\n");
 
 	print_reg("rip", regs.rip);
 	print_reg(" cs", regs.cs);
@@ -224,17 +229,12 @@ irq_handler(registers regs)
 void
 gdt_dump(const table_ptr &table)
 {
-	console *cons = console::get();
-
-	cons->puts("Loaded GDT at: ");
-	cons->put_hex(table.base);
-	cons->puts(" size: ");
-	cons->put_dec(table.limit + 1);
-	cons->puts(" bytes\n");
+	log::info(logs::interrupt, "Loaded GDT at: %lx size: %d bytes", table.base, table.limit+1);
 
 	int count = (table.limit + 1) / sizeof(gdt_descriptor);
 	const gdt_descriptor *gdt =
 		reinterpret_cast<const gdt_descriptor *>(table.base);
+
 	for (int i = 0; i < count; ++i) {
 		uint32_t base =
 			(gdt[i].base_high << 24) |
@@ -245,113 +245,58 @@ gdt_dump(const table_ptr &table)
 			static_cast<uint32_t>(gdt[i].granularity & 0x0f) << 16 |
 			gdt[i].limit_low;
 
-		cons->puts("   Entry ");
-		cons->put_dec(i);
-
-		cons->puts(": Base ");
-		cons->put_hex(base);
-
-		cons->puts("  Limit ");
-		cons->put_hex(limit);
-
-		cons->puts("  Privs ");
-		cons->put_dec((gdt[i].flags >> 5) & 0x03);
-
-		cons->puts("  Flags ");
-
 		if (gdt[i].flags & 0x80) {
-			cons->puts("P ");
+			log::debug(logs::interrupt,
+					"   Entry %3d: Base %x  limit %x  privs %d  flags %s%s%s%s%s%s",
+					i, base, limit, ((gdt[i].flags >> 5) & 0x03),
 
-			if (gdt[i].flags & 0x08)
-				cons->puts("EX ");
-			else
-				cons->puts("   ");
+					(gdt[i].flags & 0x80) ? "P " : "  ",
+					(gdt[i].flags & 0x08) ? "ex " : "   ",
+					(gdt[i].flags & 0x04) ? "dc " : "   ",
+					(gdt[i].flags & 0x02) ? "rw " : "   ",
 
-			if (gdt[i].flags & 0x04)
-				cons->puts("DC ");
-			else
-				cons->puts("   ");
-
-			if (gdt[i].flags & 0x02)
-				cons->puts("RW ");
-			else
-				cons->puts("   ");
-
-			if (gdt[i].granularity & 0x80)
-				cons->puts("KB ");
-			else
-				cons->puts(" B ");
-
-			if ((gdt[i].granularity & 0x60) == 0x20)
-				cons->puts("64");
-			else if ((gdt[i].granularity & 0x60) == 0x40)
-				cons->puts("32");
-			else
-				cons->puts("16");
+					(gdt[i].granularity & 0x80) ? "kb " : "b  ",
+					(gdt[i].granularity & 0x60) == 0x60 ? "64" :
+						(gdt[i].granularity & 0x60) == 0x40 ? "32" : "16"
+					);
 		}
-
-		cons->puts("\n");
 	}
 }
 
 void
 idt_dump(const table_ptr &table)
 {
-	console *cons = console::get();
-
-	cons->puts("Loaded IDT at: ");
-	cons->put_hex(table.base);
-	cons->puts(" size: ");
-	cons->put_dec(table.limit + 1);
-	cons->puts(" bytes\n");
+	log::info(logs::interrupt, "Loaded IDT at: %lx size: %d bytes", table.base, table.limit+1);
 
 	int count = (table.limit + 1) / sizeof(idt_descriptor);
 	const idt_descriptor *idt =
 		reinterpret_cast<const idt_descriptor *>(table.base);
 
-	if (count > 32) count = 32;
 	for (int i = 0; i < count; ++i) {
 		uint64_t base =
 			(static_cast<uint64_t>(idt[i].base_high) << 32) |
 			(static_cast<uint64_t>(idt[i].base_mid)  << 16) |
 			idt[i].base_low;
 
-		cons->puts("   Entry ");
-		cons->put_dec(i);
-
-		cons->puts(": Base ");
-		cons->put_hex(base);
-
-		cons->puts("  Sel(");
-		cons->put_dec(idt[i].selector & 0x3);
-		cons->puts(",");
-		cons->put_dec((idt[i].selector & 0x4) >> 2);
-		cons->puts(",");
-		cons->put_dec(idt[i].selector >> 3);
-		cons->puts(") ");
-
-		cons->puts("IST ");
-		cons->put_dec(idt[i].ist);
-
+		char const *type;
 		switch (idt[i].flags & 0xf) {
-			case 0x5: cons->puts(" 32tsk "); break;
-			case 0x6: cons->puts(" 16int "); break;
-			case 0x7: cons->puts(" 16trp "); break;
-			case 0xe: cons->puts(" 32int "); break;
-			case 0xf: cons->puts(" 32trp "); break;
-			default:
-				cons->puts("   ?");
-				cons->put_hex(idt[i].flags & 0xf);
-				cons->puts(" ");
-				break;
+			case 0x5: type = " 32tsk "; break;
+			case 0x6: type = " 16int "; break;
+			case 0x7: type = " 16trp "; break;
+			case 0xe: type = " 32int "; break;
+			case 0xf: type = " 32trp "; break;
+			default:  type = " ????? "; break;
 		}
 
-		cons->puts("DPL ");
-		cons->put_dec((idt[i].flags >> 5) & 0x3);
-
-		if (idt[i].flags & 0x80)
-			cons->puts(" P");
-
-		cons->puts("\n");
+		if (idt[i].flags & 0x80) {
+			log::debug(logs::interrupt,
+					"   Entry %3d: Base:%lx Sel(rpl %d, ti %d, %3d) IST:%d %s DPL:%d", i, base,
+					(idt[i].selector & 0x3),
+					((idt[i].selector & 0x4) >> 2),
+					(idt[i].selector >> 3),
+					idt[i].ist,
+					type,
+					((idt[i].flags >> 5) & 0x3));
+		}
 	}
 }

@@ -1,7 +1,7 @@
 #include <algorithm>
 
 #include "assert.h"
-#include "console.h"
+#include "log.h"
 #include "memory.h"
 #include "memory_pages.h"
 
@@ -119,8 +119,7 @@ page_block::consolidate(page_block *list)
 void
 page_block::dump(page_block *list, const char *name, bool show_unmapped)
 {
-	console *cons = console::get();
-	cons->printf("Block list %s:\n", name);
+	log::debug(logs::memory, "Block list %s:", name);
 
 	int count = 0;
 	for (page_block *cur = list; cur; cur = cur->next) {
@@ -128,25 +127,24 @@ page_block::dump(page_block *list, const char *name, bool show_unmapped)
 		if (!(show_unmapped || cur->has_flag(page_block_flags::mapped)))
 			continue;
 
-		cons->printf("  %lx %x [%6d]",
-				cur->physical_address,
-				cur->flags,
-				cur->count);
-
 		if (cur->virtual_address) {
 			page_table_indices start{cur->virtual_address};
-			page_table_indices end{cur->virtual_address + cur->count * page_manager::page_size - 1};
-			cons->printf(" %lx (%d,%d,%d,%d)-(%d,%d,%d,%d)",
+			log::debug(logs::memory, "  %lx %x [%6d] %lx (%d,%d,%d,%d)",
+					cur->physical_address,
+					cur->flags,
+					cur->count,
 					cur->virtual_address,
-					start[0], start[1], start[2], start[3],
-					end[0], end[1], end[2], end[3]);
+					start[0], start[1], start[2], start[3]);
+		} else {
+			page_table_indices start{cur->virtual_address};
+			log::debug(logs::memory, "  %lx %x [%6d]",
+					cur->physical_address,
+					cur->flags,
+					cur->count);
 		}
-
-		cons->printf("\n");
-
 	}
 
-	cons->printf("  Total: %d\n", count);
+	log::debug(logs::memory, "  Total: %d", count);
 }
 
 void
@@ -213,7 +211,7 @@ page_manager::init(
 			page_block_flags::mapped |
 			page_block_flags::mmio;
 
-		console::get()->printf("Fixing up pointer %lx [%3d] -> %lx\n", *p, c, v);
+		log::info(logs::memory, "Fixing up pointer %lx [%3d] -> %lx", *p, c, v);
 
 		m_used = page_block::insert(m_used, block);
 		page_in(pml4, *p, v, c);
@@ -301,7 +299,7 @@ page_manager::get_table_page()
 		}
 		reinterpret_cast<free_page_header *>(virt)->next = nullptr;
 
-		g_console.printf("Mappd %d new page table pages at %lx\n", n, phys);
+		log::info(logs::memory, "Mappd %d new page table pages at %lx", n, phys);
 	}
 
 	free_page_header *page = m_page_cache;
@@ -515,29 +513,29 @@ page_manager::pop_pages(size_t count, addr_t *address)
 void
 page_table::dump(int level, uint64_t offset)
 {
-	console *cons = console::get();
-	cons->printf("Level %d page table @ %lx (off %lx):\n", level, this, offset);
+	log::info(logs::memory, "Level %d page table @ %lx (off %lx):", level, this, offset);
 	for (int i=0; i<512; ++i) {
 		uint64_t ent = entries[i];
 		if (ent == 0) continue;
 
-		cons->printf("  %3d: %lx ", i, ent);
 		if (ent & 0x1 == 0) {
-			cons->printf("  NOT PRESENT\n");
+			log::info(logs::memory, "  %3d: %lx   NOT PRESENT", i, ent);
 			continue;
 		}
 
 		if ((level == 2 || level == 3) && (ent & 0x80) == 0x80) {
-			cons->printf("  -> Large page at %lx\n", ent & ~0xfffull);
+			log::info(logs::memory, "  %3d: %lx   -> Large page at     %lx",
+					i, ent, ent & ~0xfffull);
 			continue;
 		} else if (level == 1) {
-			cons->printf("  -> Page at %lx\n", (ent & ~0xfffull));
+			log::info(logs::memory, "  %3d: %lx   -> Page at           %lx",
+					i, ent, ent & ~0xfffull);
 		} else {
-			cons->printf("  -> Level %d table at %lx\n", level - 1, (ent & ~0xfffull) + offset);
+			log::info(logs::memory, "  %3d: %lx   -> Level %d table at %lx",
+					i, ent, level - 1, (ent & ~0xfffull) + offset);
 			continue;
 		}
 	}
-	cons->printf("\n");
 
 	if (--level > 0) {
 		for (int i=0; i<512; ++i) {

@@ -1,4 +1,5 @@
 #pragma once
+#include <stdarg.h>
 
 #include "kutil/coord.h"
 #include "font.h"
@@ -11,10 +12,18 @@ class console
 public:
 	console();
 
-	void set_color(uint8_t fg, uint8_t bg);
+	void set_color(uint8_t fg = 7, uint8_t bg = 0);
 
 	void puts(const char *message);
-	void printf(const char *fmt, ...);
+	void vprintf(const char *fmt, va_list args);
+
+	inline void printf(const char *fmt, ...)
+	{
+		va_list args;
+		va_start(args, fmt);
+		vprintf(fmt, args);
+		va_end(args);
+	}
 
 	template <typename T>
 	void put_hex(T x, int width = 0);

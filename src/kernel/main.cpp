@@ -7,6 +7,7 @@
 #include "font.h"
 #include "interrupts.h"
 #include "kernel_data.h"
+#include "log.h"
 #include "memory.h"
 #include "memory_pages.h"
 #include "screen.h"
@@ -32,11 +33,6 @@ load_console(const popcorn_data *header)
 		header->log,
 		header->log_length};
 
-	cons.set_color(0x21, 0x00);
-	cons.puts("Popcorn OS ");
-	cons.set_color(0x08, 0x00);
-	cons.puts(GIT_VERSION " booting...\n");
-
 	return cons;
 }
 */
@@ -45,6 +41,12 @@ void
 kernel_main(popcorn_data *header)
 {
 	console *cons = new (&g_console) console();
+	cons->set_color(0x21, 0x00);
+	cons->puts("Popcorn OS ");
+	cons->set_color(0x08, 0x00);
+	cons->puts(GIT_VERSION " booting...\n");
+
+	log::init(cons);
 
 	page_manager *pager = new (&g_page_manager) page_manager;
 	pager->mark_offset_pointer(&header->frame_buffer, header->frame_buffer_length);
@@ -56,12 +58,10 @@ kernel_main(popcorn_data *header)
 
 	size_t n = 5000;
 	void *p = kalloc(n);
-	g_console.printf("kalloc'd %d bytes at %lx\n", n, p);
+	log::info(logs::memory, "kalloc'd %d bytes at %lx", n, p);
 
 	interrupts_init();
 	interrupts_enable();
-
-	g_console.puts("Interrupts initialized.\n");
 
 	device_manager devices(header->acpi_table);
 

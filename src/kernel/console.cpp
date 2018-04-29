@@ -1,4 +1,3 @@
-#include <stdarg.h>
 #include "console.h"
 #include "io.h"
 
@@ -229,6 +228,9 @@ serial_write(char c) {
 console::console() :
 	m_screen(nullptr)
 {
+	const char *fgseq = "\x1b[2J";
+	while (*fgseq)
+		serial_write(*fgseq++);
 }
 
 void
@@ -236,6 +238,22 @@ console::set_color(uint8_t fg, uint8_t bg)
 {
 	if (m_screen)
 		m_screen->set_color(fg, bg);
+
+	const char *fgseq = "\x1b[38;5;";
+	while (*fgseq)
+		serial_write(*fgseq++);
+	if (fg >= 100) serial_write('0' + (fg/100));
+	if (fg >=  10) serial_write('0' + (fg/10) % 10);
+	serial_write('0' + fg % 10);
+	serial_write('m');
+
+	const char *bgseq = "\x1b[48;5;";
+	while (*bgseq)
+		serial_write(*bgseq++);
+	if (bg >= 100) serial_write('0' + (bg/100));
+	if (bg >=  10) serial_write('0' + (bg/10) % 10);
+	serial_write('0' + bg % 10);
+	serial_write('m');
 }
 
 void
@@ -250,7 +268,7 @@ console::puts(const char *message)
 	}
 }
 
-void console::printf(const char *fmt, ...)
+void console::vprintf(const char *fmt, va_list args)
 {
 	static const unsigned buf_size = 256;
 	char buffer[256];
@@ -258,9 +276,6 @@ void console::printf(const char *fmt, ...)
 	const char *r = fmt;
 	char *w = buffer;
 	char *wend = buffer + buf_size;
-
-	va_list args;
-	va_start(args, fmt);
 
 #define flush() do { *w = 0; puts(buffer); w = buffer; } while(0)
 
@@ -330,5 +345,4 @@ void console::printf(const char *fmt, ...)
 	}
 
 	flush();
-	va_end(args);
 }
