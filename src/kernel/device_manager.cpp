@@ -127,8 +127,6 @@ device_manager::load_apic(const acpi_apic *apic)
 		const uint8_t type = p[0];
 		const uint8_t length = p[1];
 
-		log::debug(logs::devices, "    APIC entry type %d", type);
-
 		switch (type) {
 		case 0: // Local APIC
 			break;
@@ -139,6 +137,25 @@ device_manager::load_apic(const acpi_apic *apic)
 			log::info(logs::devices, "    IO APIC address %lx base %d",
 					m_io_apic, m_global_interrupt_base);
 			break;
+
+		case 2: // Interrupt source override
+			log::info(logs::devices, "    Intr source override IRQ %d -> %d Pol %d Tri %d",
+					kutil::read_from<uint8_t>(p+3),
+					kutil::read_from<uint32_t>(p+4),
+					kutil::read_from<uint16_t>(p+8) & 0x3,
+					(kutil::read_from<uint16_t>(p+8) >> 2) & 0x3);
+			break;
+
+		case 4: // Interrupt source override
+			log::info(logs::devices, "    LAPIC NMI Proc %d LINT%d Pol %d Tri %d",
+					kutil::read_from<uint8_t>(p+2),
+					kutil::read_from<uint8_t>(p+5),
+					kutil::read_from<uint16_t>(p+3) & 0x3,
+					(kutil::read_from<uint16_t>(p+3) >> 2) & 0x3);
+			break;
+
+		default:
+			log::debug(logs::devices, "    APIC entry type %d", type);
 		}
 
 		p += length;
