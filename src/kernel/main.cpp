@@ -3,6 +3,7 @@
 
 #include "kutil/memory.h"
 #include "console.h"
+#include "cpu.h"
 #include "device_manager.h"
 #include "font.h"
 #include "interrupts.h"
@@ -47,6 +48,18 @@ kernel_main(popcorn_data *header)
 	cons->puts(GIT_VERSION " booting...\n");
 
 	log::init(cons);
+
+	cpu_id cpu;
+
+	log::info(logs::boot, "CPU Vendor: %s", cpu.vendor_id());
+	log::info(logs::boot, "CPU Family %x Model %x Stepping %x",
+			cpu.family(), cpu.model(), cpu.stepping());
+
+	cpu_id::regs cpu_info = cpu.get(1);
+	log::info(logs::boot, "LAPIC Supported: %s",
+			cpu_info.edx_bit(9) ? "yes" : "no");
+	log::info(logs::boot, "x2APIC Supported: %s",
+			cpu_info.ecx_bit(21) ? "yes" : "no");
 
 	page_manager *pager = new (&g_page_manager) page_manager;
 	pager->mark_offset_pointer(&header->frame_buffer, header->frame_buffer_length);

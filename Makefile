@@ -116,6 +116,7 @@ QEMUOPTS       += -drive file=$(BUILD_D)/fs.img,format=raw
 QEMUOPTS       += -smp $(CPUS) -m 512
 QEMUOPTS       += -d mmu,guest_errors,int -D popcorn.log 
 QEMUOPTS       += -no-reboot
+QEMUOPTS       += -cpu Broadwell
 QEMUOPTS       += $(QEMUEXTRA)
 
 
