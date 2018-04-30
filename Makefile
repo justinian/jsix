@@ -111,8 +111,8 @@ GDBPORT        ?= 27006
 CPUS           ?= 1
 OVMF           ?= assets/ovmf/x64/OVMF.fd 
 
-QEMUOPTS       := -pflash $(BUILD_D)/flash.img
-QEMUOPTS       += -drive file=$(BUILD_D)/fs.img,format=raw
+QEMUOPTS       := -drive if=pflash,format=raw,file=$(BUILD_D)/flash.img
+QEMUOPTS       += -drive if=floppy,format=raw,file=$(BUILD_D)/floppy.img
 QEMUOPTS       += -smp $(CPUS) -m 512
 QEMUOPTS       += -d mmu,guest_errors,int -D popcorn.log 
 QEMUOPTS       += -no-reboot
@@ -120,7 +120,7 @@ QEMUOPTS       += -cpu Broadwell
 QEMUOPTS       += $(QEMUEXTRA)
 
 
-all: $(BUILD_D)/fs.img
+all: $(BUILD_D)/floppy.img
 init: $(INIT_DEP)
 
 $(INIT_DEP):
@@ -222,15 +222,21 @@ $(BUILD_D)/fs.iso: $(BUILD_D)/fs.img
 	cp $< $(BUILD_D)/iso/
 	xorriso -as mkisofs -R -f -e fs.img -no-emul-boot -o $@ $(BUILD_D)/iso
 
-qemu: $(BUILD_D)/fs.img $(BUILD_D)/flash.img
+$(BUILD_D)/floppy.img: $(BUILD_D)/boot.efi $(BUILD_D)/kernel.elf $(BUILD_D)/screenfont.psf
+	cp assets/floppy.img $@
+	mcopy -i $@ $(BUILD_D)/boot.efi ::/EFI/BOOT/BOOTX64.efi
+	mcopy -i $@ $(BUILD_D)/kernel.elf ::$(KERNEL_FILENAME)
+	mcopy -i $@ $(BUILD_D)/screenfont.psf ::screenfont.psf
+
+qemu: $(BUILD_D)/floppy.img $(BUILD_D)/flash.img
 	-rm popcorn.log
 	"$(QEMU)" $(QEMUOPTS) -nographic
 
-qemu-window: $(BUILD_D)/fs.img $(BUILD_D)/flash.img
+qemu-window: $(BUILD_D)/floppy.img $(BUILD_D)/flash.img
 	-rm popcorn.log
 	"$(QEMU)" $(QEMUOPTS)
 
-qemu-gdb: $(BUILD_D)/fs.img $(BUILD_D)/boot.debug.efi $(BUILD_D)/flash.img $(BUILD_D)/kernel.elf
+qemu-gdb: $(BUILD_D)/floppy.img $(BUILD_D)/boot.debug.efi $(BUILD_D)/flash.img $(BUILD_D)/kernel.elf
 	-rm popcorn.log
 	"$(QEMU)" $(QEMUOPTS) -s -nographic
 
