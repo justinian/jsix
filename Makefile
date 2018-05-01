@@ -146,7 +146,7 @@ $(BUILD_D)/.version:
 	echo '$(VERSION)' | cmp -s - $@ || echo '$(VERSION)' > $@
 
 $(BUILD_D)/versions.s:
-	./parse_version.py "$(VERSION)" "$(GITSHA)" > $@
+	./scripts/parse_version.py "$(VERSION)" "$(GITSHA)" > $@
 
 -include x $(patsubst %,src/modules/%/module.mk,$(MODULES))
 -include x $(shell find $(BUILD_D) -type f -name '*.d')
