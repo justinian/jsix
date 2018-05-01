@@ -217,16 +217,16 @@ $(BUILD_D)/fs.img: $(BUILD_D)/boot.efi $(BUILD_D)/kernel.elf $(BUILD_D)/screenfo
 	rm $(TEMPFILE)
 	mv $@.tmp $@
 
-$(BUILD_D)/fs.iso: $(BUILD_D)/fs.img
-	mkdir -p $(BUILD_D)/iso
-	cp $< $(BUILD_D)/iso/
-	xorriso -as mkisofs -R -f -e fs.img -no-emul-boot -o $@ $(BUILD_D)/iso
-
 $(BUILD_D)/floppy.img: $(BUILD_D)/boot.efi $(BUILD_D)/kernel.elf $(BUILD_D)/screenfont.psf
 	cp assets/floppy.img $@
 	mcopy -i $@ $(BUILD_D)/boot.efi ::/EFI/BOOT/BOOTX64.efi
 	mcopy -i $@ $(BUILD_D)/kernel.elf ::$(KERNEL_FILENAME)
 	mcopy -i $@ $(BUILD_D)/screenfont.psf ::screenfont.psf
+
+$(BUILD_D)/fs.iso: $(BUILD_D)/floppy.img
+	mkdir -p $(BUILD_D)/iso
+	cp $< $(BUILD_D)/iso/
+	xorrisofs --efi-boot floppy.img -o $@ $(BUILD_D)/iso
 
 qemu: $(BUILD_D)/floppy.img $(BUILD_D)/flash.img
 	-rm popcorn.log
