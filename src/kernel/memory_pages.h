@@ -40,11 +40,10 @@ public:
 	/// \arg count    The number of pages to unmap
 	void unmap_pages(addr_t address, size_t count);
 
-	/// Mark a pointer and range to be offset-mapped. This pointer will
-	/// automatically get updated once page_manager::init() is called.
+	/// Offset-map a pointer. No physical pages will be mapped.
 	/// \arg pointer  Pointer to a pointer to the memory area to be mapped
 	/// \arg length   Length of the memory area to be mapped
-	void mark_offset_pointer(void **pointer, size_t length);
+	void map_offset_pointer(void **pointer, size_t length);
 
 private:
 	friend void memory_initialize_managers(const void *, size_t, size_t);
@@ -136,11 +135,6 @@ private:
 
 	page_block *m_block_cache; ///< Cache of unused page_block structs
 	free_page_header *m_page_cache; ///< Cache of free pages to use for tables
-
-	static const unsigned marked_pointer_max = 16;
-	unsigned m_marked_pointer_count;
-	void **m_marked_pointers[marked_pointer_max];
-	size_t m_marked_pointer_lengths[marked_pointer_max];
 
 	page_manager(const page_manager &) = delete;
 };

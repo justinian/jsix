@@ -191,33 +191,6 @@ page_manager::init(
 	// allocated, full of page_block structs. Eventually hand
 	// control of that to a slab allocator.
 
-	page_table *pml4 = get_pml4();
-
-	// Fix up the offset-marked pointers
-	for (unsigned i = 0; i < m_marked_pointer_count; ++i) {
-		addr_t *p = reinterpret_cast<addr_t *>(m_marked_pointers[i]);
-		addr_t v = *p + page_offset;
-		addr_t c = (m_marked_pointer_lengths[i] / page_size) + 1;
-
-		// TODO: cleanly search/split this as a block out of used/free if possible
-		page_block *block = get_block();
-
-		// TODO: page-align
-		block->physical_address = *p;
-		block->virtual_address = v;
-		block->count = c;
-		block->flags =
-			page_block_flags::used |
-			page_block_flags::mapped |
-			page_block_flags::mmio;
-
-		log::info(logs::memory, "Fixing up pointer %lx [%3d] -> %lx", *p, c, v);
-
-		m_used = page_block::insert(m_used, block);
-		page_in(pml4, *p, v, c);
-		*p = v;
-	}
-
 	consolidate_blocks();
 
 	page_block::dump(m_used, "used", true);
@@ -238,10 +211,31 @@ page_manager::init(
 }
 
 void
-page_manager::mark_offset_pointer(void **pointer, size_t length)
+page_manager::map_offset_pointer(void **pointer, size_t length)
 {
-	m_marked_pointers[m_marked_pointer_count] = pointer;
-	m_marked_pointer_lengths[m_marked_pointer_count++] = length;
+	addr_t *p = reinterpret_cast<addr_t *>(pointer);
+	addr_t v = *p + page_offset;
+	addr_t c = ((length - 1) / page_size) + 1;
+
+	// TODO: cleanly search/split this as a block out of used/free if possible
+	page_block *block = get_block();
+
+	// TODO: page-align
+	block->physical_address = *p;
+	block->virtual_address = v;
+	block->count = c;
+	block->flags =
+		page_block_flags::used |
+		page_block_flags::mapped |
+		page_block_flags::mmio;
+
+	log::info(logs::memory, "Fixing up pointer %lx [%3d] -> %lx", *p, c, v);
+
+	m_used = page_block::insert(m_used, block);
+
+	page_table *pml4 = get_pml4();
+	page_in(pml4, *p, v, c);
+	*p = v;
 }
 
 page_block *

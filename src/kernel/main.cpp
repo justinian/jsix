@@ -48,6 +48,7 @@ kernel_main(popcorn_data *header)
 	cons->puts(GIT_VERSION " booting...\n");
 
 	log::init(cons);
+	log::enable(logs::interrupt, log::level::debug);
 
 	cpu_id cpu;
 
@@ -62,12 +63,13 @@ kernel_main(popcorn_data *header)
 			cpu_info.ecx_bit(21) ? "yes" : "no");
 
 	page_manager *pager = new (&g_page_manager) page_manager;
-	pager->mark_offset_pointer(&header->frame_buffer, header->frame_buffer_length);
 
 	memory_initialize_managers(
 			header->memory_map,
 			header->memory_map_length,
 			header->memory_map_desc_size);
+
+	pager->map_offset_pointer(&header->frame_buffer, header->frame_buffer_length);
 
 	interrupts_init();
 	interrupts_enable();

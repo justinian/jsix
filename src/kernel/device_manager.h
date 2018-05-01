@@ -3,6 +3,9 @@
 struct acpi_xsdt;
 struct acpi_apic;
 
+class lapic;
+class ioapic;
+
 class device_manager
 {
 public:
@@ -11,14 +14,13 @@ public:
 	device_manager() = delete;
 	device_manager(const device_manager &) = delete;
 
-	uint8_t * local_apic() const;
-	uint8_t * io_apic() const;
+	lapic * get_lapic() { return m_lapic; }
+	ioapic * get_ioapic(int i);
 
 private:
-	uint32_t *m_local_apic;
-	uint32_t *m_io_apic;
-
-	uint32_t m_global_interrupt_base;
+	lapic *m_lapic;
+	ioapic *m_ioapics;
+	int m_num_ioapics;
 
 	void load_xsdt(const acpi_xsdt *xsdt);
 	void load_apic(const acpi_apic *apic);

@@ -3,9 +3,12 @@
 
 #include "kutil/memory.h"
 #include "acpi_tables.h"
+#include "apic.h"
 #include "assert.h"
 #include "device_manager.h"
+#include "interrupts.h"
 #include "log.h"
+#include "memory.h"
 
 static const char expected_signature[] = "RSD PTR ";
 
@@ -50,9 +53,9 @@ acpi_table_header::validate(uint32_t expected_type) const
 }
 
 device_manager::device_manager(const void *root_table) :
-	m_local_apic(nullptr),
-	m_io_apic(nullptr),
-	m_global_interrupt_base(0)
+	m_lapic(nullptr),
+	m_ioapics(nullptr),
+	m_num_ioapics(0)
 {
 	kassert(root_table != 0, "ACPI root table pointer is null.");
 
@@ -75,6 +78,12 @@ device_manager::device_manager(const void *root_table) :
 	kassert(sum == 0, "ACPI 2.0 RSDP checksum mismatch.");
 
 	load_xsdt(reinterpret_cast<const acpi_xsdt *>(acpi2->xsdt_address));
+}
+
+ioapic *
+device_manager::get_ioapic(int i)
+{
+	return (i < m_num_ioapics) ? m_ioapics + i : nullptr;
 }
 
 static void
@@ -117,8 +126,11 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 void
 device_manager::load_apic(const acpi_apic *apic)
 {
-	m_local_apic = reinterpret_cast<uint32_t *>(apic->local_address);
-	log::info(logs::devices, "    APIC local address %lx", apic->local_address);
+	uint32_t *local = reinterpret_cast<uint32_t *>(apic->local_address);
+
+	m_lapic = new (kalloc(sizeof(lapic))) lapic(local, isr::isrSpurious);
+	m_lapic->enable_lint(0, isr::isrLINT0, false, 0);
+	m_lapic->enable_lint(1, isr::isrLINT1, false, 0);
 
 	uint8_t const *p = apic->controller_data;
 	uint8_t const *end = p + acpi_table_entries(apic, 1);
@@ -131,11 +143,11 @@ device_manager::load_apic(const acpi_apic *apic)
 		case 0: // Local APIC
 			break;
 
-		case 1: // I/O APIC
-			m_io_apic = reinterpret_cast<uint32_t *>(kutil::read_from<uint32_t>(p+4));
-			m_global_interrupt_base = kutil::read_from<uint32_t>(p+8);
-			log::info(logs::devices, "    IO APIC address %lx base %d",
-					m_io_apic, m_global_interrupt_base);
+		case 1: { // I/O APIC
+			uint32_t *io_apic = reinterpret_cast<uint32_t *>(kutil::read_from<uint32_t>(p+4));
+			uint32_t base = kutil::read_from<uint32_t>(p+8);
+			log::info(logs::devices, "    IO APIC address %lx base %d", io_apic, base);
+			}
 			break;
 
 		case 2: // Interrupt source override
@@ -146,12 +158,19 @@ device_manager::load_apic(const acpi_apic *apic)
 					(kutil::read_from<uint16_t>(p+8) >> 2) & 0x3);
 			break;
 
-		case 4: // Interrupt source override
+		case 4: {// LAPIC NMI
+			uint8_t cpu = kutil::read_from<uint8_t>(p + 2);
+			uint8_t num = kutil::read_from<uint8_t>(p + 5);
+			uint16_t flags = kutil::read_from<uint16_t>(p + 3);
+
+			m_lapic->enable_lint(num, num == 0 ? isr::isrLINT0 : isr::isrLINT1, true, flags);
+
 			log::info(logs::devices, "    LAPIC NMI Proc %d LINT%d Pol %d Tri %d",
 					kutil::read_from<uint8_t>(p+2),
 					kutil::read_from<uint8_t>(p+5),
 					kutil::read_from<uint16_t>(p+3) & 0x3,
 					(kutil::read_from<uint16_t>(p+3) >> 2) & 0x3);
+			}
 			break;
 
 		default:
@@ -160,4 +179,7 @@ device_manager::load_apic(const acpi_apic *apic)
 
 		p += length;
 	}
+
+	// m_lapic->enable_timer(isr::isrTimer, 128, 3000000);
+	m_lapic->enable();
 }
