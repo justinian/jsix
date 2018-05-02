@@ -30,3 +30,8 @@ wrmsr(uint64_t addr, uint64_t value)
 	__asm__ __volatile__ ("wrmsr" :: "c"(addr), "a"(low), "d"(high));
 }
 
+void
+io_wait()
+{
+	outb(0x80, 0);
+}

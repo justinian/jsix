@@ -14,8 +14,10 @@ enum class isr : uint8_t
 #undef EISR
 #undef ISR
 
-	max
+	_zero = 0
 };
+
+isr operator+(const isr &lhs, int rhs);
 
 extern "C" {
 	void interrupts_enable();

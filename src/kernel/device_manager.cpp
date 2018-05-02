@@ -54,10 +54,11 @@ acpi_table_header::validate(uint32_t expected_type) const
 
 device_manager::device_manager(const void *root_table) :
 	m_lapic(nullptr),
-	m_ioapics(nullptr),
 	m_num_ioapics(0)
 {
 	kassert(root_table != 0, "ACPI root table pointer is null.");
+
+	kutil::memset(m_ioapics, 0, sizeof(m_ioapics));
 
 	const acpi1_rsdp *acpi1 =
 		reinterpret_cast<const acpi1_rsdp *>(root_table);
@@ -83,7 +84,7 @@ device_manager::device_manager(const void *root_table) :
 ioapic *
 device_manager::get_ioapic(int i)
 {
-	return (i < m_num_ioapics) ? m_ioapics + i : nullptr;
+	return (i < m_num_ioapics) ? m_ioapics[i] : nullptr;
 }
 
 static void
@@ -128,34 +129,46 @@ device_manager::load_apic(const acpi_apic *apic)
 {
 	uint32_t *local = reinterpret_cast<uint32_t *>(apic->local_address);
 
-	m_lapic = new (kalloc(sizeof(lapic))) lapic(local, isr::isrSpurious);
-	m_lapic->enable_lint(0, isr::isrLINT0, false, 0);
-	m_lapic->enable_lint(1, isr::isrLINT1, false, 0);
+	m_lapic = new lapic(local, isr::isrSpurious);
 
+	size_t count = acpi_table_entries(apic, 1);
 	uint8_t const *p = apic->controller_data;
-	uint8_t const *end = p + acpi_table_entries(apic, 1);
+	uint8_t const *end = p + count;
 
+	// Pass one: set up IOAPIC objcts
+	while (p < end) {
+		const uint8_t type = p[0];
+		const uint8_t length = p[1];
+		if (type == 1) {
+			uint32_t *base = reinterpret_cast<uint32_t *>(kutil::read_from<uint32_t>(p+4));
+			uint32_t base_gsr = kutil::read_from<uint32_t>(p+8);
+			m_ioapics[m_num_ioapics++] = new ioapic(base, base_gsr);
+		}
+		p += length;
+	}
+
+	// Pass two: configure APIC objects
+	p = apic->controller_data;
 	while (p < end) {
 		const uint8_t type = p[0];
 		const uint8_t length = p[1];
 
 		switch (type) {
 		case 0: // Local APIC
+		case 1: // I/O APIC
 			break;
 
-		case 1: { // I/O APIC
-			uint32_t *io_apic = reinterpret_cast<uint32_t *>(kutil::read_from<uint32_t>(p+4));
-			uint32_t base = kutil::read_from<uint32_t>(p+8);
-			log::info(logs::devices, "    IO APIC address %lx base %d", io_apic, base);
+		case 2: { // Interrupt source override
+				uint8_t source = kutil::read_from<uint8_t>(p+3);
+				isr gsi = isr::irq0 + kutil::read_from<uint32_t>(p+4);
+				uint16_t flags = kutil::read_from<uint16_t>(p+8);
+
+				log::info(logs::devices, "    Intr source override IRQ %d -> %d Pol %d Tri %d",
+						source, gsi, (flags & 0x3), ((flags >> 2) & 0x3));
+
+				// TODO: in a multiple-IOAPIC system this might be elsewhere
+				m_ioapics[0]->redirect(source, static_cast<isr>(gsi), flags, true);
 			}
-			break;
-
-		case 2: // Interrupt source override
-			log::info(logs::devices, "    Intr source override IRQ %d -> %d Pol %d Tri %d",
-					kutil::read_from<uint8_t>(p+3),
-					kutil::read_from<uint32_t>(p+4),
-					kutil::read_from<uint16_t>(p+8) & 0x3,
-					(kutil::read_from<uint16_t>(p+8) >> 2) & 0x3);
 			break;
 
 		case 4: {// LAPIC NMI
@@ -181,5 +194,14 @@ device_manager::load_apic(const acpi_apic *apic)
 	}
 
 	// m_lapic->enable_timer(isr::isrTimer, 128, 3000000);
+
+	for (uint8_t i = 0; i < m_ioapics[0]->get_num_gsi(); ++i) {
+		switch (i) {
+			case 2: break;
+			default: m_ioapics[0]->mask(i, false);
+		}
+	}
+
+	m_ioapics[0]->dump_redirs();
 	m_lapic->enable();
 }

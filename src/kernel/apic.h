@@ -56,14 +56,37 @@ class ioapic :
 public:
 	/// Constructor
 	/// \arg base     Base virtual address of the APIC's MMIO registers
-	/// \arg base_gsr Starting global system interrupt number of this IOAPIC
-	ioapic(uint32_t *base, uint32_t base_gsr);
+	/// \arg base_gsi Starting global system interrupt number of this IOAPIC
+	ioapic(uint32_t *base, uint32_t base_gsi);
 
-	uint32_t get_base_gsr() const	{ return m_base_gsr; }
-	uint32_t get_num_gsr() const	{ return m_num_gsr; }
+	uint32_t get_base_gsi() const	{ return m_base_gsi; }
+	uint32_t get_num_gsi() const	{ return m_num_gsi; }
+
+	/// Set a redirection entry.
+	/// TODO: pick CPU
+	/// \arg source   Source interrupt number
+	/// \arg vector   Interrupt vector that should be used
+	/// \arg flags    Flags for mode/polarity (ACPI MPS INTI flags)
+	/// \arg masked   Whether the iterrupt should be suppressed
+	void redirect(uint8_t irq, isr vector, uint16_t flags, bool masked);
+
+	/// Mask or unmask an interrupt to stop/start having it sent to the CPU
+	/// \arg irq     The IOAPIC-local irq number
+	/// \arg masked  Whether to suppress this interrupt
+	void mask(uint8_t irq, bool masked);
+
+	/// Mask all interrupts on this IOAPIC.
+	void mask_all() { for(int i=0; i<m_num_gsi; ++i) mask(i, true); }
+
+	/// Unmask all interrupts on this IOAPIC.
+	void unmask_all() { for(int i=0; i<m_num_gsi; ++i) mask(i, false); }
+
+	void dump_redirs() const;
 
 private:
-	uint32_t m_base_gsr;
-	uint32_t m_num_gsr;
-};
+	uint32_t m_base_gsi;
+	uint32_t m_num_gsi;
 
+	uint8_t m_id;
+	uint8_t m_version;
+};

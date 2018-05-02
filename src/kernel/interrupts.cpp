@@ -1,9 +1,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "kutil/enum_bitfields.h"
 #include "kutil/memory.h"
 #include "console.h"
 #include "interrupts.h"
+#include "io.h"
 #include "log.h"
 #include "memory_pages.h"
 
@@ -20,13 +22,7 @@ enum class gdt_flags : uint8_t
 
 	res_1 = 0x10
 };
-
-inline gdt_flags
-operator | (gdt_flags lhs, gdt_flags rhs)
-{
-	return static_cast<gdt_flags>(
-			static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs));
-}
+IS_BITFIELD(gdt_flags);
 
 struct gdt_descriptor
 {
@@ -84,6 +80,29 @@ extern "C" {
 void idt_dump(const table_ptr &table);
 void gdt_dump(const table_ptr &table);
 
+isr
+operator+(const isr &lhs, int rhs)
+{
+	using under_t = std::underlying_type<isr>::type;
+	return static_cast<isr>(static_cast<under_t>(lhs) + rhs);
+}
+
+uint8_t
+get_irq(unsigned vector)
+{
+	switch (vector) {
+#define ISR(i, name)
+#define EISR(i, name)
+#define IRQ(i, q, name) case i : return q;
+#include "interrupt_isrs.inc"
+#undef IRQ
+#undef EISR
+#undef ISR
+
+		default: return 0xff;
+	}
+}
+
 void
 set_gdt_entry(uint8_t i, uint32_t base, uint32_t limit, bool is64, gdt_flags flags)
 {
@@ -109,6 +128,30 @@ set_idt_entry(uint8_t i, uint64_t addr, uint16_t selector, uint8_t flags)
 	g_idt_table[i].flags = flags;
 	g_idt_table[i].ist = 0;
 	g_idt_table[i].reserved = 0;
+}
+
+void
+disable_legacy_pic()
+{
+
+	static const uint16_t PIC1 = 0x20;
+	static const uint16_t PIC2 = 0xa0;
+
+	// Mask all interrupts
+	outb(0xa1, 0xff);
+	outb(0x21, 0xff);
+
+	// Start initialization sequence
+	outb(PIC1, 0x11); io_wait();
+	outb(PIC2, 0x11); io_wait();
+
+	// Remap into ignore ISRs
+	outb(PIC1+1, static_cast<uint8_t>(isr::isrIgnore0)); io_wait();
+	outb(PIC2+1, static_cast<uint8_t>(isr::isrIgnore8)); io_wait();
+
+	// Tell PICs about each other
+	outb(PIC1+1, 0x04); io_wait();
+	outb(PIC2+1, 0x02); io_wait();
 }
 
 void
@@ -142,6 +185,8 @@ interrupts_init()
 #undef ISR
 
 	idt_write();
+	disable_legacy_pic();
+
 	log::info(logs::interrupt, "Interrupts enabled.");
 }
 
@@ -171,6 +216,28 @@ isr_handler(registers regs)
 
 	case isr::isrLINT1:
 		cons->puts("\nLINT1\n");
+		break;
+
+	case isr::isrIgnore0:
+	case isr::isrIgnore1:
+	case isr::isrIgnore2:
+	case isr::isrIgnore3:
+	case isr::isrIgnore4:
+	case isr::isrIgnore5:
+	case isr::isrIgnore6:
+	case isr::isrIgnore7:
+	case isr::isrIgnore8:
+	case isr::isrIgnore9:
+	case isr::isrIgnoreA:
+	case isr::isrIgnoreB:
+	case isr::isrIgnoreC:
+	case isr::isrIgnoreD:
+	case isr::isrIgnoreE:
+	case isr::isrIgnoreF:
+		/*
+		cons->printf("\nIGNORED PIC INTERRUPT %d\n",
+				(regs.interrupt % 0xff) - 0xf0);
+		*/
 		break;
 
 	default:
@@ -212,32 +279,41 @@ void
 irq_handler(registers regs)
 {
 	console *cons = console::get();
+	uint8_t irq = get_irq(regs.interrupt);
 
-	cons->set_color(9);
-	cons->puts("\nReceived IRQ interrupt:\n");
-	cons->set_color();
+	switch (irq) {
+	case 2:
+		cons->set_color(11);
+		cons->puts(".");
+		cons->set_color();
+		break;
 
-	print_reg("ISR", regs.interrupt);
-	print_reg("ERR", regs.errorcode);
-	cons->puts("\n");
+	default:
+		cons->set_color(11);
+		cons->printf("\nReceived IRQ interrupt: %d (vec %d)\n",
+				irq, regs.interrupt);
+		cons->set_color();
 
-	print_reg(" ds", regs.ds);
-	print_reg("rdi", regs.rdi);
-	print_reg("rsi", regs.rsi);
-	print_reg("rbp", regs.rbp);
-	print_reg("rsp", regs.rsp);
-	print_reg("rbx", regs.rbx);
-	print_reg("rdx", regs.rdx);
-	print_reg("rcx", regs.rcx);
-	print_reg("rax", regs.rax);
-	cons->puts("\n");
+		print_reg(" ds", regs.ds);
+		print_reg("rdi", regs.rdi);
+		print_reg("rsi", regs.rsi);
+		print_reg("rbp", regs.rbp);
+		print_reg("rsp", regs.rsp);
+		print_reg("rbx", regs.rbx);
+		print_reg("rdx", regs.rdx);
+		print_reg("rcx", regs.rcx);
+		print_reg("rax", regs.rax);
+		cons->puts("\n");
 
-	print_reg("rip", regs.rip);
-	print_reg(" cs", regs.cs);
-	print_reg(" ef", regs.eflags);
-	print_reg("esp", regs.user_esp);
-	print_reg(" ss", regs.ss);
-	while(1) asm("hlt");
+		print_reg("rip", regs.rip);
+		print_reg(" cs", regs.cs);
+		print_reg(" ef", regs.eflags);
+		print_reg("esp", regs.user_esp);
+		print_reg(" ss", regs.ss);
+		while(1) asm("hlt");
+	}
+
+	*reinterpret_cast<uint32_t *>(0xffffff80fee000b0) = 0;
 }
 
 

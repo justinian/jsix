@@ -44,3 +44,12 @@ void memory_initialize_managers(const void *memory_map, size_t map_length, size_
 /// \returns     A pointer to the allocated memory, or nullptr if
 ///              allocation failed.
 inline void * kalloc(size_t length) { return g_kernel_memory_manager.allocate(length); }
+
+/// Free kernel space memory.
+/// \arg p   The pointer to free
+inline void kfree(void *p) { g_kernel_memory_manager.free(p); }
+
+inline void * operator new (size_t n)    { return g_kernel_memory_manager.allocate(n); }
+inline void * operator new[] (size_t n)  { return g_kernel_memory_manager.allocate(n); }
+inline void operator delete (void *p)  { return g_kernel_memory_manager.free(p); }
+inline void operator delete[] (void *p){ return g_kernel_memory_manager.free(p); }

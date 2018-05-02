@@ -24,6 +24,9 @@ uint64_t rdmsr(uint64_t addr);
 /// \arg value  The value to write
 void wrmsr(uint64_t addr, uint64_t value);
 
+/// Pause briefly by doing IO to port 0x80
+void io_wait();
+
 }
 
 const uint16_t COM1 = 0x03f8;

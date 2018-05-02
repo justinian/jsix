@@ -18,8 +18,10 @@ public:
 	ioapic * get_ioapic(int i);
 
 private:
+	static const int max_ioapics = 16;
+
 	lapic *m_lapic;
-	ioapic *m_ioapics;
+	ioapic *m_ioapics[16];
 	int m_num_ioapics;
 
 	void load_xsdt(const acpi_xsdt *xsdt);

@@ -72,9 +72,9 @@ kernel_main(popcorn_data *header)
 	pager->map_offset_pointer(&header->frame_buffer, header->frame_buffer_length);
 
 	interrupts_init();
-	interrupts_enable();
 
 	device_manager devices(header->acpi_table);
+	interrupts_enable();
 
 	// int x = 1 / 0;
 	// __asm__ __volatile__("int $15");
