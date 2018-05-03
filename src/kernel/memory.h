@@ -5,14 +5,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-struct memory_block_node;
 
 /// Manager for allocation of virtual memory.
 class memory_manager
 {
 public:
 	memory_manager();
-	memory_manager(void *start, size_t length);
+	memory_manager(void *start);
 
 	/// Allocate memory from the area managed.
 	/// \arg length  The amount of memory to allocate, in bytes
@@ -25,12 +24,30 @@ public:
 	void free(void *p);
 
 private:
-	friend class page_manager;
+	struct alloc_header;
+	struct free_header;
 
-	// Simple incrementing pointer.
+	/// Expand the size of memory
+	void grow_memory();
+
+	/// Ensure there is a block of a given size, recursively splitting
+	/// \arg size   Size category of the block we want
+	void ensure_block(unsigned size);
+
+	/// Helper accessor for the list of blocks of a given size
+	free_header *& get_free(unsigned size)  { return m_free[size - min_size]; }
+
+	/// Helper to get a block of the given size, growing if necessary
+	free_header * pop_free(unsigned size);
+
+	static const unsigned min_size = 6;  ///< Minimum block size is (2^min_size)
+	static const unsigned max_size = 16; ///< Maximum block size is (2^max_size)
+
+	free_header *m_free[max_size - min_size];
 	void *m_start;
 	size_t m_length;
 
+	friend class page_manager;
 	memory_manager(const memory_manager &) = delete;
 };
 

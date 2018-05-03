@@ -199,15 +199,14 @@ page_manager::init(
 	// Initialize the kernel memory manager
 	addr_t end = 0;
 	for (page_block *b = m_used; b; b = b->next) {
-		if (b->virtual_address < page_offset)
+		if (b->virtual_address < page_offset) {
 			end = b->virtual_end();
-		else
+		} else {
 			break;
-
+		}
 	}
-	new (&g_kernel_memory_manager) memory_manager(
-			reinterpret_cast<void *>(end),
-			page_offset - end);
+
+	new (&g_kernel_memory_manager) memory_manager(reinterpret_cast<void *>(end));
 }
 
 void
@@ -229,7 +228,7 @@ page_manager::map_offset_pointer(void **pointer, size_t length)
 		page_block_flags::mapped |
 		page_block_flags::mmio;
 
-	log::info(logs::memory, "Fixing up pointer %lx [%3d] -> %lx", *p, c, v);
+	log::debug(logs::memory, "Fixing up pointer %lx [%3d] -> %lx", *p, c, v);
 
 	m_used = page_block::insert(m_used, block);
 
