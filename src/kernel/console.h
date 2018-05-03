@@ -6,14 +6,17 @@
 #include "screen.h"
 
 class console_out_screen;
+class serial_port;
 
 class console
 {
 public:
 	console();
+	console(serial_port *serial);
 
 	void set_color(uint8_t fg = 7, uint8_t bg = 0);
 
+	void putc(char c);
 	void puts(const char *message);
 	void vprintf(const char *fmt, va_list args);
 
@@ -33,10 +36,13 @@ public:
 
 	void set_screen(console_out_screen *out) { m_screen = out; }
 
+	void echo();
+
 	static console * get();
 
 private:
 	console_out_screen *m_screen;
+	serial_port *m_serial;
 };
 
 extern console g_console;

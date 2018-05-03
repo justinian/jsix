@@ -1,5 +1,5 @@
 #include "console.h"
-#include "io.h"
+#include "serial.h"
 
 const char digits[] = "0123456789abcdef";
 console g_console;
@@ -212,25 +212,28 @@ console_get_screen_out(const font &f, const screen &s, void *scratch, size_t len
 }
 
 
-static bool
-serial_ready()
-{
-	return (inb(COM1 + 5) & 0x20) != 0;
-}
-
-static void
-serial_write(char c) {
-	while (!serial_ready());
-	outb(COM1, c);
-}
-
 
 console::console() :
-	m_screen(nullptr)
+	m_screen(nullptr),
+	m_serial(nullptr)
 {
-	const char *fgseq = "\x1b[2J";
-	while (*fgseq)
-		serial_write(*fgseq++);
+}
+
+console::console(serial_port *serial) :
+	m_screen(nullptr),
+	m_serial(serial)
+{
+	if (m_serial) {
+		const char *fgseq = "\x1b[2J";
+		while (*fgseq)
+			m_serial->write(*fgseq++);
+	}
+}
+
+void
+console::echo()
+{
+	putc(m_serial->read());
 }
 
 void
@@ -239,32 +242,40 @@ console::set_color(uint8_t fg, uint8_t bg)
 	if (m_screen)
 		m_screen->set_color(fg, bg);
 
-	const char *fgseq = "\x1b[38;5;";
-	while (*fgseq)
-		serial_write(*fgseq++);
-	if (fg >= 100) serial_write('0' + (fg/100));
-	if (fg >=  10) serial_write('0' + (fg/10) % 10);
-	serial_write('0' + fg % 10);
-	serial_write('m');
+	if (m_serial) {
+		const char *fgseq = "\x1b[38;5;";
+		while (*fgseq)
+			m_serial->write(*fgseq++);
+		if (fg >= 100) m_serial->write('0' + (fg/100));
+		if (fg >=  10) m_serial->write('0' + (fg/10) % 10);
+		m_serial->write('0' + fg % 10);
+		m_serial->write('m');
 
-	const char *bgseq = "\x1b[48;5;";
-	while (*bgseq)
-		serial_write(*bgseq++);
-	if (bg >= 100) serial_write('0' + (bg/100));
-	if (bg >=  10) serial_write('0' + (bg/10) % 10);
-	serial_write('0' + bg % 10);
-	serial_write('m');
+		const char *bgseq = "\x1b[48;5;";
+		while (*bgseq)
+			m_serial->write(*bgseq++);
+		if (bg >= 100) m_serial->write('0' + (bg/100));
+		if (bg >=  10) m_serial->write('0' + (bg/10) % 10);
+		m_serial->write('0' + bg % 10);
+		m_serial->write('m');
+	}
 }
 
 void
 console::puts(const char *message)
 {
-	while (message && *message) {
-		char c = *message++;
-		if (m_screen) m_screen->putc(c);
+	while (message && *message)
+		putc(*message++);
+}
 
-		serial_write(c);
-		if (c == '\n') serial_write('\r');
+void
+console::putc(char c)
+{
+	if (m_screen) m_screen->putc(c);
+
+	if (m_serial) {
+		m_serial->write(c);
+		if (c == '\r') m_serial->write('\n');
 	}
 }
 

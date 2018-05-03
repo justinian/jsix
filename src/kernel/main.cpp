@@ -7,11 +7,13 @@
 #include "device_manager.h"
 #include "font.h"
 #include "interrupts.h"
+#include "io.h"
 #include "kernel_data.h"
 #include "log.h"
 #include "memory.h"
 #include "memory_pages.h"
 #include "screen.h"
+#include "serial.h"
 
 extern "C" {
 	void do_the_set_registers(popcorn_data *header);
@@ -41,7 +43,9 @@ load_console(const popcorn_data *header)
 void
 kernel_main(popcorn_data *header)
 {
-	console *cons = new (&g_console) console();
+	serial_port *com1 = new (&g_com1) serial_port(COM1);
+	console *cons = new (&g_console) console(com1);
+
 	cons->set_color(0x21, 0x00);
 	cons->puts("Popcorn OS ");
 	cons->set_color(0x08, 0x00);

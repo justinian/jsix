@@ -130,7 +130,7 @@ set_idt_entry(uint8_t i, uint64_t addr, uint16_t selector, uint8_t flags)
 	g_idt_table[i].reserved = 0;
 }
 
-void
+static void
 disable_legacy_pic()
 {
 
@@ -152,6 +152,13 @@ disable_legacy_pic()
 	// Tell PICs about each other
 	outb(PIC1+1, 0x04); io_wait();
 	outb(PIC2+1, 0x02); io_wait();
+}
+
+static void
+enable_serial_interrupts()
+{
+	uint8_t ier = inb(COM1+1);
+	outb(COM1+1, ier | 0x1);
 }
 
 void
@@ -186,6 +193,7 @@ interrupts_init()
 
 	idt_write();
 	disable_legacy_pic();
+	enable_serial_interrupts();
 
 	log::info(logs::interrupt, "Interrupts enabled.");
 }
@@ -286,6 +294,11 @@ irq_handler(registers regs)
 		cons->set_color(11);
 		cons->puts(".");
 		cons->set_color();
+		break;
+
+	case 4:
+		// TODO: move this to a real serial driver
+		cons->echo();
 		break;
 
 	default:
