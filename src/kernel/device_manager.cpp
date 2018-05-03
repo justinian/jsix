@@ -176,13 +176,13 @@ device_manager::load_apic(const acpi_apic *apic)
 			uint8_t num = kutil::read_from<uint8_t>(p + 5);
 			uint16_t flags = kutil::read_from<uint16_t>(p + 3);
 
-			m_lapic->enable_lint(num, num == 0 ? isr::isrLINT0 : isr::isrLINT1, true, flags);
-
 			log::info(logs::devices, "    LAPIC NMI Proc %d LINT%d Pol %d Tri %d",
 					kutil::read_from<uint8_t>(p+2),
 					kutil::read_from<uint8_t>(p+5),
 					kutil::read_from<uint16_t>(p+3) & 0x3,
 					(kutil::read_from<uint16_t>(p+3) >> 2) & 0x3);
+
+			m_lapic->enable_lint(num, num == 0 ? isr::isrLINT0 : isr::isrLINT1, true, flags);
 			}
 			break;
 
