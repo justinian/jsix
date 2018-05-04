@@ -1,89 +1,96 @@
+#include "kutil/coord.h"
+#include "kutil/memory.h"
 #include "console.h"
+#include "font.h"
+#include "memory.h"
+#include "screen.h"
 #include "serial.h"
+
 
 const char digits[] = "0123456789abcdef";
 console g_console;
 
 
-class console_out_screen
+class console::screen_out
 {
 public:
-	console_out_screen(const font &f, const screen &s, void *scratch, size_t len) :
+	screen_out(screen *s, font *f) :
 		m_font(f),
 		m_screen(s),
-		m_size(s.width() / f.width(), s.height() / f.height()),
+		m_size(s->width() / f->width(), s->height() / f->height()),
 		m_fg(0xffffff),
 		m_bg(0),
 		m_first(0),
-		m_length(len),
 		m_data(nullptr),
 		m_attrs(nullptr),
 		m_palette(nullptr)
 	{
 		const unsigned count = m_size.size();
-		const size_t palette_size = sizeof(screen::pixel_t) * 256;
 		const size_t attrs_size = 2 * count;
 
-		if (len >= count) {
-			// We have enough scratch space to keep the contents of the screen
-			m_data = static_cast<char *>(scratch);
-			for (unsigned i = 0; i < count; ++i)
-				m_data[i] = 0;
-		}
+		m_data = new char[count];
+		kutil::memset(m_data, 0, count);
 
-		if (len >= count + palette_size + attrs_size) {
-			// We have enough scratch space to also keep the colors of the text
-			m_palette = reinterpret_cast<screen::pixel_t *>(m_data + count);
+		m_palette = new screen::pixel_t[256];
+		fill_palette();
 
-			unsigned index = 0;
-
-			// Manually add the 16 basic ANSI colors
-			m_palette[index++] = m_screen.color(0x00, 0x00, 0x00);
-			m_palette[index++] = m_screen.color(0xcd, 0x00, 0x00);
-			m_palette[index++] = m_screen.color(0x00, 0xcd, 0x00);
-			m_palette[index++] = m_screen.color(0xcd, 0xcd, 0x00);
-			m_palette[index++] = m_screen.color(0x00, 0x00, 0xee);
-			m_palette[index++] = m_screen.color(0xcd, 0x00, 0xcd);
-			m_palette[index++] = m_screen.color(0x00, 0xcd, 0xcd);
-			m_palette[index++] = m_screen.color(0xe5, 0xe5, 0xe5);
-			m_palette[index++] = m_screen.color(0x7f, 0x7f, 0x7f);
-			m_palette[index++] = m_screen.color(0xff, 0x00, 0x00);
-			m_palette[index++] = m_screen.color(0x00, 0xff, 0x00);
-			m_palette[index++] = m_screen.color(0xff, 0xff, 0x00);
-			m_palette[index++] = m_screen.color(0x00, 0x50, 0xff);
-			m_palette[index++] = m_screen.color(0xff, 0x00, 0xff);
-			m_palette[index++] = m_screen.color(0x00, 0xff, 0xff);
-			m_palette[index++] = m_screen.color(0xff, 0xff, 0xff);
-
-			// Build the high-color portion of the table
-			const uint32_t intensity[] = {0, 0x5f, 0x87, 0xaf, 0xd7, 0xff};
-			const uint32_t intensities = sizeof(intensity) / sizeof(uint32_t);
-
-			for (uint32_t r = 0; r < intensities; ++r) {
-				for (uint32_t g = 0; g < intensities; ++g) {
-					for (uint32_t b = 0; b < intensities; ++b) {
-						m_palette[index++] = m_screen.color(
-								intensity[r], intensity[g], intensity[b]);
-					}
-				}
-			}
-
-			// Build the greyscale portion of the table
-			for (uint8_t i = 0x08; i <= 0xee; i += 10)
-				m_palette[index++] = m_screen.color(i, i, i);
-
-			set_color(7, 0); // Grey on black default
-			m_attrs = reinterpret_cast<uint16_t *>(m_data + count + palette_size);
-			for (unsigned i = 0; i < count; ++i)
-				m_attrs[i] = m_attr;
-		}
+		m_attrs = new uint16_t[count];
+		set_color(7, 0); // Grey on black default
+		for (unsigned i = 0; i < count; ++i) m_attrs[i] = m_attr;
 
 		repaint();
 	}
 
+	~screen_out()
+	{
+		delete [] m_data;
+		delete [] m_palette;
+		delete [] m_attrs;
+	}
+
+	void fill_palette()
+	{
+		unsigned index = 0;
+
+		// Manually add the 16 basic ANSI colors
+		m_palette[index++] = m_screen->color(0x00, 0x00, 0x00);
+		m_palette[index++] = m_screen->color(0xcd, 0x00, 0x00);
+		m_palette[index++] = m_screen->color(0x00, 0xcd, 0x00);
+		m_palette[index++] = m_screen->color(0xcd, 0xcd, 0x00);
+		m_palette[index++] = m_screen->color(0x00, 0x00, 0xee);
+		m_palette[index++] = m_screen->color(0xcd, 0x00, 0xcd);
+		m_palette[index++] = m_screen->color(0x00, 0xcd, 0xcd);
+		m_palette[index++] = m_screen->color(0xe5, 0xe5, 0xe5);
+		m_palette[index++] = m_screen->color(0x7f, 0x7f, 0x7f);
+		m_palette[index++] = m_screen->color(0xff, 0x00, 0x00);
+		m_palette[index++] = m_screen->color(0x00, 0xff, 0x00);
+		m_palette[index++] = m_screen->color(0xff, 0xff, 0x00);
+		m_palette[index++] = m_screen->color(0x00, 0x50, 0xff);
+		m_palette[index++] = m_screen->color(0xff, 0x00, 0xff);
+		m_palette[index++] = m_screen->color(0x00, 0xff, 0xff);
+		m_palette[index++] = m_screen->color(0xff, 0xff, 0xff);
+
+		// Build the high-color portion of the table
+		const uint32_t intensity[] = {0, 0x5f, 0x87, 0xaf, 0xd7, 0xff};
+		const uint32_t intensities = sizeof(intensity) / sizeof(uint32_t);
+
+		for (uint32_t r = 0; r < intensities; ++r) {
+			for (uint32_t g = 0; g < intensities; ++g) {
+				for (uint32_t b = 0; b < intensities; ++b) {
+					m_palette[index++] = m_screen->color(
+							intensity[r], intensity[g], intensity[b]);
+				}
+			}
+		}
+
+		// Build the greyscale portion of the table
+		for (uint8_t i = 0x08; i <= 0xee; i += 10)
+			m_palette[index++] = m_screen->color(i, i, i);
+	}
+
 	void repaint()
 	{
-		m_screen.fill(m_bg);
+		m_screen->fill(m_bg);
 		if (!m_data) return;
 
 		for (unsigned y = 0; y < m_size.y; ++y) {
@@ -95,13 +102,13 @@ public:
 				set_color(static_cast<uint8_t>(attr),
 						static_cast<uint8_t>(attr >> 8));
 
-				m_font.draw_glyph(
+				m_font->draw_glyph(
 					m_screen,
 					line[x] ? line[x] : ' ',
 					m_fg,
 					m_bg,
-					x * m_font.width(),
-					y * m_font.height());
+					x * m_font->width(),
+					y * m_font->height());
 			}
 		}
 	}
@@ -156,9 +163,9 @@ public:
 				if (line) line[m_pos.x] = c;
 				if (attrs) attrs[m_pos.x] = m_attr;
 
-				const unsigned x = m_pos.x * m_font.width();
-				const unsigned y = m_pos.y * m_font.height();
-				m_font.draw_glyph(m_screen, c, m_fg, m_bg, x, y);
+				const unsigned x = m_pos.x * m_font->width();
+				const unsigned y = m_pos.y * m_font->height();
+				m_font->draw_glyph(m_screen, c, m_fg, m_bg, x, y);
 
 				m_pos.x++;
 			}
@@ -188,8 +195,8 @@ private:
 		return m_attrs + ((m_first + line) % m_size.y) * m_size.x;
 	}
 
-	font m_font;
-	screen m_screen;
+	font *m_font;
+	screen *m_screen;
 
 	kutil::coord<unsigned> m_size;
 	kutil::coord<unsigned> m_pos;
@@ -197,20 +204,11 @@ private:
 	uint16_t m_attr;
 
 	size_t m_first;
-	size_t m_length;
 
 	char *m_data;
 	uint16_t *m_attrs;
 	screen::pixel_t *m_palette;
 };
-
-console_out_screen *
-console_get_screen_out(const font &f, const screen &s, void *scratch, size_t len)
-{
-	return nullptr;
-	//return new console_out_screen(f, s, scratch, len);
-}
-
 
 
 console::console() :
@@ -356,4 +354,10 @@ void console::vprintf(const char *fmt, va_list args)
 	}
 
 	flush();
+}
+
+void
+console::init_screen(screen *s, font *f)
+{
+	m_screen = new screen_out(s, f);
 }

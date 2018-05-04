@@ -5,24 +5,24 @@ SECTIONS
 	. = OFFSET + 0x100000;
 
 	.header : {
-		header = .;
+		__header_start = .;
 		KEEP(*(.header))
+		__header_end = .;
 	}
 
 	.text : {
-		code = .;
 		*(.text)
 	}
 
 	.data ALIGN(0x1000) : {
-		 data = .;
 		 *(.data)
 		 *(.rodata)
 	}
 
 	.bss ALIGN(0x1000) : {
-		bss = .;
+		__bss_start = .;
 		*(.bss)
+		__bss_end = .;
 	}
 
 	.note ALIGN(0x1000) : {

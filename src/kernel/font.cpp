@@ -1,3 +1,4 @@
+#include "assert.h"
 #include "font.h"
 
 /* PSF2 header format
@@ -26,44 +27,26 @@ struct psf2_header {
 	uint32_t height, width; // max dimensions of glyphs
 };
 
-font
-font::load(void const *data)
+
+font::font(void const *data) :
+	m_size(0, 0),
+	m_count(0),
+	m_data(nullptr)
 {
 	psf2_header const *psf2 = static_cast<psf2_header const *>(data);
 	for (int i = 0; i < sizeof(magic); ++i) {
-		if (psf2->magic[i] != magic[i]) {
-			return font{};
-		}
+		kassert(psf2->magic[i] == magic[i], "Bad font magic number.");
 	}
 
-	uint8_t const *font_data = static_cast<uint8_t const *>(data) + psf2->header_size;
-	return font{
-			psf2->height,
-			psf2->width,
-			psf2->length,
-			font_data};
+	m_data = static_cast<uint8_t const *>(data) + psf2->header_size;
+	m_size.x = psf2->width;
+	m_size.y = psf2->height;
+	m_count = psf2->length;
 }
-
-font::font() :
-	m_count(0),
-	m_data(nullptr)
-{}
-
-font::font(unsigned height, unsigned width, unsigned count, uint8_t const *data) :
-	m_size(width, height),
-	m_count(count),
-	m_data(data)
-{}
-
-font::font(const font &other) :
-	m_size(other.m_size),
-	m_count(other.m_count),
-	m_data(other.m_data)
-{}
 
 void
 font::draw_glyph(
-		screen &s,
+		screen *s,
 		uint32_t glyph,
 		screen::pixel_t fg,
 		screen::pixel_t bg,
@@ -80,7 +63,7 @@ font::draw_glyph(
 				if (dx*8 + i >= m_size.x) continue;
 				const uint8_t mask = 1 << (7-i);
 				uint32_t c = (byte & mask) ? fg : bg;
-				s.draw_pixel(x + dx*8 + i, y + dy, c);
+				s->draw_pixel(x + dx*8 + i, y + dy, c);
 			}
 		}
 	}

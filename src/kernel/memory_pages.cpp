@@ -228,8 +228,6 @@ page_manager::map_offset_pointer(void **pointer, size_t length)
 		page_block_flags::mapped |
 		page_block_flags::mmio;
 
-	log::debug(logs::memory, "Fixing up pointer %lx [%3d] -> %lx", *p, c, v);
-
 	m_used = page_block::insert(m_used, block);
 
 	page_table *pml4 = get_pml4();

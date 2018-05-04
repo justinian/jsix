@@ -18,33 +18,27 @@
 extern "C" {
 	void do_the_set_registers(popcorn_data *header);
 	void kernel_main(popcorn_data *header);
-}
 
-/*
-console
-load_console(const popcorn_data *header)
-{
-	console cons{
-		font::load(header->font),
-		screen{
-			header->frame_buffer,
-			header->hres,
-			header->vres,
-			header->rmask,
-			header->gmask,
-			header->bmask},
-		header->log,
-		header->log_length};
-
-	return cons;
+	void *__bss_start, *__bss_end;
 }
-*/
 
 void
-kernel_main(popcorn_data *header)
+init_console(const popcorn_data *header)
 {
 	serial_port *com1 = new (&g_com1) serial_port(COM1);
 	console *cons = new (&g_console) console(com1);
+
+	if (header->frame_buffer) {
+		screen *s = new screen(
+				header->frame_buffer,
+				header->hres,
+				header->vres,
+				header->rmask,
+				header->gmask,
+				header->bmask);
+		font *f = new font(header->font);
+		cons->init_screen(s, f);
+	}
 
 	cons->set_color(0x21, 0x00);
 	cons->puts("Popcorn OS ");
@@ -53,18 +47,15 @@ kernel_main(popcorn_data *header)
 
 	log::init(cons);
 	log::enable(logs::interrupt, log::level::debug);
+}
 
-	cpu_id cpu;
-
-	log::info(logs::boot, "CPU Vendor: %s", cpu.vendor_id());
-	log::info(logs::boot, "CPU Family %x Model %x Stepping %x",
-			cpu.family(), cpu.model(), cpu.stepping());
-
-	cpu_id::regs cpu_info = cpu.get(1);
-	log::info(logs::boot, "LAPIC Supported: %s",
-			cpu_info.edx_bit(9) ? "yes" : "no");
-	log::info(logs::boot, "x2APIC Supported: %s",
-			cpu_info.ecx_bit(21) ? "yes" : "no");
+void
+kernel_main(popcorn_data *header)
+{
+	// First clear BSS
+	kutil::memset(__bss_start, 0,
+			reinterpret_cast<uint64_t>(__bss_end) -
+			reinterpret_cast<uint64_t>(__bss_start));
 
 	page_manager *pager = new (&g_page_manager) page_manager;
 
@@ -73,12 +64,20 @@ kernel_main(popcorn_data *header)
 			header->memory_map_length,
 			header->memory_map_desc_size);
 
-	pager->map_offset_pointer(&header->frame_buffer, header->frame_buffer_length);
+	pager->map_offset_pointer(
+			&header->frame_buffer,
+			header->frame_buffer_length);
+
+	init_console(header);
 
 	interrupts_init();
-
 	device_manager devices(header->acpi_table);
 	interrupts_enable();
+
+	cpu_id cpu;
+	log::info(logs::boot, "CPU Vendor: %s", cpu.vendor_id());
+	log::info(logs::boot, "CPU Family %x Model %x Stepping %x",
+			cpu.family(), cpu.model(), cpu.stepping());
 
 	// int x = 1 / 0;
 	// __asm__ __volatile__("int $15");

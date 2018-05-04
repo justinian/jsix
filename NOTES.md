@@ -11,7 +11,6 @@
 - lock `memory_manager` and `page_manager` structures
 - Serial out based on circular/bip biffer and interrupts, not spinning on
   `write_ready()`
-- Get framebuffer screen working again
 
 
 - Device Tree

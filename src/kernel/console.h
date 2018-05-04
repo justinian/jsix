@@ -1,11 +1,10 @@
 #pragma once
 #include <stdarg.h>
+#include <stdint.h>
 
-#include "kutil/coord.h"
-#include "font.h"
-#include "screen.h"
-
-class console_out_screen;
+class font;
+struct kernel_data;
+class screen;
 class serial_port;
 
 class console
@@ -34,23 +33,20 @@ public:
 	template <typename T>
 	void put_dec(T x, int width = 0);
 
-	void set_screen(console_out_screen *out) { m_screen = out; }
-
 	void echo();
+
+	void init_screen(screen *s, font *f);
 
 	static console * get();
 
 private:
-	console_out_screen *m_screen;
+	class screen_out;
+	screen_out *m_screen;
 	serial_port *m_serial;
 };
 
 extern console g_console;
 inline console * console::get() { return &g_console; }
-
-
-console_out_screen * console_get_screen_out(
-		const font &f, const screen &s, void *scratch, size_t len);
 
 
 extern const char digits[];

@@ -14,8 +14,6 @@ public:
 		unsigned hres, unsigned vres,
 		pixel_t rmask, pixel_t gmask, pixel_t bmask);
 
-	screen(const screen &other);
-
 	unsigned width() const { return m_resolution.x; }
 	unsigned height() const { return m_resolution.y; }
 
@@ -23,8 +21,6 @@ public:
 
 	void fill(pixel_t color);
 	void draw_pixel(unsigned x, unsigned y, pixel_t color);
-
-	screen() = delete;
 
 private:
 	struct color_masks {
@@ -37,4 +33,6 @@ private:
 	pixel_t *m_framebuffer;
 	color_masks m_masks;
 	kutil::coord<unsigned> m_resolution;
+
+	screen() = delete;
 };

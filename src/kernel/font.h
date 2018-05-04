@@ -7,8 +7,7 @@
 class font
 {
 public:
-	static font load(void const *data);
-	font(const font &other);
+	font(void const *data);
 
 	unsigned glyph_bytes() const { return m_size.y * ((m_size.x + 7) / 8); }
 	unsigned count() const { return m_count; }
@@ -17,7 +16,7 @@ public:
 	bool valid() const { return m_count > 0; }
 
 	void draw_glyph(
-			screen &s,
+			screen *s,
 			uint32_t glyph,
 			screen::pixel_t fg,
 			screen::pixel_t bg,
@@ -25,11 +24,10 @@ public:
 			unsigned y) const;
 
 private:
-	font();
-	font(unsigned height, unsigned width, unsigned count, uint8_t const *data);
-
 	kutil::coord<unsigned> m_size;
 	unsigned m_count;
 	uint8_t const *m_data;
+
+	font() = delete;
 };
 

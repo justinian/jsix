@@ -46,13 +46,6 @@ screen::screen(
 {
 }
 
-screen::screen(const screen &other) :
-	m_framebuffer(other.m_framebuffer),
-	m_masks(other.m_masks),
-	m_resolution(other.m_resolution)
-{
-}
-
 screen::pixel_t
 screen::color(uint8_t r, uint8_t g, uint8_t b) const
 {
