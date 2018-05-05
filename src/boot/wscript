@@ -46,7 +46,7 @@ def configure(ctx):
     ])
 
 def build(bld):
-    bld(rule = "make -C ${EFI_DIR}")
+    bld(rule = "make -C ${EFI_DIR} > /dev/null")
     bld.add_group()
 
     import os
@@ -57,7 +57,7 @@ def build(bld):
     bld.program(
         source      = sources,
         target      = "boot.elf",
-        use         = 'EFI gnu-ef',
+        use         = 'EFI',
     )
 
     bld(

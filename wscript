@@ -199,6 +199,7 @@ def qemu(ctx):
         '-d', 'mmu,int,guest_errors',
         '-D', 'popcorn.log',
         '-cpu', 'Broadwell',
+        '-M', 'q35',
         '-no-reboot',
         '-nographic',
     ])
