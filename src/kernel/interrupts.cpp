@@ -195,7 +195,7 @@ interrupts_init()
 	disable_legacy_pic();
 	enable_serial_interrupts();
 
-	log::info(logs::interrupt, "Interrupts enabled.");
+	log::info(logs::boot, "Interrupts enabled.");
 }
 
 struct registers
@@ -333,7 +333,7 @@ irq_handler(registers regs)
 void
 gdt_dump(const table_ptr &table)
 {
-	log::info(logs::interrupt, "Loaded GDT at: %lx size: %d bytes", table.base, table.limit+1);
+	log::info(logs::boot, "Loaded GDT at: %lx size: %d bytes", table.base, table.limit+1);
 
 	int count = (table.limit + 1) / sizeof(gdt_descriptor);
 	const gdt_descriptor *gdt =
@@ -350,7 +350,7 @@ gdt_dump(const table_ptr &table)
 			gdt[i].limit_low;
 
 		if (gdt[i].flags & 0x80) {
-			log::debug(logs::interrupt,
+			log::debug(logs::boot,
 					"   Entry %3d: Base %x  limit %x  privs %d  flags %s%s%s%s%s%s",
 					i, base, limit, ((gdt[i].flags >> 5) & 0x03),
 
@@ -370,7 +370,7 @@ gdt_dump(const table_ptr &table)
 void
 idt_dump(const table_ptr &table)
 {
-	log::info(logs::interrupt, "Loaded IDT at: %lx size: %d bytes", table.base, table.limit+1);
+	log::info(logs::boot, "Loaded IDT at: %lx size: %d bytes", table.base, table.limit+1);
 
 	int count = (table.limit + 1) / sizeof(idt_descriptor);
 	const idt_descriptor *idt =
@@ -393,7 +393,7 @@ idt_dump(const table_ptr &table)
 		}
 
 		if (idt[i].flags & 0x80) {
-			log::debug(logs::interrupt,
+			log::debug(logs::boot,
 					"   Entry %3d: Base:%lx Sel(rpl %d, ti %d, %3d) IST:%d %s DPL:%d", i, base,
 					(idt[i].selector & 0x3),
 					((idt[i].selector & 0x4) >> 2),

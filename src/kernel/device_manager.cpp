@@ -99,17 +99,17 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 	kassert(xsdt && acpi_validate(xsdt), "Invalid ACPI XSDT.");
 
 	char sig[5] = {0,0,0,0,0};
-	log::info(logs::devices, "ACPI 2.0 tables loading:");
+	log::info(logs::devices, "ACPI 2.0 tables loading");
 
 	put_sig(sig, xsdt->header.type);
-	log::info(logs::devices, "  Found table %s", sig);
+	log::debug(logs::devices, "  Found table %s", sig);
 
 	size_t num_tables = acpi_table_entries(xsdt, sizeof(void*));
 	for (size_t i = 0; i < num_tables; ++i) {
 		const acpi_table_header *header = xsdt->headers[i];
 
 		put_sig(sig, header->type);
-		log::info(logs::devices, "  Found table %s", sig);
+		log::debug(logs::devices, "  Found table %s", sig);
 
 		kassert(header->validate(), "Table failed validation.");
 
@@ -163,7 +163,7 @@ device_manager::load_apic(const acpi_apic *apic)
 				isr gsi = isr::irq0 + kutil::read_from<uint32_t>(p+4);
 				uint16_t flags = kutil::read_from<uint16_t>(p+8);
 
-				log::info(logs::devices, "    Intr source override IRQ %d -> %d Pol %d Tri %d",
+				log::debug(logs::devices, "    Intr source override IRQ %d -> %d Pol %d Tri %d",
 						source, gsi, (flags & 0x3), ((flags >> 2) & 0x3));
 
 				// TODO: in a multiple-IOAPIC system this might be elsewhere
@@ -176,7 +176,7 @@ device_manager::load_apic(const acpi_apic *apic)
 			uint8_t num = kutil::read_from<uint8_t>(p + 5);
 			uint16_t flags = kutil::read_from<uint16_t>(p + 3);
 
-			log::info(logs::devices, "    LAPIC NMI Proc %d LINT%d Pol %d Tri %d",
+			log::debug(logs::devices, "    LAPIC NMI Proc %d LINT%d Pol %d Tri %d",
 					kutil::read_from<uint8_t>(p+2),
 					kutil::read_from<uint8_t>(p+5),
 					kutil::read_from<uint16_t>(p+3) & 0x3,

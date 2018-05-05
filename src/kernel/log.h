@@ -9,7 +9,7 @@ enum class logs
 {
 	boot,
 	memory,
-	interrupt,
+	apic,
 	devices,
 
 	max

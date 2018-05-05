@@ -4,14 +4,14 @@
 #include "log.h"
 
 
-static const uint64_t default_enabled[] = {0x09, 0x0f, 0x0f, 0x0f};
+static const uint64_t default_enabled[] = {0x00, 0x0f, 0x0f, 0x0f};
 static const uint8_t level_colors[] = {0x07, 0x0f, 0x0b, 0x09};
 
 static const char *levels[] = {"debug", " info", " warn", "error", "fatal"};
 static const char *areas[] = {
 	"boot",
 	"mem ",
-	"intr",
+	"apic",
 	"dev ",
 
 	nullptr
