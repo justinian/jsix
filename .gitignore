@@ -4,3 +4,4 @@ build
 tags
 .gdbinit
 popcorn.log
+.waf-*

@@ -1,0 +1,22 @@
+
+def configure(ctx):
+    pass
+
+def build(bld):
+    from os.path import join
+
+    sources = bld.path.ant_glob("**/*.cpp")
+    sources += bld.path.ant_glob("**/*.s")
+
+    lds = join(bld.env.ARCH_D, 'kernel.ld')
+
+    bld.program(
+        source = sources,
+        name = 'kernel',
+        includes = '.',
+        target = bld.env.KERNEL_FILENAME,
+        use = 'kutil',
+        linkflags = "-T {}".format(lds),
+    )
+
+# vim: ft=python et

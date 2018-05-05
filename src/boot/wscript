@@ -1,0 +1,70 @@
+
+def configure(ctx):
+    from os.path import join
+
+    efi_dir = join(ctx.env.EXTERNAL, "gnu-efi")
+    ctx.env.EFI_DIR = efi_dir
+
+    efi_inc = join(efi_dir, "inc")
+    efi_arch = join(efi_dir, ctx.env.POPCORN_ARCH)
+
+    crt0_name = 'crt0-efi-{}.o'.format(ctx.env.POPCORN_ARCH)
+    crt0_path = join(efi_arch, "gnuefi", crt0_name)
+
+    lds_name = 'elf_{}_efi.lds'.format(ctx.env.POPCORN_ARCH)
+    lds_path = join(efi_dir, "gnuefi", lds_name)
+
+    ctx.env.append_value('INCLUDES_EFI', [
+        efi_inc,
+        join(efi_inc, "protocol"),
+        join(efi_inc, ctx.env.POPCORN_ARCH),
+    ])
+    ctx.env.append_value('DEFINES_EFI', [
+        'KERNEL_FILENAME=L"{}"'.format(ctx.env.KERNEL_FILENAME),
+        'GNU_EFI_USE_MS_ABI',
+        'HAVE_USE_MS_ABI',
+        'EFI_DEBUG=0',
+        'EFI_DEBUG_CLEAR_MEMORY=0',
+    ])
+    ctx.env.append_value('CFLAGS_EFI', ['-fPIC', '-fshort-wchar', '-Wa,--no-warn'])
+    ctx.env.append_value('STLIB_EFI', ['efi', 'gnuefi'])
+    ctx.env.append_value('STLIBPATH_EFI', [join(efi_arch, "lib"), join(efi_arch, "gnuefi")])
+    ctx.env.append_value('LINKFLAGS_EFI', [
+        '-shared',
+        '-T', lds_path,
+        crt0_path,
+    ])
+    ctx.env.append_value('SECTIONS_EFI', [
+        "-j .text",
+        "-j .sdata",
+        "-j .data",
+        "-j .dynamic",
+        "-j .dynsym",
+        "-j .rel",
+        "-j .rela",
+        "-j .reloc",
+    ])
+
+def build(bld):
+    bld(rule = "make -C ${EFI_DIR}")
+    bld.add_group()
+
+    import os
+    sources = [f for f in os.listdir(str(bld.path))
+                if f.endswith('.c')
+                or f.endswith('.s')]
+
+    bld.program(
+        source      = sources,
+        target      = "boot.elf",
+        use         = 'EFI gnu-ef',
+    )
+
+    bld(
+        rule = "${objcopy} ${SECTIONS_EFI} --target=efi-app-${POPCORN_ARCH} ${SRC} ${TGT}",
+        source = "boot.elf",
+        target = "boot.efi",
+    )
+
+
+# vim: ft=python et sw=4
