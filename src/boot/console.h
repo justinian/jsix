@@ -1,6 +1,6 @@
 #pragma once
-#include <efi.h>
 #include <stddef.h>
+#include <efi/efi.h>
 
 EFI_STATUS con_initialize(EFI_SYSTEM_TABLE *system_table, const CHAR16 *version);
 void con_status_begin(const CHAR16 *message);

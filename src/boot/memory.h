@@ -1,5 +1,5 @@
 #pragma once
-#include <efi.h>
+#include <efi/efi.h>
 
 struct memory_map {
 	size_t length;

@@ -1,5 +1,5 @@
 #pragma once
-#include <efi.h>
+#include <efi/efi.h>
 
 int is_guid(EFI_GUID *a, EFI_GUID *b);
 

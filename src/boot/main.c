@@ -1,7 +1,7 @@
-#include <efi.h>
-#include <efilib.h>
 #include <stdalign.h>
 #include <stddef.h>
+
+#include <efi/efi.h>
 
 #include "console.h"
 #include "guids.h"

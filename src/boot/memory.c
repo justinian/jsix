@@ -1,5 +1,3 @@
-#include <efi.h>
-#include <efilib.h>
 #include <stddef.h>
 
 #include "loader.h"

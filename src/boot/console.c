@@ -1,5 +1,4 @@
-#include <efi.h>
-#include <efilib.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 

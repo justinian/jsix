@@ -1,7 +1,7 @@
-#include "console.h"
-#include <efi.h>
-#include <efilib.h>
 #include <stddef.h>
+#include <efi/efi.h>
+
+#include "console.h"
 
 #define UNUSED __attribute__((unused))
 

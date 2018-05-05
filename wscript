@@ -113,6 +113,7 @@ def configure(ctx):
 
     ctx.env.append_value('INCLUDES', [
         join(ctx.path.abspath(), "src", "include"),
+        join(ctx.path.abspath(), "src", "include", ctx.env.POPCORN_ARCH),
         join(ctx.path.abspath(), "src", "modules"),
     ])
 
