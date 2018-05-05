@@ -132,8 +132,6 @@ public:
 
 	void set_color(uint8_t fg, uint8_t bg)
 	{
-		if (!m_palette) return;
-
 		m_bg = m_palette[bg];
 		m_fg = m_palette[fg];
 		m_attr = (bg << 8) | fg;

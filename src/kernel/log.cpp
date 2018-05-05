@@ -1,10 +1,11 @@
 #include <type_traits>
 #include "kutil/memory.h"
+#include "assert.h"
 #include "console.h"
 #include "log.h"
 
 
-static const uint64_t default_enabled[] = {0x00, 0x0f, 0x0f, 0x0f};
+static const uint64_t default_enabled[] = {0x00, 0xff, 0xff, 0xff};
 static const uint8_t level_colors[] = {0x07, 0x0f, 0x0b, 0x09};
 
 static const char *levels[] = {"debug", " info", " warn", "error", "fatal"};
@@ -20,17 +21,16 @@ static const char *areas[] = {
 
 log log::s_log;
 
-log::log() :
-	m_cons(nullptr)
+log::log() : m_cons(nullptr)
 {
-	for (int i = 0; i < sizeof(m_enabled) / sizeof(uint64_t); ++i)
-		m_enabled[i] = default_enabled[i];
+	kassert(0, "Invalid log constructor");
 }
 
 log::log(console *cons) :
 	m_cons(cons)
 {
-	for (int i = 0; i < sizeof(m_enabled) / sizeof(uint64_t); ++i)
+	const int num_levels = static_cast<int>(level::max) - 1;
+	for (int i = 0; i < num_levels; ++i)
 		m_enabled[i] = default_enabled[i];
 }
 
@@ -49,10 +49,10 @@ log::enable(logs type, level at_level)
 {
 	using under_t = std::underlying_type<level>::type;
 	under_t at = static_cast<under_t>(at_level);
-	under_t max = sizeof(m_enabled) / sizeof(under_t);
+	under_t max = sizeof(m_enabled) / sizeof(m_enabled[0]);
 
 	for (under_t i = 0; i < max; ++i) {
-		if (i <= at)
+		if (i >= at)
 			s_log.m_enabled[i] |= bit_mask(type);
 		else
 			s_log.m_enabled[i] &= ~bit_mask(type);

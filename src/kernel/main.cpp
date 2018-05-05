@@ -46,7 +46,7 @@ init_console(const popcorn_data *header)
 	cons->puts(GIT_VERSION " booting...\n");
 
 	log::init(cons);
-	//log::enable(logs::apic, log::level::debug);
+	log::enable(logs::apic, log::level::debug);
 	log::enable(logs::devices, log::level::debug);
 }
 
