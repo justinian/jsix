@@ -92,8 +92,8 @@ irq_handler_prelude:
 	global %1
 	%1:
 		cli
-		push byte 0
-		push byte %2
+		push 0
+		push %2
 		jmp isr_handler_prelude
 %endmacro
 
@@ -101,7 +101,7 @@ irq_handler_prelude:
 	global %1
 	%1:
 		cli
-		push byte %2
+		push %2
 		jmp isr_handler_prelude
 %endmacro
 
@@ -109,8 +109,8 @@ irq_handler_prelude:
 	global %1
 	%1:
 		cli
-		push byte 0
-		push byte %2
+		push 0
+		push %2
 		jmp irq_handler_prelude
 %endmacro
 
