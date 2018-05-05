@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "kutil/coord.h"
+#include "kutil/enum_bitfields.h"
 #include "kutil/misc.h"
 
 struct acpi_table_header
@@ -35,6 +36,127 @@ size_t acpi_table_entries(const T *t, size_t size)
 	return (t->header.length - sizeof(T)) / size;
 }
 
+enum class acpi_gas_type : uint8_t
+{
+	system_memory,
+	system_io,
+	pci_config,
+	embedded,
+	smbus,
+	platform_channel	= 0x0a,
+	functional_fixed	= 0x7f
+};
+
+struct acpi_gas
+{
+	acpi_gas_type type;
+
+	uint8_t reg_bits;
+	uint8_t reg_offset;
+	uint8_t access_size;
+
+	uint64_t address;
+} __attribute__ ((packed));
+
+
+enum class acpi_fadt_flags : uint32_t
+{
+	wbinvd			= 0x00000001,
+	wbinvd_flush	= 0x00000002,
+	proc_c1			= 0x00000004,
+	p_lvl2_up		= 0x00000008,
+	pwr_button		= 0x00000010,
+	slp_button		= 0x00000020,
+	fix_rtc			= 0x00000040,
+	rtc_s4			= 0x00000080,
+	tmr_val_ext		= 0x00000100,
+	dck_cap			= 0x00000200,
+	reset_reg_sup	= 0x00000400,
+	sealed_case		= 0x00000800,
+	headless		= 0x00001000,
+	cpu_sw_slp		= 0x00002000,
+	pci_exp_wak		= 0x00004000,
+	use_plat_clock	= 0x00008000,
+	s4_rtc_sts_val	= 0x00010000,
+	remote_pwr_cap	= 0x00020000,
+	apic_cluster	= 0x00040000,
+	apic_physical	= 0x00080000,
+	hw_reduced_acpi	= 0x00100000,
+	low_pwr_s0_idle	= 0x00200000
+};
+IS_BITFIELD(acpi_fadt_flags);
+
+struct acpi_fadt
+{
+	TABLE_HEADER('FACP');
+
+    uint32_t facs;
+    uint32_t dsdt;
+
+    uint8_t reserved0;
+
+    uint8_t preferred_pm_profile;
+
+    uint16_t sci_interrupt;
+    uint32_t smi_port;
+    uint8_t acpi_enable;
+    uint8_t acpi_disable;
+    uint8_t s4bios_req;
+    uint8_t pstate_control;
+    uint32_t pm1a_event_block;
+    uint32_t pm1b_event_block;
+    uint32_t pm1a_control_block;
+    uint32_t pm1b_control_block;
+    uint32_t pm2_control_block;
+    uint32_t pm_timer_block;
+    uint32_t gpe0_block;
+    uint32_t gpe1_block;
+    uint8_t pm1_event_length;
+    uint8_t pm1_control_length;
+    uint8_t pm2_control_length;
+    uint8_t pm_timer_length;
+    uint8_t gpe0_block_length;
+    uint8_t gpe1_block_length;
+    uint8_t gpe1_base;
+    uint8_t cstate_control;
+    uint16_t cstate2_latency;
+    uint16_t cstate3_latency;
+    uint16_t flush_size;
+    uint16_t flush_stride;
+    uint8_t duty_offset;
+    uint8_t duty_width;
+    uint8_t day_alarm;
+    uint8_t month_alarm;
+    uint8_t century;
+
+    uint16_t iapc_boot_arch;
+    uint8_t reserved1;
+    acpi_fadt_flags flags;
+
+    acpi_gas reset_reg;
+    uint8_t reset_value;
+
+	uint16_t arm_boot_arch;
+
+    uint8_t fadt_minor_version;
+
+    uint64_t x_facs;
+    uint64_t x_dsdt;
+
+    acpi_gas x_pm1a_event_block;
+    acpi_gas x_pm1b_event_block;
+    acpi_gas x_pm1a_control_block;
+    acpi_gas x_pm1b_control_block;
+    acpi_gas x_pm2_control_block;
+    acpi_gas x_pm_timer_block;
+    acpi_gas x_gpe0_block;
+    acpi_gas x_gpe1_block;
+
+	acpi_gas sleep_control_reg;
+	acpi_gas sleep_status_reg;
+
+	uint64_t hypervisor_vendor_id;
+} __attribute__ ((packed));
 
 struct acpi_xsdt
 {
