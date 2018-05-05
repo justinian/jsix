@@ -19,4 +19,10 @@ def build(bld):
         linkflags = "-T {}".format(lds),
     )
 
+    bld(
+        source = bld.env.KERNEL_FILENAME,
+        target = "{}/kernel.dump".format(bld.out_dir),
+        rule = "objdump -D ${SRC} > ${TGT}",
+    )
+
 # vim: ft=python et

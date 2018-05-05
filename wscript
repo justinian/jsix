@@ -161,28 +161,6 @@ def build(bld):
     out = bld.root.make_node(bld.out_dir)
     kernel_name = bld.env.KERNEL_FILENAME
 
-    boot = out.make_node(join("efi", "boot", "bootx64.efi"))
-    kernel = out.make_node(kernel_name)
-    font = out.make_node("screenfont.psf")
-
-    bld(
-        source = out.make_node(join("src", "boot", "boot.efi")),
-        target = boot,
-        rule = "mkdir -p $(dirname ${TGT}) && cp ${SRC} ${TGT}"
-    )
-
-    bld(
-        source = out.make_node(join("src", "kernel", kernel_name)),
-        target = kernel,
-        rule = "mkdir -p $(dirname ${TGT}) && cp ${SRC} ${TGT}"
-    )
-
-    bld(
-        source = src.make_node(join("assets", "fonts", bld.env.FONT_NAME)),
-        target = font,
-        rule = "mkdir -p $(dirname ${TGT}) && cp ${SRC} ${TGT}"
-    )
-
     bld(
         source = src.make_node(join("assets", "floppy.img")),
         target = out.make_node("popcorn.img"),
@@ -195,9 +173,18 @@ def build(bld):
         rule = "cp ${SRC} ${TGT}",
     )
 
-    for node in (boot, kernel, font):
-        bld.add_group()
-        bld(source = node, rule = "${mcopy} -i popcorn.img ${SRC} ::${SRC}")
+    bld(
+        source = [
+            out.make_node(join("src", "boot", "boot.efi")),
+            out.make_node(join("src", "kernel", kernel_name)),
+            src.make_node(join("assets", "fonts", bld.env.FONT_NAME)),
+        ],
+        rule = "; ".join([
+            "${mcopy} -i popcorn.img ${SRC[0]} ::/efi/boot/bootx64.efi",
+            "${mcopy} -i popcorn.img ${SRC[1]} ::/",
+            "${mcopy} -i popcorn.img ${SRC[2]} ::/screenfont.psf",
+        ]),
+    )
 
 
 def qemu(ctx):
@@ -217,8 +204,14 @@ def qemu(ctx):
     ])
 
 
-def listen(ctx):
-    subprocess.call("nc -l -p 5555", shell=True)
+def vbox(ctx):
+    import os
+    from shutil import copy
+    from subprocess import call
+
+    dest = os.getenv("VBOX_DEST")
+    copy("{}/popcorn.img".format(out), "{}/popcorn.img".format(dest))
+    call("nc -l -p 5555", shell=True)
 
 
 # vim: ft=python et
