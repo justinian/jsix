@@ -10,3 +10,20 @@ global _halt
 _halt:
 	hlt
 	jmp _halt
+
+
+global get_frame
+get_frame:
+	mov rcx, rbp
+
+.loop:
+	mov rax, [rcx + 8]
+	mov rcx, [rcx]
+	cmp rdi, 0
+	je .done
+
+	sub rdi, 1
+	jmp .loop
+
+.done:
+	ret

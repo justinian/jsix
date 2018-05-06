@@ -50,6 +50,10 @@ init_console(const popcorn_data *header)
 	log::enable(logs::devices, log::level::debug);
 }
 
+void do_error_3() { int x = 1 / 0; }
+void do_error_2() { do_error_3(); }
+void do_error_1() { do_error_2(); }
+
 void
 kernel_main(popcorn_data *header)
 {
@@ -80,7 +84,7 @@ kernel_main(popcorn_data *header)
 	log::info(logs::boot, "CPU Family %x Model %x Stepping %x",
 			cpu.family(), cpu.model(), cpu.stepping());
 
-	// int x = 1 / 0;
+	// do_error_1();
 	// __asm__ __volatile__("int $15");
 
 	g_console.puts("boogity!");

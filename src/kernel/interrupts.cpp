@@ -208,6 +208,8 @@ struct registers
 
 #define print_reg(name, value) cons->printf("         %s: %lx\n", name, (value));
 
+extern "C" uint64_t get_frame(int frame);
+
 void
 isr_handler(registers regs)
 {
@@ -277,6 +279,15 @@ isr_handler(registers regs)
 		print_reg(" ef", regs.eflags);
 		print_reg("esp", regs.user_esp);
 		print_reg(" ss", regs.ss);
+
+		cons->puts("\n");
+
+		int frame = 0;
+		uint64_t bp = get_frame(0);
+		while (bp) {
+			cons->printf("    frame %2d: %lx\n", frame, bp);
+			bp = get_frame(++frame);
+		}
 		while(1) asm("hlt");
 	}
 

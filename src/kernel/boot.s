@@ -19,6 +19,9 @@ _start:
 	cli
 
 	mov rsp, stack_end
+	push 0 ; signal end of stack with 0 return address
+
+	mov rbp, rsp
 	extern kernel_main
 	call kernel_main
 
@@ -40,6 +43,7 @@ interrupts_disable:
 	ret
 
 section .bss
+align 0x100
 stack_begin:
 	resb 0x4000 ; 16KiB stack space
 stack_end:

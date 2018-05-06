@@ -58,7 +58,7 @@ def configure(ctx):
         '-ffreestanding',
         '-nodefaultlibs',
         '-fno-builtin',
-        '-fomit-frame-pointer',
+        '-fno-omit-frame-pointer',
         '-mno-red-zone',
     ]
 
@@ -103,7 +103,7 @@ def configure(ctx):
     ctx.env.append_value('CXXFLAGS', baseflags)
     ctx.env.append_value('CXXFLAGS', warnflags)
     ctx.env.append_value('CXXFLAGS', [
-        '-ggdb',
+        '-g',
         '-std=c++14',
         '-fno-exceptions',
         '-fno-rtti',
