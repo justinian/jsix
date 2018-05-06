@@ -172,3 +172,19 @@ struct acpi_apic
 	uint8_t controller_data[0];
 } __attribute__ ((packed));
 
+struct acpi_mcfg_entry
+{
+	uint64_t base;
+	uint16_t group;
+	uint8_t bus_start;
+	uint8_t bus_end;
+	uint32_t reserved;
+} __attribute__ ((packed));
+
+struct acpi_mcfg
+{
+	TABLE_HEADER('MCFG');
+	uint64_t reserved;
+	acpi_mcfg_entry entries[0];
+} __attribute__ ((packed));
+

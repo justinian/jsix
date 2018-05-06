@@ -9,6 +9,7 @@
 #include "interrupts.h"
 #include "log.h"
 #include "memory.h"
+#include "memory_pages.h"
 
 static const char expected_signature[] = "RSD PTR ";
 
@@ -35,6 +36,14 @@ struct acpi2_rsdp
 	uint8_t reserved[3];
 } __attribute__ ((packed));
 
+struct pci_group
+{
+	uint16_t group;
+	uint16_t bus_start;
+	uint16_t bus_end;
+
+	uint32_t *base;
+};
 
 uint8_t
 acpi_checksum(const void *p, size_t len, size_t off = 0)
@@ -54,7 +63,9 @@ acpi_table_header::validate(uint32_t expected_type) const
 
 device_manager::device_manager(const void *root_table) :
 	m_lapic(nullptr),
-	m_num_ioapics(0)
+	m_num_ioapics(0),
+	m_pci(nullptr),
+	m_num_pci_groups(0)
 {
 	kassert(root_table != 0, "ACPI root table pointer is null.");
 
@@ -116,6 +127,10 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 		switch (header->type) {
 		case acpi_apic::type_id:
 			load_apic(reinterpret_cast<const acpi_apic *>(header));
+			break;
+
+		case acpi_mcfg::type_id:
+			load_mcfg(reinterpret_cast<const acpi_mcfg *>(header));
 			break;
 
 		default:
@@ -204,4 +219,88 @@ device_manager::load_apic(const acpi_apic *apic)
 
 	m_ioapics[0]->dump_redirs();
 	m_lapic->enable();
+}
+
+static uint32_t *
+base_for(uint32_t *group, int bus, int dev, int func)
+{
+	return kutil::offset_pointer(group,
+			(bus << 20) + (dev << 15) + (func << 12));
+}
+
+static bool
+check_function(uint32_t *group, int bus, int dev, int func)
+{
+	uint32_t *base = base_for(group, bus, dev, func);
+
+	uint32_t vendor = base[0] & 0xffff;
+	uint32_t device = (base[0] >> 16) & 0xffff;
+	if (vendor == 0xffff) return false;
+
+	uint32_t revision = base[2] & 0xff;
+	uint32_t subclass = (base[2] >> 16) & 0xff;
+	uint32_t devclass = (base[2] >> 24) & 0xff;
+
+	uint32_t header = (base[3] >> 16) & 0x7f;
+	bool multi = ((base[3] >> 16) & 0x80) == 0x80;
+
+	log::info(logs::devices, "Found PCIe device at %2d:%d:%d of type %d.%d id %x:%x",
+			bus, dev, func, devclass, subclass, vendor, device);
+
+	if (header == 0) {
+		log::debug(logs::devices, "  Interrupt: %d", (base[15] >> 8) & 0xff);
+		for (int i = 0; i < 5; ++i)
+			log::debug(logs::devices, "      BAR %d: %x", i + 1, base[i + 4]);
+	}
+
+	return multi;
+}
+
+static void
+check_device(uint32_t *group, int bus, int dev)
+{
+	if (check_function(group, bus, dev, 0)) {
+		for (int i = 1; i < 8; ++i)
+			check_function(group, bus, dev, i);
+	}
+}
+
+static void
+enumerate_devices(pci_group &group)
+{
+	for (int bus = group.bus_start; bus <= group.bus_end; ++bus) {
+		for (int dev = 0; dev < 32; ++dev) {
+			check_device(group.base, bus - group.bus_start, dev);
+		}
+	}
+}
+
+void
+device_manager::load_mcfg(const acpi_mcfg *mcfg)
+{
+	size_t count = acpi_table_entries(mcfg, sizeof(acpi_mcfg_entry));
+
+	m_pci = new pci_group[count];
+	m_num_pci_groups = count;
+
+	page_manager *pm = page_manager::get();
+
+	for (unsigned i = 0; i < count; ++i) {
+		const acpi_mcfg_entry &mcfge = mcfg->entries[i];
+
+		m_pci[i].group = mcfge.group;
+		m_pci[i].bus_start = mcfge.bus_start;
+		m_pci[i].bus_end = mcfge.bus_end;
+		m_pci[i].base = reinterpret_cast<uint32_t *>(mcfge.base);
+
+		int num_busses = m_pci[i].bus_end - m_pci[i].bus_start + 1;
+
+		/// Map the MMIO space into memory
+		pm->map_offset_pointer(reinterpret_cast<void **>(&m_pci[i].base),
+				(num_busses << 20));
+
+		log::debug(logs::devices, "  Found MCFG entry: base %lx  group %d  bus %d-%d",
+				mcfge.base, mcfge.group, mcfge.bus_start, mcfge.bus_end);
+		enumerate_devices(m_pci[i]);
+	}
 }
