@@ -119,7 +119,7 @@ page_block::consolidate(page_block *list)
 void
 page_block::dump(page_block *list, const char *name, bool show_unmapped)
 {
-	log::debug(logs::memory, "Block list %s:", name);
+	log::info(logs::memory, "Block list %s:", name);
 
 	int count = 0;
 	for (page_block *cur = list; cur; cur = cur->next) {
@@ -129,7 +129,7 @@ page_block::dump(page_block *list, const char *name, bool show_unmapped)
 
 		if (cur->virtual_address) {
 			page_table_indices start{cur->virtual_address};
-			log::debug(logs::memory, "  %lx %x [%6d] %lx (%d,%d,%d,%d)",
+			log::info(logs::memory, "  %lx %x [%6d] %lx (%d,%d,%d,%d)",
 					cur->physical_address,
 					cur->flags,
 					cur->count,
@@ -137,14 +137,14 @@ page_block::dump(page_block *list, const char *name, bool show_unmapped)
 					start[0], start[1], start[2], start[3]);
 		} else {
 			page_table_indices start{cur->virtual_address};
-			log::debug(logs::memory, "  %lx %x [%6d]",
+			log::info(logs::memory, "  %lx %x [%6d]",
 					cur->physical_address,
 					cur->flags,
 					cur->count);
 		}
 	}
 
-	log::debug(logs::memory, "  Total: %d", count);
+	log::info(logs::memory, "  Total: %d", count);
 }
 
 void
@@ -193,9 +193,6 @@ page_manager::init(
 
 	consolidate_blocks();
 
-	page_block::dump(m_used, "used", true);
-	page_block::dump(m_free, "free", true);
-
 	// Initialize the kernel memory manager
 	addr_t end = 0;
 	for (page_block *b = m_used; b; b = b->next) {
@@ -233,6 +230,13 @@ page_manager::map_offset_pointer(void **pointer, size_t length)
 	page_table *pml4 = get_pml4();
 	page_in(pml4, *p, v, c);
 	*p = v;
+}
+
+void
+page_manager::dump_blocks()
+{
+	page_block::dump(m_used, "used", true);
+	page_block::dump(m_free, "free", true);
 }
 
 page_block *

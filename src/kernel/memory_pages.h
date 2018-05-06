@@ -45,6 +45,13 @@ public:
 	/// \arg length   Length of the memory area to be mapped
 	void map_offset_pointer(void **pointer, size_t length);
 
+	/// Log the current free/used block lists.
+	void dump_blocks();
+
+	/// Get the system page manager.
+	/// \returns  A pointer to the system page manager
+	static page_manager * get();
+
 private:
 	friend void memory_initialize_managers(const void *, size_t, size_t);
 
@@ -141,6 +148,8 @@ private:
 
 /// Global page manager.
 extern page_manager g_page_manager;
+
+inline page_manager * page_manager::get() { return &g_page_manager; }
 
 /// Flags used by `page_block`.
 enum class page_block_flags : uint32_t
