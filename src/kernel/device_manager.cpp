@@ -244,13 +244,13 @@ check_function(uint32_t *group, int bus, int dev, int func)
 	uint32_t header = (base[3] >> 16) & 0x7f;
 	bool multi = ((base[3] >> 16) & 0x80) == 0x80;
 
-	log::info(logs::devices, "Found PCIe device at %2d:%d:%d of type %d.%d id %x:%x",
+	log::info(logs::devices, "Found PCIe device at %02d:%02d:%d of type %d.%d id %04x:%04x",
 			bus, dev, func, devclass, subclass, vendor, device);
 
 	if (header == 0) {
 		log::debug(logs::devices, "  Interrupt: %d", (base[15] >> 8) & 0xff);
 		for (int i = 0; i < 5; ++i)
-			log::debug(logs::devices, "      BAR %d: %x", i + 1, base[i + 4]);
+			log::debug(logs::devices, "      BAR %d: %08x", i + 1, base[i + 4]);
 	}
 
 	return multi;

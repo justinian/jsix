@@ -4,8 +4,6 @@
 #include <stdint.h>
 
 
-inline void * operator new (size_t, void *p) throw() { return p; }
-
 using addr_t = uint64_t;
 
 namespace kutil {

@@ -300,6 +300,7 @@ void console::vprintf(const char *fmt, va_list args)
 		bool done = false;
 		bool right = true;
 		int width = 0;
+		char pad = ' ';
 
 		while (!done) {
 			char c = *r++;
@@ -307,6 +308,8 @@ void console::vprintf(const char *fmt, va_list args)
 				case '%': *w = '%'; done = true; break;
 
 				case '0':
+					if (width == 0) pad = '0';
+					// else fall through
 				case '1':
 				case '2':
 				case '3':
@@ -319,10 +322,10 @@ void console::vprintf(const char *fmt, va_list args)
 
 				case '-': right = !right; break;
 
-				case 'x': put_hex<uint32_t>(va_arg(args, uint32_t), right ? width : -width); done = true; break;
+				case 'x': put_hex<uint32_t>(va_arg(args, uint32_t), right ? width : -width, pad); done = true; break;
 
 				case 'd':
-				case 'u': put_dec<uint32_t>(va_arg(args, uint32_t), right ? width : -width); done = true; break;
+				case 'u': put_dec<uint32_t>(va_arg(args, uint32_t), right ? width : -width, pad); done = true; break;
 
 				case 's': {
 						const char *s = va_arg(args, const char*);
@@ -333,10 +336,10 @@ void console::vprintf(const char *fmt, va_list args)
 
 				case 'l':
 					switch (*r++) {
-						case 'x': put_hex<uint64_t>(va_arg(args, uint64_t), right ? width : -width); done = true; break;
+						case 'x': put_hex<uint64_t>(va_arg(args, uint64_t), right ? width : -width, pad); done = true; break;
 
 						case 'd':
-						case 'u': put_dec<uint32_t>(va_arg(args, uint64_t), right ? width : -width); done = true; break;
+						case 'u': put_dec<uint32_t>(va_arg(args, uint64_t), right ? width : -width, pad); done = true; break;
 
 						default:
 							done = true;

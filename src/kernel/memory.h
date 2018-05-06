@@ -65,8 +65,3 @@ inline void * kalloc(size_t length) { return g_kernel_memory_manager.allocate(le
 /// Free kernel space memory.
 /// \arg p   The pointer to free
 inline void kfree(void *p) { g_kernel_memory_manager.free(p); }
-
-inline void * operator new (size_t n)    { return g_kernel_memory_manager.allocate(n); }
-inline void * operator new[] (size_t n)  { return g_kernel_memory_manager.allocate(n); }
-inline void operator delete (void *p)  { return g_kernel_memory_manager.free(p); }
-inline void operator delete[] (void *p){ return g_kernel_memory_manager.free(p); }

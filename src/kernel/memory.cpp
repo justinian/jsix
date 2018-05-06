@@ -114,3 +114,9 @@ memory_manager::pop_free(unsigned size)
 	block->next = nullptr;
 	return block;
 }
+
+void * operator new (size_t, void *p) { return p; }
+void * operator new (size_t n)    { return g_kernel_memory_manager.allocate(n); }
+void * operator new[] (size_t n)  { return g_kernel_memory_manager.allocate(n); }
+void operator delete (void *p)  { return g_kernel_memory_manager.free(p); }
+void operator delete[] (void *p){ return g_kernel_memory_manager.free(p); }

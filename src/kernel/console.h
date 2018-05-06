@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <stdarg.h>
 #include <stdint.h>
 
@@ -28,10 +29,10 @@ public:
 	}
 
 	template <typename T>
-	void put_hex(T x, int width = 0);
+	void put_hex(T x, int width = 0, char pad = ' ');
 
 	template <typename T>
-	void put_dec(T x, int width = 0);
+	void put_dec(T x, int width = 0, char pad = ' ');
 
 	void echo();
 
@@ -52,22 +53,26 @@ inline console * console::get() { return &g_console; }
 extern const char digits[];
 
 template <typename T>
-void console::put_hex(T x, int width)
+void console::put_hex(T x, int width, char pad)
 {
 	static const int chars = sizeof(x) * 2;
 	char message[chars + 1];
-	for (int i=0; i<chars; ++i) {
-		message[chars - i - 1] = digits[(x >> (i*4)) & 0xf];
+
+	int len = 1;
+	for (int i = chars - 1; i >= 0; --i) {
+		uint8_t nibble = (x >> (i*4)) & 0xf;
+		if (nibble) len = std::max(i + 1, len);
+		message[chars - i - 1] = digits[nibble];
 	}
 	message[chars] = 0;
 
-	if (width > chars) for(int i=0; i<(width-chars); ++i) puts(" ");
-	puts(message);
-	if (-width > chars) for(int i=0; i<(-width-chars); ++i) puts(" ");
+	if (width > len) for(int i=0; i<(width-len); ++i) putc(pad);
+	puts(message + (chars - len));
+	if (-width > len) for(int i=0; i<(-width-len); ++i) putc(' ');
 }
 
 template <typename T>
-void console::put_dec(T x, int width)
+void console::put_dec(T x, int width, char pad)
 {
 	static const int chars = sizeof(x) * 3;
 	char message[chars + 1];
@@ -80,7 +85,7 @@ void console::put_dec(T x, int width)
 		length += 1;
 	} while (x != 0);
 
-	if (width > length) for(int i=0; i<(width-length); ++i) puts(" ");
+	if (width > length) for(int i=0; i<(width-length); ++i) putc(pad);
 	puts(++p);
-	if (-width > length) for(int i=0; i<(-width-length); ++i) puts(" ");
+	if (-width > length) for(int i=0; i<(-width-length); ++i) putc(' ');
 }
