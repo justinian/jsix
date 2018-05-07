@@ -147,7 +147,7 @@ disable_legacy_pic()
 
 	// Remap into ignore ISRs
 	outb(PIC1+1, static_cast<uint8_t>(isr::isrIgnore0)); io_wait();
-	outb(PIC2+1, static_cast<uint8_t>(isr::isrIgnore8)); io_wait();
+	outb(PIC2+1, static_cast<uint8_t>(isr::isrIgnore0)); io_wait();
 
 	// Tell PICs about each other
 	outb(PIC1+1, 0x04); io_wait();
@@ -236,14 +236,7 @@ isr_handler(registers regs)
 	case isr::isrIgnore5:
 	case isr::isrIgnore6:
 	case isr::isrIgnore7:
-	case isr::isrIgnore8:
-	case isr::isrIgnore9:
-	case isr::isrIgnoreA:
-	case isr::isrIgnoreB:
-	case isr::isrIgnoreC:
-	case isr::isrIgnoreD:
-	case isr::isrIgnoreE:
-	case isr::isrIgnoreF:
+
 		/*
 		cons->printf("\nIGNORED PIC INTERRUPT %d\n",
 				(regs.interrupt % 0xff) - 0xf0);

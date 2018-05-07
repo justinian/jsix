@@ -19,6 +19,10 @@ SECTIONS
 		 *(.rodata)
 	}
 
+	.isrs : {
+		*(.isrs)
+	}
+
 	.bss ALIGN(0x1000) : {
 		__bss_start = .;
 		*(.bss)

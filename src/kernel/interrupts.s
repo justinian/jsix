@@ -118,4 +118,5 @@ irq_handler_prelude:
 %define  ISR(i, name)     EMIT_ISR name, i
 %define  IRQ(i, q, name)  EMIT_IRQ name, i
 
+section .isrs
 %include "interrupt_isrs.inc"

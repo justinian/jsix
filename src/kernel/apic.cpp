@@ -127,7 +127,7 @@ ioapic::ioapic(uint32_t *base, uint32_t base_gsi) :
 
 	for (uint8_t i = 0; i < m_num_gsi; ++i) {
 		uint16_t flags = (i < 0x10) ? 0 : 0xf;
-		isr vector = isr::irq0 + i;
+		isr vector = isr::irq00 + i;
 		redirect(i, vector, flags, true);
 	}
 }

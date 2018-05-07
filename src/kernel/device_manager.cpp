@@ -175,7 +175,7 @@ device_manager::load_apic(const acpi_apic *apic)
 
 		case 2: { // Interrupt source override
 				uint8_t source = kutil::read_from<uint8_t>(p+3);
-				isr gsi = isr::irq0 + kutil::read_from<uint32_t>(p+4);
+				isr gsi = isr::irq00 + kutil::read_from<uint32_t>(p+4);
 				uint16_t flags = kutil::read_from<uint16_t>(p+8);
 
 				log::debug(logs::devices, "    Intr source override IRQ %d -> %d Pol %d Tri %d",
