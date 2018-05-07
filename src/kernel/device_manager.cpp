@@ -36,15 +36,6 @@ struct acpi2_rsdp
 	uint8_t reserved[3];
 } __attribute__ ((packed));
 
-struct pci_group
-{
-	uint16_t group;
-	uint16_t bus_start;
-	uint16_t bus_end;
-
-	uint32_t *base;
-};
-
 uint8_t
 acpi_checksum(const void *p, size_t len, size_t off = 0)
 {
@@ -63,12 +54,7 @@ acpi_table_header::validate(uint32_t expected_type) const
 
 device_manager::device_manager(const void *root_table) :
 	m_lapic(nullptr),
-	m_num_ioapics(0),
-	m_pci(nullptr),
-	m_num_pci_groups(0),
-	m_devices(nullptr),
-	m_num_devices(0),
-	m_num_device_entries(0)
+	m_num_ioapics(0)
 {
 	kassert(root_table != 0, "ACPI root table pointer is null.");
 
@@ -280,9 +266,7 @@ void
 device_manager::load_mcfg(const acpi_mcfg *mcfg)
 {
 	size_t count = acpi_table_entries(mcfg, sizeof(acpi_mcfg_entry));
-
-	m_pci = new pci_group[count];
-	m_num_pci_groups = count;
+	m_pci.set_size(count);
 
 	page_manager *pm = page_manager::get();
 

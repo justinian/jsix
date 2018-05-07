@@ -47,7 +47,7 @@ init_console(const popcorn_data *header)
 
 	log::init(cons);
 	log::enable(logs::apic, log::level::info);
-	log::enable(logs::devices, log::level::info);
+	log::enable(logs::devices, log::level::debug);
 	log::enable(logs::memory, log::level::debug);
 }
 

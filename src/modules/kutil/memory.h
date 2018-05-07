@@ -8,7 +8,19 @@ using addr_t = uint64_t;
 
 namespace kutil {
 
+/// Fill memory with the given value.
+/// \arg p   The beginning of the memory area to fill
+/// \arg v   The byte value to fill memory with
+/// \arg n   The size in bytes of the memory area
+/// \returns A pointer to the filled memory
 void * memset(void *p, uint8_t v, size_t n);
+
+/// Copy an area of memory to another
+/// \dest    The memory to copy to
+/// \src     The memory to copy from
+/// \n       The number of bytes to copy
+/// \returns A pointer to the destination memory
+void * memcpy(void *dest, void *src, size_t n);
 
 template <typename T>
 inline T read_from(const void *p) { return *reinterpret_cast<const T *>(p); }
