@@ -34,7 +34,11 @@ ioapic_write(uint32_t volatile *base, uint8_t reg, uint32_t value)
 apic::apic(uint32_t *base) :
 	m_base(base)
 {
-	g_page_manager.map_offset_pointer(reinterpret_cast<void **>(&m_base), 0x1000);
+	// Map 1MiB of space for the APIC registers and
+	// MSI area
+	page_manager::get()->map_offset_pointer(
+			reinterpret_cast<void **>(&m_base),
+			0x100000);
 }
 
 
