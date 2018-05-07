@@ -110,7 +110,7 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 	kassert(xsdt && acpi_validate(xsdt), "Invalid ACPI XSDT.");
 
 	char sig[5] = {0,0,0,0,0};
-	log::info(logs::devices, "ACPI 2.0 tables loading");
+	log::info(logs::devices, "ACPI 2.0+ tables loading");
 
 	put_sig(sig, xsdt->header.type);
 	log::debug(logs::devices, "  Found table %s", sig);
@@ -249,8 +249,6 @@ check_function(uint32_t *group, int bus, int dev, int func)
 
 	if (header == 0) {
 		log::debug(logs::devices, "  Interrupt: %d", (base[15] >> 8) & 0xff);
-		for (int i = 0; i < 5; ++i)
-			log::debug(logs::devices, "      BAR %d: %08x", i + 1, base[i + 4]);
 	}
 
 	return multi;
