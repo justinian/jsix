@@ -65,7 +65,10 @@ device_manager::device_manager(const void *root_table) :
 	m_lapic(nullptr),
 	m_num_ioapics(0),
 	m_pci(nullptr),
-	m_num_pci_groups(0)
+	m_num_pci_groups(0),
+	m_devices(nullptr),
+	m_num_devices(0),
+	m_num_device_entries(0)
 {
 	kassert(root_table != 0, "ACPI root table pointer is null.");
 
