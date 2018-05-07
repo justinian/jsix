@@ -46,9 +46,9 @@ init_console(const popcorn_data *header)
 	cons->puts(GIT_VERSION " booting...\n");
 
 	log::init(cons);
-	log::enable(logs::apic, log::level::debug);
-	log::enable(logs::devices, log::level::debug);
-	log::enable(logs::memory, log::level::info);
+	log::enable(logs::apic, log::level::info);
+	log::enable(logs::devices, log::level::info);
+	log::enable(logs::memory, log::level::debug);
 }
 
 void do_error_3() { int x = 1 / 0; }
@@ -80,7 +80,6 @@ kernel_main(popcorn_data *header)
 	log::info(logs::boot, "CPU Vendor: %s", cpu.vendor_id());
 	log::info(logs::boot, "CPU Family %x Model %x Stepping %x",
 			cpu.family(), cpu.model(), cpu.stepping());
-
 
 	// do_error_1();
 	// __asm__ __volatile__("int $15");

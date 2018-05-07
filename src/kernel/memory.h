@@ -24,8 +24,7 @@ public:
 	void free(void *p);
 
 private:
-	struct alloc_header;
-	struct free_header;
+	class mem_header;
 
 	/// Expand the size of memory
 	void grow_memory();
@@ -35,15 +34,18 @@ private:
 	void ensure_block(unsigned size);
 
 	/// Helper accessor for the list of blocks of a given size
-	free_header *& get_free(unsigned size)  { return m_free[size - min_size]; }
+	mem_header *& get_free(unsigned size)  { return m_free[size - min_size]; }
 
 	/// Helper to get a block of the given size, growing if necessary
-	free_header * pop_free(unsigned size);
+	mem_header * pop_free(unsigned size);
 
-	static const unsigned min_size = 6;  ///< Minimum block size is (2^min_size)
-	static const unsigned max_size = 16; ///< Maximum block size is (2^max_size)
+	/// Minimum block size is (2^min_size). Must be at least 6.
+	static const unsigned min_size = 6;
 
-	free_header *m_free[max_size - min_size];
+	/// Maximum block size is (2^max_size). Must be less than 64.
+	static const unsigned max_size = 16;
+
+	mem_header *m_free[max_size - min_size];
 	void *m_start;
 	size_t m_length;
 
@@ -65,3 +67,5 @@ inline void * kalloc(size_t length) { return g_kernel_memory_manager.allocate(le
 /// Free kernel space memory.
 /// \arg p   The pointer to free
 inline void kfree(void *p) { g_kernel_memory_manager.free(p); }
+
+void * operator new (size_t, void *p);

@@ -19,4 +19,10 @@ inline T * offset_pointer(T *p, size_t offset)
 	return reinterpret_cast<T *>(reinterpret_cast<addr_t>(p) + offset);
 }
 
+template <typename T>
+inline T* mask_pointer(T *p, addr_t mask)
+{
+	return reinterpret_cast<T *>(reinterpret_cast<addr_t>(p) & ~mask);
+}
+
 } // namespace kutil
