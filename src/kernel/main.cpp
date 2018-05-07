@@ -46,7 +46,7 @@ init_console(const popcorn_data *header)
 	cons->puts(GIT_VERSION " booting...\n");
 
 	log::init(cons);
-	log::enable(logs::apic, log::level::info);
+	log::enable(logs::apic, log::level::debug);
 	log::enable(logs::devices, log::level::debug);
 	log::enable(logs::memory, log::level::info);
 }
@@ -58,11 +58,6 @@ void do_error_1() { do_error_2(); }
 void
 kernel_main(popcorn_data *header)
 {
-	// First clear BSS
-	kutil::memset(__bss_start, 0,
-			reinterpret_cast<uint64_t>(__bss_end) -
-			reinterpret_cast<uint64_t>(__bss_start));
-
 	page_manager *pager = new (&g_page_manager) page_manager;
 
 	memory_initialize_managers(

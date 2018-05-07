@@ -22,6 +22,9 @@
 #endif
 
 const unsigned ELF_PT_LOAD = 1;
+const unsigned ELF_ST_PROGBITS = 1;
+const unsigned ELF_ST_NOBITS = 8;
+const unsigned long ELF_SHF_ALLOC = 0x2;
 
 struct elf_ident
 {
@@ -74,4 +77,18 @@ struct elf_program_header
 	uint64_t mem_size;
 
 	uint64_t align;
+} __attribute__ ((packed));
+
+struct elf_section_header
+{
+	uint32_t name;
+	uint32_t type;
+	uint64_t flags;
+	uint64_t addr;
+	uint64_t offset;
+	uint64_t size;
+	uint32_t link;
+	uint32_t info;
+	uint64_t align;
+	uint64_t entry_size;
 } __attribute__ ((packed));

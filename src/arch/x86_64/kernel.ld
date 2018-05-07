@@ -14,7 +14,7 @@ SECTIONS
 		*(.text)
 	}
 
-	.data ALIGN(0x1000) : {
+	.data : {
 		 *(.data)
 		 *(.rodata)
 	}
@@ -23,14 +23,14 @@ SECTIONS
 		*(.isrs)
 	}
 
+	.note : {
+		*(.note.*)
+	}
+
 	.bss ALIGN(0x1000) : {
 		__bss_start = .;
 		*(.bss)
 		__bss_end = .;
-	}
-
-	.note ALIGN(0x1000) : {
-		*(.note.*)
 	}
 
 	kernel_end = ALIGN(4096);
