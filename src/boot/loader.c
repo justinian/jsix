@@ -174,16 +174,8 @@ loader_load_elf(
 			length = sec_header.size;
 			status = file->Read(file, &length, addr);
 			CHECK_EFI_STATUS_OR_RETURN(status, L"Reading file");
-			con_printf(L"Loaded %lx bytes %lx - %lx\n",
-					sec_header.size,
-					addr,
-					sec_header.addr + sec_header.size - KERNEL_VIRT_ADDRESS);
 		} else if (sec_header.type == ELF_ST_NOBITS) {
 			bootsvc->SetMem(addr, sec_header.size, 0);
-			con_printf(L"Zeroed %lx bytes %lx - %lx\n",
-					sec_header.size,
-					addr,
-					sec_header.addr + sec_header.size - KERNEL_VIRT_ADDRESS);
 		}
 	}
 
