@@ -1,13 +1,11 @@
 #include <algorithm>
 
-#include "assert.h"
+#include "kutil/assert.h"
+#include "kutil/memory_manager.h"
 #include "log.h"
-#include "memory.h"
-#include "memory_pages.h"
+#include "page_manager.h"
 
 page_manager g_page_manager;
-
-using addr_t = page_manager::addr_t;
 
 
 static addr_t
@@ -15,6 +13,7 @@ pt_to_phys(page_table *pt)
 {
 	return reinterpret_cast<addr_t>(pt) - page_manager::page_offset;
 }
+
 
 static page_table *
 pt_from_phys(addr_t p)
@@ -28,6 +27,18 @@ struct free_page_header
 	free_page_header *next;
 	size_t count;
 };
+
+
+void mm_grow_callback(void *next, size_t length)
+{
+	kassert(length % page_manager::page_size == 0,
+			"Heap manager requested a fractional page.");
+
+	size_t pages = length / page_manager::page_size;
+	log::info(logs::memory, "Heap manager growing heap by %d pages.", pages);
+	g_page_manager.map_pages(reinterpret_cast<addr_t>(next), pages);
+}
+
 
 size_t
 page_block::length(page_block *list)
@@ -203,7 +214,10 @@ page_manager::init(
 		}
 	}
 
-	new (&g_kernel_memory_manager) memory_manager(reinterpret_cast<void *>(end));
+	extern kutil::memory_manager g_kernel_memory_manager;
+	new (&g_kernel_memory_manager) kutil::memory_manager(
+			reinterpret_cast<void *>(end),
+			mm_grow_callback);
 }
 
 void

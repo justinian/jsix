@@ -5,6 +5,8 @@
 
 
 using addr_t = uint64_t;
+void * operator new (size_t, void *p);
+
 
 namespace kutil {
 

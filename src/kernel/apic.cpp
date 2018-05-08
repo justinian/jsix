@@ -1,8 +1,8 @@
+#include "kutil/assert.h"
 #include "apic.h"
-#include "assert.h"
 #include "interrupts.h"
 #include "log.h"
-#include "memory_pages.h"
+#include "page_manager.h"
 
 
 static uint32_t

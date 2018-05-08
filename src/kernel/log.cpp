@@ -1,6 +1,6 @@
 #include <type_traits>
+#include "kutil/assert.h"
 #include "kutil/memory.h"
-#include "assert.h"
 #include "console.h"
 #include "log.h"
 

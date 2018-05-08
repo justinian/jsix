@@ -1,11 +1,10 @@
-#include "kutil/enum_bitfields.h"
-#include "kutil/memory.h"
+#include <stdint.h>
 #include "assert.h"
-#include "log.h"
 #include "memory.h"
-#include "memory_pages.h"
+#include "memory_manager.h"
 
-memory_manager g_kernel_memory_manager;
+namespace kutil {
+
 
 struct memory_manager::mem_header
 {
@@ -70,14 +69,16 @@ private:
 
 memory_manager::memory_manager() :
 	m_start(nullptr),
-	m_length(0)
+	m_length(0),
+	m_grow(nullptr)
 {
 	kutil::memset(m_free, 0, sizeof(m_free));
 }
 
-memory_manager::memory_manager(void *start) :
+memory_manager::memory_manager(void *start, grow_callback grow_cb) :
 	m_start(start),
-	m_length(0)
+	m_length(0),
+	m_grow(grow_cb)
 {
 	kutil::memset(m_free, 0, sizeof(m_free));
 	grow_memory();
@@ -89,13 +90,10 @@ memory_manager::allocate(size_t length)
 	size_t total = length + sizeof(mem_header);
 	unsigned size = min_size;
 	while (total > (1 << size)) size++;
-	kassert(size < max_size, "Tried to allocate a block bigger than max_size");
-	log::debug(logs::memory, "Allocating %d bytes, which is size %d", total, size);
+	kassert(size <= max_size, "Tried to allocate a block bigger than max_size");
 
 	mem_header *header = pop_free(size);
 	header->set_used(true);
-
-	log::debug(logs::memory, "  Returning %d bytes at %lx", length, header + 1);
 	return header + 1;
 }
 
@@ -106,16 +104,12 @@ memory_manager::free(void *p)
 	header -= 1; // p points after the header
 	header->set_used(false);
 
-	log::debug(logs::memory, "Freeing a block of size %2d at %lx", header->size(), header);
-
 	while (true) {
 		mem_header *buddy = header->buddy();
 		if (buddy->used() || buddy->size() != header->size()) break;
-		log::debug(logs::memory, "  buddy is same size at %lx", buddy);
 		buddy->remove();
 		header = header->eldest() ? header : buddy;
 		header->set_size(header->size() + 1);
-		log::debug(logs::memory, "  joined into size %2d at %lx", header->size(), header);
 	}
 
 	uint8_t size = header->size();
@@ -131,19 +125,14 @@ memory_manager::grow_memory()
 	size_t length = (1 << max_size);
 
 	void *next = kutil::offset_pointer(m_start, m_length);
-
-	g_page_manager.map_pages(
-			reinterpret_cast<page_manager::addr_t>(next),
-			length / page_manager::page_size);
+	kassert(m_grow, "Tried to grow heap without a growth callback");
+	m_grow(next, length);
 
 	mem_header *block = new (next) mem_header(nullptr, get_free(max_size), max_size);
 	get_free(max_size) = block;
 	if (block->next())
 		block->next()->set_prev(block);
 	m_length += length;
-
-	log::debug(logs::memory, "Allocated new block at %lx: size %d next %lx",
-			block, max_size, block->next());
 }
 
 void
@@ -163,10 +152,6 @@ memory_manager::ensure_block(unsigned size)
 	orig->set_next(next);
 	orig->set_size(size);
 	get_free(size) = orig;
-
-	log::debug(logs::memory, "ensure_block[%2d] split blocks:", size);
-	log::debug(logs::memory, "   %lx: size %d next %lx", orig, size, orig->next());
-	log::debug(logs::memory, "   %lx: size %d next %lx", next, size, next->next());
 }
 
 memory_manager::mem_header *
@@ -180,8 +165,4 @@ memory_manager::pop_free(unsigned size)
 	return block;
 }
 
-void * operator new (size_t, void *p) { return p; }
-void * operator new (size_t n)    { return g_kernel_memory_manager.allocate(n); }
-void * operator new[] (size_t n)  { return g_kernel_memory_manager.allocate(n); }
-void operator delete (void *p)  { return g_kernel_memory_manager.free(p); }
-void operator delete[] (void *p){ return g_kernel_memory_manager.free(p); }
+} // namespace kutil

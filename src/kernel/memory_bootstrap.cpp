@@ -1,7 +1,7 @@
+#include "kutil/assert.h"
 #include "kutil/memory.h"
-#include "assert.h"
 #include "memory.h"
-#include "memory_pages.h"
+#include "page_manager.h"
 
 const unsigned efi_page_size = 0x1000;
 
@@ -407,7 +407,7 @@ page_in_ident(
 }
 
 void
-memory_initialize_managers(const void *memory_map, size_t map_length, size_t desc_length)
+memory_initialize(const void *memory_map, size_t map_length, size_t desc_length)
 {
 	// The bootloader reserved 16 pages for page tables, which we'll use to bootstrap.
 	// The first one is the already-installed PML4, so grab it from CR3.

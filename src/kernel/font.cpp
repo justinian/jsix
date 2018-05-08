@@ -1,4 +1,4 @@
-#include "assert.h"
+#include "kutil/assert.h"
 #include "font.h"
 
 /* PSF2 header format

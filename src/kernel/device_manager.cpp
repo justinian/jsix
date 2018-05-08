@@ -1,15 +1,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "kutil/assert.h"
 #include "kutil/memory.h"
 #include "acpi_tables.h"
 #include "apic.h"
-#include "assert.h"
 #include "device_manager.h"
 #include "interrupts.h"
 #include "log.h"
 #include "memory.h"
-#include "memory_pages.h"
+#include "page_manager.h"
 
 static const char expected_signature[] = "RSD PTR ";
 

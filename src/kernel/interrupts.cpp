@@ -7,7 +7,7 @@
 #include "interrupts.h"
 #include "io.h"
 #include "log.h"
-#include "memory_pages.h"
+#include "page_manager.h"
 
 enum class gdt_flags : uint8_t
 {

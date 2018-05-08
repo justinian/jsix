@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "kutil/assert.h"
 #include "kutil/memory.h"
 #include "console.h"
 #include "cpu.h"
@@ -11,7 +12,7 @@
 #include "kernel_data.h"
 #include "log.h"
 #include "memory.h"
-#include "memory_pages.h"
+#include "page_manager.h"
 #include "screen.h"
 #include "serial.h"
 
@@ -21,6 +22,9 @@ extern "C" {
 
 	void *__bss_start, *__bss_end;
 }
+
+extern [[noreturn]] void
+__kernel_assert(const char *file, unsigned line, const char *message);
 
 void
 init_console(const popcorn_data *header)
@@ -58,9 +62,11 @@ void do_error_1() { do_error_2(); }
 void
 kernel_main(popcorn_data *header)
 {
+	kutil::assert_set_callback(__kernel_assert);
+
 	page_manager *pager = new (&g_page_manager) page_manager;
 
-	memory_initialize_managers(
+	memory_initialize(
 			header->memory_map,
 			header->memory_map_length,
 			header->memory_map_desc_size);

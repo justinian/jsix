@@ -1,5 +1,7 @@
 #include "memory.h"
 
+void * operator new (size_t, void *p) { return p; }
+
 namespace kutil {
 
 void *

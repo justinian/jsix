@@ -1,10 +1,11 @@
 #pragma once
-/// \file memory_pages.h
+/// \file page_manager.h
 /// The page memory manager and related definitions.
 
 #include <stddef.h>
 #include <stdint.h>
 
+#include "kutil/memory.h"
 #include "kutil/enum_bitfields.h"
 
 struct page_block;
@@ -16,8 +17,6 @@ struct free_page_header;
 class page_manager
 {
 public:
-	using addr_t = uint64_t;
-
 	/// Size of a single page.
 	static const size_t page_size = 0x1000;
 
@@ -53,8 +52,6 @@ public:
 	static page_manager * get();
 
 private:
-	friend void memory_initialize_managers(const void *, size_t, size_t);
-
 	/// Set up the memory manager from bootstraped memory
 	void init(
 			page_block *free,
@@ -143,6 +140,7 @@ private:
 	page_block *m_block_cache; ///< Cache of unused page_block structs
 	free_page_header *m_page_cache; ///< Cache of free pages to use for tables
 
+	friend void memory_initialize(const void *, size_t, size_t);
 	page_manager(const page_manager &) = delete;
 };
 
@@ -175,8 +173,6 @@ IS_BITFIELD(page_block_flags);
 /// linked list of such structures.
 struct page_block
 {
-	using addr_t = page_manager::addr_t;
-
 	addr_t physical_address;
 	addr_t virtual_address;
 	uint32_t count;
@@ -294,3 +290,6 @@ template <typename T> inline T page_align(T p)
 /// \returns  The next page-table-aligned address _after_ `p`.
 template <typename T> inline T page_table_align(T p) { return ((p - 1) & ~0x1fffffull) + 0x200000; }
 
+
+/// Bootstrap the memory managers.
+void memory_initialize(const void *memory_map, size_t map_length, size_t desc_length);

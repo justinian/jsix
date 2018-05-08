@@ -1,17 +1,25 @@
 #pragma once
-/// \file memory.h
-/// The block memory manager and related definitions.
+/// \file memory_manager.h
+/// A buddy allocator and related definitions.
 
 #include <stddef.h>
-#include <stdint.h>
+
+namespace kutil {
 
 
 /// Manager for allocation of virtual memory.
 class memory_manager
 {
 public:
+	using grow_callback = void (*)(void *start, size_t length);
+
+	/// Default constructor. Creates an invalid manager.
 	memory_manager();
-	memory_manager(void *start);
+
+	/// Constructor.
+	/// \arg start    Pointer to the start of the heap to be managed
+	/// \arg grow_cb  Function pointer to grow the heap size
+	memory_manager(void *start, grow_callback grow_cb);
 
 	/// Allocate memory from the area managed.
 	/// \arg length  The amount of memory to allocate, in bytes
@@ -22,6 +30,7 @@ public:
 	/// Free a previous allocation.
 	/// \arg p  A pointer previously retuned by allocate()
 	void free(void *p);
+
 
 private:
 	class mem_header;
@@ -49,23 +58,9 @@ private:
 	void *m_start;
 	size_t m_length;
 
-	friend class page_manager;
+	grow_callback m_grow;
+
 	memory_manager(const memory_manager &) = delete;
 };
 
-extern memory_manager g_kernel_memory_manager;
-
-/// Bootstrap the memory managers.
-void memory_initialize_managers(const void *memory_map, size_t map_length, size_t desc_length);
-
-/// Allocate kernel space memory.
-/// \arg length  The amount of memory to allocate, in bytes
-/// \returns     A pointer to the allocated memory, or nullptr if
-///              allocation failed.
-inline void * kalloc(size_t length) { return g_kernel_memory_manager.allocate(length); }
-
-/// Free kernel space memory.
-/// \arg p   The pointer to free
-inline void kfree(void *p) { g_kernel_memory_manager.free(p); }
-
-void * operator new (size_t, void *p);
+} // namespace kutil
