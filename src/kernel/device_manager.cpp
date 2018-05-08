@@ -52,6 +52,22 @@ acpi_table_header::validate(uint32_t expected_type) const
 	return !expected_type || (expected_type == type);
 }
 
+
+pci_device::pci_device() :
+	m_base(nullptr),
+	m_bus_addr(0),
+	m_vendor(0),
+	m_device(0),
+	m_class(0),
+	m_subclass(0),
+	m_prog_if(0),
+	m_revision(0),
+	m_irq(isr::isrIgnoreF),
+	m_header_type(0)
+{
+}
+
+
 device_manager::device_manager(const void *root_table) :
 	m_lapic(nullptr),
 	m_num_ioapics(0)
@@ -210,63 +226,12 @@ device_manager::load_apic(const acpi_apic *apic)
 	m_lapic->enable();
 }
 
-static uint32_t *
-base_for(uint32_t *group, int bus, int dev, int func)
-{
-	return kutil::offset_pointer(group,
-			(bus << 20) + (dev << 15) + (func << 12));
-}
-
-static bool
-check_function(uint32_t *group, int bus, int dev, int func)
-{
-	uint32_t *base = base_for(group, bus, dev, func);
-
-	uint32_t vendor = base[0] & 0xffff;
-	uint32_t device = (base[0] >> 16) & 0xffff;
-	if (vendor == 0xffff) return false;
-
-	uint32_t revision = base[2] & 0xff;
-	uint32_t subclass = (base[2] >> 16) & 0xff;
-	uint32_t devclass = (base[2] >> 24) & 0xff;
-
-	uint32_t header = (base[3] >> 16) & 0x7f;
-	bool multi = ((base[3] >> 16) & 0x80) == 0x80;
-
-	log::info(logs::devices, "Found PCIe device at %02d:%02d:%d of type %d.%d id %04x:%04x",
-			bus, dev, func, devclass, subclass, vendor, device);
-
-	if (header == 0) {
-		log::debug(logs::devices, "  Interrupt: %d", (base[15] >> 8) & 0xff);
-	}
-
-	return multi;
-}
-
-static void
-check_device(uint32_t *group, int bus, int dev)
-{
-	if (check_function(group, bus, dev, 0)) {
-		for (int i = 1; i < 8; ++i)
-			check_function(group, bus, dev, i);
-	}
-}
-
-static void
-enumerate_devices(pci_group &group)
-{
-	for (int bus = group.bus_start; bus <= group.bus_end; ++bus) {
-		for (int dev = 0; dev < 32; ++dev) {
-			check_device(group.base, bus - group.bus_start, dev);
-		}
-	}
-}
-
 void
 device_manager::load_mcfg(const acpi_mcfg *mcfg)
 {
 	size_t count = acpi_table_entries(mcfg, sizeof(acpi_mcfg_entry));
 	m_pci.set_size(count);
+	m_devices.set_capacity(16);
 
 	page_manager *pm = page_manager::get();
 
@@ -286,6 +251,65 @@ device_manager::load_mcfg(const acpi_mcfg *mcfg)
 
 		log::debug(logs::devices, "  Found MCFG entry: base %lx  group %d  bus %d-%d",
 				mcfge.base, mcfge.group, mcfge.bus_start, mcfge.bus_end);
-		enumerate_devices(m_pci[i]);
+	}
+
+	probe_pci();
+}
+
+/*
+static bool
+check_function(uint32_t *group, int bus, int dev, int func)
+{
+}
+*/
+
+void
+device_manager::probe_pci()
+{
+	for (auto &pci : m_pci) {
+		log::debug(logs::devices, "Probing PCI group at base %016lx", pci.base);
+
+		for (int bus = pci.bus_start; bus <= pci.bus_end; ++bus) {
+			for (int dev = 0; dev < 32; ++dev) {
+				if (!pci.has_device(bus, dev, 0)) continue;
+
+				auto &d0 = m_devices.emplace(pci, bus, dev, 0);
+				if (!d0.multi()) continue;
+
+				for (int i = 1; i < 8; ++i) {
+					if (pci.has_device(bus, dev, i))
+						m_devices.emplace(pci, bus, dev, i);
+				}
+			}
+		}
+	}
+}
+
+bool
+pci_group::has_device(uint8_t bus, uint8_t device, uint8_t func)
+{
+	return (*base_for(bus, device, func) & 0xffff) != 0xffff;
+}
+
+pci_device::pci_device(pci_group &group, uint8_t bus, uint8_t device, uint8_t func) :
+	m_base(group.base_for(bus, device, func)),
+	m_bus_addr(bus_addr(bus, device, func)),
+	m_irq(isr::isrIgnoreF)
+{
+	m_vendor = m_base[0] & 0xffff;
+	m_device = (m_base[0] >> 16) & 0xffff;
+
+	m_revision = m_base[2] & 0xff;
+	m_subclass = (m_base[2] >> 16) & 0xff;
+	m_class = (m_base[2] >> 24) & 0xff;
+
+	m_header_type = (m_base[3] >> 16) & 0x7f;
+	m_multi = ((m_base[3] >> 16) & 0x80) == 0x80;
+
+	log::info(logs::devices, "Found PCIe device at %02d:%02d:%d of type %d.%d id %04x:%04x",
+			bus, device, func, m_class, m_subclass, m_vendor, m_device);
+
+	if (m_header_type == 0) {
+		log::debug(logs::devices, "  Interrupt: %d", (m_base[15] >> 8) & 0xff);
 	}
 }

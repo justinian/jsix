@@ -3,6 +3,7 @@
 /// Definition of a simple dynamic vector collection for use in kernel space
 
 #include <algorithm>
+#include <utility>
 #include "kutil/memory.h"
 
 namespace kutil {
@@ -58,19 +59,50 @@ public:
 		delete [] m_elements;
 	}
 
+	/// Get the size of the array.
+	/// \returns  The number of elements in the array
+	inline size_t count() const { return m_size; }
+
 	/// Access an element in the array.
 	inline T & operator[] (size_t i) { return m_elements[i]; }
 
 	/// Access an element in the array.
 	inline const T & operator[] (size_t i) const { return m_elements[i]; }
 
+	/// Get a pointer to the beginning for iteration.
+	/// \returns  A pointer to the beginning of the array
+	T * begin() { return m_elements; }
+
+	/// Get a pointer to the beginning for iteration.
+	/// \returns  A pointer to the beginning of the array
+	const T * begin() const { return m_elements; }
+
+	/// Get a pointer to the end for iteration.
+	/// \returns  A pointer to the end of the array
+	T * end() { return m_elements + m_size; }
+
+	/// Get a pointer to the end for iteration.
+	/// \returns  A pointer to the end of the array
+	const T * end() const { return m_elements + m_size; }
+
 	/// Add an item onto the array by copying it.
-	/// \arg item the item to add
-	void append(const T& item)
+	/// \arg item  The item to add
+	/// \returns   A reference to the added item
+	T & append(const T& item)
 	{
 		ensure_capacity(m_size + 1);
 		m_elements[m_size] = item;
-		m_size += 1;
+		return m_elements[m_size++];
+	}
+
+	/// Construct an item in place onto the end of the array.
+	/// \returns   A reference to the added item
+	template <typename... Args>
+	T & emplace(Args&&... args)
+	{
+		ensure_capacity(m_size + 1);
+		new (&m_elements[m_size]) T(std::forward<Args>(args)...);
+		return m_elements[m_size++];
 	}
 
 	/// Remove an item from the end of the array.

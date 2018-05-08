@@ -7,10 +7,10 @@
 struct acpi_xsdt;
 struct acpi_apic;
 struct acpi_mcfg;
-
 class lapic;
 class ioapic;
 enum class isr : uint8_t;
+struct pci_group;
 
 
 /// Information about a discovered PCIe device
@@ -21,11 +21,25 @@ public:
 	pci_device();
 
 	/// Constructor
-	/// \arg group  The group number of this device's bus
+	/// \arg group  The group of this device's bus
 	/// \arg bus    The bus number this device is on
 	/// \arg device The device number of this device
 	/// \arg func   The function number of this device
-	pci_device(uint16_t group, uint8_t bus, uint8_t device, uint8_t func);
+	pci_device(pci_group &group, uint8_t bus, uint8_t device, uint8_t func);
+
+	/// Check if this device is multi-function.
+	/// \returns  True if this device is multi-function
+	inline bool multi() const { return m_multi; }
+
+	/// Get a bus address, given the bus/device/function numbers.
+	/// \arg bus    Number of the bus
+	/// \arg device Index of the device on the bus
+	/// \arg func   The function number within the device
+	/// \returns    The computed bus_addr
+	static inline uint16_t bus_addr(uint8_t bus, uint8_t device, uint8_t func)
+	{
+		return bus << 8 | device << 3 | func;
+	}
 
 private:
 	uint32_t *m_base;
@@ -40,6 +54,7 @@ private:
 	uint8_t m_subclass;
 	uint8_t m_prog_if;
 	uint8_t m_revision;
+	bool m_multi;
 
 	// Might as well cache these to fill out the struct align
 	isr m_irq;
@@ -55,6 +70,24 @@ struct pci_group
 	uint16_t bus_end;
 
 	uint32_t *base;
+
+	/// Get the base address of the MMIO configuration registers for a device
+	/// \arg bus    The bus number of the device (relative to this group)
+	/// \arg device The device number on the given bus
+	/// \arg func   The function number on the device
+	/// \returns    A pointer to the memory-mapped configuration registers
+	inline uint32_t * base_for(uint8_t bus, uint8_t device, uint8_t func)
+	{
+		return kutil::offset_pointer(base,
+				pci_device::bus_addr(bus, device, func) << 12);
+	}
+
+	/// Check if the given device function is present.
+	/// \arg bus    The bus number of the device (relative to this group)
+	/// \arg device The device number on the given bus
+	/// \arg func   The function number on the device
+	/// \returns    True if the device function is present
+	bool has_device(uint8_t bus, uint8_t device, uint8_t func);
 };
 
 
