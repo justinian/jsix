@@ -2,6 +2,12 @@ top = '.'
 out = 'build'
 
 
+from waflib.Build import BuildContext
+class TestContext(BuildContext):
+    cmd = 'test'
+    variant = 'tests'
+
+
 def options(opt):
     opt.load("nasm gcc g++")
 
@@ -43,6 +49,7 @@ def configure(ctx):
     version = subprocess.check_output("git describe --always", shell=True).strip()
     git_sha = subprocess.check_output("git rev-parse --short HEAD", shell=True).strip()
 
+    env = ctx.env
     major, minor, patch_dirty = version.split(".")
     dirty = 'dirty' in patch_dirty
     patch = patch_dirty.split('-')[0]
@@ -51,7 +58,21 @@ def configure(ctx):
     ctx.env.KERNEL_FILENAME = ctx.options.kernel_filename
     ctx.env.FONT_NAME = ctx.options.font
 
-    ctx.env.EXTERNAL = join(ctx.path.abspath(), "external")
+    ctx.env.ARCH_D = join(str(ctx.path), "src", "arch",
+            ctx.env.POPCORN_ARCH)
+
+    ctx.env.append_value('INCLUDES', [
+        join(ctx.path.abspath(), "src", "include"),
+        join(ctx.path.abspath(), "src", "include", ctx.env.POPCORN_ARCH),
+        join(ctx.path.abspath(), "src", "modules"),
+    ])
+
+    modules = []
+    mod_root = join("src", "modules")
+    for module in os.listdir(mod_root):
+        mod_path = join(mod_root, module)
+        if exists(join(mod_path, "wscript")):
+            modules.append(mod_path)
 
     baseflags = [
         '-nostdlib',
@@ -111,12 +132,6 @@ def configure(ctx):
 
     ctx.env.append_value('ASFLAGS', ['-felf64'])
 
-    ctx.env.append_value('INCLUDES', [
-        join(ctx.path.abspath(), "src", "include"),
-        join(ctx.path.abspath(), "src", "include", ctx.env.POPCORN_ARCH),
-        join(ctx.path.abspath(), "src", "modules"),
-    ])
-
     ctx.env.append_value('LINKFLAGS', [
         '-g',
         '-nostdlib',
@@ -124,9 +139,6 @@ def configure(ctx):
         '-Bsymbolic',
         '-nostartfiles',
     ])
-
-    ctx.env.ARCH_D = join(str(ctx.path), "src", "arch",
-            ctx.env.POPCORN_ARCH)
 
     env = ctx.env
     ctx.setenv('boot', env=env)
@@ -136,56 +148,79 @@ def configure(ctx):
     ctx.env.append_value('CFLAGS', ['-mcmodel=large'])
     ctx.env.append_value('CXXFLAGS', ['-mcmodel=large'])
 
-    mod_root = join("src", "modules")
-    for module in os.listdir(mod_root):
-        mod_path = join(mod_root, module)
-        if exists(join(mod_path, "wscript")):
-            ctx.env.append_value('MODULES', mod_path)
-            ctx.recurse(mod_path)
+    ctx.env.MODULES = modules
+    for mod_path in ctx.env.MODULES:
+        ctx.recurse(mod_path)
 
     ctx.recurse(join("src", "kernel"))
+
+    ## Testing configuration
+    ##
+    from waflib.ConfigSet import ConfigSet
+    ctx.setenv('tests', env=ConfigSet())
+    ctx.load("g++")
+
+    ctx.env.append_value('INCLUDES', [
+        join(ctx.path.abspath(), "src", "include"),
+        join(ctx.path.abspath(), "src", "modules"),
+    ])
+
+    ctx.env.CXXFLAGS = ['-g', '-std=c++14', '-fno-rtti']
+    ctx.env.LINKFLAGS = ['-g']
+
+    ctx.env.MODULES = modules
+    for mod_path in ctx.env.MODULES:
+        ctx.recurse(mod_path)
+    ctx.recurse(join("src", "tests"))
 
 
 def build(bld):
     from os.path import join
 
-    bld.env = bld.all_envs['boot']
-    bld.recurse(join("src", "boot"))
+    if not bld.variant:
+        bld.env = bld.all_envs['boot']
+        bld.recurse(join("src", "boot"))
 
-    bld.env = bld.all_envs['kernel']
-    for mod_path in bld.env.MODULES:
-        bld.recurse(mod_path)
+        bld.env = bld.all_envs['kernel']
+        for mod_path in bld.env.MODULES:
+            bld.recurse(mod_path)
 
-    bld.recurse(join("src", "kernel"))
+        bld.recurse(join("src", "kernel"))
 
-    src = bld.path
-    out = bld.root.make_node(bld.out_dir)
-    kernel_name = bld.env.KERNEL_FILENAME
+        src = bld.path
+        out = bld.root.make_node(bld.out_dir)
+        kernel_name = bld.env.KERNEL_FILENAME
 
-    bld(
-        source = src.make_node(join("assets", "floppy.img")),
-        target = out.make_node("popcorn.img"),
-        rule = "cp ${SRC} ${TGT}",
-    )
+        bld(
+            source = src.make_node(join("assets", "floppy.img")),
+            target = out.make_node("popcorn.img"),
+            rule = "cp ${SRC} ${TGT}",
+        )
 
-    bld(
-        source = src.make_node(join("assets", "ovmf", "x64", "OVMF.fd")),
-        target = out.make_node("flash.img"),
-        rule = "cp ${SRC} ${TGT}",
-    )
+        bld(
+            source = src.make_node(join("assets", "ovmf", "x64", "OVMF.fd")),
+            target = out.make_node("flash.img"),
+            rule = "cp ${SRC} ${TGT}",
+        )
 
-    bld(
-        source = [
-            out.make_node(join("src", "boot", "boot.efi")),
-            out.make_node(join("src", "kernel", kernel_name)),
-            src.make_node(join("assets", "fonts", bld.env.FONT_NAME)),
-        ],
-        rule = "; ".join([
-            "${mcopy} -i popcorn.img ${SRC[0]} ::/efi/boot/bootx64.efi",
-            "${mcopy} -i popcorn.img ${SRC[1]} ::/",
-            "${mcopy} -i popcorn.img ${SRC[2]} ::/screenfont.psf",
-        ]),
-    )
+        bld(
+            source = [
+                out.make_node(join("src", "boot", "boot.efi")),
+                out.make_node(join("src", "kernel", kernel_name)),
+                src.make_node(join("assets", "fonts", bld.env.FONT_NAME)),
+            ],
+            rule = "; ".join([
+                "${mcopy} -i popcorn.img ${SRC[0]} ::/efi/boot/bootx64.efi",
+                "${mcopy} -i popcorn.img ${SRC[1]} ::/",
+                "${mcopy} -i popcorn.img ${SRC[2]} ::/screenfont.psf",
+            ]),
+        )
+
+    elif bld.variant == 'tests':
+        for mod_path in bld.env.MODULES:
+            bld.recurse(mod_path)
+
+        bld.recurse(join("src", "tests"))
 
 
 def qemu(ctx):

@@ -3,8 +3,7 @@
 namespace kutil {
 
 using assert_callback =
-	[[noreturn]] void (*)
-	(const char *file, unsigned line, const char *message);
+	void (*) (const char *file, unsigned line, const char *message);
 
 /// Set the global kernel assert callback
 /// \args f   The new callback

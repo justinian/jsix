@@ -31,8 +31,13 @@ public:
 	/// \arg p  A pointer previously retuned by allocate()
 	void free(void *p);
 
+	/// Minimum block size is (2^min_size). Must be at least 6.
+	static const unsigned min_size = 6;
 
-private:
+	/// Maximum block size is (2^max_size). Must be less than 64.
+	static const unsigned max_size = 16;
+
+protected:
 	class mem_header;
 
 	/// Expand the size of memory
@@ -43,16 +48,14 @@ private:
 	void ensure_block(unsigned size);
 
 	/// Helper accessor for the list of blocks of a given size
+	/// \arg size   Size category of the block we want
+	/// \returns    A mutable reference to the head of the list
 	mem_header *& get_free(unsigned size)  { return m_free[size - min_size]; }
 
 	/// Helper to get a block of the given size, growing if necessary
+	/// \arg size   Size category of the block we want
+	/// \returns    A detached block of the given size
 	mem_header * pop_free(unsigned size);
-
-	/// Minimum block size is (2^min_size). Must be at least 6.
-	static const unsigned min_size = 6;
-
-	/// Maximum block size is (2^max_size). Must be less than 64.
-	static const unsigned max_size = 16;
 
 	mem_header *m_free[max_size - min_size];
 	void *m_start;

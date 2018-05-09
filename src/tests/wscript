@@ -1,0 +1,39 @@
+
+def configure(ctx):
+    pass
+
+def build(bld):
+    sources = bld.path.ant_glob("**/*.cpp")
+
+    from waflib import Task
+    @Task.deep_inputs
+    class utest(Task.Task):
+        color = 'PINK'
+        quiet = False
+        def run(self):
+            import sys
+            import subprocess
+
+            args = [self.inputs[0].abspath()]
+            output = None
+
+            try:
+                output = subprocess.check_output(args)
+            except subprocess.CalledProcessError, e:
+                sys.stdout.write(e.output)
+                return "Failed"
+
+            sys.stdout.write(output)
+
+    bld.program(
+        source = sources,
+        name = 'test',
+        target = 'test',
+        use = 'kutil',
+    )
+
+    run_tests = utest(env = bld.env)
+    run_tests.set_inputs(bld.path.get_bld().make_node('test'))
+    bld.add_to_group(run_tests)
+
+# vim: ft=python et

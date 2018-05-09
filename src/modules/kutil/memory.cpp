@@ -1,6 +1,6 @@
 #include "memory.h"
 
-void * operator new (size_t, void *p) { return p; }
+void * operator new (size_t, void *p) noexcept { return p; }
 
 namespace kutil {
 
