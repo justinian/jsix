@@ -11,7 +11,7 @@ def configure(ctx):
         'EFI_DEBUG=0',
         'EFI_DEBUG_CLEAR_MEMORY=0',
     ])
-    ctx.env.append_value('CFLAGS_EFI', ['-fPIC', '-fshort-wchar', '-Wa,--no-warn'])
+    ctx.env.append_value('CFLAGS_EFI', ['-fPIC', '-fshort-wchar'])
     ctx.env.append_value('LINKFLAGS_EFI', [
         '-shared',
         '-T', lds_path,

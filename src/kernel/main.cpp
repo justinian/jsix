@@ -23,8 +23,7 @@ extern "C" {
 	void *__bss_start, *__bss_end;
 }
 
-extern [[noreturn]] void
-__kernel_assert(const char *file, unsigned line, const char *message);
+extern void __kernel_assert(const char *, unsigned, const char *);
 
 void
 init_console(const popcorn_data *header)
@@ -55,7 +54,7 @@ init_console(const popcorn_data *header)
 	log::enable(logs::memory, log::level::debug);
 }
 
-void do_error_3() { int x = 1 / 0; }
+void do_error_3() { volatile int x = 1; volatile int y = 0; volatile int z = x / y; }
 void do_error_2() { do_error_3(); }
 void do_error_1() { do_error_2(); }
 

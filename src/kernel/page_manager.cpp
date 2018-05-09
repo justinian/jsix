@@ -263,6 +263,7 @@ page_manager::get_block()
 		return block;
 	} else {
 		kassert(0, "NYI: page_manager::get_block() needed to allocate.");
+		return nullptr;
 	}
 }
 
@@ -431,7 +432,7 @@ page_manager::unmap_pages(addr_t address, size_t count)
 void
 page_manager::check_needs_page(page_table *table, unsigned index)
 {
-	if (table->entries[index] & 0x1 == 1) return;
+	if ((table->entries[index] & 0x1) == 1) return;
 
 	page_table *new_table = get_table_page();
 	for (int i=0; i<512; ++i) new_table->entries[i] = 0;
@@ -527,7 +528,7 @@ page_table::dump(int level, uint64_t offset)
 		uint64_t ent = entries[i];
 		if (ent == 0) continue;
 
-		if (ent & 0x1 == 0) {
+		if ((ent & 0x1) == 0) {
 			log::info(logs::memory, "  %3d: %lx   NOT PRESENT", i, ent);
 			continue;
 		}

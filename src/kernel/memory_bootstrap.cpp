@@ -357,7 +357,7 @@ find_efi_free_aligned_pages(const void *memory_map, size_t map_length, size_t de
 static unsigned
 check_needs_page_ident(page_table *table, unsigned index, page_table **free_pages)
 {
-	if (table->entries[index] & 0x1 == 1) return 0;
+	if ((table->entries[index] & 0x1) == 1) return 0;
 
 	kassert(*free_pages, "check_needs_page_ident needed to allocate but had no free pages");
 
@@ -404,6 +404,7 @@ page_in_ident(
 	}
 
 	kassert(0, "Ran to end of page_in_ident");
+	return 0; // Cannot reach
 }
 
 void

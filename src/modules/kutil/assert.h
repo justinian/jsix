@@ -15,4 +15,4 @@ extern assert_callback __kernel_assert_p;
 } // namespace kutil
 
 
-#define kassert(stmt, message)  if(!(stmt)) { ::kutil::__kernel_assert_p(__FILE__, __LINE__, (message)); } else {}
+#define kassert(stmt, message)  do { if(!(stmt)) { ::kutil::__kernel_assert_p(__FILE__, __LINE__, (message)); }} while(0);

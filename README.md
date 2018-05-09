@@ -31,7 +31,7 @@ Popcorn uses the `waf` build tool, which is included in the repo. The other
 requirements are:
 
 * python (to run waf)
-* gcc
+* clang
 * nasm
 
 After cloning, run `waf configure`. Then you can run `waf build` to build the

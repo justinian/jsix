@@ -9,7 +9,7 @@ class TestContext(BuildContext):
 
 
 def options(opt):
-    opt.load("nasm gcc g++")
+    opt.load("nasm clang clang++")
 
     opt.add_option(
             '--arch',
@@ -36,7 +36,7 @@ def configure(ctx):
     ctx.find_program("ld", var="LINK_CC")
     ctx.env.LINK_CXX = ctx.env.LINK_CC
 
-    ctx.load("nasm gcc g++")
+    ctx.load("nasm clang clang++")
     ctx.find_program("objcopy", var="objcopy")
     ctx.find_program("objdump", var="objdump")
     ctx.find_program("mcopy", var="mcopy")
@@ -158,7 +158,7 @@ def configure(ctx):
     ##
     from waflib.ConfigSet import ConfigSet
     ctx.setenv('tests', env=ConfigSet())
-    ctx.load("g++")
+    ctx.load("clang++")
 
     ctx.env.append_value('INCLUDES', [
         join(ctx.path.abspath(), "src", "include"),
