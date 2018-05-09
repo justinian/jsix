@@ -188,12 +188,15 @@ def build(bld):
         bld.recurse(join("src", "kernel"))
 
         src = bld.path
-        out = bld.root.make_node(bld.out_dir)
+        out = bld.path.get_bld()
         kernel_name = bld.env.KERNEL_FILENAME
+
+        image = out.make_node("popcorn.img")
+        font = out.make_node("screenfont.psf")
 
         bld(
             source = src.make_node(join("assets", "floppy.img")),
-            target = out.make_node("popcorn.img"),
+            target = image,
             rule = "cp ${SRC} ${TGT}",
         )
 
@@ -204,17 +207,35 @@ def build(bld):
         )
 
         bld(
-            source = [
-                out.make_node(join("src", "boot", "boot.efi")),
-                out.make_node(join("src", "kernel", kernel_name)),
-                src.make_node(join("assets", "fonts", bld.env.FONT_NAME)),
-            ],
-            rule = "; ".join([
-                "${mcopy} -i popcorn.img ${SRC[0]} ::/efi/boot/bootx64.efi",
-                "${mcopy} -i popcorn.img ${SRC[1]} ::/",
-                "${mcopy} -i popcorn.img ${SRC[2]} ::/screenfont.psf",
-            ]),
+            source = src.make_node(join("assets", "fonts", bld.env.FONT_NAME)),
+            target = font,
+            rule = "cp ${SRC} ${TGT}",
         )
+
+        from waflib.Task import Task
+        class mcopy(Task):
+            color = 'YELLOW'
+            def keyword(self):
+                return "Updating"
+            def __str__(self):
+                node = self.inputs[0]
+                return node.path_from(node.ctx.launch_node())
+            def run(self):
+                from subprocess import check_call as call
+                args = self.env.mcopy + ["-i", self.inputs[0].abspath(), "-D", "o"]
+                b_args = args + [self.inputs[1].abspath(), "::/efi/boot/bootx64.efi"]
+                call(b_args)
+                for inp in self.inputs[2:]:
+                    call(args + [inp.abspath(), "::/"])
+
+        copy_img = mcopy(env = bld.env)
+        copy_img.set_inputs([
+            image,
+            out.make_node(join("src", "boot", "boot.efi")),
+            out.make_node(join("src", "kernel", kernel_name)),
+            font,
+        ])
+        bld.add_to_group(copy_img)
 
     elif bld.variant == 'tests':
         for mod_path in bld.env.MODULES:

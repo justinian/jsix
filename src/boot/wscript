@@ -17,14 +17,6 @@ def configure(ctx):
         '-T', lds_path,
     ])
     ctx.env.append_value('SECTIONS_EFI', [
-        "-j .text",
-        "-j .sdata",
-        "-j .data",
-        "-j .dynamic",
-        "-j .dynsym",
-        "-j .rel",
-        "-j .rela",
-        "-j .reloc",
     ])
 
 def build(bld):
@@ -37,11 +29,33 @@ def build(bld):
         use         = 'EFI',
     )
 
-    bld(
-        rule = "${objcopy} ${SECTIONS_EFI} --target=efi-app-${POPCORN_ARCH} ${SRC} ${TGT}",
-        source = "boot.elf",
-        target = "boot.efi",
-    )
+    from waflib.Task import Task
+    class make_efi(Task):
+        color = 'YELLOW'
+        def keyword(self):
+            return "Creating"
+        def __str__(self):
+            node = self.outputs[0]
+            return node.path_from(node.ctx.launch_node())
+        def run(self):
+            from subprocess import check_call as call
+
+            args = self.env.objcopy
+            sections = [".text", ".sdata", ".data", ".dynamic",
+                        ".dynsym", ".rel", ".rela", ".reloc"]
+            for s in sections: args.extend(['-j', s])
+            args.append('--target=efi-app-' + self.env.POPCORN_ARCH)
+            args.append(self.inputs[0].abspath())
+            args.append(self.outputs[0].abspath())
+            call(args)
+
+    src = bld.path
+    out = bld.path.get_bld()
+
+    efi = make_efi(env=bld.env)
+    efi.set_inputs([out.make_node("boot.elf")])
+    efi.set_outputs([out.make_node("boot.efi")])
+    bld.add_to_group(efi)
 
 
 # vim: ft=python et sw=4
