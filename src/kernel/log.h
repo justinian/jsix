@@ -10,7 +10,8 @@ enum class logs
 	boot,
 	memory,
 	apic,
-	devices,
+	device,
+	driver,
 
 	max
 };

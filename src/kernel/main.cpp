@@ -50,7 +50,8 @@ init_console(const popcorn_data *header)
 
 	log::init(cons);
 	log::enable(logs::apic, log::level::info);
-	log::enable(logs::devices, log::level::debug);
+	log::enable(logs::device, log::level::debug);
+	log::enable(logs::driver, log::level::debug);
 	log::enable(logs::memory, log::level::debug);
 }
 
@@ -85,6 +86,8 @@ kernel_main(popcorn_data *header)
 	log::info(logs::boot, "CPU Vendor: %s", cpu.vendor_id());
 	log::info(logs::boot, "CPU Family %x Model %x Stepping %x",
 			cpu.family(), cpu.model(), cpu.stepping());
+
+	devices.init_drivers();
 
 	// do_error_1();
 	// __asm__ __volatile__("int $15");

@@ -53,28 +53,11 @@ acpi_table_header::validate(uint32_t expected_type) const
 }
 
 
-pci_device::pci_device() :
-	m_base(nullptr),
-	m_bus_addr(0),
-	m_vendor(0),
-	m_device(0),
-	m_class(0),
-	m_subclass(0),
-	m_prog_if(0),
-	m_revision(0),
-	m_irq(isr::isrIgnoreF),
-	m_header_type(0)
-{
-}
-
 
 device_manager::device_manager(const void *root_table) :
-	m_lapic(nullptr),
-	m_num_ioapics(0)
+	m_lapic(nullptr)
 {
 	kassert(root_table != 0, "ACPI root table pointer is null.");
-
-	kutil::memset(m_ioapics, 0, sizeof(m_ioapics));
 
 	const acpi1_rsdp *acpi1 =
 		reinterpret_cast<const acpi1_rsdp *>(root_table);
@@ -100,7 +83,7 @@ device_manager::device_manager(const void *root_table) :
 ioapic *
 device_manager::get_ioapic(int i)
 {
-	return (i < m_num_ioapics) ? m_ioapics[i] : nullptr;
+	return (i < m_ioapics.count()) ? m_ioapics[i] : nullptr;
 }
 
 static void
@@ -115,17 +98,17 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 	kassert(xsdt && acpi_validate(xsdt), "Invalid ACPI XSDT.");
 
 	char sig[5] = {0,0,0,0,0};
-	log::info(logs::devices, "ACPI 2.0+ tables loading");
+	log::info(logs::device, "ACPI 2.0+ tables loading");
 
 	put_sig(sig, xsdt->header.type);
-	log::debug(logs::devices, "  Found table %s", sig);
+	log::debug(logs::device, "  Found table %s", sig);
 
 	size_t num_tables = acpi_table_entries(xsdt, sizeof(void*));
 	for (size_t i = 0; i < num_tables; ++i) {
 		const acpi_table_header *header = xsdt->headers[i];
 
 		put_sig(sig, header->type);
-		log::debug(logs::devices, "  Found table %s", sig);
+		log::debug(logs::device, "  Found table %s", sig);
 
 		kassert(header->validate(), "Table failed validation.");
 
@@ -162,7 +145,7 @@ device_manager::load_apic(const acpi_apic *apic)
 		if (type == 1) {
 			uint32_t *base = reinterpret_cast<uint32_t *>(kutil::read_from<uint32_t>(p+4));
 			uint32_t base_gsr = kutil::read_from<uint32_t>(p+8);
-			m_ioapics[m_num_ioapics++] = new ioapic(base, base_gsr);
+			m_ioapics.append(new ioapic(base, base_gsr));
 		}
 		p += length;
 	}
@@ -183,7 +166,7 @@ device_manager::load_apic(const acpi_apic *apic)
 				isr gsi = isr::irq00 + kutil::read_from<uint32_t>(p+4);
 				uint16_t flags = kutil::read_from<uint16_t>(p+8);
 
-				log::debug(logs::devices, "    Intr source override IRQ %d -> %d Pol %d Tri %d",
+				log::debug(logs::device, "    Intr source override IRQ %d -> %d Pol %d Tri %d",
 						source, gsi, (flags & 0x3), ((flags >> 2) & 0x3));
 
 				// TODO: in a multiple-IOAPIC system this might be elsewhere
@@ -196,7 +179,7 @@ device_manager::load_apic(const acpi_apic *apic)
 			uint8_t num = kutil::read_from<uint8_t>(p + 5);
 			uint16_t flags = kutil::read_from<uint16_t>(p + 3);
 
-			log::debug(logs::devices, "    LAPIC NMI Proc %d LINT%d Pol %d Tri %d",
+			log::debug(logs::device, "    LAPIC NMI Proc %d LINT%d Pol %d Tri %d",
 					kutil::read_from<uint8_t>(p+2),
 					kutil::read_from<uint8_t>(p+5),
 					kutil::read_from<uint16_t>(p+3) & 0x3,
@@ -207,7 +190,7 @@ device_manager::load_apic(const acpi_apic *apic)
 			break;
 
 		default:
-			log::debug(logs::devices, "    APIC entry type %d", type);
+			log::debug(logs::device, "    APIC entry type %d", type);
 		}
 
 		p += length;
@@ -249,25 +232,18 @@ device_manager::load_mcfg(const acpi_mcfg *mcfg)
 		pm->map_offset_pointer(reinterpret_cast<void **>(&m_pci[i].base),
 				(num_busses << 20));
 
-		log::debug(logs::devices, "  Found MCFG entry: base %lx  group %d  bus %d-%d",
+		log::debug(logs::device, "  Found MCFG entry: base %lx  group %d  bus %d-%d",
 				mcfge.base, mcfge.group, mcfge.bus_start, mcfge.bus_end);
 	}
 
 	probe_pci();
 }
 
-/*
-static bool
-check_function(uint32_t *group, int bus, int dev, int func)
-{
-}
-*/
-
 void
 device_manager::probe_pci()
 {
 	for (auto &pci : m_pci) {
-		log::debug(logs::devices, "Probing PCI group at base %016lx", pci.base);
+		log::debug(logs::device, "Probing PCI group at base %016lx", pci.base);
 
 		for (int bus = pci.bus_start; bus <= pci.bus_end; ++bus) {
 			for (int dev = 0; dev < 32; ++dev) {
@@ -285,31 +261,19 @@ device_manager::probe_pci()
 	}
 }
 
-bool
-pci_group::has_device(uint8_t bus, uint8_t device, uint8_t func)
+void
+device_manager::init_drivers()
 {
-	return (*base_for(bus, device, func) & 0xffff) != 0xffff;
-}
+	// Eventually this should be e.g. a lookup into a loadable driver list
+	// for now, just look for AHCI devices
+	for (auto &device : m_devices) {
+		if (device.devclass() != 1 || device.subclass() != 6)
+			continue;
 
-pci_device::pci_device(pci_group &group, uint8_t bus, uint8_t device, uint8_t func) :
-	m_base(group.base_for(bus, device, func)),
-	m_bus_addr(bus_addr(bus, device, func)),
-	m_irq(isr::isrIgnoreF)
-{
-	m_vendor = m_base[0] & 0xffff;
-	m_device = (m_base[0] >> 16) & 0xffff;
+		if (device.progif() != 1) {
+			log::warn(logs::device, "Found SATA device %d:%d:%d, but not an AHCI interface.",
+					device.bus(), device.device(), device.function());
+		}
 
-	m_revision = m_base[2] & 0xff;
-	m_subclass = (m_base[2] >> 16) & 0xff;
-	m_class = (m_base[2] >> 24) & 0xff;
-
-	m_header_type = (m_base[3] >> 16) & 0x7f;
-	m_multi = ((m_base[3] >> 16) & 0x80) == 0x80;
-
-	log::info(logs::devices, "Found PCIe device at %02d:%02d:%d of type %d.%d id %04x:%04x",
-			bus, device, func, m_class, m_subclass, m_vendor, m_device);
-
-	if (m_header_type == 0) {
-		log::debug(logs::devices, "  Interrupt: %d", (m_base[15] >> 8) & 0xff);
 	}
 }

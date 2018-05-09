@@ -14,6 +14,7 @@ static const char *areas[] = {
 	"mem ",
 	"apic",
 	"dev ",
+	"driv",
 
 	nullptr
 };
