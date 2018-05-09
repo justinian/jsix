@@ -4,6 +4,7 @@
 #include "kutil/assert.h"
 #include "kutil/memory.h"
 #include "acpi_tables.h"
+#include "ahci.h"
 #include "apic.h"
 #include "device_manager.h"
 #include "interrupts.h"
@@ -12,6 +13,8 @@
 #include "page_manager.h"
 
 static const char expected_signature[] = "RSD PTR ";
+
+ahci_driver ahci;
 
 struct acpi1_rsdp
 {
@@ -275,5 +278,6 @@ device_manager::init_drivers()
 					device.bus(), device.device(), device.function());
 		}
 
+		ahci.register_device(&device);
 	}
 }
