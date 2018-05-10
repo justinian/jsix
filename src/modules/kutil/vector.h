@@ -142,7 +142,7 @@ public:
 	/// \arg capacity  Number of elements to allocate
 	void set_capacity(size_t capacity)
 	{
-		T *new_array = new T[capacity];
+		T *new_array = reinterpret_cast<T *>(malloc(capacity * sizeof(T)));
 		size_t size = std::min(capacity, m_size);
 
 		kutil::memcpy(new_array, m_elements, size * sizeof(T));

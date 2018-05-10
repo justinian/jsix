@@ -1,6 +1,10 @@
 #include "memory.h"
 
-void * operator new (size_t, void *p) noexcept { return p; }
+void * operator new (size_t, void *p) noexcept	{ return p; }
+void * operator new (size_t n)					{ return kutil::malloc(n); }
+void * operator new[] (size_t n)				{ return kutil::malloc(n); }
+void operator delete (void *p) noexcept			{ return kutil::free(p); }
+void operator delete[] (void *p) noexcept		{ return kutil::free(p); }
 
 namespace kutil {
 
