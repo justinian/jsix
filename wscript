@@ -40,6 +40,7 @@ def configure(ctx):
     ctx.find_program("objcopy", var="objcopy")
     ctx.find_program("objdump", var="objdump")
     ctx.find_program("mcopy", var="mcopy")
+    ctx.find_program("dd", var="dd")
 
     # Override the gcc/g++ tools setting these assuming LD is gcc/g++
     ctx.env.SHLIB_MARKER = '-Bdynamic'
@@ -191,14 +192,9 @@ def build(bld):
         out = bld.path.get_bld()
         kernel_name = bld.env.KERNEL_FILENAME
 
-        image = out.make_node("popcorn.img")
+        disk = out.make_node("popcorn.img")
+        disk1 = out.make_node("popcorn.fat")
         font = out.make_node("screenfont.psf")
-
-        bld(
-            source = src.make_node(join("assets", "floppy.img")),
-            target = image,
-            rule = "cp ${SRC} ${TGT}",
-        )
 
         bld(
             source = src.make_node(join("assets", "ovmf", "x64", "OVMF.fd")),
@@ -222,20 +218,48 @@ def build(bld):
                 return node.path_from(node.ctx.launch_node())
             def run(self):
                 from subprocess import check_call as call
-                args = self.env.mcopy + ["-i", self.inputs[0].abspath(), "-D", "o"]
+                from shutil import copy
+                copy(self.inputs[0].abspath(), self.outputs[0].abspath())
+                args = self.env.mcopy + ["-i", self.outputs[0].abspath(), "-D", "o"]
                 b_args = args + [self.inputs[1].abspath(), "::/efi/boot/bootx64.efi"]
                 call(b_args)
                 for inp in self.inputs[2:]:
                     call(args + [inp.abspath(), "::/"])
 
+        class addpart(Task):
+            color = 'YELLOW'
+            def keyword(self):
+                return "Updating"
+            def __str__(self):
+                node = self.inputs[0]
+                return node.path_from(node.ctx.launch_node())
+            def run(self):
+                from subprocess import check_call as call
+                from shutil import copy
+                copy(self.inputs[0].abspath(), self.outputs[0].abspath())
+                args = self.env.dd + [
+                    "of={}".format(self.outputs[0].abspath()),
+                    "if={}".format(self.inputs[1].abspath()),
+                    "bs=512", "count=91669", "seek=2048", "conv=notrunc"]
+                call(args)
+
         copy_img = mcopy(env = bld.env)
         copy_img.set_inputs([
-            image,
+            src.make_node(join("assets", "disk.fat")),
             out.make_node(join("src", "boot", "boot.efi")),
             out.make_node(join("src", "kernel", kernel_name)),
             font,
         ])
+        copy_img.set_outputs([disk1])
         bld.add_to_group(copy_img)
+
+        copy_part = addpart(env = bld.env)
+        copy_part.set_inputs([
+            src.make_node(join("assets", "disk.img")),
+            disk1,
+        ])
+        copy_part.set_outputs([disk])
+        bld.add_to_group(copy_part)
 
     elif bld.variant == 'tests':
         for mod_path in bld.env.MODULES:
@@ -250,7 +274,7 @@ def qemu(ctx):
     subprocess.call([
         'qemu-system-x86_64',
         '-drive', 'if=pflash,format=raw,file={}/flash.img'.format(out),
-        '-drive', 'if=floppy,format=raw,file={}/popcorn.img'.format(out),
+        '-drive', 'format=raw,file={}/popcorn.img'.format(out),
         '-smp', '1',
         '-m', '512',
         '-d', 'mmu,int,guest_errors',
