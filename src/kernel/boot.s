@@ -20,6 +20,9 @@ _start:
 
 	mov rsp, stack_end
 	push 0 ; signal end of stack with 0 return address
+	push 0 ; and a few extra entries in case of stack
+	push 0 ; problems
+	push 0
 
 	mov rbp, rsp
 	extern kernel_main

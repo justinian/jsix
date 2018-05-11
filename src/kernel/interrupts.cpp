@@ -206,9 +206,21 @@ struct registers
 	uint64_t rip, cs, eflags, user_esp, ss;
 };
 
-#define print_reg(name, value) cons->printf("         %s: %lx\n", name, (value));
+#define print_reg(name, value) cons->printf("         %s: %016lx\n", name, (value));
 
 extern "C" uint64_t get_frame(int frame);
+
+void
+print_stacktrace(int skip = 0)
+{
+	console *cons = console::get();
+	int frame = 0;
+	uint64_t bp = get_frame(skip);
+	while (bp) {
+		cons->printf("    frame %2d: %lx\n", frame, bp);
+		bp = get_frame(++frame + skip);
+	}
+}
 
 void
 isr_handler(registers regs)
@@ -243,17 +255,38 @@ isr_handler(registers regs)
 		*/
 		break;
 
+	case isr::isrPageFault: {
+			cons->set_color(11);
+			cons->puts("\nPage Fault:\n");
+			cons->set_color();
+
+			cons->puts("       flags:");
+			if (regs.errorcode & 0x01) cons->puts(" present");
+			if (regs.errorcode & 0x02) cons->puts(" write");
+			if (regs.errorcode & 0x04) cons->puts(" user");
+			if (regs.errorcode & 0x08) cons->puts(" reserved");
+			if (regs.errorcode & 0x10) cons->puts(" ip");
+			cons->puts("\n");
+
+			uint64_t cr2 = 0;
+			__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
+			print_reg("cr2", cr2);
+
+			print_reg("rip", regs.rip);
+
+			cons->puts("\n");
+			print_stacktrace(2);
+		}
+		while(1) asm("hlt");
+		break;
+
 	default:
 		cons->set_color(9);
 		cons->puts("\nReceived ISR interrupt:\n");
 		cons->set_color();
 
-		uint64_t cr2 = 0;
-		__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
-
-		print_reg("ISR", regs.interrupt);
-		print_reg("ERR", regs.errorcode);
-		print_reg("CR2", cr2);
+		cons->printf("         ISR: %02lx\n", regs.interrupt);
+		cons->printf("         ERR: %lx\n", regs.errorcode);
 		cons->puts("\n");
 
 		print_reg(" ds", regs.ds);
@@ -274,13 +307,7 @@ isr_handler(registers regs)
 		print_reg(" ss", regs.ss);
 
 		cons->puts("\n");
-
-		int frame = 0;
-		uint64_t bp = get_frame(0);
-		while (bp) {
-			cons->printf("    frame %2d: %lx\n", frame, bp);
-			bp = get_frame(++frame);
-		}
+		print_stacktrace(2);
 		while(1) asm("hlt");
 	}
 
