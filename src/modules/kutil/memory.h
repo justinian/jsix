@@ -51,7 +51,7 @@ inline T read_from(const void *p)
 /// \arg n   The offset in bytes
 /// \returns The offset pointer
 template <typename T>
-inline T * offset_pointer(T *p, size_t n)
+inline T * offset_pointer(T *p, ptrdiff_t n)
 {
 	return reinterpret_cast<T *>(reinterpret_cast<addr_t>(p) + n);
 }

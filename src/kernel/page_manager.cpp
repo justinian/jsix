@@ -353,6 +353,9 @@ page_manager::map_pages(addr_t address, size_t count)
 		block->physical_address = phys;
 		block->virtual_address = address;
 		block->count = n;
+		block->flags =
+				page_block_flags::used |
+				page_block_flags::mapped;
 		page_block::insert(m_used, block);
 
 		page_in(pml4, phys, address, n);
@@ -364,12 +367,59 @@ page_manager::map_pages(addr_t address, size_t count)
 	return ret;
 }
 
-void
-page_manager::unmap_pages(addr_t address, size_t count)
+void *
+page_manager::map_offset_pages(size_t count)
 {
+	page_table *pml4 = get_pml4();
+	page_block *free = m_free;
+	page_block *prev = nullptr;
+
+	log::debug(logs::memory, "Got request to offset map %d pages", count);
+
+	while (free) {
+		if (free->count < count) {
+			prev = free;
+			free = free->next;
+			continue;
+		}
+
+		page_block *used = get_block();
+		used->count = count;
+		used->physical_address = free->physical_address;
+		used->virtual_address = used->physical_address + page_offset;
+		used->flags =
+			page_block_flags::used |
+			page_block_flags::mapped;
+		page_block::insert(m_used, used);
+
+		free->physical_address += count * page_size;
+		free->count -= count;
+
+		if (free->count == 0) {
+			if (prev)
+				prev->next = free->next;
+			else
+				m_free = free->next;
+
+			free->zero(m_block_cache);
+			m_block_cache = free;
+		}
+
+		page_in(pml4, used->physical_address, used->virtual_address, count);
+		return reinterpret_cast<void *>(used->virtual_address);
+	}
+
+	return nullptr;
+}
+
+void
+page_manager::unmap_pages(void* address, size_t count)
+{
+	addr_t addr = reinterpret_cast<addr_t>(address);
+
 	page_block **prev = &m_used;
 	page_block *cur = m_used;
-	while (cur && !cur->contains(address)) {
+	while (cur && !cur->contains(addr)) {
 		prev = &cur->next;
 		cur = cur->next;
 	}
@@ -377,10 +427,10 @@ page_manager::unmap_pages(addr_t address, size_t count)
 	kassert(cur, "Couldn't find existing mapped pages to unmap");
 
 	size_t size = page_size * count;
-	addr_t end = address + size;
+	addr_t end = addr + size;
 
-	while (cur && cur->contains(address)) {
-		size_t leading = address - cur->virtual_address;
+	while (cur && cur->contains(addr)) {
+		size_t leading = addr - cur->virtual_address;
 		size_t trailing =
 			end > cur->virtual_end() ?
 			0 : (cur->virtual_end() - end);
@@ -416,7 +466,7 @@ page_manager::unmap_pages(addr_t address, size_t count)
 			cur->next = trail_block;
 		}
 
-		address += cur->count * page_size;
+		addr += cur->count * page_size;
 		page_block *next = cur->next;
 
 		*prev = cur->next;

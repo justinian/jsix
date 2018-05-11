@@ -34,15 +34,38 @@ public:
 	/// \returns      A pointer to the start of the mapped region
 	void * map_pages(addr_t address, size_t count);
 
+	/// Allocate and map contiguous pages into virtual memory, with
+	/// a constant offset from their physical address.
+	/// \arg count    The number of pages to map
+	/// \returns      A pointer to the start of the mapped region, or
+	/// nullptr if no region could be found to fit the request.
+	void * map_offset_pages(size_t count);
+
 	/// Unmap existing pages from memory.
 	/// \arg address  The virtual address of the memory to unmap
 	/// \arg count    The number of pages to unmap
-	void unmap_pages(addr_t address, size_t count);
+	void unmap_pages(void *address, size_t count);
 
 	/// Offset-map a pointer. No physical pages will be mapped.
 	/// \arg pointer  Pointer to a pointer to the memory area to be mapped
 	/// \arg length   Length of the memory area to be mapped
 	void map_offset_pointer(void **pointer, size_t length);
+
+	/// Get the physical address of an offset-mapped pointer
+	/// \arg p   Virtual address of memory that has been offset-mapped
+	/// \returns Physical address of the memory pointed to by p
+	inline addr_t offset_phys(void *p) const
+	{
+		return reinterpret_cast<addr_t>(kutil::offset_pointer(p, -page_offset));
+	}
+
+	/// Get the virtual address of an offset-mapped physical address
+	/// \arg a   Physical address of memory that has been offset-mapped
+	/// \returns Virtual address of the memory at address a
+	inline void * offset_virt(addr_t a) const
+	{
+		return kutil::offset_pointer(reinterpret_cast<void *>(a), page_offset);
+	}
 
 	/// Log the current free/used block lists.
 	void dump_blocks();
@@ -179,7 +202,7 @@ struct page_block
 	page_block_flags flags;
 	page_block *next;
 
-	inline bool has_flag(page_block_flags f) const { return bitfield_contains(flags, f); }
+	inline bool has_flag(page_block_flags f) const { return bitfield_has(flags, f); }
 	inline addr_t physical_end() const { return physical_address + (count * page_manager::page_size); }
 	inline addr_t virtual_end() const { return virtual_address + (count * page_manager::page_size); }
 
@@ -279,16 +302,29 @@ struct page_table_indices
 /// Calculate a page-aligned address.
 /// \arg p    The address to align.
 /// \returns  The next page-aligned address _after_ `p`.
-template <typename T> inline T page_align(T p)
+template <typename T> inline T
+page_align(T p)
 {
-	return ((p - 1) & ~(page_manager::page_size - 1)) + page_manager::page_size;
+	return reinterpret_cast<T>(
+		((reinterpret_cast<addr_t>(p) - 1) & ~(page_manager::page_size - 1))
+		+ page_manager::page_size);
 }
 
 /// Calculate a page-table-aligned address. That is, an address that is
 /// page-aligned to the first page in a page table.
 /// \arg p    The address to align.
 /// \returns  The next page-table-aligned address _after_ `p`.
-template <typename T> inline T page_table_align(T p) { return ((p - 1) & ~0x1fffffull) + 0x200000; }
+template <typename T> inline T
+page_table_align(T p)
+{
+	return ((p - 1) & ~0x1fffffull) + 0x200000;
+}
+
+
+/// Calculate the number of pages needed for the give number of bytes.
+/// \arg n   Number of bytes
+/// \returns Number of pages
+inline size_t page_count(size_t n) { return ((n - 1) / page_manager::page_size) + 1; }
 
 
 /// Bootstrap the memory managers.

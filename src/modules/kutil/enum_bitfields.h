@@ -6,7 +6,7 @@ template<typename E>
 struct is_enum_bitfield { static constexpr bool value = false; };
 
 #define IS_BITFIELD(name) \
-	template<> struct is_enum_bitfield<name> {static constexpr bool value=true;}
+	template<> struct ::is_enum_bitfield<name> {static constexpr bool value=true;}
 
 template <typename E>
 typename std::enable_if<is_enum_bitfield<E>::value,E>::type
@@ -84,7 +84,7 @@ operator ! (E rhs)
 
 template <typename E>
 typename std::enable_if<is_enum_bitfield<E>::value,bool>::type
-bitfield_contains(E set, E flag)
+bitfield_has(E set, E flag)
 {
 	return (set & flag) == flag;
 }
