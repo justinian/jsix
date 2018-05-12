@@ -66,9 +66,10 @@ hba::hba(pci_device *device)
 
 	m_ports.ensure_capacity(ports);
 	for (unsigned i = 0; i < ports; ++i) {
-		log::debug(logs::driver, "  Registering port %d", i);
 		bool impl = ((m_data->port_impl & (1 << i)) != 0);
-		m_ports.emplace(kutil::offset_pointer(pd, 0x80 * i), impl);
+		port &p = m_ports.emplace(i, kutil::offset_pointer(pd, 0x80 * i), impl);
+		if (p.get_state() == port::state::active)
+			p.read(1, 0x1000);
 	}
 }
 

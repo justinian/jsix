@@ -17,9 +17,10 @@ class port
 {
 public:
 	/// Constructor.
+	/// \arg index Index of the port on its HBA
 	/// \arg data  Pointer to the device's registers for this port
 	/// \arg impl  Whether this port is marked as implemented in the HBA
-	port(port_data *data, bool impl);
+	port(uint8_t index, port_data *data, bool impl);
 
 	/// Destructor
 	~port();
@@ -57,6 +58,7 @@ private:
 	/// \returns  The index of the command slot, or -1 if none available
 	int get_cmd_slot();
 
+	uint8_t m_index;
 	state m_state;
 	port_data *m_data;
 

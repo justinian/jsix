@@ -4,6 +4,7 @@
 #include "ahci/ata.h"
 #include "ahci/fis.h"
 #include "ahci/port.h"
+#include "console.h"
 #include "io.h"
 #include "log.h"
 #include "page_manager.h"
@@ -75,6 +76,14 @@ enum class port_cmd : uint32_t
 	none			= 0x00000000
 };
 
+enum class sata_signature : uint32_t
+{
+	sata_drive		= 0x00000101,
+	satapi_drive	= 0xeb140101,
+	enclosure		= 0xc33c0101,
+	port_muxer		= 0x96690101
+};
+
 
 struct port_data
 {
@@ -94,7 +103,8 @@ struct port_data
 	uint8_t task_file_error;
 	uint16_t reserved1;
 
-	uint32_t signature;
+	sata_signature signature;
+
 	uint32_t serial_status;
 	uint32_t serial_control;
 	uint32_t serial_error;
@@ -109,7 +119,8 @@ struct port_data
 } __attribute__ ((packed));
 
 
-port::port(port_data *data, bool impl) :
+port::port(uint8_t index, port_data *data, bool impl) :
+	m_index(index),
 	m_state(state::unimpl),
 	m_data(data),
 	m_fis(nullptr),
@@ -140,10 +151,18 @@ port::update()
 	uint32_t detected = m_data->serial_status & 0x0f;
 	uint32_t power = (m_data->serial_status >> 8) & 0x0f;
 
-	if (detected == 0x3 && power == 0x1)
+	if (detected == 0x3 && power == 0x1) {
 		m_state = state::active;
-	else
+
+		const char *name =
+			m_data->signature == sata_signature::sata_drive ? "SATA" :
+			m_data->signature == sata_signature::satapi_drive ? "SATAPI" :
+			"Other";
+
+		log::info(logs::driver, "Found device type %s at port %d", name, m_index);
+	} else {
 		m_state = state::inactive;
+	}
 }
 
 bool
@@ -205,6 +224,8 @@ port::read(uint64_t sector, size_t length)
 
 		void *mem = pm->map_offset_pages(page_count(prd_len));
 		buffers[i] = mem;
+		kutil::memset(mem, 0xaf, prd_len);
+
 		addr_t phys = pm->offset_phys(mem);
 		cmdt.entries[i].data_base_low = phys & 0xffffffff;
 		cmdt.entries[i].data_base_high = phys >> 32;
@@ -212,7 +233,7 @@ port::read(uint64_t sector, size_t length)
 		if (remaining == 0 || i == max_prd_count - 1) {
 			// If this is the last one, set the interrupt flag
 			cmdt.entries[i].byte_count |= 0x80000000;
-			ent.prd_table_length = i;
+			ent.prd_table_length = i + 1;
 			break;
 		}
 	}
@@ -221,6 +242,7 @@ port::read(uint64_t sector, size_t length)
 	fis->type = fis_type::register_h2d;
 	fis->pm_port = 0x80; // set command register flag
 	fis->command = ata_cmd::read_dma_ext;
+	fis->device = 0x40; // ATA8-ACS p.175
 
 	fis->lba0 = (sector      ) & 0xff;
 	fis->lba1 = (sector >>  8) & 0xff;
@@ -229,9 +251,14 @@ port::read(uint64_t sector, size_t length)
 	fis->lba4 = (sector >> 32) & 0xff;
 	fis->lba5 = (sector >> 40) & 0xff;
 
-	size_t count = length >> 9; // count is in sectors
+	size_t count = ((length - 1) >> 9) + 1; // count is in sectors
 	fis->count0 = (count     ) & 0xff;
 	fis->count1 = (count >> 8) & 0xff;
+
+	log::debug(logs::driver, "Reading %d sectors, starting from %d (0x%lx), using %d PRD entries.",
+			count, sector, sector*512, ent.prd_table_length);
+	log::debug(logs::driver, "  lba: %02x %02x %02x %02x %02x %02x",
+			fis->lba0, fis->lba1, fis->lba2, fis->lba3, fis->lba4, fis->lba5);
 
 	const int max_tries = 10;
 	int tries = 0;
@@ -248,7 +275,9 @@ port::read(uint64_t sector, size_t length)
 		return false;
 	}
 
-	m_data->cmd_issue |= (1 << slot);
+	// Set bit in CI. Note that only new bits should be written, not
+	// previous state.
+	m_data->cmd_issue = (1 << slot);
 
 	// TODO: interrupt-based
 	while (true) {
@@ -267,7 +296,17 @@ port::read(uint64_t sector, size_t length)
 		return false;
 	}
 
-	log::warn(logs::driver, "AHCI read success!? '%s'", buffers[0]);
+	log::warn(logs::driver, "AHCI read status: %08lx  %08lx",
+			m_data->interrupt_status, m_data->serial_error);
+
+	console *cons = console::get();
+	uint8_t *p = (uint8_t *)buffers[0];
+	for (int i = 0; i < 8; ++i) {
+		for (int j = 0; j < 16; ++j) {
+			cons->printf(" %02x", *p++);
+		}
+		cons->putc('\n');
+	}
 
 	return true;
 }
@@ -286,7 +325,7 @@ port::rebase()
 	void *mem = pm->map_offset_pages(pages);
 	addr_t phys = pm->offset_phys(mem);
 
-	log::debug(logs::driver, "Rebasing address for AHCI port to %lx [%d]", mem, pages);
+	log::debug(logs::driver, "Rebasing address for AHCI port %d to %lx [%d]", m_index, mem, pages);
 
 	stop_commands();
 
@@ -334,7 +373,7 @@ port::get_cmd_slot()
 {
 	uint32_t used = (m_data->serial_active | m_data->cmd_issue);
 	for (int i = 0; i < 32; ++i)
-		if (used & (1 << i)) return i;
+		if ((used & (1 << i)) == 0) return i;
 
 	return -1;
 }
