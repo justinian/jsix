@@ -51,6 +51,16 @@ enum class ata_cmd : uint8_t
 };
 
 
+enum class sata_signature : uint32_t
+{
+	none			= 0x00000000,
+
+	sata_drive		= 0x00000101,
+	satapi_drive	= 0xeb140101,
+	enclosure		= 0xc33c0101,
+	port_muxer		= 0x96690101
+};
+
 } // namespace ahci
 
 IS_BITFIELD(ahci::ata_status);

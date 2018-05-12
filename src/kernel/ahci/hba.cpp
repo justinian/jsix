@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "ahci/hba.h"
+#include "console.h"
 #include "log.h"
 #include "page_manager.h"
 #include "pci.h"
@@ -68,8 +69,19 @@ hba::hba(pci_device *device)
 	for (unsigned i = 0; i < ports; ++i) {
 		bool impl = ((m_data->port_impl & (1 << i)) != 0);
 		port &p = m_ports.emplace(i, kutil::offset_pointer(pd, 0x80 * i), impl);
-		if (p.get_state() == port::state::active)
-			p.read(1, 0x1000);
+		if (p.get_state() == port::state::active) {
+			uint8_t buf[512];
+			p.read(1, sizeof(buf), buf);
+
+			console *cons = console::get();
+			uint8_t *p = &buf[0];
+			for (int i = 0; i < 8; ++i) {
+				for (int j = 0; j < 16; ++j) {
+					cons->printf(" %02x", *p++);
+				}
+				cons->putc('\n');
+			}
+		}
 	}
 }
 

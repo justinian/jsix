@@ -3,11 +3,13 @@
 /// Definition for AHCI ports
 #include <stddef.h>
 #include <stdint.h>
+#include "kutil/vector.h"
 
 namespace ahci {
 
 struct cmd_list_entry;
 struct cmd_table;
+enum class sata_signature : uint32_t;
 enum class port_cmd : uint32_t;
 struct port_data;
 
@@ -25,11 +27,15 @@ public:
 	/// Destructor
 	~port();
 
-	enum class state { unimpl, inactive, active };
+	enum class state : uint8_t { unimpl, inactive, active };
 
 	/// Get the current state of this device
 	/// \returns  An enum representing the state
 	state get_state() const { return m_state; }
+
+	/// Get the type signature of this device
+	/// \returns  An enum representing the type of device
+	sata_signature get_type() const { return m_type; }
 
 	/// Update the state of this object from the register data
 	void update();
@@ -46,25 +52,53 @@ public:
 	/// Read data from the drive.
 	/// \arg sector  Starting sector to read
 	/// \arg length  Number of bytes to read
+	/// \arg dest    A buffer where the data will be placed
 	/// \returns     True if the command succeeded
-	bool read(uint64_t sector, size_t length); 
+	bool read(uint64_t sector, size_t length, void *dest);
 
 private:
 	/// Rebase the port command structures to a new location in system
 	/// memory, to be allocated from the page manager.
 	void rebase();
 
-	/// Get a free command slot
-	/// \returns  The index of the command slot, or -1 if none available
-	int get_cmd_slot();
+	/// Initialize a command structure
+	/// \arg length  The number of bytes of data needed in the PRDs
+	/// \returns     The index of the command slot, or -1 if none available
+	int make_command(size_t length);
 
+	/// Send a constructed command to the hardware
+	/// \arg slot   The index of the command slot used
+	/// \returns    True if the command was successfully sent
+	bool issue_command(int slot);
+
+	/// Free the data structures allocated by command creation
+	/// \arg slot   The index of the command slot used
+	void free_command(int slot);
+
+	/// Finish a read command started by `read()`. This will
+	/// free the structures allocated, so `free_command()` is
+	/// not necessary.
+	/// \arg slot  The command slot that the read command used
+	void finish_read(int slot);
+
+	sata_signature m_type;
 	uint8_t m_index;
 	state m_state;
-	port_data *m_data;
 
+	port_data *m_data;
 	void *m_fis;
 	cmd_list_entry *m_cmd_list;
 	cmd_table *m_cmd_table;
+
+	enum class command_type : uint8_t { none, read, write };
+
+	struct pending
+	{
+		command_type type;
+		void *data;
+	};
+
+	kutil::vector<pending> m_pending;
 };
 
 } // namespace ahci

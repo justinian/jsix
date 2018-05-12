@@ -4,7 +4,6 @@
 #include "ahci/ata.h"
 #include "ahci/fis.h"
 #include "ahci/port.h"
-#include "console.h"
 #include "io.h"
 #include "log.h"
 #include "page_manager.h"
@@ -76,14 +75,6 @@ enum class port_cmd : uint32_t
 	none			= 0x00000000
 };
 
-enum class sata_signature : uint32_t
-{
-	sata_drive		= 0x00000101,
-	satapi_drive	= 0xeb140101,
-	enclosure		= 0xc33c0101,
-	port_muxer		= 0x96690101
-};
-
 
 struct port_data
 {
@@ -121,6 +112,7 @@ struct port_data
 
 port::port(uint8_t index, port_data *data, bool impl) :
 	m_index(index),
+	m_type(sata_signature::none),
 	m_state(state::unimpl),
 	m_data(data),
 	m_fis(nullptr),
@@ -130,8 +122,6 @@ port::port(uint8_t index, port_data *data, bool impl) :
 	if (impl) {
 		m_state = state::inactive;
 		update();
-		if (m_state == state::active)
-			rebase();
 	}
 }
 
@@ -153,13 +143,17 @@ port::update()
 
 	if (detected == 0x3 && power == 0x1) {
 		m_state = state::active;
+		m_type = m_data->signature;
 
 		const char *name =
-			m_data->signature == sata_signature::sata_drive ? "SATA" :
-			m_data->signature == sata_signature::satapi_drive ? "SATAPI" :
+			m_type == sata_signature::sata_drive ? "SATA" :
+			m_type == sata_signature::satapi_drive ? "SATAPI" :
 			"Other";
 
 		log::info(logs::driver, "Found device type %s at port %d", name, m_index);
+
+		rebase();
+		m_pending.set_size(32);
 	} else {
 		m_state = state::inactive;
 	}
@@ -194,15 +188,21 @@ port::stop_commands()
 	m_data->command &= ~port_cmd::fis_recv;
 }
 
-bool
-port::read(uint64_t sector, size_t length)
+int
+port::make_command(size_t length)
 {
-	m_data->interrupt_status = ~0u;
+	int slot = -1;
+	uint32_t used_slots = (m_data->serial_active | m_data->cmd_issue);
+	for (int i = 0; i < 32; ++i) {
+		if ((used_slots & (1 << i)) == 0) {
+			slot = i;
+			break;
+		}
+	}
 
-	int slot = get_cmd_slot();
 	if (slot < 0) {
 		log::info(logs::driver, "AHCI could not get a free command slot.");
-		return false;
+		return -1;
 	}
 
 	page_manager *pm = page_manager::get();
@@ -213,17 +213,12 @@ port::read(uint64_t sector, size_t length)
 	kutil::memset(&cmdt, 0, sizeof(cmd_table) +
 			max_prd_count * sizeof(prdt_entry));
 
-	ent.flags = cmd_list_fis_size(sizeof(fis_register_h2d));
-
-	void *buffers[32];
-
 	size_t remaining = length;
 	for (int i = 0; i < max_prd_count; ++i) {
 		size_t prd_len = std::min(remaining, 0x200000ul);
 		remaining -= prd_len;
 
 		void *mem = pm->map_offset_pages(page_count(prd_len));
-		buffers[i] = mem;
 		kutil::memset(mem, 0xaf, prd_len);
 
 		addr_t phys = pm->offset_phys(mem);
@@ -237,6 +232,21 @@ port::read(uint64_t sector, size_t length)
 			break;
 		}
 	}
+
+
+	log::debug(logs::driver, "Created command, slot %d, %d PRD entries.",
+			slot, ent.prd_table_length);
+	return slot;
+}
+
+bool
+port::read(uint64_t sector, size_t length, void *dest)
+{
+	int slot = make_command(length);
+	if (slot < 0)
+		return false;
+
+	cmd_table &cmdt = m_cmd_table[slot];
 
 	fis_register_h2d *fis = reinterpret_cast<fis_register_h2d *>(&cmdt.cmd_fis);
 	fis->type = fis_type::register_h2d;
@@ -255,24 +265,26 @@ port::read(uint64_t sector, size_t length)
 	fis->count0 = (count     ) & 0xff;
 	fis->count1 = (count >> 8) & 0xff;
 
-	log::debug(logs::driver, "Reading %d sectors, starting from %d (0x%lx), using %d PRD entries.",
-			count, sector, sector*512, ent.prd_table_length);
-	log::debug(logs::driver, "  lba: %02x %02x %02x %02x %02x %02x",
-			fis->lba0, fis->lba1, fis->lba2, fis->lba3, fis->lba4, fis->lba5);
+	log::debug(logs::driver, "Reading %d sectors, starting from %d (0x%lx)",
+			count, sector, sector*512);
 
+	m_pending[slot].type = command_type::read;
+	m_pending[slot].data = dest;
+	return issue_command(slot);
+}
+
+bool
+port::issue_command(int slot)
+{
 	const int max_tries = 10;
 	int tries = 0;
 	while (busy()) {
 		if (++tries == max_tries) {
 			log::warn(logs::driver, "AHCI port was busy too long");
+			free_command(slot);
 			return false;
 		}
 		io_wait();
-	}
-
-	if (tries == max_tries) {
-		// TODO: clean up!!!
-		return false;
 	}
 
 	// Set bit in CI. Note that only new bits should be written, not
@@ -290,25 +302,80 @@ port::read(uint64_t sector, size_t length)
 		io_wait();
 	}
 
+	// This is where interrupt handler would begin
+	// TODO: handle other states in interrupt_status
+
 	if (m_data->interrupt_status & 0x40000000) {
 		log::error(logs::driver, "AHCI task file error");
 		// TODO: clean up!
 		return false;
 	}
 
-	log::warn(logs::driver, "AHCI read status: %08lx  %08lx",
+	log::debug(logs::driver, "AHCI interrupt status: %08lx  %08lx",
 			m_data->interrupt_status, m_data->serial_error);
 
-	console *cons = console::get();
-	uint8_t *p = (uint8_t *)buffers[0];
-	for (int i = 0; i < 8; ++i) {
-		for (int j = 0; j < 16; ++j) {
-			cons->printf(" %02x", *p++);
+	uint32_t ci = m_data->cmd_issue;
+	for (int i = 0; i < 32; ++i) {
+		if (ci & (1 << i)) continue;
+
+		pending &p = m_pending[i];
+		switch (p.type) {
+		case command_type::read:
+			finish_read(i);
+			break;
+		default:
+			break;
 		}
-		cons->putc('\n');
+		p.type = command_type::none;
+		p.data = nullptr;
 	}
 
 	return true;
+}
+
+void
+port::finish_read(int slot)
+{
+	page_manager *pm = page_manager::get();
+	cmd_table &cmdt = m_cmd_table[slot];
+	cmd_list_entry &ent = m_cmd_list[slot];
+
+	void *p = m_pending[slot].data;
+	for (int i = 0; i < ent.prd_table_length; ++i) {
+		size_t prd_len = (cmdt.entries[i].byte_count & 0x7fffffff) + 1;
+
+		addr_t phys = 
+			static_cast<addr_t>(cmdt.entries[i].data_base_low) |
+			static_cast<addr_t>(cmdt.entries[i].data_base_high) << 32;
+
+		void *mem = pm->offset_virt(phys);
+		kutil::memcpy(p, mem, prd_len);
+		p = kutil::offset_pointer(p, prd_len);
+
+		pm->unmap_pages(mem, page_count(prd_len));
+	}
+
+}
+
+void
+port::free_command(int slot)
+{
+	page_manager *pm = page_manager::get();
+
+	cmd_table &cmdt = m_cmd_table[slot];
+	cmd_list_entry &ent = m_cmd_list[slot];
+
+	for (int i = 0; i < ent.prd_table_length; ++i) {
+		size_t prd_len = (cmdt.entries[i].byte_count & 0x7fffffff) + 1;
+
+		addr_t phys =
+			static_cast<addr_t>(cmdt.entries[i].data_base_low) |
+			static_cast<addr_t>(cmdt.entries[i].data_base_high) << 32;
+		void *mem = pm->offset_virt(phys);
+		pm->unmap_pages(mem, page_count(prd_len));
+	}
+
+	ent.prd_table_length = max_prd_count;
 }
 
 void
@@ -366,16 +433,6 @@ port::rebase()
 	}
 
 	start_commands();
-}
-
-int
-port::get_cmd_slot()
-{
-	uint32_t used = (m_data->serial_active | m_data->cmd_issue);
-	for (int i = 0; i < 32; ++i)
-		if ((used & (1 << i)) == 0) return i;
-
-	return -1;
 }
 
 } // namespace ahci
