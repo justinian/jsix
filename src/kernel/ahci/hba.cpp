@@ -1,6 +1,7 @@
 #include <stdint.h>
+#include "ahci/ata.h"
 #include "ahci/hba.h"
-#include "console.h"
+#include "device_manager.h"
 #include "log.h"
 #include "page_manager.h"
 #include "pci.h"
@@ -46,6 +47,13 @@ struct hba_data
 } __attribute__ ((packed));
 
 
+void irq_cb(void *data)
+{
+	hba *h = reinterpret_cast<hba *>(data);
+	h->handle_interrupt();
+}
+
+
 hba::hba(pci_device *device)
 {
 	page_manager *pm = page_manager::get();
@@ -53,6 +61,9 @@ hba::hba(pci_device *device)
 	uint32_t bar5 = device->get_bar(5);
 	m_data = reinterpret_cast<hba_data *>(bar5 & ~0xfffull);
 	pm->map_offset_pointer(reinterpret_cast<void **>(&m_data), 0x2000);
+
+	if (! bitfield_has(m_data->cap, hba_cap::ahci_only))
+		m_data->host_control |= 0x80000000; // Enable AHCI mode
 
 	uint32_t icap = static_cast<uint32_t>(m_data->cap);
 
@@ -65,24 +76,42 @@ hba::hba(pci_device *device)
 	port_data *pd = reinterpret_cast<port_data *>(
 			kutil::offset_pointer(m_data, 0x100));
 
+	bool needs_interrupt = false;
 	m_ports.ensure_capacity(ports);
 	for (unsigned i = 0; i < ports; ++i) {
 		bool impl = ((m_data->port_impl & (1 << i)) != 0);
 		port &p = m_ports.emplace(i, kutil::offset_pointer(pd, 0x80 * i), impl);
-		if (p.get_state() == port::state::active) {
-			uint8_t buf[512];
-			p.read(1, sizeof(buf), buf);
+		if (p.get_state() == port::state::active)
+			needs_interrupt = true;
+	}
 
-			console *cons = console::get();
-			uint8_t *p = &buf[0];
-			for (int i = 0; i < 8; ++i) {
-				for (int j = 0; j < 16; ++j) {
-					cons->printf(" %02x", *p++);
-				}
-				cons->putc('\n');
-			}
+	if (needs_interrupt) {
+		device_manager::get().allocate_msi("AHCI Device", *device, irq_cb, this);
+		m_data->host_control |= 0x02; // enable interrupts
+	}
+}
+
+port *
+hba::find_disk()
+{
+	for (auto &port : m_ports) {
+		if (port.get_state() == port::state::active &&
+			port.get_type() == sata_signature::sata_drive)
+			return &port;
+	}
+
+	return nullptr;
+}
+
+void
+hba::handle_interrupt()
+{
+	for (auto &port : m_ports) {
+		if (m_data->int_status & (1 << port.index())) {
+			port.handle_interrupt();
 		}
 	}
+	m_data->int_status = 0;
 }
 
 } // namespace ahci

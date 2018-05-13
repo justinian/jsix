@@ -3,6 +3,10 @@
 
 #include "kutil/assert.h"
 #include "kutil/memory.h"
+
+#include "ahci/driver.h"
+#include "ahci/port.h"
+
 #include "console.h"
 #include "cpu.h"
 #include "device_manager.h"
@@ -22,6 +26,8 @@ extern "C" {
 
 	void *__bss_start, *__bss_end;
 }
+
+extern ahci_driver ahcid;
 
 extern void __kernel_assert(const char *, unsigned, const char *);
 
@@ -79,7 +85,10 @@ kernel_main(popcorn_data *header)
 	// pager->dump_blocks();
 
 	interrupts_init();
-	device_manager devices(header->acpi_table);
+
+	device_manager *devices =
+		new (&device_manager::get()) device_manager(header->acpi_table);
+
 	interrupts_enable();
 
 	cpu_id cpu;
@@ -87,7 +96,25 @@ kernel_main(popcorn_data *header)
 	log::info(logs::boot, "CPU Family %x Model %x Stepping %x",
 			cpu.family(), cpu.model(), cpu.stepping());
 
-	devices.init_drivers();
+	devices->init_drivers();
+
+	ahci::port *disk = ahcid.find_disk();
+	if (disk) {
+		uint8_t buf[512];
+		kutil::memset(buf, 0, 512);
+
+		disk->read(1, sizeof(buf), buf);
+		while (buf[0] == 0) io_wait();
+
+		console *cons = console::get();
+		uint8_t *p = &buf[0];
+		for (int i = 0; i < 8; ++i) {
+			for (int j = 0; j < 16; ++j) {
+				cons->printf(" %02x", *p++);
+			}
+			cons->putc('\n');
+		}
+	}
 
 	// do_error_1();
 	// __asm__ __volatile__("int $15");

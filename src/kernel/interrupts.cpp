@@ -4,10 +4,10 @@
 #include "kutil/enum_bitfields.h"
 #include "kutil/memory.h"
 #include "console.h"
+#include "device_manager.h"
 #include "interrupts.h"
 #include "io.h"
 #include "log.h"
-#include "page_manager.h"
 
 enum class gdt_flags : uint8_t
 {
@@ -319,22 +319,9 @@ irq_handler(registers regs)
 {
 	console *cons = console::get();
 	uint8_t irq = get_irq(regs.interrupt);
-
-	switch (irq) {
-	case 2:
+	if (! device_manager::get().dispatch_irq(irq)) {
 		cons->set_color(11);
-		cons->puts(".");
-		cons->set_color();
-		break;
-
-	case 4:
-		// TODO: move this to a real serial driver
-		cons->echo();
-		break;
-
-	default:
-		cons->set_color(11);
-		cons->printf("\nReceived IRQ interrupt: %d (vec %d)\n",
+		cons->printf("\nReceived unknown IRQ: %d (vec %d)\n",
 				irq, regs.interrupt);
 		cons->set_color();
 

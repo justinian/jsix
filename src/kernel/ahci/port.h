@@ -27,15 +27,19 @@ public:
 	/// Destructor
 	~port();
 
+	/// Get the index of this port on the HBA
+	/// \returns  The port index
+	inline uint8_t index() const { return m_index; }
+
 	enum class state : uint8_t { unimpl, inactive, active };
 
 	/// Get the current state of this device
 	/// \returns  An enum representing the state
-	state get_state() const { return m_state; }
+	inline state get_state() const { return m_state; }
 
 	/// Get the type signature of this device
 	/// \returns  An enum representing the type of device
-	sata_signature get_type() const { return m_type; }
+	inline sata_signature get_type() const { return m_type; }
 
 	/// Update the state of this object from the register data
 	void update();
@@ -55,6 +59,9 @@ public:
 	/// \arg dest    A buffer where the data will be placed
 	/// \returns     True if the command succeeded
 	bool read(uint64_t sector, size_t length, void *dest);
+
+	/// Handle an incoming interrupt
+	void handle_interrupt();
 
 private:
 	/// Rebase the port command structures to a new location in system

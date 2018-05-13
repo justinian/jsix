@@ -154,6 +154,7 @@ port::update()
 
 		rebase();
 		m_pending.set_size(32);
+		m_data->interrupt_enable = 1;
 	} else {
 		m_state = state::inactive;
 	}
@@ -290,25 +291,20 @@ port::issue_command(int slot)
 	// Set bit in CI. Note that only new bits should be written, not
 	// previous state.
 	m_data->cmd_issue = (1 << slot);
+	return true;
+}
 
-	// TODO: interrupt-based
-	while (true) {
-		if ((m_data->cmd_issue & (1 << slot)) == 0) break;
-		if (m_data->interrupt_status & 0x40000000) {
-			log::error(logs::driver, "AHCI task file error");
-			// TODO: clean up!
-			return false;
-		}
-		io_wait();
-	}
+void
+port::handle_interrupt()
+{
+	log::debug(logs::driver, "AHCI port %d got an interrupt");
 
-	// This is where interrupt handler would begin
 	// TODO: handle other states in interrupt_status
 
 	if (m_data->interrupt_status & 0x40000000) {
 		log::error(logs::driver, "AHCI task file error");
 		// TODO: clean up!
-		return false;
+		return;
 	}
 
 	log::debug(logs::driver, "AHCI interrupt status: %08lx  %08lx",
@@ -329,8 +325,7 @@ port::issue_command(int slot)
 		p.type = command_type::none;
 		p.data = nullptr;
 	}
-
-	return true;
+	m_data->interrupt_status = m_data->interrupt_status;
 }
 
 void

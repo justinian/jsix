@@ -7,6 +7,18 @@
 struct pci_group;
 enum class isr : uint8_t;
 
+struct pci_cap
+{
+	enum class type : uint8_t
+	{
+		msi		= 0x05,
+		msix	= 0x11
+	};
+
+	type id;
+	uint8_t next;
+} __attribute__ ((packed));
+
 
 /// Information about a discovered PCIe device
 class pci_device
@@ -60,6 +72,11 @@ public:
 	/// \arg val The value to write
 	void set_bar(unsigned i, uint32_t val);
 
+	/// Write to the MSI registers
+	/// \arg addr  The address to write to the MSI address registers
+	/// \arg data  The value to write to the MSI data register
+	void write_msi_regs(addr_t addr, uint16_t data);
+
 	/// Get a bus address, given the bus/device/function numbers.
 	/// \arg bus    Number of the bus
 	/// \arg device Index of the device on the bus
@@ -72,6 +89,7 @@ public:
 
 private:
 	uint32_t *m_base;
+	pci_cap *m_msi;
 
 	/// Bus address: 15:8 bus, 7:3 device, 2:0 device
 	uint16_t m_bus_addr;

@@ -6,14 +6,17 @@
 #include "acpi_tables.h"
 #include "ahci/driver.h"
 #include "apic.h"
+#include "console.h"
 #include "device_manager.h"
 #include "interrupts.h"
 #include "log.h"
 #include "memory.h"
 #include "page_manager.h"
 
+
 static const char expected_signature[] = "RSD PTR ";
 
+device_manager device_manager::s_instance(nullptr);
 ahci_driver ahcid;
 
 struct acpi1_rsdp
@@ -56,6 +59,21 @@ acpi_table_header::validate(uint32_t expected_type) const
 }
 
 
+void irq2_callback(void *)
+{
+	console *cons = console::get();
+	cons->set_color(11);
+	cons->puts(".");
+	cons->set_color();
+}
+
+void irq4_callback(void *)
+{
+	// TODO: move this to a real serial driver
+	console *cons = console::get();
+	cons->echo();
+}
+
 
 device_manager::device_manager(const void *root_table) :
 	m_lapic(nullptr)
@@ -81,6 +99,11 @@ device_manager::device_manager(const void *root_table) :
 	kassert(sum == 0, "ACPI 2.0 RSDP checksum mismatch.");
 
 	load_xsdt(reinterpret_cast<const acpi_xsdt *>(acpi2->xsdt_address));
+
+	m_irqs.ensure_capacity(32);
+	m_irqs.set_size(16);
+	m_irqs[2] = {"Clock interrupt", irq2_callback, nullptr};
+	m_irqs[4] = {"Serial interrupt", irq4_callback, nullptr};
 }
 
 ioapic *
@@ -280,4 +303,20 @@ device_manager::init_drivers()
 
 		ahcid.register_device(&device);
 	}
+}
+
+bool
+device_manager::allocate_msi(const char *name, pci_device &device, irq_callback cb, void *data)
+{
+	// TODO: find gaps to fill
+	uint8_t irq = m_irqs.count();
+	isr vector = isr::irq00 + irq;
+	m_irqs.append({name, cb, data});
+
+	log::debug(logs::device, "Allocating IRQ %02x to %s.", irq, name);
+
+	device.write_msi_regs(
+			0xFEE00000,
+			static_cast<uint16_t>(vector));
+	return true;
 }
