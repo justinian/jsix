@@ -22,9 +22,6 @@ public:
 	/// \arg device  The PCI device to remove
 	void unregister_device(pci_device *device);
 
-	/// Debug: find the first disk
-	ahci::port * find_disk();
-
 private:
 	kutil::vector<ahci::hba> m_devices;
 };

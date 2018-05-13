@@ -25,9 +25,6 @@ public:
 	/// Interrupt handler.
 	void handle_interrupt();
 
-	/// Debug: find the first disk
-	port * find_disk();
-
 private:
 	pci_device *m_device;
 	hba_data *m_data;

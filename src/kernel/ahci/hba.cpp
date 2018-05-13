@@ -57,6 +57,7 @@ void irq_cb(void *data)
 hba::hba(pci_device *device)
 {
 	page_manager *pm = page_manager::get();
+	device_manager &dm = device_manager::get();
 
 	uint32_t bar5 = device->get_bar(5);
 	m_data = reinterpret_cast<hba_data *>(bar5 & ~0xfffull);
@@ -83,24 +84,15 @@ hba::hba(pci_device *device)
 		port &p = m_ports.emplace(i, kutil::offset_pointer(pd, 0x80 * i), impl);
 		if (p.get_state() == port::state::active)
 			needs_interrupt = true;
+
+		if (p.get_type() == sata_signature::sata_drive)
+			dm.register_block_device(&p);
 	}
 
 	if (needs_interrupt) {
 		device_manager::get().allocate_msi("AHCI Device", *device, irq_cb, this);
 		m_data->host_control |= 0x02; // enable interrupts
 	}
-}
-
-port *
-hba::find_disk()
-{
-	for (auto &port : m_ports) {
-		if (port.get_state() == port::state::active &&
-			port.get_type() == sata_signature::sata_drive)
-			return &port;
-	}
-
-	return nullptr;
 }
 
 void

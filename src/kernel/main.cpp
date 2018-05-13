@@ -3,10 +3,7 @@
 
 #include "kutil/assert.h"
 #include "kutil/memory.h"
-
-#include "ahci/driver.h"
-#include "ahci/port.h"
-
+#include "block_device.h"
 #include "console.h"
 #include "cpu.h"
 #include "device_manager.h"
@@ -26,8 +23,6 @@ extern "C" {
 
 	void *__bss_start, *__bss_end;
 }
-
-extern ahci_driver ahcid;
 
 extern void __kernel_assert(const char *, unsigned, const char *);
 
@@ -98,7 +93,7 @@ kernel_main(popcorn_data *header)
 
 	devices->init_drivers();
 
-	ahci::port *disk = ahcid.find_disk();
+	block_device *disk = devices->get_block_device(0);
 	if (disk) {
 		uint8_t buf[512];
 		kutil::memset(buf, 0, 512);
@@ -113,6 +108,8 @@ kernel_main(popcorn_data *header)
 			}
 			cons->putc('\n');
 		}
+	} else {
+		log::warn(logs::boot, "No block devices present.");
 	}
 
 	// do_error_1();

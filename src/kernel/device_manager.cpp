@@ -320,3 +320,9 @@ device_manager::allocate_msi(const char *name, pci_device &device, irq_callback 
 			static_cast<uint16_t>(vector));
 	return true;
 }
+
+void
+device_manager::register_block_device(block_device *blockdev)
+{
+	m_blockdevs.append(blockdev);
+}

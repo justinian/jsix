@@ -16,13 +16,3 @@ ahci_driver::register_device(pci_device *device)
 
 	ahci::hba &hba = m_devices.emplace(device);
 }
-
-ahci::port *
-ahci_driver::find_disk()
-{
-	for (auto &hba : m_devices) {
-		ahci::port *d = hba.find_disk();
-		if (d) return d;
-	}
-	return nullptr;
-}

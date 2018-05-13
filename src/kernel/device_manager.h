@@ -7,6 +7,7 @@
 struct acpi_xsdt;
 struct acpi_apic;
 struct acpi_mcfg;
+class block_device;
 class lapic;
 class ioapic;
 
@@ -65,6 +66,23 @@ public:
 		return false;
 	}
 
+	/// Register the existance of a block device.
+	/// \arg blockdev  Pointer to the block device
+	void register_block_device(block_device *blockdev);
+
+	/// Get the number of block devices in the system
+	/// \returns  A count of devices
+	inline unsigned get_num_block_devices() const { return m_blockdevs.count(); }
+
+	/// Get a block device
+	/// \arg i    Index of the device to get
+	/// \returns  A pointer to the requested device, or nullptr
+	inline block_device * get_block_device(unsigned i)
+	{
+		return i < m_blockdevs.count() ?
+			m_blockdevs[i] : nullptr;
+	}
+
 private:
 	/// Parse the ACPI XSDT and load relevant sub-tables.
 	/// \arg xsdt  Pointer to the XSDT from the firmware
@@ -99,6 +117,8 @@ private:
 		void *data;
 	};
 	kutil::vector<irq_allocation> m_irqs;
+
+	kutil::vector<block_device *> m_blockdevs;
 
 	static device_manager s_instance;
 
