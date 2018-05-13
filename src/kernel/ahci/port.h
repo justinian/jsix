@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "kutil/vector.h"
+#include "block_device.h"
 
 namespace ahci {
 
@@ -15,7 +16,8 @@ struct port_data;
 
 
 /// A port on an AHCI HBA
-class port
+class port :
+	public block_device
 {
 public:
 	/// Constructor.
@@ -53,12 +55,19 @@ public:
 	/// Stop command processing from this port
 	void stop_commands();
 
-	/// Read data from the drive.
-	/// \arg sector  Starting sector to read
+	/// Start a read operation from the drive.
+	/// \arg offset  Offset to start from
 	/// \arg length  Number of bytes to read
 	/// \arg dest    A buffer where the data will be placed
-	/// \returns     True if the command succeeded
-	bool read(uint64_t sector, size_t length, void *dest);
+	/// \returns     A handle to the read operation, or -1 on error
+	int read_async(uint64_t offset, size_t length, void *dest);
+
+	/// Read from the drive, blocking until finished.
+	/// \arg offset  Offset to start from
+	/// \arg length  Number of bytes to read
+	/// \arg dest    A buffer where the data will be placed
+	/// \returns     The number of bytes read
+	virtual size_t read(uint64_t offset, size_t length, void *dest);
 
 	/// Handle an incoming interrupt
 	void handle_interrupt();
@@ -97,11 +106,13 @@ private:
 	cmd_list_entry *m_cmd_list;
 	cmd_table *m_cmd_table;
 
-	enum class command_type : uint8_t { none, read, write };
+	enum class command_type : uint8_t { none, read, write, finished };
 
 	struct pending
 	{
 		command_type type;
+		uint8_t offset;
+		size_t count;
 		void *data;
 	};
 

@@ -154,6 +154,10 @@ port::update()
 
 		rebase();
 		m_pending.set_size(32);
+		for (auto &pend : m_pending) {
+			pend.type = command_type::none;
+		}
+
 		m_data->interrupt_enable = 1;
 	} else {
 		m_state = state::inactive;
@@ -195,14 +199,18 @@ port::make_command(size_t length)
 	int slot = -1;
 	uint32_t used_slots = (m_data->serial_active | m_data->cmd_issue);
 	for (int i = 0; i < 32; ++i) {
-		if ((used_slots & (1 << i)) == 0) {
+		if (used_slots & (1 << i)) continue;
+
+		if (m_pending[i].type == command_type::none) {
 			slot = i;
 			break;
+		} else {
+			log::debug(logs::driver, "Type is %d", m_pending[i].type);
 		}
 	}
 
 	if (slot < 0) {
-		log::info(logs::driver, "AHCI could not get a free command slot.");
+		log::error(logs::driver, "AHCI could not get a free command slot.");
 		return -1;
 	}
 
@@ -240,12 +248,12 @@ port::make_command(size_t length)
 	return slot;
 }
 
-bool
-port::read(uint64_t sector, size_t length, void *dest)
+int
+port::read_async(uint64_t offset, size_t length, void *dest)
 {
 	int slot = make_command(length);
 	if (slot < 0)
-		return false;
+		return 0;
 
 	cmd_table &cmdt = m_cmd_table[slot];
 
@@ -255,6 +263,7 @@ port::read(uint64_t sector, size_t length, void *dest)
 	fis->command = ata_cmd::read_dma_ext;
 	fis->device = 0x40; // ATA8-ACS p.175
 
+	uint64_t sector = offset >> 9;
 	fis->lba0 = (sector      ) & 0xff;
 	fis->lba1 = (sector >>  8) & 0xff;
 	fis->lba2 = (sector >> 16) & 0xff;
@@ -270,8 +279,29 @@ port::read(uint64_t sector, size_t length, void *dest)
 			count, sector, sector*512);
 
 	m_pending[slot].type = command_type::read;
+	m_pending[slot].offset = offset % 512;
+	m_pending[slot].count = 0;
 	m_pending[slot].data = dest;
-	return issue_command(slot);
+	if(issue_command(slot))
+		return slot;
+	else
+		return -1;
+}
+
+size_t
+port::read(uint64_t offset, size_t length, void *dest)
+{
+	int slot = read_async(offset, length, dest);
+	while (m_pending[slot].type == command_type::read)
+		asm("hlt");
+	kassert(m_pending[slot].type == command_type::finished,
+			"Read got unexpected command type");
+
+	size_t count = m_pending[slot].count;
+	m_pending[slot].type = command_type::none;
+	m_pending[slot].count = 0;
+
+	return count;
 }
 
 bool
@@ -322,8 +352,6 @@ port::handle_interrupt()
 		default:
 			break;
 		}
-		p.type = command_type::none;
-		p.data = nullptr;
 	}
 	m_data->interrupt_status = m_data->interrupt_status;
 }
@@ -335,7 +363,9 @@ port::finish_read(int slot)
 	cmd_table &cmdt = m_cmd_table[slot];
 	cmd_list_entry &ent = m_cmd_list[slot];
 
+	size_t count = 0;
 	void *p = m_pending[slot].data;
+	uint8_t offset = m_pending[slot].offset;
 	for (int i = 0; i < ent.prd_table_length; ++i) {
 		size_t prd_len = (cmdt.entries[i].byte_count & 0x7fffffff) + 1;
 
@@ -343,13 +373,18 @@ port::finish_read(int slot)
 			static_cast<addr_t>(cmdt.entries[i].data_base_low) |
 			static_cast<addr_t>(cmdt.entries[i].data_base_high) << 32;
 
-		void *mem = pm->offset_virt(phys);
+		void *mem = kutil::offset_pointer(pm->offset_virt(phys), offset);
 		kutil::memcpy(p, mem, prd_len);
-		p = kutil::offset_pointer(p, prd_len);
+		p = kutil::offset_pointer(p, prd_len - offset);
+		count += (prd_len - offset);
+		offset = 0;
 
 		pm->unmap_pages(mem, page_count(prd_len));
 	}
 
+	m_pending[slot].count = count;
+	m_pending[slot].type = command_type::finished;
+	m_pending[slot].data = nullptr;
 }
 
 void

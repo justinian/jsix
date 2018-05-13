@@ -103,8 +103,7 @@ kernel_main(popcorn_data *header)
 		uint8_t buf[512];
 		kutil::memset(buf, 0, 512);
 
-		disk->read(1, sizeof(buf), buf);
-		while (buf[0] == 0) io_wait();
+		disk->read(0x200, sizeof(buf), buf);
 
 		console *cons = console::get();
 		uint8_t *p = &buf[0];
