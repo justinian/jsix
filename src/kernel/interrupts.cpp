@@ -9,28 +9,27 @@
 #include "io.h"
 #include "log.h"
 
-enum class gdt_flags : uint8_t
+enum class gdt_type : uint8_t
 {
-	ac = 0x01,
-	rw = 0x02,
-	dc = 0x04,
-	ex = 0x08,
-	r1 = 0x20,
-	r2 = 0x40,
-	r3 = 0x60,
-	pr = 0x80,
-
-	res_1 = 0x10
+	accessed	= 0x01,
+	read_write	= 0x02,
+	conforming	= 0x04,
+	execute		= 0x08,
+	system		= 0x10,
+	ring1		= 0x20,
+	ring2		= 0x40,
+	ring3		= 0x60,
+	present		= 0x80
 };
-IS_BITFIELD(gdt_flags);
+IS_BITFIELD(gdt_type);
 
 struct gdt_descriptor
 {
 	uint16_t limit_low;
 	uint16_t base_low;
 	uint8_t base_mid;
-	uint8_t flags;
-	uint8_t granularity;
+	gdt_type type;
+	uint8_t size;
 	uint8_t base_high;
 } __attribute__ ((packed));
 
@@ -104,18 +103,17 @@ get_irq(unsigned vector)
 }
 
 void
-set_gdt_entry(uint8_t i, uint32_t base, uint32_t limit, bool is64, gdt_flags flags)
+set_gdt_entry(uint8_t i, uint32_t base, uint64_t limit, bool is64, gdt_type type)
 {
 	g_gdt_table[i].limit_low = limit & 0xffff;
+	g_gdt_table[i].size = (limit >> 16) & 0xf;
+	g_gdt_table[i].size |= (is64 ? 0xa0 : 0xc0);
 
 	g_gdt_table[i].base_low = base & 0xffff;
 	g_gdt_table[i].base_mid = (base >> 16) & 0xff;
 	g_gdt_table[i].base_high = (base >> 24) & 0xff;
 
-	g_gdt_table[i].granularity =
-			((limit >> 16) & 0xf) | (is64 ? 0xa0 : 0xc0);
-
-	g_gdt_table[i].flags = static_cast<uint8_t>(flags | gdt_flags::res_1 | gdt_flags::pr);
+	g_gdt_table[i].type = type | gdt_type::system | gdt_type::present;
 }
 
 void
@@ -170,13 +168,13 @@ interrupts_init()
 	g_gdtr.limit = sizeof(g_gdt_table) - 1;
 	g_gdtr.base = reinterpret_cast<uint64_t>(&g_gdt_table);
 
-	set_gdt_entry(1, 0, 0xfffff, false, gdt_flags::rw);
-	set_gdt_entry(2, 0, 0xfffff, false, gdt_flags::rw | gdt_flags::ex | gdt_flags::dc);
-	set_gdt_entry(3, 0, 0xfffff, false, gdt_flags::rw);
-	set_gdt_entry(4, 0, 0xfffff, false, gdt_flags::rw | gdt_flags::ex);
+	set_gdt_entry(1, 0, 0xfffff, false, gdt_type::read_write);
+	set_gdt_entry(2, 0, 0xfffff, false, gdt_type::read_write | gdt_type::execute | gdt_type::conforming);
+	set_gdt_entry(3, 0, 0xfffff, false, gdt_type::read_write);
+	set_gdt_entry(4, 0, 0xfffff, false, gdt_type::read_write | gdt_type::execute);
 
-	set_gdt_entry(6, 0, 0xfffff, false, gdt_flags::rw);
-	set_gdt_entry(7, 0, 0xfffff,  true, gdt_flags::rw | gdt_flags::ex);
+	set_gdt_entry(6, 0, 0xfffff, false, gdt_type::read_write);
+	set_gdt_entry(7, 0, 0xfffff,  true, gdt_type::read_write | gdt_type::execute);
 
 	gdt_write();
 
@@ -196,6 +194,7 @@ interrupts_init()
 	enable_serial_interrupts();
 
 	log::info(logs::boot, "Interrupts enabled.");
+	gdt_dump(g_gdtr);
 }
 
 struct registers
@@ -253,6 +252,43 @@ isr_handler(registers regs)
 		cons->printf("\nIGNORED PIC INTERRUPT %d\n",
 				(regs.interrupt % 0xff) - 0xf0);
 		*/
+		break;
+
+	case isr::isrGPFault: {
+			cons->set_color(9);
+			cons->puts("\nGeneral Protection Fault:\n");
+			cons->set_color();
+
+			cons->puts("       flags:");
+			if (regs.errorcode & 0x01) cons->puts(" external");
+
+			int index = (regs.errorcode & 0xf8) >> 3;
+			if (index) {
+				switch (regs.errorcode & 0x06) {
+				case 0:
+					cons->printf(" GDT[%d]\n", index);
+					gdt_dump(g_gdtr);
+					break;
+
+				case 1:
+				case 3:
+					cons->printf(" IDT[%d]\n", index);
+					idt_dump(g_idtr);
+					break;
+
+				default:
+					cons->printf(" LDT[%d]??\n", index);
+					break;
+				}
+			} else {
+				cons->putc('\n');
+			}
+
+			cons->puts("\n");
+			print_reg("rip", regs.rip);
+			print_stacktrace(2);
+		}
+		while(1) asm("hlt");
 		break;
 
 	case isr::isrPageFault: {
@@ -351,7 +387,8 @@ irq_handler(registers regs)
 void
 gdt_dump(const table_ptr &table)
 {
-	log::info(logs::boot, "Loaded GDT at: %lx size: %d bytes", table.base, table.limit+1);
+	console *cons = console::get();
+	cons->printf("         GDT: loc:%lx size:%d\n", table.base, table.limit+1);
 
 	int count = (table.limit + 1) / sizeof(gdt_descriptor);
 	const gdt_descriptor *gdt =
@@ -364,24 +401,33 @@ gdt_dump(const table_ptr &table)
 			gdt[i].base_low;
 
 		uint32_t limit =
-			static_cast<uint32_t>(gdt[i].granularity & 0x0f) << 16 |
+			static_cast<uint32_t>(gdt[i].size & 0x0f) << 16 |
 			gdt[i].limit_low;
 
-		if (gdt[i].flags & 0x80) {
-			log::debug(logs::boot,
-					"   Entry %3d: Base %x  limit %x  privs %d  flags %s%s%s%s%s%s",
-					i, base, limit, ((gdt[i].flags >> 5) & 0x03),
-
-					(gdt[i].flags & 0x80) ? "P " : "  ",
-					(gdt[i].flags & 0x08) ? "ex " : "   ",
-					(gdt[i].flags & 0x04) ? "dc " : "   ",
-					(gdt[i].flags & 0x02) ? "rw " : "   ",
-
-					(gdt[i].granularity & 0x80) ? "kb " : "b  ",
-					(gdt[i].granularity & 0x60) == 0x60 ? "64" :
-						(gdt[i].granularity & 0x60) == 0x40 ? "32" : "16"
-					);
+		cons->printf("          %02d:", i);
+		if (! bitfield_has(gdt[i].type, gdt_type::present)) {
+			cons->puts(" Not Present\n");
+			continue;
 		}
+
+		cons->printf(" Base %08x  limit %05x ", base, limit);
+
+		switch (gdt[i].type & gdt_type::ring3) {
+			case gdt_type::ring3: cons->puts("ring3"); break;
+			case gdt_type::ring2: cons->puts("ring2"); break;
+			case gdt_type::ring1: cons->puts("ring1"); break;
+			default: cons->puts("ring0"); break;
+		}
+
+		cons->printf(" %s %s %s %s %s %s %s\n",
+			bitfield_has(gdt[i].type, gdt_type::accessed) ? "A" : " ",
+			bitfield_has(gdt[i].type, gdt_type::read_write) ? "RW" : "  ",
+			bitfield_has(gdt[i].type, gdt_type::conforming) ? "C" : " ",
+			bitfield_has(gdt[i].type, gdt_type::execute) ? "EX" : "  ",
+			bitfield_has(gdt[i].type, gdt_type::system) ? "S" : " ",
+			(gdt[i].size & 0x80) ? "KB" : " B",
+			(gdt[i].size & 0x60) == 0x20 ? "64" :
+				(gdt[i].size & 0x60) == 0x40 ? "32" : "16");
 	}
 }
 
