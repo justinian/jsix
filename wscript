@@ -292,7 +292,7 @@ def vbox(ctx):
     from subprocess import call
 
     dest = os.getenv("VBOX_DEST")
-    copy("{}/popcorn.img".format(out), "{}/popcorn.img".format(dest))
+    copy("{}/src/kernel/popcorn.elf".format(out), dest)
     call("nc -l -p 5555", shell=True)
 
 
