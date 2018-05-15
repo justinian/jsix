@@ -61,7 +61,7 @@ extern "C" {
 	void idt_write();
 	void idt_load();
 
-	void gdt_write();
+	void gdt_write(uint16_t cs, uint16_t ds);
 	void gdt_load();
 
 	void isr_handler(registers);
@@ -168,28 +168,26 @@ interrupts_init()
 	g_gdtr.limit = sizeof(g_gdt_table) - 1;
 	g_gdtr.base = reinterpret_cast<uint64_t>(&g_gdt_table);
 
-	set_gdt_entry(1, 0, 0xfffff, false, gdt_type::read_write);
-	set_gdt_entry(2, 0, 0xfffff, false, gdt_type::read_write | gdt_type::execute | gdt_type::conforming);
-	set_gdt_entry(3, 0, 0xfffff, false, gdt_type::read_write);
-	set_gdt_entry(4, 0, 0xfffff, false, gdt_type::read_write | gdt_type::execute);
+	set_gdt_entry(1, 0, 0xfffff,  true, gdt_type::read_write | gdt_type::execute);
+	set_gdt_entry(2, 0, 0xfffff,  true, gdt_type::read_write);
+	set_gdt_entry(3, 0, 0xfffff,  true, gdt_type::ring3 | gdt_type::read_write | gdt_type::execute);
+	set_gdt_entry(4, 0, 0xfffff,  true, gdt_type::ring3 | gdt_type::read_write);
 
-	set_gdt_entry(6, 0, 0xfffff, false, gdt_type::read_write);
-	set_gdt_entry(7, 0, 0xfffff,  true, gdt_type::read_write | gdt_type::execute);
-
-	gdt_write();
+	gdt_write(1 << 3, 2 << 3);
 
 	g_idtr.limit = sizeof(g_idt_table) - 1;
 	g_idtr.base = reinterpret_cast<uint64_t>(&g_idt_table);
 
-#define ISR(i, name)     set_idt_entry(i, reinterpret_cast<uint64_t>(& name), 0x38, 0x8e);
-#define EISR(i, name)    set_idt_entry(i, reinterpret_cast<uint64_t>(& name), 0x38, 0x8e);
-#define IRQ(i, q, name)  set_idt_entry(i, reinterpret_cast<uint64_t>(& name), 0x38, 0x8e);
+#define ISR(i, name)     set_idt_entry(i, reinterpret_cast<uint64_t>(& name), 0x08, 0x8e);
+#define EISR(i, name)    set_idt_entry(i, reinterpret_cast<uint64_t>(& name), 0x08, 0x8e);
+#define IRQ(i, q, name)  set_idt_entry(i, reinterpret_cast<uint64_t>(& name), 0x08, 0x8e);
 #include "interrupt_isrs.inc"
 #undef IRQ
 #undef EISR
 #undef ISR
 
 	idt_write();
+
 	disable_legacy_pic();
 	enable_serial_interrupts();
 
@@ -285,8 +283,33 @@ isr_handler(registers regs)
 			}
 
 			cons->puts("\n");
+			print_reg(" ds", regs.ds);
+			print_reg(" cs", regs.cs);
+			print_reg(" ss", regs.ss);
+
+
+			cons->puts("\n");
+			print_reg("rax", regs.rax);
+			print_reg("rbx", regs.rbx);
+			print_reg("rcx", regs.rcx);
+			print_reg("rdx", regs.rdx);
+			print_reg("rdi", regs.rdi);
+			print_reg("rsi", regs.rsi);
+
+			cons->puts("\n");
+			print_reg("rbp", regs.rbp);
+			print_reg("rsp", regs.rsp);
+
+			cons->puts("\n");
 			print_reg("rip", regs.rip);
 			print_stacktrace(2);
+
+			cons->puts("\nStack:\n");
+			uint64_t sp = regs.rsp;
+			while (sp <= regs.rbp) {
+				cons->printf("%016x: %016x\n", sp, *reinterpret_cast<uint64_t *>(sp));
+				sp += sizeof(uint64_t);
+			}
 		}
 		while(1) asm("hlt");
 		break;

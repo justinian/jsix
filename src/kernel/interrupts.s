@@ -14,6 +14,17 @@ idt_load:
 global gdt_write
 gdt_write:
 	lgdt [rel g_gdtr]
+	mov ax, si ; second arg is data segment
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
+	mov ss, ax
+	push qword rdi ; first arg is code segment
+	lea rax, [rel .next]
+	push rax
+	o64 retf
+.next:
 	ret
 
 global gdt_load
