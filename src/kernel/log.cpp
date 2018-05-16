@@ -15,6 +15,7 @@ static const char *areas[] = {
 	"apic",
 	"dev ",
 	"driv",
+	"file",
 
 	nullptr
 };

@@ -54,6 +54,7 @@ init_console(const popcorn_data *header)
 	log::enable(logs::device, log::level::debug);
 	log::enable(logs::driver, log::level::debug);
 	log::enable(logs::memory, log::level::debug);
+	log::enable(logs::fs, log::level::debug);
 }
 
 void do_error_3() { volatile int x = 1; volatile int y = 0; volatile int z = x / y; }
@@ -95,19 +96,21 @@ kernel_main(popcorn_data *header)
 
 	block_device *disk = devices->get_block_device(0);
 	if (disk) {
-		uint8_t buf[512];
-		kutil::memset(buf, 0, 512);
+		for (int i=0; i<1; ++i) {
+			uint8_t buf[512];
+			kutil::memset(buf, 0, 512);
 
-		kassert(disk->read(0x200, sizeof(buf), buf),
-				"Disk read returned 0");
+			kassert(disk->read(0x200, sizeof(buf), buf),
+					"Disk read returned 0");
 
-		console *cons = console::get();
-		uint8_t *p = &buf[0];
-		for (int i = 0; i < 8; ++i) {
-			for (int j = 0; j < 16; ++j) {
-				cons->printf(" %02x", *p++);
+			console *cons = console::get();
+			uint8_t *p = &buf[0];
+			for (int i = 0; i < 8; ++i) {
+				for (int j = 0; j < 16; ++j) {
+					cons->printf(" %02x", *p++);
+				}
+				cons->putc('\n');
 			}
-			cons->putc('\n');
 		}
 	} else {
 		log::warn(logs::boot, "No block devices present.");

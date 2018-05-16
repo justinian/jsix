@@ -3,6 +3,7 @@
 #include "ahci/hba.h"
 #include "console.h"
 #include "device_manager.h"
+#include "fs/gpt.h"
 #include "log.h"
 #include "page_manager.h"
 #include "pci.h"
@@ -85,14 +86,19 @@ hba::hba(pci_device *device)
 		port &p = m_ports.emplace(this, i, kutil::offset_pointer(pd, 0x80 * i), impl);
 		if (p.get_state() == port::state::active)
 			needs_interrupt = true;
-
-		if (p.get_type() == sata_signature::sata_drive)
-			dm.register_block_device(&p);
 	}
 
 	if (needs_interrupt) {
 		device_manager::get().allocate_msi("AHCI Device", *device, irq_cb, this);
 		m_data->host_control |= 0x02; // enable interrupts
+	}
+
+	for (auto &p : m_ports) {
+		if (p.get_state() == port::state::active &&
+			p.get_type() == sata_signature::sata_drive) {
+			if (fs::partition::load(&p) == 0)
+				dm.register_block_device(&p);
+		}
 	}
 }
 

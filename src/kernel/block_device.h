@@ -1,6 +1,7 @@
 #pragma once
 /// \file block_device.h
 /// Interface definition for block devices
+#include <stddef.h>
 
 /// Interface for block devices
 class block_device

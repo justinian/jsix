@@ -12,6 +12,7 @@ enum class logs
 	apic,
 	device,
 	driver,
+	fs,
 
 	max
 };

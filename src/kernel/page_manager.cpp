@@ -374,7 +374,6 @@ page_manager::map_offset_pages(size_t count)
 	page_block *free = m_free;
 	page_block *prev = nullptr;
 
-	log::debug(logs::memory, "Got request to offset map %d pages", count);
 
 	while (free) {
 		if (free->count < count) {
@@ -405,6 +404,7 @@ page_manager::map_offset_pages(size_t count)
 			m_block_cache = free;
 		}
 
+		log::debug(logs::memory, "Got request for offset map %016lx [%d]", used->virtual_address, count);
 		page_in(pml4, used->physical_address, used->virtual_address, count);
 		return reinterpret_cast<void *>(used->virtual_address);
 	}

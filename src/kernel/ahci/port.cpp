@@ -387,6 +387,9 @@ port::finish_read(int slot)
 			static_cast<addr_t>(cmdt.entries[i].data_base_high) << 32;
 
 		void *mem = kutil::offset_pointer(pm->offset_virt(phys), offset);
+
+		log::debug(logs::driver, "Reading PRD %2d: %016lx->%016lx [%lxb]", i, mem, p, prd_len);
+
 		kutil::memcpy(p, mem, prd_len);
 		p = kutil::offset_pointer(p, prd_len - offset);
 		count += (prd_len - offset);
