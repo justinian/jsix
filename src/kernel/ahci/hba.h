@@ -25,6 +25,9 @@ public:
 	/// Interrupt handler.
 	void handle_interrupt();
 
+	/// Dump the HBA registers to the console
+	void dump();
+
 private:
 	pci_device *m_device;
 	hba_data *m_data;

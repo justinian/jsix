@@ -10,6 +10,7 @@ namespace ahci {
 
 struct cmd_list_entry;
 struct cmd_table;
+class hba;
 enum class sata_signature : uint32_t;
 enum class port_cmd : uint32_t;
 struct port_data;
@@ -21,10 +22,11 @@ class port :
 {
 public:
 	/// Constructor.
-	/// \arg index Index of the port on its HBA
-	/// \arg data  Pointer to the device's registers for this port
-	/// \arg impl  Whether this port is marked as implemented in the HBA
-	port(uint8_t index, port_data *data, bool impl);
+	/// \arg device The HBA device this port belongs to
+	/// \arg index  Index of the port on its HBA
+	/// \arg data   Pointer to the device's registers for this port
+	/// \arg impl   Whether this port is marked as implemented in the HBA
+	port(hba *device, uint8_t index, port_data *data, bool impl);
 
 	/// Destructor
 	~port();
@@ -72,6 +74,9 @@ public:
 	/// Handle an incoming interrupt
 	void handle_interrupt();
 
+	/// Dump the port registers to the console
+	void dump();
+
 private:
 	/// Rebase the port command structures to a new location in system
 	/// memory, to be allocated from the page manager.
@@ -101,6 +106,7 @@ private:
 	uint8_t m_index;
 	state m_state;
 
+	hba *m_hba;
 	port_data *m_data;
 	void *m_fis;
 	cmd_list_entry *m_cmd_list;

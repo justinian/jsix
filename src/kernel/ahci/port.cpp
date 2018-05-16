@@ -2,8 +2,10 @@
 #include "kutil/assert.h"
 #include "kutil/enum_bitfields.h"
 #include "ahci/ata.h"
+#include "ahci/hba.h"
 #include "ahci/fis.h"
 #include "ahci/port.h"
+#include "console.h"
 #include "io.h"
 #include "log.h"
 #include "page_manager.h"
@@ -110,10 +112,11 @@ struct port_data
 } __attribute__ ((packed));
 
 
-port::port(uint8_t index, port_data *data, bool impl) :
+port::port(hba *device, uint8_t index, port_data *data, bool impl) :
 	m_index(index),
 	m_type(sata_signature::none),
 	m_state(state::unimpl),
+	m_hba(device),
 	m_data(data),
 	m_fis(nullptr),
 	m_cmd_list(nullptr),
@@ -158,7 +161,9 @@ port::update()
 			pend.type = command_type::none;
 		}
 
-		m_data->interrupt_enable = 1;
+		// Clear any old pending interrupts and enable interrupts
+		m_data->interrupt_status = m_data->interrupt_status;
+		m_data->interrupt_enable = 0xffffffff;
 	} else {
 		m_state = state::inactive;
 	}
@@ -197,7 +202,11 @@ int
 port::make_command(size_t length)
 {
 	int slot = -1;
-	uint32_t used_slots = (m_data->serial_active | m_data->cmd_issue);
+	uint32_t used_slots =
+		m_data->serial_active |
+		m_data->cmd_issue |
+		m_data->interrupt_status;
+
 	for (int i = 0; i < 32; ++i) {
 		if (used_slots & (1 << i)) continue;
 
@@ -292,8 +301,12 @@ size_t
 port::read(uint64_t offset, size_t length, void *dest)
 {
 	int slot = read_async(offset, length, dest);
-	while (m_pending[slot].type == command_type::read)
+
+	int timeout = 0;
+	while (m_pending[slot].type == command_type::read) {
+		if (timeout++ > 10) return 0;
 		asm("hlt");
+	}
 	kassert(m_pending[slot].type == command_type::finished,
 			"Read got unexpected command type");
 
@@ -463,6 +476,24 @@ port::rebase()
 	}
 
 	start_commands();
+}
+
+void
+port::dump()
+{
+	console *cons = console::get();
+	static const char *regs[] = {
+		" CLB", "+CLB", "  FB", " +FB", "  IS", "  IE",
+		" CMD", nullptr, " TFD", " SIG", "SSTS", "SCTL", "SERR",
+		"SACT", "  CI", "SNTF", " FBS", "DEVS"
+	};
+
+	cons->printf("Port Registers:\n");
+	uint32_t *data = reinterpret_cast<uint32_t *>(m_data);
+	for (int i = 0; i < 18; ++i) {
+		if (regs[i]) cons->printf("  %s: %08x\n", regs[i], data[i]);
+	}
+	cons->putc('\n');
 }
 
 } // namespace ahci

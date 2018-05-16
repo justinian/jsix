@@ -1,4 +1,5 @@
 #include "kutil/assert.h"
+#include "console.h"
 #include "log.h"
 #include "interrupts.h"
 #include "pci.h"
@@ -34,6 +35,33 @@ struct pci_cap_msi64
 	uint32_t pending;
 } __attribute__ ((packed));
 
+
+void dump_msi(pci_cap_msi *cap)
+{
+	auto cons = console::get();
+	cons->printf("MSI Cap:\n");
+	cons->printf("     id: %02x\n", cap->id);
+	cons->printf("   next: %02x\n", cap->next);
+	cons->printf("control: %04x\n", cap->control);
+	if (cap->control & 0x0080) {
+		pci_cap_msi64 *cap64 = reinterpret_cast<pci_cap_msi64 *>(cap);
+		cons->printf("address: %016x\n", cap64->address);
+		cons->printf("   data: %04x\n", cap64->data);
+		if (cap->control & 0x100) {
+			cons->printf("   mask: %08x\n", cap64->mask);
+			cons->printf("pending: %08x\n", cap64->pending);
+		}
+	} else {
+		pci_cap_msi32 *cap32 = reinterpret_cast<pci_cap_msi32 *>(cap);
+		cons->printf("address: %08x\n", cap32->address);
+		cons->printf("   data: %04x\n", cap32->data);
+		if (cap->control & 0x100) {
+			cons->printf("   mask: %08x\n", cap32->mask);
+			cons->printf("pending: %08x\n", cap32->pending);
+		}
+	}
+	cons->putc('\n');
+};
 
 pci_device::pci_device() :
 	m_base(nullptr),
@@ -82,8 +110,8 @@ pci_device::pci_device(pci_group &group, uint8_t bus, uint8_t device, uint8_t fu
 		if (cap->id == pci_cap::type::msi) {
 			m_msi = cap;
 			pci_cap_msi *mcap = reinterpret_cast<pci_cap_msi *>(cap);
-			mcap->control |= ~0x1; // Mask interrupts
-			log::debug(logs::device, "  - MSI control %08x", mcap->control);
+			mcap->control &= ~0x70; // at most 1 vector allocated
+			mcap->control |= 0x01; // Enable interrupts, at most 1 vector allocated
 		}
 	}
 }
@@ -126,20 +154,15 @@ pci_device::write_msi_regs(addr_t address, uint16_t data)
 			pci_cap_msi64 *mcap64 = reinterpret_cast<pci_cap_msi64 *>(m_msi);
 			mcap64->address = address;
 			mcap64->data = data;
-			if (mcap64->control & 0x0100)
-				log::debug(logs::device, "  - MSI mask %08x pending %08x", mcap64->mask, mcap64->pending);
 		} else {
 			pci_cap_msi32 *mcap32 = reinterpret_cast<pci_cap_msi32 *>(m_msi);
 			mcap32->address = address;
 			mcap32->data = data;
-			if (mcap32->control & 0x0100)
-				log::debug(logs::device, "  - MSI mask %08x pending %08x", mcap32->mask, mcap32->pending);
 		}
 		uint16_t control = mcap->control;
 		control &= 0xff8f; // We're allocating one vector, clear 6::4
 		control |= 0x0001; // Enable MSI
 		mcap->control = control;
-
 	} else {
 		kassert(0, "MIS-X is NYI");
 	}

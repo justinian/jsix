@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "ahci/ata.h"
 #include "ahci/hba.h"
+#include "console.h"
 #include "device_manager.h"
 #include "log.h"
 #include "page_manager.h"
@@ -81,7 +82,7 @@ hba::hba(pci_device *device)
 	m_ports.ensure_capacity(ports);
 	for (unsigned i = 0; i < ports; ++i) {
 		bool impl = ((m_data->port_impl & (1 << i)) != 0);
-		port &p = m_ports.emplace(i, kutil::offset_pointer(pd, 0x80 * i), impl);
+		port &p = m_ports.emplace(this, i, kutil::offset_pointer(pd, 0x80 * i), impl);
 		if (p.get_state() == port::state::active)
 			needs_interrupt = true;
 
@@ -98,12 +99,31 @@ hba::hba(pci_device *device)
 void
 hba::handle_interrupt()
 {
+	uint32_t status = m_data->int_status;
 	for (auto &port : m_ports) {
-		if (m_data->int_status & (1 << port.index())) {
+		if (status & (1 << port.index())) {
 			port.handle_interrupt();
 		}
 	}
-	m_data->int_status = 0;
+	// Write 1 to the handled interrupts
+	m_data->int_status = status;
+}
+
+void
+hba::dump()
+{
+	console *cons = console::get();
+	static const char *regs[] = {
+		" CAP", " GHC", "  IS", "  PI", "  VS", " C3C",
+		" C3P", " EML", " EMC", "CAP2", "BOHC"
+	};
+
+	cons->printf("HBA Registers:\n");
+	uint32_t *data = reinterpret_cast<uint32_t *>(m_data);
+	for (int i = 0; i < 11; ++i) {
+		cons->printf("  %s: %08x\n", regs[i], data[i]);
+	}
+	cons->putc('\n');
 }
 
 } // namespace ahci
