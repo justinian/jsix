@@ -98,7 +98,8 @@ kernel_main(popcorn_data *header)
 		uint8_t buf[512];
 		kutil::memset(buf, 0, 512);
 
-		disk->read(0x200, sizeof(buf), buf);
+		kassert(disk->read(0x200, sizeof(buf), buf),
+				"Disk read returned 0");
 
 		console *cons = console::get();
 		uint8_t *p = &buf[0];

@@ -192,7 +192,6 @@ interrupts_init()
 	enable_serial_interrupts();
 
 	log::info(logs::boot, "Interrupts enabled.");
-	gdt_dump(g_gdtr);
 }
 
 struct registers
@@ -334,6 +333,28 @@ isr_handler(registers regs)
 			print_reg("rip", regs.rip);
 
 			cons->puts("\n");
+			print_stacktrace(2);
+		}
+		while(1) asm("hlt");
+		break;
+
+	case isr::isrAssert: {
+			cons->set_color();
+
+			cons->puts("\n");
+			print_reg("rax", regs.rax);
+			print_reg("rbx", regs.rbx);
+			print_reg("rcx", regs.rcx);
+			print_reg("rdx", regs.rdx);
+			print_reg("rdi", regs.rdi);
+			print_reg("rsi", regs.rsi);
+
+			cons->puts("\n");
+			print_reg("rbp", regs.rbp);
+			print_reg("rsp", regs.rsp);
+
+			cons->puts("\n");
+			print_reg("rip", regs.rip);
 			print_stacktrace(2);
 		}
 		while(1) asm("hlt");
