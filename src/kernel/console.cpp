@@ -1,4 +1,5 @@
 #include "kutil/coord.h"
+#include "kutil/guid.h"
 #include "kutil/memory.h"
 #include "console.h"
 #include "font.h"
@@ -330,6 +331,23 @@ void console::vprintf(const char *fmt, va_list args)
 				case 's': {
 						const char *s = va_arg(args, const char*);
 						if (s) puts(s);
+					}
+					done = true;
+					break;
+
+				case 'G': {
+						// Special: GUID type
+						kutil::guid g = va_arg(args, kutil::guid);
+						put_hex<uint32_t>(g.a, 8, '0');
+						putc('-');
+						put_hex<uint16_t>((g.a >> 32) & 0xffff, 4, '0');
+						putc('-');
+						put_hex<uint16_t>((g.a >> 48) & 0xffff, 4, '0');
+						putc('-');
+						put_hex<uint16_t>((kutil::byteswap(g.b) >> 16) & 0xffff, 4, '0');
+						putc('-');
+						put_hex<uint16_t>(kutil::byteswap(g.b) & 0xffff, 4, '0');
+						put_hex<uint32_t>(kutil::byteswap(g.b >> 32), 8, '0');
 					}
 					done = true;
 					break;
