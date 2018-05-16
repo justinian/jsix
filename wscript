@@ -291,8 +291,9 @@ def vbox(ctx):
     from shutil import copy
     from subprocess import call
 
-    dest = os.getenv("VBOX_DEST")
-    copy("{}/src/kernel/popcorn.elf".format(out), dest)
+    ext = 'qed'
+    dest = os.path.join(os.getenv("VBOX_DEST"), "popcorn.{}".format(ext))
+    call("qemu-img convert -f raw -O {} build/popcorn.img {}".format(ext, dest), shell=True)
     call("nc -l -p 5555", shell=True)
 
 
