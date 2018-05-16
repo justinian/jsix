@@ -11,6 +11,7 @@
 - Serial out based on circular/bip biffer and interrupts, not spinning on
   `write_ready()`
 - Split out more code into kutil for testing
+- AHCI / MSI interrupts on Vbox break?
 
 
 - Device Tree
