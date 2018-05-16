@@ -215,7 +215,7 @@ loader_load_kernel(
 		if (status == EFI_NOT_FOUND)
 			continue;
 
-		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_load_file: %s", kernel_name);
+		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_load_elf: %s", kernel_name);
 
 		data->font = (void *)((uint64_t)data->kernel + data->kernel_length);
 		status = loader_load_font(bootsvc, root, data);
