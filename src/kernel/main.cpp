@@ -8,6 +8,7 @@
 #include "cpu.h"
 #include "device_manager.h"
 #include "font.h"
+#include "gdt.h"
 #include "interrupts.h"
 #include "io.h"
 #include "kernel_data.h"
@@ -66,6 +67,9 @@ kernel_main(popcorn_data *header)
 {
 	kutil::assert_set_callback(__kernel_assert);
 
+	gdt_init();
+	interrupts_init();
+
 	page_manager *pager = new (&g_page_manager) page_manager;
 
 	memory_initialize(
@@ -80,7 +84,6 @@ kernel_main(popcorn_data *header)
 	init_console(header);
 	// pager->dump_blocks();
 
-	interrupts_init();
 
 	device_manager *devices =
 		new (&device_manager::get()) device_manager(header->acpi_table);

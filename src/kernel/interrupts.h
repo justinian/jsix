@@ -17,11 +17,17 @@ enum class isr : uint8_t
 	_zero = 0
 };
 
+/// Helper operator to add an offset to an isr vector
 isr operator+(const isr &lhs, int rhs);
 
 extern "C" {
+	/// Set the CPU interrupt enable flag (sti)
 	void interrupts_enable();
+
+	/// Set the CPU interrupt disable flag (cli)
 	void interrupts_disable();
 }
 
+/// Fill the IDT with our ISRs, and disable the legacy
+/// PIC interrupts.
 void interrupts_init();
