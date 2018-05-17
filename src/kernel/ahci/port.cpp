@@ -267,6 +267,7 @@ port::read_async(uint64_t offset, size_t length, void *dest)
 	cmd_table &cmdt = m_cmd_table[slot];
 
 	fis_register_h2d *fis = reinterpret_cast<fis_register_h2d *>(&cmdt.cmd_fis);
+	kutil::memset(fis, 0, sizeof(fis_register_h2d));
 	fis->type = fis_type::register_h2d;
 	fis->pm_port = 0x80; // set command register flag
 	fis->command = ata_cmd::read_dma_ext;
@@ -317,6 +318,31 @@ port::read(uint64_t offset, size_t length, void *dest)
 	return count;
 }
 
+int
+port::identify_async()
+{
+	int slot = make_command(512);
+	if (slot < 0)
+		return 0;
+
+	cmd_table &cmdt = m_cmd_table[slot];
+
+	fis_register_h2d *fis = reinterpret_cast<fis_register_h2d *>(&cmdt.cmd_fis);
+	kutil::memset(fis, 0, sizeof(fis_register_h2d));
+	fis->type = fis_type::register_h2d;
+	fis->pm_port = 0x80; // set command register flag
+	fis->command = ata_cmd::identify;
+
+	m_pending[slot].type = command_type::identify;
+	m_pending[slot].offset = 0;
+	m_pending[slot].count = 0;
+	m_pending[slot].data = 0;
+	if(issue_command(slot))
+		return slot;
+	else
+		return -1;
+}
+
 bool
 port::issue_command(int slot)
 {
@@ -346,8 +372,8 @@ port::handle_interrupt()
 
 	if (m_data->interrupt_status & 0x40000000) {
 		log::error(logs::driver, "AHCI task file error");
-		// TODO: clean up!
-		return;
+		dump();
+		kassert(0, "Task file error");
 	}
 
 	log::debug(logs::driver, "AHCI interrupt status: %08lx  %08lx",
@@ -361,6 +387,9 @@ port::handle_interrupt()
 		switch (p.type) {
 		case command_type::read:
 			finish_read(i);
+			break;
+		case command_type::identify:
+			finish_identify(i);
 			break;
 		default:
 			break;
@@ -401,6 +430,67 @@ port::finish_read(int slot)
 	m_pending[slot].count = count;
 	m_pending[slot].type = command_type::finished;
 	m_pending[slot].data = nullptr;
+}
+
+static void
+ident_strcpy(uint16_t *from, int words, char *dest)
+{
+	for (int i = 0; i < words; ++i) {
+		*dest++ = *from >> 8;
+		*dest++ = *from & 0xff;
+		from++;
+	}
+	*dest = 0;
+}
+
+void
+port::finish_identify(int slot)
+{
+	page_manager *pm = page_manager::get();
+	cmd_table &cmdt = m_cmd_table[slot];
+	cmd_list_entry &ent = m_cmd_list[slot];
+
+	kassert(ent.prd_table_length == 1, "AHCI identify used multiple PRDs");
+
+	size_t prd_len = (cmdt.entries[0].byte_count & 0x7fffffff) + 1;
+
+	addr_t phys =
+		static_cast<addr_t>(cmdt.entries[0].data_base_low) |
+		static_cast<addr_t>(cmdt.entries[0].data_base_high) << 32;
+
+	log::debug(logs::driver, "Reading ident PRD:");
+
+	uint16_t *mem = reinterpret_cast<uint16_t *>(pm->offset_virt(phys));
+	char string[41];
+
+	ident_strcpy(&mem[10], 10, &string[0]);
+	log::debug(logs::driver, "    Device serial: %s", string);
+
+	ident_strcpy(&mem[23], 4, &string[0]);
+	log::debug(logs::driver, "   Device version: %s", string);
+
+	ident_strcpy(&mem[27], 20, &string[0]);
+	log::debug(logs::driver, "     Device model: %s", string);
+
+	uint32_t sectors = mem[60] | (mem[61] << 16);
+	log::debug(logs::driver, "      Max sectors: %xh", sectors);
+
+	uint16_t lb_size = mem[106];
+	log::debug(logs::driver, " lsects per psect: %d %s %s", 1 << (lb_size & 0xf),
+			lb_size & 0x20 ? "multiple logical per physical" : "",
+			lb_size & 0x10 ? "physical > 512b" : "");
+
+	uint32_t b_per_ls = 2 * (mem[117] | (mem[118] << 16));
+	log::debug(logs::driver, "      b per lsect: %d", b_per_ls);
+
+	/*
+	for (int i=0; i<256; i += 4)
+		log::debug(logs::driver, "  %3d: %04x  %3d: %04x  %3d: %04x  %3d: %04x",
+				i, mem[i], i+1, mem[i+1], i+2, mem[i+2], i+3, mem[i+3]);
+	*/
+
+	pm->unmap_pages(mem, page_count(prd_len));
+	m_pending[slot].type = command_type::none;
 }
 
 void

@@ -41,6 +41,10 @@ public:
 	/// \returns  An enum representing the state
 	inline state get_state() const { return m_state; }
 
+	/// Check if this device is active
+	/// \returns  True if the device state is active
+	inline bool active() const { return m_state == state::active; }
+
 	/// Get the type signature of this device
 	/// \returns  An enum representing the type of device
 	inline sata_signature get_type() const { return m_type; }
@@ -70,6 +74,10 @@ public:
 	/// \arg dest    A buffer where the data will be placed
 	/// \returns     The number of bytes read
 	virtual size_t read(uint64_t offset, size_t length, void *dest);
+
+	/// Start an identify operation for the drive.
+	/// \returns     A handle to the read operation, or -1 on error
+	int identify_async();
 
 	/// Handle an incoming interrupt
 	void handle_interrupt();
@@ -102,6 +110,12 @@ private:
 	/// \arg slot  The command slot that the read command used
 	void finish_read(int slot);
 
+	/// Finish an identify command started by `identify_async()`.
+	/// This will free the structures allocated, so `free_command()` is
+	/// not necessary.
+	/// \arg slot  The command slot that the read command used
+	void finish_identify(int slot);
+
 	sata_signature m_type;
 	uint8_t m_index;
 	state m_state;
@@ -112,7 +126,7 @@ private:
 	cmd_list_entry *m_cmd_list;
 	cmd_table *m_cmd_table;
 
-	enum class command_type : uint8_t { none, read, write, finished };
+	enum class command_type : uint8_t { none, read, write, identify, finished };
 
 	struct pending
 	{

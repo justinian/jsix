@@ -94,8 +94,10 @@ hba::hba(pci_device *device)
 	}
 
 	for (auto &p : m_ports) {
-		if (p.get_state() == port::state::active &&
-			p.get_type() == sata_signature::sata_drive) {
+		if (!p.active()) continue;
+
+		if (p.get_type() == sata_signature::sata_drive) {
+			p.identify_async();
 			if (fs::partition::load(&p) == 0)
 				dm.register_block_device(&p);
 		}
