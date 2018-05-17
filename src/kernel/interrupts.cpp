@@ -44,6 +44,30 @@ struct idt_descriptor
 	uint32_t reserved;		// must be zero
 } __attribute__ ((packed));
 
+struct tss_descriptor
+{
+	uint16_t limit_low;
+	uint16_t base_00;
+	uint8_t base_16;
+	gdt_type type;
+	uint8_t size;
+	uint8_t base_24;
+	uint32_t base_32;
+	uint32_t reserved;
+} __attribute__ ((packed));
+
+struct tss_entry
+{
+	uint32_t reserved0;
+
+	uint64_t rsp[3]; // stack pointers for CPL 0-2
+	uint64_t ist[8]; // ist[0] is reserved
+
+	uint64_t reserved1;
+	uint16_t reserved2;
+	uint16_t iomap_offset;
+};
+
 struct table_ptr
 {
 	uint16_t limit;
@@ -54,6 +78,7 @@ gdt_descriptor g_gdt_table[10];
 idt_descriptor g_idt_table[256];
 table_ptr g_gdtr;
 table_ptr g_idtr;
+tss_entry g_tss;
 
 struct registers;
 
@@ -61,7 +86,7 @@ extern "C" {
 	void idt_write();
 	void idt_load();
 
-	void gdt_write(uint16_t cs, uint16_t ds);
+	void gdt_write(uint16_t cs, uint16_t ds, uint16_t tr);
 	void gdt_load();
 
 	void isr_handler(registers);
@@ -114,6 +139,26 @@ set_gdt_entry(uint8_t i, uint32_t base, uint64_t limit, bool is64, gdt_type type
 	g_gdt_table[i].base_high = (base >> 24) & 0xff;
 
 	g_gdt_table[i].type = type | gdt_type::system | gdt_type::present;
+}
+
+void
+set_tss_entry(uint8_t i, uint64_t base, uint64_t limit)
+{
+	tss_descriptor tssd;
+	tssd.limit_low = limit & 0xffff;
+	tssd.size = (limit >> 16) & 0xf;
+
+	tssd.base_00 = base & 0xffff;
+	tssd.base_16 = (base >> 16) & 0xff;
+	tssd.base_24 = (base >> 24) & 0xff;
+	tssd.base_32 = (base >> 32) & 0xffffffff;
+
+	tssd.type =
+		gdt_type::accessed |
+		gdt_type::execute |
+		gdt_type::ring3 |
+		gdt_type::present;
+	kutil::memcpy(&g_gdt_table[i], &tssd, sizeof(tss_descriptor));
 }
 
 void
@@ -173,7 +218,14 @@ interrupts_init()
 	set_gdt_entry(3, 0, 0xfffff,  true, gdt_type::ring3 | gdt_type::read_write | gdt_type::execute);
 	set_gdt_entry(4, 0, 0xfffff,  true, gdt_type::ring3 | gdt_type::read_write);
 
-	gdt_write(1 << 3, 2 << 3);
+	kutil::memset(&g_tss, 0, sizeof(tss_entry));
+	addr_t tss_base = reinterpret_cast<addr_t>(&g_tss);
+
+	// Note that this takes TWO GDT entries
+	set_tss_entry(6, tss_base, sizeof(tss_entry));
+	// TODO: Set up TSS stack pointers!
+
+	gdt_write(1 << 3, 2 << 3, 6 << 3);
 
 	g_idtr.limit = sizeof(g_idt_table) - 1;
 	g_idtr.base = reinterpret_cast<uint64_t>(&g_idt_table);

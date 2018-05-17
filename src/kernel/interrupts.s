@@ -25,6 +25,7 @@ gdt_write:
 	push rax
 	o64 retf
 .next:
+	ltr dx
 	ret
 
 global gdt_load
