@@ -13,6 +13,7 @@ enum class logs
 	device,
 	driver,
 	fs,
+	task,
 
 	max
 };

@@ -28,8 +28,7 @@ _start:
 	extern kernel_main
 	call kernel_main
 
-	cli
-
+	; Kernel init is over, wait for interrupts
 .hang:
 	hlt
 	jmp .hang

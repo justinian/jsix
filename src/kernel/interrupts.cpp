@@ -1,17 +1,17 @@
 #include <stdint.h>
 
 #include "console.h"
+#include "cpu.h"
 #include "device_manager.h"
 #include "gdt.h"
 #include "interrupts.h"
 #include "io.h"
 #include "log.h"
-
-struct registers;
+#include "scheduler.h"
 
 extern "C" {
-	void isr_handler(registers);
-	void irq_handler(registers);
+	addr_t isr_handler(addr_t, cpu_state);
+	void irq_handler(cpu_state);
 
 #define ISR(i, name)     extern void name ();
 #define EISR(i, name)    extern void name ();
@@ -93,14 +93,6 @@ interrupts_init()
 	log::info(logs::boot, "Interrupts enabled.");
 }
 
-struct registers
-{
-	uint64_t ds;
-	uint64_t rdi, rsi, rbp, rsp, rbx, rdx, rcx, rax;
-	uint64_t interrupt, errorcode;
-	uint64_t rip, cs, eflags, user_esp, ss;
-};
-
 #define print_reg(name, value) cons->printf("         %s: %016lx\n", name, (value));
 
 extern "C" uint64_t get_frame(int frame);
@@ -117,14 +109,17 @@ print_stacktrace(int skip = 0)
 	}
 }
 
-void
-isr_handler(registers regs)
+addr_t
+isr_handler(addr_t return_rsp, cpu_state regs)
 {
+	log::debug(logs::task, "Starting RSP %016lx", return_rsp);
 	console *cons = console::get();
 
 	switch (static_cast<isr>(regs.interrupt & 0xff)) {
-	case isr::isrTimer:
-		cons->puts("\nTICK\n");
+	case isr::isrTimer: {
+			scheduler &s = scheduler::get();
+			return_rsp = s.tick(return_rsp);
+		}
 		break;
 
 	case isr::isrLINT0:
@@ -196,14 +191,13 @@ isr_handler(registers regs)
 
 			cons->puts("\n");
 			print_reg("rbp", regs.rbp);
-			print_reg("rsp", regs.rsp);
 
 			cons->puts("\n");
 			print_reg("rip", regs.rip);
 			print_stacktrace(2);
 
 			cons->puts("\nStack:\n");
-			uint64_t sp = regs.rsp;
+			uint64_t sp = regs.user_rsp;
 			while (sp <= regs.rbp) {
 				cons->printf("%016x: %016x\n", sp, *reinterpret_cast<uint64_t *>(sp));
 				sp += sizeof(uint64_t);
@@ -229,6 +223,7 @@ isr_handler(registers regs)
 			__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
 			print_reg("cr2", cr2);
 
+			print_reg("rsp", regs.user_rsp);
 			print_reg("rip", regs.rip);
 
 			cons->puts("\n");
@@ -250,7 +245,7 @@ isr_handler(registers regs)
 
 			cons->puts("\n");
 			print_reg("rbp", regs.rbp);
-			print_reg("rsp", regs.rsp);
+			print_reg("rsp", regs.user_rsp);
 
 			cons->puts("\n");
 			print_reg("rip", regs.rip);
@@ -272,7 +267,6 @@ isr_handler(registers regs)
 		print_reg("rdi", regs.rdi);
 		print_reg("rsi", regs.rsi);
 		print_reg("rbp", regs.rbp);
-		print_reg("rsp", regs.rsp);
 		print_reg("rbx", regs.rbx);
 		print_reg("rdx", regs.rdx);
 		print_reg("rcx", regs.rcx);
@@ -281,8 +275,8 @@ isr_handler(registers regs)
 
 		print_reg("rip", regs.rip);
 		print_reg(" cs", regs.cs);
-		print_reg(" ef", regs.eflags);
-		print_reg("esp", regs.user_esp);
+		print_reg(" ef", regs.rflags);
+		print_reg("rsp", regs.user_rsp);
 		print_reg(" ss", regs.ss);
 
 		cons->puts("\n");
@@ -291,10 +285,13 @@ isr_handler(registers regs)
 	}
 
 	*reinterpret_cast<uint32_t *>(0xffffff80fee000b0) = 0;
+
+	log::debug(logs::task, "Returning RSP %016lx", return_rsp);
+	return return_rsp;
 }
 
 void
-irq_handler(registers regs)
+irq_handler(cpu_state regs)
 {
 	console *cons = console::get();
 	uint8_t irq = get_irq(regs.interrupt);
@@ -308,7 +305,6 @@ irq_handler(registers regs)
 		print_reg("rdi", regs.rdi);
 		print_reg("rsi", regs.rsi);
 		print_reg("rbp", regs.rbp);
-		print_reg("rsp", regs.rsp);
 		print_reg("rbx", regs.rbx);
 		print_reg("rdx", regs.rdx);
 		print_reg("rcx", regs.rcx);
@@ -317,8 +313,8 @@ irq_handler(registers regs)
 
 		print_reg("rip", regs.rip);
 		print_reg(" cs", regs.cs);
-		print_reg(" ef", regs.eflags);
-		print_reg("esp", regs.user_esp);
+		print_reg(" ef", regs.rflags);
+		print_reg("rsp", regs.user_rsp);
 		print_reg(" ss", regs.ss);
 		while(1) asm("hlt");
 	}

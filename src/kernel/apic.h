@@ -37,6 +37,15 @@ public:
 	/// \arg repeat   If false, this timer is one-off, otherwise repeating
 	void enable_timer(isr vector, uint8_t divisor, uint32_t count, bool repeat = true);
 
+	/// Reset the timer countdown.
+	/// \arg count  The count of ticks before an interrupt, or 0 to stop the timer
+	/// \returns    The count of ticks that were remaining before reset
+	uint32_t reset_timer(uint32_t count);
+
+	/// Stop the timer.
+	/// \returns  The count of ticks remaining before an interrupt was to happen
+	inline uint32_t stop_timer() { return reset_timer(0); }
+
 	/// Enable interrupts for the LAPIC LINT0 pin.
 	/// \arg num      Local interrupt number (0 or 1)
 	/// \arg vector   Interrupt vector LINT0 should use

@@ -1,6 +1,7 @@
 #pragma once
 /// \file interrupts.h
 /// Free functions and definitions related to interrupt service vectors
+#include <stdint.h>
 
 
 /// Enum of all defined ISR/IRQ vectors

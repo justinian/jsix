@@ -52,21 +52,20 @@ lapic::lapic(uint32_t *base, isr spurious) :
 void
 lapic::enable_timer(isr vector, uint8_t divisor, uint32_t count, bool repeat)
 {
+	uint32_t divbits = 0;
+
 	switch (divisor) {
-	case   1: divisor = 11; break;
-	case   2: divisor = 0; break;
-	case   4: divisor = 1; break;
-	case   8: divisor = 2; break;
-	case  16: divisor = 3; break;
-	case  32: divisor = 8; break;
-	case  64: divisor = 9; break;
-	case 128: divisor = 10; break;
+	case   1: divbits = 0xb; break;
+	case   2: divbits = 0x0; break;
+	case   4: divbits = 0x1; break;
+	case   8: divbits = 0x2; break;
+	case  16: divbits = 0x3; break;
+	case  32: divbits = 0x8; break;
+	case  64: divbits = 0x9; break;
+	case 128: divbits = 0xa; break;
 	default:
 		kassert(0, "Invalid divisor passed to lapic::enable_timer");
 	}
-
-	apic_write(m_base, 0x3e0, divisor);
-	apic_write(m_base, 0x380, count);
 
 	uint32_t lvte = static_cast<uint8_t>(vector);
 	if (repeat)
@@ -74,6 +73,17 @@ lapic::enable_timer(isr vector, uint8_t divisor, uint32_t count, bool repeat)
 
 	log::debug(logs::apic, "Enabling APIC timer with isr %d.", vector);
 	apic_write(m_base, 0x320, lvte);
+	apic_write(m_base, 0x3e0, divbits);
+
+	reset_timer(count);
+}
+
+uint32_t
+lapic::reset_timer(uint32_t count)
+{
+	uint32_t remaining = apic_read(m_base, 0x380);
+	apic_write(m_base, 0x380, count);
+	return remaining;
 }
 
 void

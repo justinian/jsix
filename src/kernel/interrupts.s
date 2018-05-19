@@ -38,10 +38,18 @@ gdt_load:
 	push rcx
 	push rdx
 	push rbx
-	push rsp
 	push rbp
 	push rsi
 	push rdi
+
+	push r8
+	push r9
+	push r10
+	push r11
+	push r12
+	push r13
+	push r14
+	push r15
 
 	mov ax, ds
 	push rax
@@ -54,10 +62,18 @@ gdt_load:
 	mov fs, ax
 	mov gs, ax
 
+	pop r15
+	pop r14
+	pop r13
+	pop r12
+	pop r11
+	pop r10
+	pop r9
+	pop r8
+
 	pop rdi
 	pop rsi
 	pop rbp
-	pop rsp
 	pop rbx
 	pop rdx
 	pop rcx
@@ -76,9 +92,11 @@ extern isr_handler
 global isr_handler_prelude
 isr_handler_prelude:
 	push_all_and_segments
-	load_kernel_segments
+	;load_kernel_segments
 
+	mov rdi, rsp
 	call isr_handler
+	mov rsp, rax
 
 	pop_all_and_segments
 

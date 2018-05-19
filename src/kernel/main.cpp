@@ -15,6 +15,7 @@
 #include "log.h"
 #include "memory.h"
 #include "page_manager.h"
+#include "scheduler.h"
 #include "screen.h"
 #include "serial.h"
 
@@ -54,8 +55,9 @@ init_console(const popcorn_data *header)
 	log::enable(logs::apic, log::level::info);
 	log::enable(logs::device, log::level::debug);
 	log::enable(logs::driver, log::level::debug);
-	log::enable(logs::memory, log::level::debug);
+	log::enable(logs::memory, log::level::info);
 	log::enable(logs::fs, log::level::debug);
+	log::enable(logs::task, log::level::debug);
 }
 
 void do_error_3() { volatile int x = 1; volatile int y = 0; volatile int z = x / y; }
@@ -94,9 +96,17 @@ kernel_main(popcorn_data *header)
 	log::info(logs::boot, "CPU Vendor: %s", cpu.vendor_id());
 	log::info(logs::boot, "CPU Family %x Model %x Stepping %x",
 			cpu.family(), cpu.model(), cpu.stepping());
+	auto r = cpu.get(0x15);
+
+	addr_t cr4 = 0;
+	__asm__ __volatile__ ( "mov %%cr4, %0" : "=r" (cr4) );
+	log::info(logs::boot, "cr4: cr4", r.ecx);
+
+	log::info(logs::boot, "CPU Crystal: %dHz", r.ecx);
 
 	devices->init_drivers();
 
+	/*
 	block_device *disk = devices->get_block_device(0);
 	if (disk) {
 		for (int i=0; i<1; ++i) {
@@ -118,10 +128,15 @@ kernel_main(popcorn_data *header)
 	} else {
 		log::warn(logs::boot, "No block devices present.");
 	}
+	*/
 
 	// do_error_1();
 	// __asm__ __volatile__("int $15");
 
-	g_console.puts("boogity!");
-	do_the_set_registers(header);
+	// pager->dump_pml4();
+
+	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic());
+	sched->start();
+
+	g_console.puts("boogity!\n");
 }
