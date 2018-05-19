@@ -70,6 +70,9 @@ public:
 	/// Log the current free/used block lists.
 	void dump_blocks();
 
+	/// Dump the current PML4 to the console
+	void dump_pml4();
+
 	/// Get the system page manager.
 	/// \returns  A pointer to the system page manager
 	static page_manager * get();
@@ -127,18 +130,21 @@ private:
 	/// it.
 	/// \arg base  Existing page table being indexed into
 	/// \arg i     Index into the existing table to check
-	void check_needs_page(page_table *base, unsigned i);
+	/// \art user  True if this is a userspace mapping
+	void check_needs_page(page_table *base, unsigned i, bool user);
 
 	/// Low-level routine for mapping a number of pages into the given page table.
 	/// \arg pml4       The root page table to map into
 	/// \arg phys_addr  The starting physical address of the pages to be mapped
 	/// \arg virt_addr  The starting virtual address ot the memory to be mapped
 	/// \arg count      The number of pages to map
+	/// \art user  True if this is a userspace mapping
 	void page_in(
 			page_table *pml4,
 			addr_t phys_addr,
 			addr_t virt_addr,
-			size_t count);
+			size_t count,
+			bool user = true);
 
 	/// Low-level routine for unmapping a number of pages from the given page table.
 	/// \arg pml4       The root page table for this mapping

@@ -4,6 +4,7 @@
 #include "page_manager.h"
 
 const unsigned efi_page_size = 0x1000;
+const unsigned ident_page_flags = 0xf; // TODO: set to 0xb when user/kernel page tables are better sorted
 
 enum class efi_memory_type : uint32_t
 {
@@ -306,7 +307,7 @@ copy_new_table(page_table *base, unsigned index, page_table *new_table)
 		for (int i = 0; i < 512; ++i) new_table->entries[i] = 0;
 	}
 
-	base->entries[index] = reinterpret_cast<uint64_t>(new_table) | 0xb;
+	base->entries[index] = reinterpret_cast<uint64_t>(new_table) | ident_page_flags;
 }
 
 static uint64_t
@@ -363,7 +364,7 @@ check_needs_page_ident(page_table *table, unsigned index, page_table **free_page
 
 	page_table *new_table = (*free_pages)++;
 	for (int i=0; i<512; ++i) new_table->entries[i] = 0;
-	table->entries[index] = reinterpret_cast<uint64_t>(new_table) | 0xb;
+	table->entries[index] = reinterpret_cast<uint64_t>(new_table) | ident_page_flags;
 	return 1;
 }
 
@@ -390,12 +391,24 @@ page_in_ident(
 					tables[1]->entries[idx[1]] & ~0xfffull);
 
 			for (; idx[2] < 512; idx[2] += 1, idx[3] = 0) {
+				if (idx[3] == 0 &&
+					count >= 512 &&
+					tables[2]->get(idx[2]) == nullptr) {
+					// Do a 2MiB page instead
+					tables[2]->entries[idx[2]] = phys_addr | 0x80 | ident_page_flags;
+
+					phys_addr += page_manager::page_size * 512;
+					count -= 512;
+					if (count == 0) return pages_consumed;
+					continue;
+				}
+
 				pages_consumed += check_needs_page_ident(tables[2], idx[2], &free_pages);
 				tables[3] = reinterpret_cast<page_table *>(
 						tables[2]->entries[idx[2]] & ~0xfffull);
 
 				for (; idx[3] < 512; idx[3] += 1) {
-					tables[3]->entries[idx[3]] = phys_addr | 0xb;
+					tables[3]->entries[idx[3]] = phys_addr | ident_page_flags;
 					phys_addr += page_manager::page_size;
 					if (--count == 0) return pages_consumed;
 				}

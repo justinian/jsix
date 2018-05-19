@@ -2,6 +2,7 @@
 
 #include "kutil/assert.h"
 #include "kutil/memory_manager.h"
+#include "console.h"
 #include "log.h"
 #include "page_manager.h"
 
@@ -253,6 +254,12 @@ page_manager::dump_blocks()
 	page_block::dump(m_free, "free", true);
 }
 
+void
+page_manager::dump_pml4()
+{
+	get_pml4()->dump();
+}
+
 page_block *
 page_manager::get_block()
 {
@@ -480,36 +487,47 @@ page_manager::unmap_pages(void* address, size_t count)
 }
 
 void
-page_manager::check_needs_page(page_table *table, unsigned index)
+page_manager::check_needs_page(page_table *table, unsigned index, bool user)
 {
 	if ((table->entries[index] & 0x1) == 1) return;
 
 	page_table *new_table = get_table_page();
 	for (int i=0; i<512; ++i) new_table->entries[i] = 0;
-	table->entries[index] = pt_to_phys(new_table) | 0xb;
+	table->entries[index] = pt_to_phys(new_table) | (user ? 0xf : 0xb);
 }
 
 void
-page_manager::page_in(page_table *pml4, addr_t phys_addr, addr_t virt_addr, size_t count)
+page_manager::page_in(page_table *pml4, addr_t phys_addr, addr_t virt_addr, size_t count, bool user)
 {
 	page_table_indices idx{virt_addr};
 	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
 
 	for (; idx[0] < 512; idx[0] += 1) {
-		check_needs_page(tables[0], idx[0]);
+		check_needs_page(tables[0], idx[0], user);
 		tables[1] = tables[0]->get(idx[0]);
 
 		for (; idx[1] < 512; idx[1] += 1, idx[2] = 0, idx[3] = 0) {
-			check_needs_page(tables[1], idx[1]);
+			check_needs_page(tables[1], idx[1], user);
 			tables[2] = tables[1]->get(idx[1]);
 
 			for (; idx[2] < 512; idx[2] += 1, idx[3] = 0) {
-				check_needs_page(tables[2], idx[2]);
+				if (idx[3] == 0 &&
+					count >= 512 &&
+					tables[2]->get(idx[2]) == nullptr) {
+					// Do a 2MiB page instead
+					tables[2]->entries[idx[2]] = phys_addr | (user ? 0x8f : 0x8b);
+					phys_addr += page_size * 512;
+					count -= 512;
+					if (count == 0) return;
+					continue;
+				}
+
+				check_needs_page(tables[2], idx[2], user);
 				tables[3] = tables[2]->get(idx[2]);
 
 				for (; idx[3] < 512; idx[3] += 1) {
-					tables[3]->entries[idx[3]] = phys_addr | 0xb;
-					phys_addr += page_manager::page_size;
+					tables[3]->entries[idx[3]] = phys_addr | (user ? 0xf : 0xb);
+					phys_addr += page_size;
 					if (--count == 0) return;
 				}
 			}
@@ -573,25 +591,25 @@ page_manager::pop_pages(size_t count, addr_t *address)
 void
 page_table::dump(int level, uint64_t offset)
 {
-	log::info(logs::memory, "Level %d page table @ %lx (off %lx):", level, this, offset);
+	console *cons = console::get();
+
+	cons->printf("\nLevel %d page table @ %lx (off %lx):\n", level, this, offset);
 	for (int i=0; i<512; ++i) {
 		uint64_t ent = entries[i];
 		if (ent == 0) continue;
 
 		if ((ent & 0x1) == 0) {
-			log::info(logs::memory, "  %3d: %lx   NOT PRESENT", i, ent);
+			cons->printf("  %3d: %016lx   NOT PRESENT\n", i, ent);
 			continue;
 		}
 
 		if ((level == 2 || level == 3) && (ent & 0x80) == 0x80) {
-			log::info(logs::memory, "  %3d: %lx   -> Large page at     %lx",
-					i, ent, ent & ~0xfffull);
+			cons->printf("  %3d: %016lx -> Large page at    %016lx\n", i, ent, ent & ~0xfffull);
 			continue;
 		} else if (level == 1) {
-			log::info(logs::memory, "  %3d: %lx   -> Page at           %lx",
-					i, ent, ent & ~0xfffull);
+			cons->printf("  %3d: %016lx -> Page at          %016lx\n", i, ent, ent & ~0xfffull);
 		} else {
-			log::info(logs::memory, "  %3d: %lx   -> Level %d table at %lx",
+			cons->printf("  %3d: %016lx -> Level %d table at %016lx\n",
 					i, ent, level - 1, (ent & ~0xfffull) + offset);
 			continue;
 		}
