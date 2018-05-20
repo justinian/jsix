@@ -62,6 +62,8 @@ hba::hba(pci_device *device)
 	device_manager &dm = device_manager::get();
 
 	uint32_t bar5 = device->get_bar(5);
+	log::debug(logs::driver, "HBA raw BAR5 is %08lx", bar5);
+
 	m_data = reinterpret_cast<hba_data *>(bar5 & ~0xfffull);
 	pm->map_offset_pointer(reinterpret_cast<void **>(&m_data), 0x2000);
 
@@ -93,6 +95,7 @@ hba::hba(pci_device *device)
 		m_data->host_control |= 0x02; // enable interrupts
 	}
 
+	dump();
 	for (auto &p : m_ports) {
 		if (!p.active()) continue;
 

@@ -97,21 +97,25 @@ pci_device::pci_device(pci_group &group, uint8_t bus, uint8_t device, uint8_t fu
 	uint16_t *command = reinterpret_cast<uint16_t *>(&m_base[1]);
 	*command |= 0x400; // Mask old INTx style interrupts
 
+	uint16_t *status = command + 1;
+
 	log::info(logs::device, "Found PCIe device at %02d:%02d:%d of type %d.%d id %04x:%04x",
 			bus, device, func, m_class, m_subclass, m_vendor, m_device);
 
-	// Walk the extended capabilities list
-	uint8_t next = m_base[13] & 0xff;
-	while (next) {
-		pci_cap *cap = reinterpret_cast<pci_cap *>(kutil::offset_pointer(m_base, next));
-		next = cap->next;
-		log::debug(logs::device, "  - found PCI cap type %02x", cap->id);
+	if (*status & 0x0010) {
+		// Walk the extended capabilities list
+		uint8_t next = m_base[13] & 0xff;
+		while (next) {
+			pci_cap *cap = reinterpret_cast<pci_cap *>(kutil::offset_pointer(m_base, next));
+			next = cap->next;
+			log::debug(logs::device, "  - found PCI cap type %02x", cap->id);
 
-		if (cap->id == pci_cap::type::msi) {
-			m_msi = cap;
-			pci_cap_msi *mcap = reinterpret_cast<pci_cap_msi *>(cap);
-			mcap->control &= ~0x70; // at most 1 vector allocated
-			mcap->control |= 0x01; // Enable interrupts, at most 1 vector allocated
+			if (cap->id == pci_cap::type::msi) {
+				m_msi = cap;
+				pci_cap_msi *mcap = reinterpret_cast<pci_cap_msi *>(cap);
+				mcap->control &= ~0x70; // at most 1 vector allocated
+				mcap->control |= 0x01; // Enable interrupts, at most 1 vector allocated
+			}
 		}
 	}
 }
