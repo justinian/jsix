@@ -28,7 +28,8 @@ _start:
 	extern kernel_main
 	call kernel_main
 
-	; Kernel init is over, wait for interrupts
+	; Kernel init is over, wait for the scheduler to
+	; take over
 .hang:
 	hlt
 	jmp .hang

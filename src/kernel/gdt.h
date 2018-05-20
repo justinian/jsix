@@ -20,6 +20,11 @@ void idt_set_entry(uint8_t i, uint64_t addr, uint16_t selector, uint8_t flags);
 /// \arg rsp   Stack pointer to set
 void tss_set_stack(int ring, addr_t rsp);
 
+/// Get the stack pointer for a given ring in the TSS
+/// \arg ring  Ring to get (0-2)
+/// \returns   Stack pointers for that ring
+addr_t tss_get_stack(int ring);
+
 /// Dump information about the current GDT to the screen
 void gdt_dump();
 

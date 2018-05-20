@@ -137,8 +137,15 @@ idt_set_entry(uint8_t i, uint64_t addr, uint16_t selector, uint8_t flags)
 void
 tss_set_stack(int ring, addr_t rsp)
 {
-	kassert(ring < 3, "Bad ring passed to set_tss_stack.");
+	kassert(ring < 3, "Bad ring passed to tss_set_stack.");
 	g_tss.rsp[ring] = rsp;
+}
+
+addr_t
+tss_get_stack(int ring)
+{
+	kassert(ring < 3, "Bad ring passed to tss_get_stack.");
+	return g_tss.rsp[ring];
 }
 
 void
@@ -150,12 +157,18 @@ gdt_init()
 	g_gdtr.limit = sizeof(g_gdt_table) - 1;
 	g_gdtr.base = reinterpret_cast<uint64_t>(&g_gdt_table);
 
+	// Kernel CS/SS - always 64bit
 	gdt_set_entry(1, 0, 0xfffff,  true, gdt_type::read_write | gdt_type::execute);
 	gdt_set_entry(2, 0, 0xfffff,  true, gdt_type::read_write);
-	gdt_set_entry(3, 0, 0xfffff,  true, gdt_type::ring3 | gdt_type::read_write | gdt_type::execute);
+
+	// User CS32/SS/CS64 - layout expected by SYSRET
+	gdt_set_entry(3, 0, 0xfffff,  false, gdt_type::ring3 | gdt_type::read_write | gdt_type::execute);
 	gdt_set_entry(4, 0, 0xfffff,  true, gdt_type::ring3 | gdt_type::read_write);
+	gdt_set_entry(5, 0, 0xfffff,  true, gdt_type::ring3 | gdt_type::read_write | gdt_type::execute);
 
 	kutil::memset(&g_tss, 0, sizeof(tss_entry));
+	g_tss.iomap_offset = sizeof(tss_entry);
+
 	addr_t tss_base = reinterpret_cast<addr_t>(&g_tss);
 
 	// Note that this takes TWO GDT entries
