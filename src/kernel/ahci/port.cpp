@@ -10,7 +10,12 @@
 #include "log.h"
 #include "page_manager.h"
 
+namespace ahci {
+	enum class cmd_list_flags : uint16_t;
+}
+
 IS_BITFIELD(ahci::port_cmd);
+IS_BITFIELD(ahci::cmd_list_flags);
 
 namespace ahci {
 
@@ -231,6 +236,13 @@ port::make_command(size_t length)
 	kutil::memset(&cmdt, 0, sizeof(cmd_table) +
 			max_prd_count * sizeof(prdt_entry));
 
+	ent.flags = cmd_list_fis_size(sizeof(fis_register_h2d));
+
+	fis_register_h2d *fis = reinterpret_cast<fis_register_h2d *>(&cmdt.cmd_fis);
+	kutil::memset(fis, 0, sizeof(fis_register_h2d));
+	fis->type = fis_type::register_h2d;
+	fis->pm_port = 0x80; // set command register flag
+
 	size_t remaining = length;
 	for (int i = 0; i < max_prd_count; ++i) {
 		size_t prd_len = std::min(remaining, 0x200000ul);
@@ -267,9 +279,6 @@ port::read_async(uint64_t offset, size_t length, void *dest)
 	cmd_table &cmdt = m_cmd_table[slot];
 
 	fis_register_h2d *fis = reinterpret_cast<fis_register_h2d *>(&cmdt.cmd_fis);
-	kutil::memset(fis, 0, sizeof(fis_register_h2d));
-	fis->type = fis_type::register_h2d;
-	fis->pm_port = 0x80; // set command register flag
 	fis->command = ata_cmd::read_dma_ext;
 	fis->device = 0x40; // ATA8-ACS p.175
 
