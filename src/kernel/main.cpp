@@ -20,8 +20,8 @@
 #include "serial.h"
 
 extern "C" {
-	void do_the_set_registers(popcorn_data *header);
 	void kernel_main(popcorn_data *header);
+	void syscall_enable();
 
 	void *__bss_start, *__bss_end;
 }
@@ -135,6 +135,7 @@ kernel_main(popcorn_data *header)
 
 	// pager->dump_pml4();
 
+	syscall_enable();
 	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic());
 	sched->start();
 

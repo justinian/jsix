@@ -12,6 +12,7 @@
 extern "C" {
 	addr_t isr_handler(addr_t, cpu_state);
 	void irq_handler(cpu_state);
+	void syscall_handler(cpu_state);
 
 #define ISR(i, name)     extern void name ();
 #define EISR(i, name)    extern void name ();
@@ -322,3 +323,36 @@ irq_handler(cpu_state regs)
 	*reinterpret_cast<uint32_t *>(0xffffff80fee000b0) = 0;
 }
 
+void
+syscall_handler(cpu_state regs)
+{
+	console *cons = console::get();
+	cons->printf("SYSCALL\n");
+
+	cons->puts("\n");
+	print_reg("rax", regs.rax);
+	print_reg("rbx", regs.rbx);
+	print_reg("rcx", regs.rcx);
+	print_reg("rdx", regs.rdx);
+	print_reg("rdi", regs.rdi);
+	print_reg("rsi", regs.rsi);
+
+	cons->puts("\n");
+	print_reg(" r8", regs.r8);
+	print_reg(" r9", regs.r9);
+	print_reg("r10", regs.r10);
+	print_reg("r11", regs.r11);
+	print_reg("r12", regs.r12);
+	print_reg("r13", regs.r13);
+	print_reg("r14", regs.r14);
+	print_reg("r15", regs.r15);
+
+	cons->puts("\n");
+	print_reg("rbp", regs.rbp);
+	print_reg("rsp", regs.user_rsp);
+	print_reg("sp0", tss_get_stack(0));
+
+	cons->puts("\n");
+	print_reg("rip", regs.rip);
+
+}
