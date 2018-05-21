@@ -294,6 +294,9 @@ def vbox(ctx):
     ext = 'qed'
     dest = os.path.join(os.getenv("VBOX_DEST"), "popcorn.{}".format(ext))
     call("qemu-img convert -f raw -O {} build/popcorn.img {}".format(ext, dest), shell=True)
+
+def listen(ctx):
+    from subprocess import call
     call("nc -l -p 5555", shell=True)
 
 
