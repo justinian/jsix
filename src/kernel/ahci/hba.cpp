@@ -95,7 +95,6 @@ hba::hba(pci_device *device)
 		m_data->host_control |= 0x02; // enable interrupts
 	}
 
-	dump();
 	for (auto &p : m_ports) {
 		if (!p.active()) continue;
 

@@ -311,15 +311,11 @@ port::read_async(uint64_t offset, size_t length, void *dest)
 size_t
 port::read(uint64_t offset, size_t length, void *dest)
 {
-	dump();
 	int slot = read_async(offset, length, dest);
-	dump();
 
 	int timeout = 0;
 	while (m_pending[slot].type == command_type::read) {
 		if (timeout++ > 5) {
-			m_hba->dump();
-			dump();
 			return 0;
 		}
 		asm("hlt");
@@ -384,7 +380,6 @@ port::handle_interrupt()
 
 	if (m_data->interrupt_status & 0x40000000) {
 		log::error(logs::driver, "AHCI task file error");
-		dump();
 		kassert(0, "Task file error");
 	}
 
