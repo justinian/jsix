@@ -12,6 +12,8 @@
   `write_ready()`
 - Split out more code into kutil for testing
 - AHCI / MSI interrupts on Vbox break?
+- FXSAVE to save XMM registers.
+  - optimization using #NM (0x7) to detect SSE usage
 
 
 - Device Tree
@@ -22,4 +24,3 @@
   - Multiprocessing
     - Processes in Ring 3
 - Stack tracer
-- build system upgrade (CMake / Waf / etc)
