@@ -80,6 +80,7 @@ def configure(ctx):
         '-ffreestanding',
         '-nodefaultlibs',
         '-fno-builtin',
+        '-mno-sse',
         '-fno-omit-frame-pointer',
         '-mno-red-zone',
     ]
@@ -285,15 +286,37 @@ def qemu(ctx):
         '-nographic',
     ])
 
+def debug(ctx):
+    import subprocess
+    subprocess.call("rm popcorn.log", shell=True)
+    subprocess.call([
+        'qemu-system-x86_64',
+        '-drive', 'if=pflash,format=raw,file={}/flash.img'.format(out),
+        '-drive', 'format=raw,file={}/popcorn.img'.format(out),
+        '-smp', '1',
+        '-m', '512',
+        '-d', 'mmu,int,guest_errors',
+        '-D', 'popcorn.log',
+        '-cpu', 'Broadwell',
+        '-M', 'q35',
+        '-no-reboot',
+        '-nographic',
+        '-s',
+    ])
+
 
 def vbox(ctx):
     import os
+    from os.path import join
     from shutil import copy
     from subprocess import call
 
+    vbox_dest = os.getenv("VBOX_DEST")
+
     ext = 'qed'
-    dest = os.path.join(os.getenv("VBOX_DEST"), "popcorn.{}".format(ext))
+    dest = join(vbox_dest, "popcorn.{}".format(ext))
     call("qemu-img convert -f raw -O {} build/popcorn.img {}".format(ext, dest), shell=True)
+    copy(join("build", "src", "kernel", "popcorn.elf"), vbox_dest);
 
 def listen(ctx):
     from subprocess import call
