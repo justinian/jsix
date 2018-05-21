@@ -1,10 +1,12 @@
+global get_rsp
+get_rsp:
+	mov rax, rsp
+	ret
 
-section .text
-global do_the_set_registers
-do_the_set_registers:
-	mov rax, 0xdeadbeef0badc0de
-	mov r8, rcx
-	mov r9, rdi
+global get_rip
+get_rip:
+	pop rax ; do the same thing as 'ret', except with 'jmp'
+	jmp rax ; with the return address still in rax
 
 global _halt
 _halt:
