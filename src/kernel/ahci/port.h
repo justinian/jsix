@@ -10,6 +10,7 @@ namespace ahci {
 
 struct cmd_list_entry;
 struct cmd_table;
+struct fis_register_h2d;
 class hba;
 enum class sata_signature : uint32_t;
 enum class port_cmd : uint32_t;
@@ -92,8 +93,9 @@ private:
 
 	/// Initialize a command structure
 	/// \arg length  The number of bytes of data needed in the PRDs
+	/// \arg fis     [out] The FIS for this command
 	/// \returns     The index of the command slot, or -1 if none available
-	int make_command(size_t length);
+	int make_command(size_t length, fis_register_h2d **fis);
 
 	/// Send a constructed command to the hardware
 	/// \arg slot   The index of the command slot used

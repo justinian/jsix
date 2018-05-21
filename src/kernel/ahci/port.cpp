@@ -204,7 +204,7 @@ port::stop_commands()
 }
 
 int
-port::make_command(size_t length)
+port::make_command(size_t length, fis_register_h2d **fis)
 {
 	int slot = -1;
 	uint32_t used_slots =
@@ -238,10 +238,11 @@ port::make_command(size_t length)
 
 	ent.flags = cmd_list_fis_size(sizeof(fis_register_h2d));
 
-	fis_register_h2d *fis = reinterpret_cast<fis_register_h2d *>(&cmdt.cmd_fis);
-	kutil::memset(fis, 0, sizeof(fis_register_h2d));
-	fis->type = fis_type::register_h2d;
-	fis->pm_port = 0x80; // set command register flag
+	fis_register_h2d *cfis = reinterpret_cast<fis_register_h2d *>(&cmdt.cmd_fis);
+	kutil::memset(cfis, 0, sizeof(fis_register_h2d));
+	cfis->type = fis_type::register_h2d;
+	cfis->pm_port = 0x80; // set command register flag
+	*fis = cfis;
 
 	size_t remaining = length;
 	for (int i = 0; i < max_prd_count; ++i) {
@@ -272,13 +273,13 @@ port::make_command(size_t length)
 int
 port::read_async(uint64_t offset, size_t length, void *dest)
 {
-	int slot = make_command(length);
+	fis_register_h2d *fis;
+	int slot = make_command(length, &fis);
 	if (slot < 0)
 		return 0;
 
 	cmd_table &cmdt = m_cmd_table[slot];
 
-	fis_register_h2d *fis = reinterpret_cast<fis_register_h2d *>(&cmdt.cmd_fis);
 	fis->command = ata_cmd::read_dma_ext;
 	fis->device = 0x40; // ATA8-ACS p.175
 
@@ -336,22 +337,18 @@ port::read(uint64_t offset, size_t length, void *dest)
 int
 port::identify_async()
 {
-	int slot = make_command(512);
+	fis_register_h2d *fis;
+	int slot = make_command(512, &fis);
 	if (slot < 0)
 		return 0;
 
-	cmd_table &cmdt = m_cmd_table[slot];
-
-	fis_register_h2d *fis = reinterpret_cast<fis_register_h2d *>(&cmdt.cmd_fis);
-	kutil::memset(fis, 0, sizeof(fis_register_h2d));
-	fis->type = fis_type::register_h2d;
-	fis->pm_port = 0x80; // set command register flag
 	fis->command = ata_cmd::identify;
 
 	m_pending[slot].type = command_type::identify;
 	m_pending[slot].offset = 0;
 	m_pending[slot].count = 0;
 	m_pending[slot].data = 0;
+
 	if(issue_command(slot))
 		return slot;
 	else
