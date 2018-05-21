@@ -53,7 +53,7 @@ struct tss_entry
 	uint64_t reserved1;
 	uint16_t reserved2;
 	uint16_t iomap_offset;
-};
+} __attribute__ ((packed));
 
 struct idt_descriptor
 {
