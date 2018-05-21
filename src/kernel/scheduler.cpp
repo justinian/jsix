@@ -18,11 +18,7 @@ char taskBstack3[stack_size];
 uint64_t taskAcount = 0;
 
 extern "C" void taskA();
-
-void taskB()
-{
-	while (1);
-}
+extern "C" void taskB();
 
 
 scheduler::scheduler(lapic *apic) :
@@ -68,6 +64,8 @@ create_process(uint16_t pid, void *stack0, void *stack3, void (*rip)())
 void
 scheduler::start()
 {
+	log::info(logs::task, "Starting scheduler.");
+
 	m_apic->enable_timer(isr::isrTimer, 128, quantum, false);
 
 	m_processes.append({0, 0}); // The kernel idle task

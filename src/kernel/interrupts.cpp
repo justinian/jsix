@@ -113,7 +113,6 @@ print_stacktrace(int skip = 0)
 addr_t
 isr_handler(addr_t return_rsp, cpu_state regs)
 {
-	log::debug(logs::task, "Starting RSP %016lx", return_rsp);
 	console *cons = console::get();
 
 	switch (static_cast<isr>(regs.interrupt & 0xff)) {
@@ -284,10 +283,8 @@ isr_handler(addr_t return_rsp, cpu_state regs)
 		print_stacktrace(2);
 		while(1) asm("hlt");
 	}
-
 	*reinterpret_cast<uint32_t *>(0xffffff80fee000b0) = 0;
 
-	log::debug(logs::task, "Returning RSP %016lx", return_rsp);
 	return return_rsp;
 }
 

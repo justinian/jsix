@@ -80,19 +80,10 @@ gdt_load:
 	pop rax
 %endmacro
 
-%macro load_kernel_segments 0
-	mov ax, 0x10	; load the kernel data segment
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-%endmacro
-
 extern isr_handler
 global isr_handler_prelude
 isr_handler_prelude:
 	push_all_and_segments
-	;load_kernel_segments
 
 	mov rdi, rsp
 	call isr_handler
@@ -108,7 +99,6 @@ extern irq_handler
 global irq_handler_prelude
 irq_handler_prelude:
 	push_all_and_segments
-	load_kernel_segments
 
 	call irq_handler
 
@@ -205,45 +195,18 @@ global taskA
 taskA:
 	push rbp
 	mov rbp, rsp
-	push 0x123456789abcdef0
-	push 0x0fedcba987654321
+	mov rax, 0xaaaaaaaaaaaaaaaa
 
 .loop:
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
 	syscall
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
+	jmp .loop
+
+global taskB
+taskB:
+	push rbp
+	mov rbp, rsp
+	mov rax, 0xbbbbbbbbbbbbbbbb
+
+.loop:
+	syscall
 	jmp .loop
