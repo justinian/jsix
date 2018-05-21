@@ -10,13 +10,13 @@ static const uint8_t level_colors[] = {0x07, 0x0f, 0x0b, 0x09};
 
 static const char *levels[] = {"debug", " info", " warn", "error", "fatal"};
 static const char *areas[] = {
-	"boot",
-	"mem ",
-	"apic",
-	"dev ",
-	"driv",
-	"file",
-	"task",
+	"boot  ",
+	"memory",
+	"apic  ",
+	"device",
+	"driver",
+	"file  ",
+	"task  ",
 
 	nullptr
 };
