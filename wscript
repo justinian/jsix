@@ -65,15 +65,15 @@ def configure(ctx):
     ctx.env.append_value('INCLUDES', [
         join(ctx.path.abspath(), "src", "include"),
         join(ctx.path.abspath(), "src", "include", ctx.env.POPCORN_ARCH),
-        join(ctx.path.abspath(), "src", "modules"),
+        join(ctx.path.abspath(), "src", "libraries"),
     ])
 
-    modules = []
-    mod_root = join("src", "modules")
+    libraries = []
+    mod_root = join("src", "libraries")
     for module in os.listdir(mod_root):
         mod_path = join(mod_root, module)
         if exists(join(mod_path, "wscript")):
-            modules.append(mod_path)
+            libraries.append(mod_path)
 
     baseflags = [
         '-nostdlib',
@@ -164,8 +164,8 @@ def configure(ctx):
     ctx.env.append_value('CFLAGS', ['-mcmodel=large'])
     ctx.env.append_value('CXXFLAGS', ['-mcmodel=large'])
 
-    ctx.env.MODULES = modules
-    for mod_path in ctx.env.MODULES:
+    ctx.env.LIBRARIES = libraries
+    for mod_path in ctx.env.LIBRARIES:
         ctx.recurse(mod_path)
 
     ctx.recurse(join("src", "kernel"))
@@ -178,14 +178,14 @@ def configure(ctx):
 
     ctx.env.append_value('INCLUDES', [
         join(ctx.path.abspath(), "src", "include"),
-        join(ctx.path.abspath(), "src", "modules"),
+        join(ctx.path.abspath(), "src", "libraries"),
     ])
 
     ctx.env.CXXFLAGS = ['-g', '-std=c++14', '-fno-rtti']
     ctx.env.LINKFLAGS = ['-g']
 
-    ctx.env.MODULES = modules
-    for mod_path in ctx.env.MODULES:
+    ctx.env.LIBRARIES = libraries
+    for mod_path in ctx.env.LIBRARIES:
         ctx.recurse(mod_path)
     ctx.recurse(join("src", "tests"))
 
@@ -198,7 +198,7 @@ def build(bld):
         bld.recurse(join("src", "boot"))
 
         bld.env = bld.all_envs['kernel']
-        for mod_path in bld.env.MODULES:
+        for mod_path in bld.env.LIBRARIES:
             bld.recurse(mod_path)
 
         bld.recurse(join("src", "kernel"))
@@ -277,7 +277,7 @@ def build(bld):
         bld.add_to_group(copy_part)
 
     elif bld.variant == 'tests':
-        for mod_path in bld.env.MODULES:
+        for mod_path in bld.env.LIBRARIES:
             bld.recurse(mod_path)
 
         bld.recurse(join("src", "tests"))
