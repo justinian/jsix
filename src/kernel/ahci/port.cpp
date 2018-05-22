@@ -15,6 +15,7 @@ namespace ahci {
 }
 
 IS_BITFIELD(ahci::port_cmd);
+IS_BITFIELD(volatile ahci::port_cmd);
 IS_BITFIELD(ahci::cmd_list_flags);
 
 namespace ahci {
@@ -117,7 +118,7 @@ struct port_data
 } __attribute__ ((packed));
 
 
-port::port(hba *device, uint8_t index, port_data *data, bool impl) :
+port::port(hba *device, uint8_t index, port_data volatile *data, bool impl) :
 	m_index(index),
 	m_type(sata_signature::none),
 	m_state(state::unimpl),
@@ -351,6 +352,14 @@ port::identify_async()
 		return -1;
 }
 
+void
+port::sata_reconnect()
+{
+	m_data->serial_control |= 1;
+	io_wait(1000); // About 1ms
+	m_data->serial_control &= ~1;
+}
+
 bool
 port::issue_command(int slot)
 {
@@ -378,8 +387,18 @@ port::handle_interrupt()
 
 	// TODO: handle other states in interrupt_status
 
-	if (m_data->interrupt_status & 0x40000000) {
+	uint32_t is = m_data->interrupt_status;
+
+	if (is & 0x00000040) {
+		// Port connect status change: For now clear the "exchange"
+		// bit in SERR, this should probably kick off diagnostics.
+		m_data->serial_error = 0x04000000;
+		identify_async();
+	}
+
+	if (is & 0x40000000) {
 		log::error(logs::driver, "AHCI task file error");
+		dump();
 		kassert(0, "Task file error");
 	}
 
@@ -589,7 +608,7 @@ port::dump()
 	};
 
 	cons->printf("Port Registers:\n");
-	uint32_t *data = reinterpret_cast<uint32_t *>(m_data);
+	auto *data = reinterpret_cast<volatile uint32_t *>(m_data);
 	for (int i = 0; i < 18; ++i) {
 		if (regs[i]) cons->printf("  %s: %08x\n", regs[i], data[i]);
 	}

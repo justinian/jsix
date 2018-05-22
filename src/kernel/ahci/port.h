@@ -27,7 +27,7 @@ public:
 	/// \arg index  Index of the port on its HBA
 	/// \arg data   Pointer to the device's registers for this port
 	/// \arg impl   Whether this port is marked as implemented in the HBA
-	port(hba *device, uint8_t index, port_data *data, bool impl);
+	port(hba *device, uint8_t index, port_data volatile *data, bool impl);
 
 	/// Destructor
 	~port();
@@ -80,6 +80,10 @@ public:
 	/// \returns     A handle to the read operation, or -1 on error
 	int identify_async();
 
+	/// Tell the HBA to reconnect to the SATA device. A successful
+	/// reconnect will kick off an identify command.
+	void sata_reconnect();
+
 	/// Handle an incoming interrupt
 	void handle_interrupt();
 
@@ -123,7 +127,7 @@ private:
 	state m_state;
 
 	hba *m_hba;
-	port_data *m_data;
+	port_data volatile *m_data;
 	void *m_fis;
 	cmd_list_entry *m_cmd_list;
 	cmd_table *m_cmd_table;

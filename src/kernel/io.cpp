@@ -31,7 +31,8 @@ wrmsr(uint64_t addr, uint64_t value)
 }
 
 void
-io_wait()
+io_wait(unsigned times)
 {
-	outb(0x80, 0);
+	for (unsigned i = 0; i < times; ++i)
+		outb(0x80, 0);
 }

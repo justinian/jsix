@@ -64,8 +64,9 @@ hba::hba(pci_device *device)
 	uint32_t bar5 = device->get_bar(5);
 	log::debug(logs::driver, "HBA raw BAR5 is %08lx", bar5);
 
-	m_data = reinterpret_cast<hba_data *>(bar5 & ~0xfffull);
-	pm->map_offset_pointer(reinterpret_cast<void **>(&m_data), 0x2000);
+	void *data = reinterpret_cast<void *>(bar5 & ~0xfffull);
+	pm->map_offset_pointer(&data, 0x2000);
+	m_data = reinterpret_cast<hba_data volatile *>(data);
 
 	if (! bitfield_has(m_data->cap, hba_cap::ahci_only))
 		m_data->host_control |= 0x80000000; // Enable AHCI mode
@@ -78,7 +79,7 @@ hba::hba(pci_device *device)
 	log::debug(logs::driver, "  %d ports", ports);
 	log::debug(logs::driver, "  %d command slots", slots);
 
-	port_data *pd = reinterpret_cast<port_data *>(
+	auto *pd = reinterpret_cast<port_data volatile *>(
 			kutil::offset_pointer(m_data, 0x100));
 
 	bool needs_interrupt = false;
@@ -99,9 +100,11 @@ hba::hba(pci_device *device)
 		if (!p.active()) continue;
 
 		if (p.get_type() == sata_signature::sata_drive) {
-			p.identify_async();
+			p.sata_reconnect();
+			/*
 			if (fs::partition::load(&p) == 0)
 				dm.register_block_device(&p);
+			*/
 		}
 	}
 }
@@ -129,7 +132,7 @@ hba::dump()
 	};
 
 	cons->printf("HBA Registers:\n");
-	uint32_t *data = reinterpret_cast<uint32_t *>(m_data);
+	auto *data = reinterpret_cast<uint32_t volatile *>(m_data);
 	for (int i = 0; i < 11; ++i) {
 		cons->printf("  %s: %08x\n", regs[i], data[i]);
 	}

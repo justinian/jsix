@@ -30,7 +30,7 @@ public:
 
 private:
 	pci_device *m_device;
-	hba_data *m_data;
+	hba_data volatile *m_data;
 	kutil::vector<port> m_ports;
 };
 
