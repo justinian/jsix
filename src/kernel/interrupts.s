@@ -100,7 +100,9 @@ global irq_handler_prelude
 irq_handler_prelude:
 	push_all_and_segments
 
+	mov rdi, rsp
 	call irq_handler
+	mov rsp, rax
 
 	pop_all_and_segments
 
@@ -152,7 +154,9 @@ syscall_handler_prelude:
 	push 0		; bogus errorcode
 	push_all_and_segments
 
+	mov rdi, rsp
 	call syscall_handler
+	mov rsp, rax
 
 	pop_all_and_segments
 	add rsp, 16	; ignore bogus interrupt / error

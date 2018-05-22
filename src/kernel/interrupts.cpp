@@ -11,8 +11,8 @@
 
 extern "C" {
 	addr_t isr_handler(addr_t, cpu_state);
-	void irq_handler(cpu_state);
-	void syscall_handler(cpu_state);
+	addr_t irq_handler(addr_t, cpu_state);
+	addr_t syscall_handler(addr_t, cpu_state);
 
 #define ISR(i, name)     extern void name ();
 #define EISR(i, name)    extern void name ();
@@ -138,11 +138,6 @@ isr_handler(addr_t return_rsp, cpu_state regs)
 	case isr::isrIgnore5:
 	case isr::isrIgnore6:
 	case isr::isrIgnore7:
-
-		/*
-		cons->printf("\nIGNORED PIC INTERRUPT %d\n",
-				(regs.interrupt % 0xff) - 0xf0);
-		*/
 		break;
 
 	case isr::isrGPFault: {
@@ -288,8 +283,8 @@ isr_handler(addr_t return_rsp, cpu_state regs)
 	return return_rsp;
 }
 
-void
-irq_handler(cpu_state regs)
+addr_t
+irq_handler(addr_t return_rsp, cpu_state regs)
 {
 	console *cons = console::get();
 	uint8_t irq = get_irq(regs.interrupt);
@@ -318,10 +313,11 @@ irq_handler(cpu_state regs)
 	}
 
 	*reinterpret_cast<uint32_t *>(0xffffff80fee000b0) = 0;
+	return return_rsp;
 }
 
-void
-syscall_handler(cpu_state regs)
+addr_t
+syscall_handler(addr_t return_rsp, cpu_state regs)
 {
 	console *cons = console::get();
 	cons->printf("SYSCALL\n");
@@ -351,5 +347,5 @@ syscall_handler(cpu_state regs)
 
 	cons->puts("\n");
 	print_reg("rip", regs.rip);
-
+	return return_rsp;
 }
