@@ -1,10 +1,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ahci/driver.h"
 #include "kutil/assert.h"
 #include "kutil/memory.h"
 #include "acpi_tables.h"
-#include "ahci/driver.h"
 #include "apic.h"
 #include "console.h"
 #include "device_manager.h"
@@ -17,7 +17,6 @@
 static const char expected_signature[] = "RSD PTR ";
 
 device_manager device_manager::s_instance(nullptr);
-ahci_driver ahcid;
 
 struct acpi1_rsdp
 {
@@ -292,6 +291,7 @@ device_manager::init_drivers()
 {
 	// Eventually this should be e.g. a lookup into a loadable driver list
 	// for now, just look for AHCI devices
+	/*
 	for (auto &device : m_devices) {
 		if (device.devclass() != 1 || device.subclass() != 6)
 			continue;
@@ -303,6 +303,7 @@ device_manager::init_drivers()
 
 		ahcid.register_device(&device);
 	}
+	*/
 }
 
 bool

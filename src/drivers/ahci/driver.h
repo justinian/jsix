@@ -6,13 +6,15 @@
 
 class pci_device;
 
+namespace ahci {
+
 
 /// Basic AHCI driver
-class ahci_driver
+class driver
 {
 public:
 	/// Constructor.
-	ahci_driver();
+	driver();
 
 	/// Register a device with the driver
 	/// \arg device  The PCI device to handle
@@ -26,3 +28,4 @@ private:
 	kutil::vector<ahci::hba> m_devices;
 };
 
+} // namespace

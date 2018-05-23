@@ -66,6 +66,7 @@ def configure(ctx):
         join(ctx.path.abspath(), "src", "include"),
         join(ctx.path.abspath(), "src", "include", ctx.env.POPCORN_ARCH),
         join(ctx.path.abspath(), "src", "libraries"),
+        join(ctx.path.abspath(), "src", "drivers"),
     ])
 
     libraries = []
@@ -74,6 +75,13 @@ def configure(ctx):
         mod_path = join(mod_root, module)
         if exists(join(mod_path, "wscript")):
             libraries.append(mod_path)
+
+    drivers = []
+    mod_root = join("src", "drivers")
+    for module in os.listdir(mod_root):
+        mod_path = join(mod_root, module)
+        if exists(join(mod_path, "wscript")):
+            drivers.append(mod_path)
 
     baseflags = [
         '-nostdlib',
@@ -168,6 +176,10 @@ def configure(ctx):
     for mod_path in ctx.env.LIBRARIES:
         ctx.recurse(mod_path)
 
+    ctx.env.DRIVERS = drivers
+    for mod_path in ctx.env.DRIVERS:
+        ctx.recurse(mod_path)
+
     ctx.recurse(join("src", "kernel"))
 
     ## Testing configuration
@@ -199,6 +211,8 @@ def build(bld):
 
         bld.env = bld.all_envs['kernel']
         for mod_path in bld.env.LIBRARIES:
+            bld.recurse(mod_path)
+        for mod_path in bld.env.DRIVERS:
             bld.recurse(mod_path)
 
         bld.recurse(join("src", "kernel"))
