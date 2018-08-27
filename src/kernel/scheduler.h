@@ -5,12 +5,14 @@
 #include "kutil/vector.h"
 
 class lapic;
+struct page_table;
 
 
 struct process
 {
 	uint16_t pid;
 	addr_t rsp;
+	page_table *pml4;
 };
 
 

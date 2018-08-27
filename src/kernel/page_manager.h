@@ -26,13 +26,46 @@ public:
 	/// Offset from physical where page tables are mapped.
 	static const addr_t page_offset = 0xffffff8000000000;
 
+	/// Initial process thread's stack address
+	static const addr_t initial_stack = 0x0000800000000000;
+
+	/// Initial process thread's stack size, in pages
+	static const unsigned initial_stack_pages = 1;
+
 	page_manager();
+
+	/// Helper to read the PML4 table from CR3.
+	/// \returns  A pointer to the current PML4 table.
+	static inline page_table * get_pml4()
+	{
+		addr_t pml4 = 0;
+		__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (pml4) );
+		return reinterpret_cast<page_table *>((pml4 & ~0xfffull) + page_offset);
+	}
+
+	/// Helper to set the PML4 table pointer in CR3.
+	/// \arg pml4  A pointer to the PML4 table to install.
+	static inline void set_pml4(page_table *pml4)
+	{
+		addr_t p = reinterpret_cast<addr_t>(pml4) - page_offset;
+		__asm__ __volatile__ ( "mov %0, %%cr3" :: "r" (p & ~0xfffull) );
+	}
+
+	/// Allocate but don't switch to a new PML4 table. This table
+	/// should only have global kernel pages mapped.
+	/// \returns      A pointer to the PML4 table
+	page_table * create_process_map();
+
+	/// Deallocate a process' PML4 table.
+	void delete_process_map(page_table *table);
 
 	/// Allocate and map pages into virtual memory.
 	/// \arg address  The virtual address at which to map the pages
 	/// \arg count    The number of pages to map
+	/// \arg user     True is this memory is user-accessible
+	/// \arg pml4     The pml4 to map into - null for the current one
 	/// \returns      A pointer to the start of the mapped region
-	void * map_pages(addr_t address, size_t count);
+	void * map_pages(addr_t address, size_t count, bool user = false, page_table *pml4 = nullptr);
 
 	/// Allocate and map contiguous pages into virtual memory, with
 	/// a constant offset from their physical address.
@@ -70,8 +103,9 @@ public:
 	/// Log the current free/used block lists.
 	void dump_blocks();
 
-	/// Dump the current PML4 to the console
-	void dump_pml4();
+	/// Dump the given or current PML4 to the console
+	/// \arg pml4  The page table to use, null for the current one
+	void dump_pml4(page_table *pml4 = nullptr);
 
 	/// Get the system page manager.
 	/// \returns  A pointer to the system page manager
@@ -107,23 +141,6 @@ private:
 	/// Consolidate the free and used block lists. Return freed blocks
 	/// to the cache.
 	void consolidate_blocks();
-
-	/// Helper to read the PML4 table from CR3.
-	/// \returns  A pointer to the current PML4 table.
-	static inline page_table * get_pml4()
-	{
-		addr_t pml4 = 0;
-		__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (pml4) );
-		return reinterpret_cast<page_table *>((pml4 & ~0xfffull) + page_offset);
-	}
-
-	/// Helper to set the PML4 table pointer in CR3.
-	/// \arg pml4  A pointer to the PML4 table to install.
-	static inline void set_pml4(page_table *pml4)
-	{
-		addr_t p = reinterpret_cast<addr_t>(pml4) - page_offset;
-		__asm__ __volatile__ ( "mov %0, %%cr3" :: "r" (p & ~0xfffull) );
-	}
 
 	/// Helper function to allocate a new page table. If table entry `i` in
 	/// table `base` is empty, allocate a new page table and point `base[i]` at
@@ -162,6 +179,8 @@ private:
 	/// \arg address  [out] The address of the first page
 	/// \returns      The number of pages retrieved
 	size_t pop_pages(size_t count, addr_t *address);
+
+	page_table *m_kernel_pml4; ///< The PML4 of just kernel pages
 
 	page_block *m_free; ///< Free pages list
 	page_block *m_used; ///< In-use pages list

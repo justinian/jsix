@@ -219,6 +219,31 @@ page_manager::init(
 	new (&g_kernel_memory_manager) kutil::memory_manager(
 			reinterpret_cast<void *>(end),
 			mm_grow_callback);
+
+	m_kernel_pml4 = get_pml4();
+}
+
+page_table *
+page_manager::create_process_map()
+{
+	page_table *table = get_table_page();
+	kutil::memcpy(table, m_kernel_pml4, page_size);
+
+	// Create the initial user stack
+	map_pages(
+		initial_stack - (initial_stack_pages * page_size),
+		initial_stack_pages,
+		true, // This is the ring3 stack, user = true
+		table);
+
+	return table;
+}
+
+void
+page_manager::delete_process_map(page_table *table)
+{
+	// TODO: recurse table entries and mark them free
+	unmap_pages(table, 1);
 }
 
 void
@@ -255,9 +280,11 @@ page_manager::dump_blocks()
 }
 
 void
-page_manager::dump_pml4()
+page_manager::dump_pml4(page_table *pml4)
 {
-	get_pml4()->dump();
+	if (pml4 == nullptr)
+		pml4 = get_pml4();
+	pml4->dump();
 }
 
 page_block *
@@ -345,10 +372,11 @@ page_manager::consolidate_blocks()
 }
 
 void *
-page_manager::map_pages(addr_t address, size_t count)
+page_manager::map_pages(addr_t address, size_t count, bool user, page_table *pml4)
 {
 	void *ret = reinterpret_cast<void *>(address);
-	page_table *pml4 = get_pml4();
+	if (pml4 == nullptr)
+		pml4 = get_pml4();
 
 	while (count) {
 		kassert(m_free, "page_manager::map_pages ran out of free pages!");
@@ -365,7 +393,10 @@ page_manager::map_pages(addr_t address, size_t count)
 				page_block_flags::mapped;
 		page_block::insert(m_used, block);
 
-		page_in(pml4, phys, address, n);
+		log::debug(logs::memory, "Paging in %d pages at p:%016lx to v:%016lx into %016lx table",
+				n, phys, address, pml4);
+
+		page_in(pml4, phys, address, n, user);
 
 		address += n * page_size;
 		count -= n;
