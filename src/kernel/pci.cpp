@@ -99,8 +99,8 @@ pci_device::pci_device(pci_group &group, uint8_t bus, uint8_t device, uint8_t fu
 
 	uint16_t *status = command + 1;
 
-	log::info(logs::device, "Found PCIe device at %02d:%02d:%d of type %d.%d id %04x:%04x",
-			bus, device, func, m_class, m_subclass, m_vendor, m_device);
+	log::info(logs::device, "Found PCIe device at %02d:%02d:%d of type %x.%x.%x id %04x:%04x",
+			bus, device, func, m_class, m_subclass, m_progif, m_vendor, m_device);
 
 	if (*status & 0x0010) {
 		// Walk the extended capabilities list
