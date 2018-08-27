@@ -383,7 +383,7 @@ port::issue_command(int slot)
 void
 port::handle_interrupt()
 {
-	log::debug(logs::driver, "AHCI port %d got an interrupt");
+	log::debug(logs::driver, "AHCI port %d got an interrupt", m_index);
 
 	// TODO: handle other states in interrupt_status
 
@@ -407,8 +407,11 @@ port::handle_interrupt()
 
 	uint32_t ci = m_data->cmd_issue;
 	for (int i = 0; i < 32; ++i) {
+		// Skip commands still listed as "issued"
 		if (ci & (1 << i)) continue;
 
+		// Any commands not still listed as "issued" that are still pending for
+		// the driver are now finished, so handle them.
 		pending &p = m_pending[i];
 		switch (p.type) {
 		case command_type::read:
@@ -421,6 +424,8 @@ port::handle_interrupt()
 			break;
 		}
 	}
+
+	// Clear the whole status register to mark it as handled
 	m_data->interrupt_status = m_data->interrupt_status;
 }
 

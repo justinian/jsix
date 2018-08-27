@@ -76,7 +76,7 @@ hba::hba(pci_device *device)
 	unsigned ports = (icap & 0xf) + 1;
 	unsigned slots = ((icap >> 8) & 0x1f) + 1;
 
-	log::debug(logs::driver, "  %d ports", ports);
+	log::debug(logs::driver, "  %d ports: %08x", ports, m_data->port_impl);
 	log::debug(logs::driver, "  %d command slots", slots);
 
 	auto *pd = reinterpret_cast<port_data volatile *>(
