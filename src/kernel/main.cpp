@@ -86,23 +86,24 @@ kernel_main(popcorn_data *header)
 	init_console(header);
 	// pager->dump_blocks();
 
-
 	device_manager *devices =
 		new (&device_manager::get()) device_manager(header->acpi_table);
 
 	interrupts_enable();
 
+	/*
 	cpu_id cpu;
 	log::info(logs::boot, "CPU Vendor: %s", cpu.vendor_id());
 	log::info(logs::boot, "CPU Family %x Model %x Stepping %x",
 			cpu.family(), cpu.model(), cpu.stepping());
+
 	auto r = cpu.get(0x15);
+	log::info(logs::boot, "CPU Crystal: %dHz", r.ecx);
 
 	addr_t cr4 = 0;
 	__asm__ __volatile__ ( "mov %%cr4, %0" : "=r" (cr4) );
-	log::info(logs::boot, "cr4: cr4", r.ecx);
-
-	log::info(logs::boot, "CPU Crystal: %dHz", r.ecx);
+	log::info(logs::boot, "cr4: %016x", cr4);
+	*/
 
 	devices->init_drivers();
 
