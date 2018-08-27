@@ -284,6 +284,7 @@ def qemu(ctx):
         '-M', 'q35',
         '-no-reboot',
         '-nographic',
+        '-enable-kvm',
     ])
 
 def debug(ctx):
@@ -301,6 +302,7 @@ def debug(ctx):
         '-M', 'q35',
         '-no-reboot',
         '-nographic',
+        '-enable-kvm',
         '-s',
     ])
 
