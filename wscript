@@ -142,6 +142,20 @@ def configure(ctx):
         '-nostartfiles',
     ])
 
+    ctx.env.append_value('QEMUOPTS', [
+        '-smp', '1',
+        '-m', '512',
+        '-d', 'mmu,int,guest_errors',
+        '-D', 'popcorn.log',
+        '-cpu', 'Broadwell',
+        '-M', 'q35',
+        '-no-reboot',
+        '-nographic',
+    ])
+
+    if os.path.exists('/dev/kvm'):
+        ctx.env.append_value('QEMUOPTS', ['--enable-kvm'])
+
     env = ctx.env
     ctx.setenv('boot', env=env)
     ctx.recurse(join("src", "boot"))
@@ -269,6 +283,14 @@ def build(bld):
         bld.recurse(join("src", "tests"))
 
 
+class QemuContext(BuildContext):
+    cmd = 'qemu'
+    fun = 'qemu'
+
+class DebugQemuContext(QemuContext):
+    cmd = 'debug'
+    fun = 'qemu'
+
 def qemu(ctx):
     import subprocess
     subprocess.call("rm popcorn.log", shell=True)
@@ -276,16 +298,7 @@ def qemu(ctx):
         'qemu-system-x86_64',
         '-drive', 'if=pflash,format=raw,file={}/flash.img'.format(out),
         '-drive', 'format=raw,file={}/popcorn.img'.format(out),
-        '-smp', '1',
-        '-m', '512',
-        '-d', 'mmu,int,guest_errors',
-        '-D', 'popcorn.log',
-        '-cpu', 'Broadwell',
-        '-M', 'q35',
-        '-no-reboot',
-        '-nographic',
-        '-enable-kvm',
-    ])
+        ] + ctx.env.QEMUOPTS)
 
 def debug(ctx):
     import subprocess
@@ -294,17 +307,8 @@ def debug(ctx):
         'qemu-system-x86_64',
         '-drive', 'if=pflash,format=raw,file={}/flash.img'.format(out),
         '-drive', 'format=raw,file={}/popcorn.img'.format(out),
-        '-smp', '1',
-        '-m', '512',
-        '-d', 'mmu,int,guest_errors',
-        '-D', 'popcorn.log',
-        '-cpu', 'Broadwell',
-        '-M', 'q35',
-        '-no-reboot',
-        '-nographic',
-        '-enable-kvm',
         '-s',
-    ])
+        ] + ctx.env.QEMUOPTS)
 
 
 def vbox(ctx):
