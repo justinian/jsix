@@ -113,6 +113,7 @@ tss_set_entry(uint8_t i, uint64_t base, uint64_t limit)
 	tssd.base_16 = (base >> 16) & 0xff;
 	tssd.base_24 = (base >> 24) & 0xff;
 	tssd.base_32 = (base >> 32) & 0xffffffff;
+	tssd.reserved = 0;
 
 	tssd.type =
 		gdt_type::accessed |

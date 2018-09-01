@@ -82,9 +82,9 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	status = loader_load_kernel(bootsvc, &load);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-	con_printf(L"    %u image bytes at 0x%x\r\n", load.kernel_length, load.kernel);
-	con_printf(L"    %u font bytes at 0x%x\r\n", load.font_length, load.font);
-	con_printf(L"    %u data bytes at 0x%x\r\n", load.data_length, load.data);
+	con_printf(L"    image bytes at 0x%x : %x\r\n", load.kernel, load.kernel_length);
+	con_printf(L"     font bytes at 0x%x : %x\r\n", load.font, load.font_length);
+	con_printf(L"     data bytes at 0x%x : %x\r\n", load.data, load.data_length);
 
 	struct kernel_header *version = (struct kernel_header *)load.kernel;
 	if (version->magic != KERNEL_HEADER_MAGIC) {

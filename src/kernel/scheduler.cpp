@@ -8,7 +8,8 @@
 #include "scheduler.h"
 
 scheduler scheduler::s_instance(nullptr);
-static const uint32_t quantum = 2000000;
+//static const uint32_t quantum = 2000000;
+static const uint32_t quantum =  20000000;
 
 const int stack_size = 0x1000;
 
@@ -42,7 +43,7 @@ create_process(uint16_t pid, void (*rip)())
 
 	state->ds = state->ss = ss;
 	state->cs = cs;
-	state->rflags = 0x202; // testing. TODO: 0x202
+	state->rflags = 0x202;
 	state->rip = reinterpret_cast<uint64_t>(rip);
 
 	page_table *pml4 = page_manager::get()->create_process_map();

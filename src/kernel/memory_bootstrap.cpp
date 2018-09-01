@@ -4,7 +4,7 @@
 #include "page_manager.h"
 
 const unsigned efi_page_size = 0x1000;
-const unsigned ident_page_flags = 0xf; // TODO: set to 0xb when user/kernel page tables are better sorted
+const unsigned ident_page_flags = 0xb;
 
 enum class efi_memory_type : uint32_t
 {
@@ -436,7 +436,7 @@ memory_initialize(const void *memory_map, size_t map_length, size_t desc_length)
 
 	// Offset-map this region into the higher half.
 	uint64_t free_region_start_virt =
-		free_region_start_phys + page_manager::high_offset;
+		free_region_start_phys + page_manager::page_offset;
 
 	uint64_t free_next = free_region_start_virt;
 

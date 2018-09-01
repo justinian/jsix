@@ -227,7 +227,10 @@ page_table *
 page_manager::create_process_map()
 {
 	page_table *table = get_table_page();
-	kutil::memcpy(table, m_kernel_pml4, page_size);
+
+	kutil::memset(table, 0, page_size);
+	table->entries[510] = m_kernel_pml4->entries[510];
+	table->entries[511] = m_kernel_pml4->entries[511];
 
 	// Create the initial user stack
 	map_pages(

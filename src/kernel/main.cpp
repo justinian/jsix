@@ -84,7 +84,6 @@ kernel_main(popcorn_data *header)
 			header->frame_buffer_length);
 
 	init_console(header);
-	// pager->dump_blocks();
 
 	device_manager *devices =
 		new (&device_manager::get()) device_manager(header->acpi_table);

@@ -21,7 +21,7 @@ public:
 	static const size_t page_size = 0x1000;
 
 	/// Start of the higher half.
-	static const addr_t high_offset = 0xffff800000000000;
+	static const addr_t high_offset = 0xffffff0000000000;
 
 	/// Offset from physical where page tables are mapped.
 	static const addr_t page_offset = 0xffffff8000000000;
