@@ -191,6 +191,7 @@ memory_virtualize(EFI_RUNTIME_SERVICES *runsvc, struct memory_map *map)
 		case KERNEL_FONT_MEMTYPE:
 		case KERNEL_DATA_MEMTYPE:
 			d->Attribute |= EFI_MEMORY_RUNTIME;
+			d->VirtualStart = d->PhysicalStart + KERNEL_VIRT_ADDRESS;
 
 		default:
 			if (d->Attribute & EFI_MEMORY_RUNTIME) {

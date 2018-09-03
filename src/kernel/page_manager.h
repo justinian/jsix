@@ -101,11 +101,13 @@ public:
 	}
 
 	/// Log the current free/used block lists.
-	void dump_blocks();
+	/// \arg used_only  If true, skip printing free list. Default false.
+	void dump_blocks(bool used_only = false);
 
 	/// Dump the given or current PML4 to the console
-	/// \arg pml4  The page table to use, null for the current one
-	void dump_pml4(page_table *pml4 = nullptr);
+	/// \arg pml4       The page table to use, null for the current one
+	/// \arg max_index  The max index of pml4 to print
+	void dump_pml4(page_table *pml4 = nullptr, int max_index = 511);
 
 	/// Get the system page manager.
 	/// \returns  A pointer to the system page manager
@@ -303,7 +305,7 @@ struct page_table
 		entries[i] = (reinterpret_cast<uint64_t>(p) - pm::page_offset) | (flags & 0xfff);
 	}
 
-	void dump(int level = 4, uint64_t offset = page_manager::page_offset);
+	void dump(int level = 4, int max_index = 511, uint64_t offset = page_manager::page_offset);
 };
 
 

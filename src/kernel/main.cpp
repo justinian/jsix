@@ -85,6 +85,19 @@ kernel_main(popcorn_data *header)
 
 	init_console(header);
 
+	log::debug(logs::boot, " Popcorn header is at: %016lx", header);
+	log::debug(logs::boot, "    Framebuffer is at: %016lx", header->frame_buffer);
+	log::debug(logs::boot, "      Font data is at: %016lx", header->font);
+	log::debug(logs::boot, "    Kernel data is at: %016lx", header->data);
+	log::debug(logs::boot, "     Memory map is at: %016lx", header->memory_map);
+	log::debug(logs::boot, "ACPI root table is at: %016lx", header->acpi_table);
+	log::debug(logs::boot, "Runtime service is at: %016lx", header->runtime);
+
+	/*
+	pager->dump_pml4(nullptr, 0);
+	pager->dump_blocks(true);
+	*/
+
 	device_manager *devices =
 		new (&device_manager::get()) device_manager(header->acpi_table);
 

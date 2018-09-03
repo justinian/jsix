@@ -141,7 +141,7 @@ page_block::dump(page_block *list, const char *name, bool show_unmapped)
 
 		if (cur->virtual_address) {
 			page_table_indices start{cur->virtual_address};
-			log::info(logs::memory, "  %lx %x [%6d] %lx (%d,%d,%d,%d)",
+			log::info(logs::memory, "  %016lx %08x [%6d] %016lx (%d,%d,%d,%d)",
 					cur->physical_address,
 					cur->flags,
 					cur->count,
@@ -149,7 +149,7 @@ page_block::dump(page_block *list, const char *name, bool show_unmapped)
 					start[0], start[1], start[2], start[3]);
 		} else {
 			page_table_indices start{cur->virtual_address};
-			log::info(logs::memory, "  %lx %x [%6d]",
+			log::info(logs::memory, "  %016lx %08x [%6d]",
 					cur->physical_address,
 					cur->flags,
 					cur->count);
@@ -276,18 +276,19 @@ page_manager::map_offset_pointer(void **pointer, size_t length)
 }
 
 void
-page_manager::dump_blocks()
+page_manager::dump_blocks(bool used_only)
 {
 	page_block::dump(m_used, "used", true);
-	page_block::dump(m_free, "free", true);
+	if (!used_only)
+		page_block::dump(m_free, "free", true);
 }
 
 void
-page_manager::dump_pml4(page_table *pml4)
+page_manager::dump_pml4(page_table *pml4, int max_index)
 {
 	if (pml4 == nullptr)
 		pml4 = get_pml4();
-	pml4->dump();
+	pml4->dump(4, max_index);
 }
 
 page_block *
@@ -623,7 +624,7 @@ page_manager::pop_pages(size_t count, addr_t *address)
 
 
 void
-page_table::dump(int level, uint64_t offset)
+page_table::dump(int level, int max_index, uint64_t offset)
 {
 	console *cons = console::get();
 
@@ -650,13 +651,13 @@ page_table::dump(int level, uint64_t offset)
 	}
 
 	if (--level > 0) {
-		for (int i=0; i<512; ++i) {
+		for (int i=0; i<=max_index; ++i) {
 			uint64_t ent = entries[i];
 			if ((ent & 0x1) == 0) continue;
 			if ((ent & 0x80)) continue;
 
 			page_table *next = reinterpret_cast<page_table *>((ent & ~0xffful) + offset); 
-			next->dump(level, offset);
+			next->dump(level, 511, offset);
 		}
 	}
 }
