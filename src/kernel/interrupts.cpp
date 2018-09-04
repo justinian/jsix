@@ -330,6 +330,7 @@ syscall_handler(addr_t return_rsp, cpu_state regs)
 	print_reg("rdi", regs.rdi);
 	print_reg("rsi", regs.rsi);
 
+	/*
 	cons->puts("\n");
 	print_reg(" r8", regs.r8);
 	print_reg(" r9", regs.r9);
@@ -339,6 +340,7 @@ syscall_handler(addr_t return_rsp, cpu_state regs)
 	print_reg("r13", regs.r13);
 	print_reg("r14", regs.r14);
 	print_reg("r15", regs.r15);
+	*/
 
 	cons->puts("\n");
 	print_reg("rbp", regs.rbp);

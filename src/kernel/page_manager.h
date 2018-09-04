@@ -163,7 +163,7 @@ private:
 			addr_t phys_addr,
 			addr_t virt_addr,
 			size_t count,
-			bool user = true);
+			bool user = false);
 
 	/// Low-level routine for unmapping a number of pages from the given page table.
 	/// \arg pml4       The root page table for this mapping
