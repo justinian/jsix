@@ -33,8 +33,18 @@ requirements are:
 * python (to run waf)
 * clang
 * nasm
+* mtools
 
 After cloning, run `waf configure`. Then you can run `waf build` to build the
 project, and `waf test` to run the tests. A floppy disk image will be built in
 `build/popcorn.img`. If you have `qemu-system-x86_64` installed, then you can
 run `waf qemu` to run it in `-nographic` mode.
+
+I personally run this either from a real debian amd64 testing/buster machine or
+a windows WSL debian testing/buster installation. The following should be
+enough to set up such a system to build the kernel:
+
+    sudo apt install qemu-system-x86 nasm clang-6.0 mtools
+	sudo update-alternatives /usr/bin/clang clang /usr/bin/clang-6.0 1000
+	sudo update-alternatives /usr/bin/clang++ clang++ /usr/bin/clang++-6.0 1000
+
