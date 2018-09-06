@@ -19,7 +19,6 @@ extern "C" {
 	void taskA();
 	void taskAend();
 	void ramdisk_process_loader();
-
 	void load_process(void *copy_start, size_t butes, cpu_state state);
 };
 
@@ -55,9 +54,6 @@ load_process(void *copy_start, size_t bytes, cpu_state state)
 static process
 create_process(uint16_t pid)
 {
-	uint64_t flags;
-	__asm__ __volatile__ ( "pushf; pop %0" : "=r" (flags) );
-
 	uint16_t kcs = (1 << 3) | 0; // Kernel CS is GDT entry 1, ring 0
 	uint16_t cs = (5 << 3) | 3;  // User CS is GDT entry 5, ring 3
 

@@ -429,6 +429,14 @@ memory_initialize(const void *memory_map, size_t map_length, size_t desc_length)
 	__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (cr3) );
 	page_table *tables = reinterpret_cast<page_table *>(cr3 & ~0xfffull);
 
+	// We'll need to make sure the options we want in CR4 are set
+	uint64_t cr4;
+	__asm__ __volatile__ ( "mov %%cr4, %0" : "=r" (cr4) );
+	cr4 |= 0x00080; // Enable global pages
+	cr4 |= 0x00200; // Enable FXSAVE/FXRSTOR
+	cr4 |= 0x20000; // Enable PCIDs
+	__asm__ __volatile__ ( "mov %0, %%cr4" :: "r" (cr4) );
+
 	// Now go through EFi's memory map and find a region of scratch space.
 	const unsigned want_pages = 32;
 	uint64_t free_region_start_phys =

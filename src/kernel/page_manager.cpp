@@ -379,8 +379,7 @@ void *
 page_manager::map_pages(addr_t address, size_t count, bool user, page_table *pml4)
 {
 	void *ret = reinterpret_cast<void *>(address);
-	if (pml4 == nullptr)
-		pml4 = get_pml4();
+	if (!pml4) pml4 = get_pml4();
 
 	while (count) {
 		kassert(m_free, "page_manager::map_pages ran out of free pages!");
@@ -537,6 +536,10 @@ page_manager::page_in(page_table *pml4, addr_t phys_addr, addr_t virt_addr, size
 	page_table_indices idx{virt_addr};
 	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
 
+	uint64_t flags = user ?
+		0x00f:	// writethru, user, write, present
+		0x10b;	// global, writethru, write, present
+
 	for (; idx[0] < 512; idx[0] += 1) {
 		check_needs_page(tables[0], idx[0], user);
 		tables[1] = tables[0]->get(idx[0]);
@@ -550,7 +553,7 @@ page_manager::page_in(page_table *pml4, addr_t phys_addr, addr_t virt_addr, size
 					count >= 512 &&
 					tables[2]->get(idx[2]) == nullptr) {
 					// Do a 2MiB page instead
-					tables[2]->entries[idx[2]] = phys_addr | (user ? 0x8f : 0x8b);
+					tables[2]->entries[idx[2]] = phys_addr | flags | 0x80;
 					phys_addr += page_size * 512;
 					count -= 512;
 					if (count == 0) return;
@@ -561,7 +564,7 @@ page_manager::page_in(page_table *pml4, addr_t phys_addr, addr_t virt_addr, size
 				tables[3] = tables[2]->get(idx[2]);
 
 				for (; idx[3] < 512; idx[3] += 1) {
-					tables[3]->entries[idx[3]] = phys_addr | (user ? 0xf : 0xb);
+					tables[3]->entries[idx[3]] = phys_addr | flags;
 					phys_addr += page_size;
 					if (--count == 0) return;
 				}
