@@ -214,6 +214,7 @@ global taskA
 taskA:
 	push rbp
 	mov rbp, rsp
+	mov rdi, 0
 	mov rax, 0xaaaaaaaaaaaaaaaa
 
 .loop:

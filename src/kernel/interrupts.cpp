@@ -8,8 +8,11 @@
 #include "io.h"
 #include "log.h"
 #include "scheduler.h"
+#include "syscall.h"
 
 extern "C" {
+	void _halt();
+
 	addr_t isr_handler(addr_t, cpu_state);
 	addr_t irq_handler(addr_t, cpu_state);
 	addr_t syscall_handler(addr_t, cpu_state);
@@ -110,6 +113,55 @@ print_stacktrace(int skip = 0)
 	}
 }
 
+void
+print_regs(const cpu_state &regs)
+{
+	console *cons = console::get();
+
+	print_reg("rax", regs.rax);
+	print_reg("rbx", regs.rbx);
+	print_reg("rcx", regs.rcx);
+	print_reg("rdx", regs.rdx);
+	print_reg("rdi", regs.rdi);
+	print_reg("rsi", regs.rsi);
+
+	cons->puts("\n");
+	print_reg(" r8", regs.r8);
+	print_reg(" r9", regs.r9);
+	print_reg("r10", regs.r10);
+	print_reg("r11", regs.r11);
+	print_reg("r12", regs.r12);
+	print_reg("r13", regs.r13);
+	print_reg("r14", regs.r14);
+	print_reg("r15", regs.r15);
+
+	cons->puts("\n");
+	print_reg("rbp", regs.rbp);
+	print_reg("rsp", regs.user_rsp);
+	print_reg("sp0", tss_get_stack(0));
+
+	cons->puts("\n");
+	print_reg(" ds", regs.ds);
+	print_reg(" cs", regs.cs);
+	print_reg(" ss", regs.ss);
+
+	cons->puts("\n");
+	print_reg("rip", regs.rip);
+}
+
+void
+print_stack(const cpu_state &regs)
+{
+	console *cons = console::get();
+
+	cons->puts("\nStack:\n");
+	uint64_t sp = regs.user_rsp;
+	while (sp <= regs.rbp) {
+		cons->printf("%016x: %016x\n", sp, *reinterpret_cast<uint64_t *>(sp));
+		sp += sizeof(uint64_t);
+	}
+}
+
 addr_t
 isr_handler(addr_t return_rsp, cpu_state regs)
 {
@@ -169,36 +221,12 @@ isr_handler(addr_t return_rsp, cpu_state regs)
 			} else {
 				cons->putc('\n');
 			}
-
-			cons->puts("\n");
-			print_reg(" ds", regs.ds);
-			print_reg(" cs", regs.cs);
-			print_reg(" ss", regs.ss);
-
-
-			cons->puts("\n");
-			print_reg("rax", regs.rax);
-			print_reg("rbx", regs.rbx);
-			print_reg("rcx", regs.rcx);
-			print_reg("rdx", regs.rdx);
-			print_reg("rdi", regs.rdi);
-			print_reg("rsi", regs.rsi);
-
-			cons->puts("\n");
-			print_reg("rbp", regs.rbp);
-
-			cons->puts("\n");
-			print_reg("rip", regs.rip);
+			print_regs(regs);
 			print_stacktrace(2);
+			print_stack(regs);
 
-			cons->puts("\nStack:\n");
-			uint64_t sp = regs.user_rsp;
-			while (sp <= regs.rbp) {
-				cons->printf("%016x: %016x\n", sp, *reinterpret_cast<uint64_t *>(sp));
-				sp += sizeof(uint64_t);
-			}
 		}
-		while(1) asm("hlt");
+		_halt();
 		break;
 
 	case isr::isrPageFault: {
@@ -224,29 +252,15 @@ isr_handler(addr_t return_rsp, cpu_state regs)
 			cons->puts("\n");
 			print_stacktrace(2);
 		}
-		while(1) asm("hlt");
+		_halt();
 		break;
 
 	case isr::isrAssert: {
 			cons->set_color();
-
-			cons->puts("\n");
-			print_reg("rax", regs.rax);
-			print_reg("rbx", regs.rbx);
-			print_reg("rcx", regs.rcx);
-			print_reg("rdx", regs.rdx);
-			print_reg("rdi", regs.rdi);
-			print_reg("rsi", regs.rsi);
-
-			cons->puts("\n");
-			print_reg("rbp", regs.rbp);
-			print_reg("rsp", regs.user_rsp);
-
-			cons->puts("\n");
-			print_reg("rip", regs.rip);
+			print_regs(regs);
 			print_stacktrace(2);
 		}
-		while(1) asm("hlt");
+		_halt();
 		break;
 
 	default:
@@ -258,25 +272,9 @@ isr_handler(addr_t return_rsp, cpu_state regs)
 		cons->printf("         ERR: %lx\n", regs.errorcode);
 		cons->puts("\n");
 
-		print_reg(" ds", regs.ds);
-		print_reg("rdi", regs.rdi);
-		print_reg("rsi", regs.rsi);
-		print_reg("rbp", regs.rbp);
-		print_reg("rbx", regs.rbx);
-		print_reg("rdx", regs.rdx);
-		print_reg("rcx", regs.rcx);
-		print_reg("rax", regs.rax);
-		cons->puts("\n");
-
-		print_reg("rip", regs.rip);
-		print_reg(" cs", regs.cs);
-		print_reg(" ef", regs.rflags);
-		print_reg("rsp", regs.user_rsp);
-		print_reg(" ss", regs.ss);
-
-		cons->puts("\n");
+		print_regs(regs);
 		print_stacktrace(2);
-		while(1) asm("hlt");
+		_halt();
 	}
 	*reinterpret_cast<uint32_t *>(0xffffff80fee000b0) = 0;
 
@@ -293,23 +291,8 @@ irq_handler(addr_t return_rsp, cpu_state regs)
 		cons->printf("\nReceived unknown IRQ: %d (vec %d)\n",
 				irq, regs.interrupt);
 		cons->set_color();
-
-		print_reg(" ds", regs.ds);
-		print_reg("rdi", regs.rdi);
-		print_reg("rsi", regs.rsi);
-		print_reg("rbp", regs.rbp);
-		print_reg("rbx", regs.rbx);
-		print_reg("rdx", regs.rdx);
-		print_reg("rcx", regs.rcx);
-		print_reg("rax", regs.rax);
-		cons->puts("\n");
-
-		print_reg("rip", regs.rip);
-		print_reg(" cs", regs.cs);
-		print_reg(" ef", regs.rflags);
-		print_reg("rsp", regs.user_rsp);
-		print_reg(" ss", regs.ss);
-		while(1) asm("hlt");
+		print_regs(regs);
+		_halt();
 	}
 
 	*reinterpret_cast<uint32_t *>(0xffffff80fee000b0) = 0;
@@ -320,34 +303,27 @@ addr_t
 syscall_handler(addr_t return_rsp, cpu_state regs)
 {
 	console *cons = console::get();
-	cons->printf("SYSCALL\n");
+	syscall call = static_cast<syscall>(regs.rdi & 0xffff);
 
-	cons->puts("\n");
-	print_reg("rax", regs.rax);
-	print_reg("rbx", regs.rbx);
-	print_reg("rcx", regs.rcx);
-	print_reg("rdx", regs.rdx);
-	print_reg("rdi", regs.rdi);
-	print_reg("rsi", regs.rsi);
+	switch (call) {
+	case syscall::message:
+		break;
 
-	/*
-	cons->puts("\n");
-	print_reg(" r8", regs.r8);
-	print_reg(" r9", regs.r9);
-	print_reg("r10", regs.r10);
-	print_reg("r11", regs.r11);
-	print_reg("r12", regs.r12);
-	print_reg("r13", regs.r13);
-	print_reg("r14", regs.r14);
-	print_reg("r15", regs.r15);
-	*/
+	case syscall::debug:
+		cons->set_color(11);
+		cons->printf("\nReceived DEBUG syscall\n");
+		cons->set_color();
+		print_regs(regs);
+		break;
 
-	cons->puts("\n");
-	print_reg("rbp", regs.rbp);
-	print_reg("rsp", regs.user_rsp);
-	print_reg("sp0", tss_get_stack(0));
+	default:
+		cons->set_color(9);
+		cons->printf("\nReceived unknown syscall: %02x\n", call);
+		cons->set_color();
+		print_regs(regs);
+		_halt();
+		break;
+	}
 
-	cons->puts("\n");
-	print_reg("rip", regs.rip);
 	return return_rsp;
 }
