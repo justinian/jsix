@@ -15,7 +15,11 @@ def build(bld):
         name = 'kernel',
         includes = '.',
         target = bld.env.KERNEL_FILENAME,
-        use = ['kutil', 'initrd'],
+        use = [
+            'kutil',
+            'initrd',
+            'elf',
+        ],
         linkflags = "-T {}".format(lds),
     )
 

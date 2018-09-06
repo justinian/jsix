@@ -17,9 +17,9 @@ memset(void *s, uint8_t v, size_t n)
 }
 
 void *
-memcpy(void *dest, void *src, size_t n)
+memcpy(void *dest, const void *src, size_t n)
 {
-	uint8_t *s = reinterpret_cast<uint8_t *>(src);
+	const uint8_t *s = reinterpret_cast<const uint8_t *>(src);
 	uint8_t *d = reinterpret_cast<uint8_t *>(dest);
 	for (size_t i = 0; i < n; ++i) d[i] = s[i];
 	return d;

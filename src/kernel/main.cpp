@@ -41,9 +41,9 @@ init_console()
 
 	log::init(cons);
 	log::enable(logs::apic, log::level::info);
-	log::enable(logs::device, log::level::debug);
+	log::enable(logs::device, log::level::info);
 	log::enable(logs::driver, log::level::debug);
-	log::enable(logs::memory, log::level::info);
+	log::enable(logs::memory, log::level::debug);
 	log::enable(logs::fs, log::level::debug);
 	log::enable(logs::task, log::level::debug);
 }
@@ -142,7 +142,12 @@ kernel_main(popcorn_data *header)
 
 	syscall_enable();
 	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic());
-	sched->start();
 
+	for (auto &f : ird.files()) {
+		//if (f.executable())
+			sched->create_process(f.name(), f.data(), f.size());
+	}
+
+	sched->start();
 	g_console.puts("boogity!\n");
 }

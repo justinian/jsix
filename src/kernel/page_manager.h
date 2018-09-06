@@ -34,6 +34,14 @@ public:
 
 	page_manager();
 
+	/// Helper to get the number of pages needed for a given number of bytes.
+	/// \arg bytes  The number of bytes desired
+	/// \returns    The number of pages needed to contain the desired bytes
+	static inline size_t page_count(size_t bytes)
+	{
+		return (bytes - 1) / page_size + 1;
+	}
+
 	/// Helper to read the PML4 table from CR3.
 	/// \returns  A pointer to the current PML4 table.
 	static inline page_table * get_pml4()

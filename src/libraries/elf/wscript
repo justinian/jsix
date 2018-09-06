@@ -1,0 +1,14 @@
+
+def configure(ctx):
+    pass
+
+def build(bld):
+    sources = bld.path.ant_glob("**/*.cpp")
+
+    bld.stlib(
+        source = sources,
+        name = 'elf',
+        target = 'elf',
+    )
+
+# vim: ft=python et

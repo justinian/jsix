@@ -209,17 +209,3 @@ ramdisk_process_loader:
 	add rsp, 16		; because the ISRs add err/num
 	iretq
 
-
-global taskA
-taskA:
-	push rbp
-	mov rbp, rsp
-	mov rdi, 0
-	mov rax, 0xaaaaaaaaaaaaaaaa
-
-.loop:
-	syscall
-	jmp .loop
-
-global taskAend
-taskAend:

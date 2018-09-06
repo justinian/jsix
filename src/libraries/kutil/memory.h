@@ -35,7 +35,7 @@ void * memset(void *p, uint8_t v, size_t n);
 /// \src     The memory to copy from
 /// \n       The number of bytes to copy
 /// \returns A pointer to the destination memory
-void * memcpy(void *dest, void *src, size_t n);
+void * memcpy(void *dest, const void *src, size_t n);
 
 /// Read a value of type T from a location in memory
 /// \arg p   The location in memory to read

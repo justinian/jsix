@@ -24,6 +24,12 @@ public:
 	/// \arg apic  Pointer to the local APIC object
 	scheduler(lapic *apic);
 
+	/// Create a new process from a program image in memory.
+	/// \arg name  Name of the program image
+	/// \arg data  Pointer to the image data
+	/// \arg size  Size of the program image, in bytes
+	void create_process(const char *name, const void *data, size_t size);
+
 	/// Start the scheduler working. This may involve starting
 	/// timer interrupts or other preemption methods.
 	void start();
@@ -41,6 +47,7 @@ private:
 	lapic *m_apic;
 	kutil::vector<process> m_processes;
 	uint16_t m_current;
+	uint16_t m_next_pid;
 
 	static scheduler s_instance;
 };
