@@ -1,13 +1,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "initrd/initrd.h"
 #include "kutil/assert.h"
 #include "kutil/memory.h"
 #include "block_device.h"
 #include "console.h"
 #include "cpu.h"
 #include "device_manager.h"
-#include "font.h"
 #include "gdt.h"
 #include "interrupts.h"
 #include "io.h"
@@ -29,22 +29,10 @@ extern "C" {
 extern void __kernel_assert(const char *, unsigned, const char *);
 
 void
-init_console(const popcorn_data *header)
+init_console()
 {
 	serial_port *com1 = new (&g_com1) serial_port(COM1);
 	console *cons = new (&g_console) console(com1);
-
-	if (header->frame_buffer) {
-		screen *s = new screen(
-				header->frame_buffer,
-				header->hres,
-				header->vres,
-				header->rmask,
-				header->gmask,
-				header->bmask);
-		font *f = new font(header->font);
-		cons->init_screen(s, f);
-	}
 
 	cons->set_color(0x21, 0x00);
 	cons->puts("Popcorn OS ");
@@ -83,15 +71,19 @@ kernel_main(popcorn_data *header)
 			&header->frame_buffer,
 			header->frame_buffer_length);
 
-	init_console(header);
+	init_console();
 
 	log::debug(logs::boot, " Popcorn header is at: %016lx", header);
 	log::debug(logs::boot, "    Framebuffer is at: %016lx", header->frame_buffer);
-	log::debug(logs::boot, "      Font data is at: %016lx", header->font);
 	log::debug(logs::boot, "    Kernel data is at: %016lx", header->data);
 	log::debug(logs::boot, "     Memory map is at: %016lx", header->memory_map);
 	log::debug(logs::boot, "ACPI root table is at: %016lx", header->acpi_table);
 	log::debug(logs::boot, "Runtime service is at: %016lx", header->runtime);
+
+	initrd::disk ird(header->initrd);
+	log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());
+	for (auto &f : ird.files())
+		log::info(logs::boot, "  %s (%d bytes).", f.name(), f.size());
 
 	/*
 	pager->dump_pml4(nullptr, 0);

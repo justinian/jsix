@@ -66,4 +66,10 @@ inline T* mask_pointer(T *p, addr_t mask)
 	return reinterpret_cast<T *>(reinterpret_cast<addr_t>(p) & ~mask);
 }
 
+/// Do a simple byte-wise checksum of an area of memory.
+/// \arg p    The start of the memory region
+/// \arg len  The number of bytes in the region
+/// \arg off  An optional offset into the region
+uint8_t checksum(const void *p, size_t len, size_t off = 0);
+
 } // namespace kutil

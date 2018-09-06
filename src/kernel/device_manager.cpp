@@ -41,19 +41,10 @@ struct acpi2_rsdp
 	uint8_t reserved[3];
 } __attribute__ ((packed));
 
-uint8_t
-acpi_checksum(const void *p, size_t len, size_t off = 0)
-{
-	uint8_t sum = 0;
-	const uint8_t *c = reinterpret_cast<const uint8_t *>(p);
-	for (int i = off; i < len; ++i) sum += c[i];
-	return sum;
-}
-
 bool
 acpi_table_header::validate(uint32_t expected_type) const
 {
-	if (acpi_checksum(this, length) != 0) return false;
+	if (kutil::checksum(this, length) != 0) return false;
 	return !expected_type || (expected_type == type);
 }
 
@@ -86,7 +77,7 @@ device_manager::device_manager(const void *root_table) :
 		kassert(acpi1->signature[i] == expected_signature[i],
 				"ACPI RSDP table signature mismatch");
 
-	uint8_t sum = acpi_checksum(acpi1, sizeof(acpi1_rsdp), 0);
+	uint8_t sum = kutil::checksum(acpi1, sizeof(acpi1_rsdp), 0);
 	kassert(sum == 0, "ACPI 1.0 RSDP checksum mismatch.");
 
 	kassert(acpi1->revision > 1, "ACPI 1.0 not supported.");
@@ -94,7 +85,7 @@ device_manager::device_manager(const void *root_table) :
 	const acpi2_rsdp *acpi2 =
 		reinterpret_cast<const acpi2_rsdp *>(acpi1);
 
-	sum = acpi_checksum(acpi2, sizeof(acpi2_rsdp), sizeof(acpi1_rsdp));
+	sum = kutil::checksum(acpi2, sizeof(acpi2_rsdp), sizeof(acpi1_rsdp));
 	kassert(sum == 0, "ACPI 2.0 RSDP checksum mismatch.");
 
 	load_xsdt(reinterpret_cast<const acpi_xsdt *>(acpi2->xsdt_address));

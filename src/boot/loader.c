@@ -7,7 +7,7 @@
 #define PAGE_SIZE 0x1000
 
 static CHAR16 kernel_name[] = KERNEL_FILENAME;
-static CHAR16 font_name[] = KERNEL_FONT;
+static CHAR16 initrd_name[] = INITRD_FILENAME;
 
 EFI_STATUS
 loader_alloc_pages(
@@ -38,7 +38,7 @@ loader_alloc_pages(
 }
 
 EFI_STATUS
-loader_load_font(
+loader_load_initrd(
 	EFI_BOOT_SERVICES *bootsvc,
 	EFI_FILE_PROTOCOL *root,
 	struct loader_data *data)
@@ -46,13 +46,13 @@ loader_load_font(
 	EFI_STATUS status;
 
 	EFI_FILE_PROTOCOL *file = NULL;
-	status = root->Open(root, &file, (CHAR16 *)font_name, EFI_FILE_MODE_READ,
+	status = root->Open(root, &file, (CHAR16 *)initrd_name, EFI_FILE_MODE_READ,
 						EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
 
 	if (status == EFI_NOT_FOUND)
 		return status;
 
-	CHECK_EFI_STATUS_OR_RETURN(status, L"Opening file %s", font_name);
+	CHECK_EFI_STATUS_OR_RETURN(status, L"Opening file %s", initrd_name);
 
 	char info[sizeof(EFI_FILE_INFO) + 100];
 	size_t info_length = sizeof(info);
@@ -60,16 +60,16 @@ loader_load_font(
 	status = file->GetInfo(file, &guid_file_info, &info_length, info);
 	CHECK_EFI_STATUS_OR_RETURN(status, L"Getting file info");
 
-	data->font_length = ((EFI_FILE_INFO *)info)->FileSize;
+	data->initrd_length = ((EFI_FILE_INFO *)info)->FileSize;
 
 	status = loader_alloc_pages(
 			bootsvc,
-			KERNEL_FONT_MEMTYPE,
-			&data->font_length,
-			&data->font);
+			INITRD_MEMTYPE,
+			&data->initrd_length,
+			&data->initrd);
 	CHECK_EFI_STATUS_OR_RETURN(status, L"Allocating pages");
 
-	status = file->Read(file, &data->font_length, data->font);
+	status = file->Read(file, &data->initrd_length, data->initrd);
 	CHECK_EFI_STATUS_OR_RETURN(status, L"Reading file");
 
 	status = file->Close(file);
@@ -217,12 +217,12 @@ loader_load_kernel(
 
 		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_load_elf: %s", kernel_name);
 
-		data->font = (void *)((uint64_t)data->kernel + data->kernel_length);
-		status = loader_load_font(bootsvc, root, data);
+		data->initrd = (void *)((uint64_t)data->kernel + data->kernel_length);
+		status = loader_load_initrd(bootsvc, root, data);
 
-		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_load_file: %s", font_name);
+		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_load_file: %s", initrd_name);
 
-		data->data = (void *)((uint64_t)data->font + data->font_length);
+		data->data = (void *)((uint64_t)data->initrd + data->initrd_length);
 		data->data_length += PAGE_SIZE; // extra page for map growth
 		status = loader_alloc_pages(
 				bootsvc,

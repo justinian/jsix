@@ -16,8 +16,8 @@ struct popcorn_data {
 	uint32_t _reserved0;
 	uint32_t flags;
 
-	void *font;
-	size_t font_length;
+	void *initrd;
+	size_t initrd_length;
 
 	void *data;
 	size_t data_length;

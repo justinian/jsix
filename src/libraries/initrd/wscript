@@ -1,0 +1,14 @@
+
+def configure(ctx):
+    pass
+
+def build(bld):
+    sources = bld.path.ant_glob("**/*.cpp")
+
+    bld.stlib(
+        source = sources,
+        name = 'initrd',
+        target = 'initrd',
+    )
+
+# vim: ft=python et

@@ -1,0 +1,15 @@
+
+def configure(ctx):
+    pass
+
+def build(bld):
+    sources = bld.path.ant_glob("**/*.cpp")
+
+    bld.program(
+        source = sources,
+        name = 'makerd',
+        target = 'makerd',
+        use = 'initrd',
+    )
+
+# vim: ft=python et

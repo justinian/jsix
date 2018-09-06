@@ -188,7 +188,7 @@ memory_virtualize(EFI_RUNTIME_SERVICES *runsvc, struct memory_map *map)
 	while (d < end) {
 		switch (d->Type) {
 		case KERNEL_MEMTYPE:
-		case KERNEL_FONT_MEMTYPE:
+		case INITRD_MEMTYPE:
 		case KERNEL_DATA_MEMTYPE:
 			d->Attribute |= EFI_MEMORY_RUNTIME;
 			d->VirtualStart = d->PhysicalStart + KERNEL_VIRT_ADDRESS;

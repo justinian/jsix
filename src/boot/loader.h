@@ -16,24 +16,20 @@
 #define KERNEL_MEMTYPE 0x80000000
 #endif
 
-#ifndef KERNEL_FONT_MEMTYPE
-#define KERNEL_FONT_MEMTYPE 0x80000001
+#ifndef INITRD_MEMTYPE
+#define INITRD_MEMTYPE 0x80000001
 #endif
 
 #ifndef KERNEL_DATA_MEMTYPE
 #define KERNEL_DATA_MEMTYPE 0x80000002
 #endif
 
-#ifndef KERNEL_PT_MEMTYPE
-#define KERNEL_PT_MEMTYPE 0x80000004
-#endif
-
 #ifndef KERNEL_FILENAME
 #define KERNEL_FILENAME L"kernel.elf"
 #endif
 
-#ifndef KERNEL_FONT
-#define KERNEL_FONT L"screenfont.psf"
+#ifndef INITRD_FILENAME
+#define INITRD_FILENAME L"initrd.img"
 #endif
 
 struct loader_data {
@@ -41,8 +37,8 @@ struct loader_data {
 	void *kernel_entry;
 	size_t kernel_length;
 
-	void *font;
-	size_t font_length;
+	void *initrd;
+	size_t initrd_length;
 
 	void *data;
 	size_t data_length;
