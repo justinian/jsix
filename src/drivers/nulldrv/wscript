@@ -1,0 +1,15 @@
+
+def configure(ctx):
+    pass
+
+def build(bld):
+    sources = bld.path.ant_glob("**/*.cpp")
+    sources += bld.path.ant_glob("**/*.s")
+
+    bld.program(
+        source = sources,
+        name = 'nulldrv',
+        target = 'nulldrv',
+    )
+
+# vim: ft=python et
