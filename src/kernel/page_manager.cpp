@@ -7,6 +7,7 @@
 #include "page_manager.h"
 
 page_manager g_page_manager;
+kutil::memory_manager g_kernel_memory_manager;
 
 
 static addr_t
@@ -215,10 +216,10 @@ page_manager::init(
 		}
 	}
 
-	extern kutil::memory_manager g_kernel_memory_manager;
 	new (&g_kernel_memory_manager) kutil::memory_manager(
 			reinterpret_cast<void *>(end),
 			mm_grow_callback);
+	kutil::setup::set_heap(&g_kernel_memory_manager);
 
 	m_kernel_pml4 = get_pml4();
 }

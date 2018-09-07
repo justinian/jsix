@@ -1,4 +1,5 @@
 #include "memory.h"
+#include "memory_manager.h"
 
 void * operator new (size_t, void *p) noexcept	{ return p; }
 void * operator new (size_t n)					{ return kutil::malloc(n); }
@@ -7,6 +8,32 @@ void operator delete (void *p) noexcept			{ return kutil::free(p); }
 void operator delete[] (void *p) noexcept		{ return kutil::free(p); }
 
 namespace kutil {
+
+namespace setup {
+
+static memory_manager *heap_memory_manager;
+
+void
+set_heap(memory_manager *mm)
+{
+	setup::heap_memory_manager = mm;
+}
+
+} // namespace kutil::setup
+
+
+void *
+malloc(size_t n)
+{
+	return setup::heap_memory_manager->allocate(n);
+}
+
+void
+free(void *p)
+{
+	setup::heap_memory_manager->free(p);
+}
+
 
 void *
 memset(void *s, uint8_t v, size_t n)
