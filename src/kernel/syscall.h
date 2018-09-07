@@ -1,6 +1,6 @@
 #pragma once
 
-enum class syscall : uint16_t
+enum class syscall : uint64_t
 {
 	debug,
 	message,

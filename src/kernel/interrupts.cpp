@@ -303,17 +303,17 @@ addr_t
 syscall_handler(addr_t return_rsp, cpu_state regs)
 {
 	console *cons = console::get();
-	syscall call = static_cast<syscall>(regs.rdi & 0xffff);
+	syscall call = static_cast<syscall>(regs.rax);
 
 	switch (call) {
-	case syscall::message:
-		break;
-
 	case syscall::debug:
 		cons->set_color(11);
 		cons->printf("\nReceived DEBUG syscall\n");
 		cons->set_color();
 		print_regs(regs);
+		break;
+
+	case syscall::message:
 		break;
 
 	default:
