@@ -1,0 +1,18 @@
+# This is the manifest for the initial ramdisk, read by the `makerd` tool.
+# The contents should be a table array of files to add to the ramdistk:
+#
+#  [[files]]
+#  dest = "foo.bar"             # Name of the file in the ramdisk
+#  source = "build/foo/foo.bar" # Location of the file from the project root
+#  executable = true            # Optional, default false. Whether this is an
+#                               # initial application for the kernel to execute
+#                               # on startup
+
+[[files]]
+dest = "screenfont.psf"
+source = "assets/fonts/tamsyn8x16r.psf"
+
+[[files]]
+dest = "nulldrv"
+source = "build/kernel/src/drivers/nulldrv/nulldrv"
+executable = true

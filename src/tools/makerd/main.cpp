@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "cpptoml.h"
 #include "initrd/headers.h"
 #include "entry.h"
 
@@ -14,32 +15,37 @@ int main(int argc, char **argv)
 	}
 
 	std::vector<entry> entries;
-	std::ifstream manifest(argv[1]);
+	auto manifest = cpptoml::parse_file(argv[1]);
 
 	size_t files_size = 0;
 	size_t names_size = 0;
 
-	while (manifest.good()) {
-		std::string in, out;
+	auto files = manifest->get_table_array("files");
+	for (const auto &file : *files) {
+		auto dest = file->get_as<std::string>("dest");
+		if (!dest) {
+			std::cerr << "File has no destination!" << std::endl;
+			return 1;
+		}
 
-		manifest >> in;
-		if (in.length() < 1)
-			continue;
+		auto source = file->get_as<std::string>("source");
+		if (!source) {
+			std::cerr << "File " << *dest << " has no source!" << std::endl;
+			return 1;
+		}
 
-		manifest >> out;
-		if (in.front() == '#')
-			continue;
+		auto exec = file->get_as<bool>("executable").value_or(false);
 
-		entries.emplace_back(in, out);
+		entries.emplace_back(*source, *dest, exec);
 		const entry &e = entries.back();
 
 		if (!e.good()) {
-			std::cerr << "Error reading file: " << in << std::endl;
+			std::cerr << "Error reading file: " << *source << std::endl;
 			return 1;
 		}
 
 		files_size += e.size();
-		names_size += out.length() + 1;
+		names_size += dest->length() + 1;
 	}
 
 	std::fstream out(argv[2],
@@ -77,6 +83,9 @@ int main(int argc, char **argv)
 		fheader.offset = file_offset;
 		fheader.length = e.size();
 		fheader.name_offset = name_offset;
+
+		if (e.executable())
+			fheader.flags |= initrd::file_flags::executable;
 
 		out.write(
 			reinterpret_cast<const char *>(&fheader),

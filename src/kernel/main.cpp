@@ -83,7 +83,7 @@ kernel_main(popcorn_data *header)
 	initrd::disk ird(header->initrd);
 	log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());
 	for (auto &f : ird.files())
-		log::info(logs::boot, "  %s (%d bytes).", f.name(), f.size());
+		log::info(logs::boot, "  %s%s (%d bytes).", f.executable() ? "*" : "", f.name(), f.size());
 
 	/*
 	pager->dump_pml4(nullptr, 0);
@@ -144,7 +144,7 @@ kernel_main(popcorn_data *header)
 	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic());
 
 	for (auto &f : ird.files()) {
-		//if (f.executable())
+		if (f.executable())
 			sched->create_process(f.name(), f.data(), f.size());
 	}
 

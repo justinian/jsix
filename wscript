@@ -155,8 +155,6 @@ def configure(ctx):
     ctx.env.append_value('CXXFLAGS', [
         '-g',
         '-std=c++14',
-        '-fno-exceptions',
-        '-fno-rtti',
     ])
 
     ctx.env.append_value('ASFLAGS', ['-felf64'])
@@ -176,7 +174,11 @@ def configure(ctx):
 
     ctx.setenv('kernel', env=base_bare)
     ctx.env.append_value('CFLAGS', ['-mcmodel=large'])
-    ctx.env.append_value('CXXFLAGS', ['-mcmodel=large'])
+    ctx.env.append_value('CXXFLAGS', [
+        '-mcmodel=large',
+        '-fno-exceptions',
+        '-fno-rtti',
+    ])
 
     for mod_path in ctx.env.LIBRARIES:
         ctx.recurse(mod_path)
@@ -195,7 +197,7 @@ def configure(ctx):
     ctx.find_program("dd", var="dd")
     common_configure(ctx)
 
-    ctx.env.CXXFLAGS = ['-g', '-std=c++14', '-fno-rtti']
+    ctx.env.CXXFLAGS = ['-g', '-std=c++14']
     ctx.env.LINKFLAGS = ['-g']
 
     for mod_path in ctx.env.LIBRARIES:
@@ -333,7 +335,7 @@ def build(bld):
         make_rd = makerd(env = bld.env)
         make_rd.set_inputs([
             out['tools'].make_node(join("src", "tools", "makerd", "makerd")),
-            src.make_node(join("assets", "initrd.manifest")),
+            src.make_node(join("assets", "initrd.toml")),
             ])
         make_rd.set_outputs([initrd])
         bld.add_to_group(make_rd)

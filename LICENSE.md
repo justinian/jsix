@@ -2,7 +2,8 @@
 
 Popcorn itself is released under the terms of the MIT license:
 
-> Copyright © 2018 Justin C. Miller, http://devjustinian.com <justin@devjustinian.com>
+> Copyright © 2018 Justin C. Miller, https://devjustinian.com
+> <justin@devjustinian.com>
 > 
 > Permission is hereby granted, free of charge, to any person obtaining a copy
 > of this software and associated documentation files (the “Software”), to deal
@@ -19,8 +20,8 @@ Popcorn itself is released under the terms of the MIT license:
 > FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 > AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 > LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-> THE SOFTWARE.
+> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+> SOFTWARE.
 
 # Included works
 
@@ -28,7 +29,7 @@ Popcorn includes and/or is derived from a number of other works, listed here.
 
 ## Catch2
 
-Popcorn uses [Catch2](http://github.com/catchorg/Catch2) for testing. Catch2 is
+Popcorn uses [Catch2](https://github.com/catchorg/Catch2) for testing. Catch2 is
 released under the terms of the Boost Software license:
 
 > Boost Software License - Version 1.0 - August 17th, 2003
@@ -55,19 +56,41 @@ released under the terms of the Boost Software license:
 > ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 > DEALINGS IN THE SOFTWARE.
 
-## Intel EFI Application Toolkit
+## cpptoml
 
-Popcorn's UEFI loader uses code from Intel's EFI Application toolkit. Relevant
-code includes license statements at the top of each file.
+Popcorn uses the [cpptoml](https://github.com/skystrife/cpptoml) library for
+parsing TOML configuration files. cpptoml is released under the terms of the
+MIT license:
 
-## Waf
+> Copyright (c) 2014 Chase Geigle
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy of
+> this software and associated documentation files (the "Software"), to deal in
+> the Software without restriction, including without limitation the rights to
+> use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+> the Software, and to permit persons to whom the Software is furnished to do so,
+> subject to the following conditions:
+> 
+> The above copyright notice and this permission notice shall be included in all
+> copies or substantial portions of the Software.
+> 
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+> IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+> FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+> COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+> IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+> CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-Popcorn's build system uses [Waf](https://waf.io/), which claims to be released
-under the BSD license. I could not find its specific license file, so I am
-reproducing a generic 3-clause BSD license (the most restrictive, so as not to
-assume any extra rights that may not actually be granted) for it here:
+## GNU-EFI
 
-> Copyright © 2005-2018 Thomas Nagy
+Popcorn's UEFI bootloader initially used
+[GNU-EFI](https://gnu-efi.sourceforge.net), and still uses one file (the linker
+script for the bootloader) from that project. GNU-EFI claims to be released
+under the BSD license. Again, I could not find its specific license file, so I
+am reproducing a generic 3-clause BSD license (the most restrictive, so as not
+to assume any extra rights that may not actually be granted) for it here:
+
+> Copyright © Nigel Croxon
 > 
 > Redistribution and use in source and binary forms, with or without
 > modification, are permitted provided that the following conditions are met:
@@ -94,16 +117,19 @@ assume any extra rights that may not actually be granted) for it here:
 > OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 > OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-## GNU-EFI
+## Intel EFI Application Toolkit
 
-Popcorn's UEFI bootloader initially used
-[GNU-EFI](https://gnu-efi.sourceforge.net), and still uses one file (the linker
-script for the bootloader) from that project. GNU-EFI claims to be released
-under the BSD license. Again, I could not find its specific license file, so I
-am reproducing a generic 3-clause BSD license (the most restrictive, so as not
-to assume any extra rights that may not actually be granted) for it here:
+Popcorn's UEFI loader uses code from Intel's EFI Application toolkit. Relevant
+code includes license statements at the top of each file.
 
-> Copyright © Nigel Croxon
+## Waf
+
+Popcorn's build system uses [Waf](https://waf.io/), which claims to be released
+under the BSD license. I could not find its specific license file, so I am
+reproducing a generic 3-clause BSD license (the most restrictive, so as not to
+assume any extra rights that may not actually be granted) for it here:
+
+> Copyright © 2005-2018 Thomas Nagy
 > 
 > Redistribution and use in source and binary forms, with or without
 > modification, are permitted provided that the following conditions are met:
