@@ -203,7 +203,7 @@ def configure(ctx):
     for mod_path in ctx.env.LIBRARIES:
         ctx.recurse(mod_path)
 
-    for mod_path in ctx.env.LIBRARIES:
+    for mod_path in ctx.env.TOOLS:
         ctx.recurse(mod_path)
 
     ## Image configuration
@@ -225,6 +225,7 @@ def configure(ctx):
 
     for mod_path in ctx.env.LIBRARIES:
         ctx.recurse(mod_path)
+
     ctx.recurse(join("src", "tests"))
 
 
@@ -357,6 +358,13 @@ def build(bld):
         ])
         copy_part.set_outputs([disk])
         bld.add_to_group(copy_part)
+
+    ## Tests
+    #
+    elif bld.variant == 'tests':
+        for mod_path in bld.env.LIBRARIES:
+            bld.recurse(mod_path)
+        bld.recurse(join("src", "tests"))
 
 
 def test(bld):
