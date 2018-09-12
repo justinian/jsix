@@ -21,6 +21,11 @@ def options(opt):
             default='tamsyn8x16r.psf',
             help='Font for the console')
 
+    opt.add_option('--debug',
+            action='store_true',
+            default=False,
+            help='Compile in debugging mode')
+
 
 def common_configure(ctx):
     from os import listdir
@@ -37,6 +42,7 @@ def common_configure(ctx):
     ctx.env.POPCORN_ARCH = ctx.options.arch
     ctx.env.KERNEL_FILENAME = ctx.options.kernel_filename
     ctx.env.FONT_NAME = ctx.options.font
+    ctx.env.DEBUG = ctx.options.debug
 
     ctx.env.ARCH_D = join(str(ctx.path), "src", "arch",
             ctx.env.POPCORN_ARCH)
@@ -80,6 +86,9 @@ def common_configure(ctx):
         "VERSION_PATCH={}".format(patch),
         "VERSION_GITSHA=0x{}{}".format({True:1}.get(dirty, 0), git_sha),
     ])
+
+    if ctx.env.DEBUG:
+        ctx.env.append_value('DEFINES', ['DEBUG=1'])
 
     ctx.env.append_value('QEMUOPTS', [
         '-smp', '1',

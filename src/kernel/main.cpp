@@ -48,13 +48,19 @@ init_console()
 	log::enable(logs::task, log::level::debug);
 }
 
-void do_error_3() { volatile int x = 1; volatile int y = 0; volatile int z = x / y; }
-void do_error_2() { do_error_3(); }
-void do_error_1() { do_error_2(); }
-
 void
 kernel_main(popcorn_data *header)
 {
+#ifdef DEBUG
+	// Run `waf configure --debug` to enable compiling with DEBUG turned on.
+	// Then attach to QEMU's gdb server and `set waiting = false` to start
+	// the kernel. This compensates for GDB's poor handling of QEMU going
+	// through the x86 PC startup and switching to 64 bit mode when you
+	// attach to qemu with the -S option.
+	bool waiting = true;
+	while (waiting);
+#endif
+
 	kutil::assert_set_callback(__kernel_assert);
 
 	gdt_init();
@@ -134,11 +140,6 @@ kernel_main(popcorn_data *header)
 		log::warn(logs::boot, "No block devices present.");
 	}
 	*/
-
-	// do_error_1();
-	// __asm__ __volatile__("int $15");
-
-	// pager->dump_pml4();
 
 	syscall_enable();
 	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic());

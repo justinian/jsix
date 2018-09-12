@@ -7,11 +7,15 @@
 
 #include "kutil/memory.h"
 #include "kutil/enum_bitfields.h"
+#include "kutil/linked_list.h"
+#include "kutil/slab_allocator.h"
 
 struct page_block;
 struct page_table;
 struct free_page_header;
 
+using page_block_list = kutil::linked_list<page_block>;
+using page_block_slab = kutil::slab_allocator<page_block>;
 
 /// Manager for allocation of physical pages.
 class page_manager
@@ -124,9 +128,9 @@ public:
 private:
 	/// Set up the memory manager from bootstraped memory
 	void init(
-			page_block *free,
-			page_block *used,
-			page_block *block_cache);
+			page_block_list free,
+			page_block_list used,
+			page_block_list cache);
 
 	/// Initialize the virtual memory manager based on this object's state
 	void init_memory_manager();
@@ -192,10 +196,10 @@ private:
 
 	page_table *m_kernel_pml4; ///< The PML4 of just kernel pages
 
-	page_block *m_free; ///< Free pages list
-	page_block *m_used; ///< In-use pages list
+	page_block_list m_free; ///< Free pages list
+	page_block_list m_used; ///< In-use pages list
+	page_block_slab m_block_slab; ///< page_block slab allocator
 
-	page_block *m_block_cache; ///< Cache of unused page_block structs
 	free_page_header *m_page_cache; ///< Cache of free pages to use for tables
 
 	friend void memory_initialize(const void *, size_t, size_t);
@@ -235,7 +239,6 @@ struct page_block
 	addr_t virtual_address;
 	uint32_t count;
 	page_block_flags flags;
-	page_block *next;
 
 	inline bool has_flag(page_block_flags f) const { return bitfield_has(flags, f); }
 	inline addr_t physical_end() const { return physical_address + (count * page_manager::page_size); }
@@ -245,53 +248,27 @@ struct page_block
 	inline bool contains_physical(addr_t addr) const { return addr >= physical_address && addr < physical_end(); }
 
 	/// Helper to zero out a block and optionally set the next pointer.
-	/// \arg next  [optional] The value for the `next` pointer
-	void zero(page_block *set_next = nullptr);
+	void zero();
 
 	/// Helper to copy a bock from another block
 	/// \arg other  The block to copy from
 	void copy(page_block *other);
 
-	/// \name Page block linked list functions
-	/// Functions to act on a `page_block *` as a linked list
-	/// @{
-
-	/// Count the items in the given linked list.
-	/// \arg list  The list to count
-	/// \returns   The number of entries in the list.
-	static size_t length(page_block *list);
-
-	/// Append a block or list to the given list.
-	/// \arg list   The list to append to
-	/// \arg extra  The list or block to be appended 
-	/// \returns    The new list head
-	static page_block * append(page_block *list, page_block *extra);
-
-	/// Sorted-insert of a block into the list by address.
-	/// \arg list   The list to insert into
-	/// \arg block  The single block to insert
-	/// \returns    The new list head
-	static page_block * insert(page_block *list, page_block *block);
-
 	/// Compare two blocks by address.
-	/// \arg lhs   The left-hand comparator
 	/// \arg rhs   The right-hand comparator
-	/// \returns   <0 if lhs is sorts earlier, >0 if lhs sorts later, 0 for equal
-	static int compare(const page_block *lhs, const page_block *rhs);
+	/// \returns   <0 if this is sorts earlier, >0 if this sorts later, 0 for equal
+	int compare(const page_block *rhs) const;
 
 	/// Traverse the list, joining adjacent blocks where possible.
 	/// \arg list  The list to consolidate
 	/// \returns   A linked list of freed page_block structures.
-	static page_block * consolidate(page_block *list);
+	static page_block_list consolidate(page_block_list &list);
 
 	/// Traverse the list, printing debug info on this list.
 	/// \arg list  The list to print
 	/// \arg name  [optional] String to print as the name of this list
 	/// \arg show_permanent [optional] If false, hide unmapped blocks
-	static void dump(page_block *list, const char *name = nullptr, bool show_unmapped = false);
-
-	/// @}
-
+	static void dump(const page_block_list &list, const char *name = nullptr, bool show_unmapped = false);
 };
 
 

@@ -35,8 +35,8 @@ public:
 	virtual bool match (vector const& vec) const override
 	{
 		size_t index = m_reverse ? vec.size() - 1 : 0;
-		for (const T &i : m_list) {
-			if (&i != &vec[index]) return false;
+		for (const T *i : m_list) {
+			if (i != &vec[index]) return false;
 			index += m_reverse ? -1 : 1;
 		}
 		return true;
@@ -65,9 +65,9 @@ public:
 	virtual bool match (list const& l) const override
 	{
 		int big = std::numeric_limits<int>::min();
-		for (const T &i : l) {
-			if (i.value < big) return false;
-			big = i.value;
+		for (const T *i : l) {
+			if (i->value < big) return false;
+			big = i->value;
 		}
 		return true;
 	}
@@ -79,23 +79,50 @@ public:
 };
 
 template <typename T>
+class ListContainsMatcher :
+	public Catch::MatcherBase<linked_list<T>>
+{
+public:
+	using item = list_node<T>;
+	using list = linked_list<T>;
+
+	ListContainsMatcher(const item &needle) : m_needle(needle) {}
+
+	virtual bool match (list const& l) const override
+	{
+		for (const T *i : l)
+			if (i == &m_needle) return true;
+		return false;
+	}
+
+	virtual std::string describe() const override
+	{
+		return "contains the given item";
+	}
+
+	const item &m_needle;
+};
+
+template <typename T>
 ListVectorCompare<T> IsSameAsList(const linked_list<T> &list, bool reversed = false)
 {
 	return ListVectorCompare<T>(list, reversed);
 }
 
+template <typename T>
+ListContainsMatcher<T> ListContains(const list_node<T> &item)
+{
+	return ListContainsMatcher<T>(item);
+}
+
 TEST_CASE( "Linked list tests", "[containers list]" )
 {
-	using clock = std::chrono::system_clock;
-	unsigned seed = clock::now().time_since_epoch().count();
-	std::default_random_engine rng(seed);
-	std::uniform_int_distribution<int> gen(1, 1000);
-
 	linked_list<unsortableT> ulist;
 
+	int value = 0;
 	std::vector<list_node<unsortableT>> unsortables(test_list_size);
 	for (auto &i : unsortables) {
-		i.value = gen(rng);
+		i.value = value++;
 		ulist.push_back(&i);
 	}
 	CHECK( ulist.length() == test_list_size );
@@ -104,12 +131,25 @@ TEST_CASE( "Linked list tests", "[containers list]" )
 	linked_list<unsortableT> ulist_reversed;
 
 	for (auto &i : unsortables) {
-		i.remove();
+		ulist.remove(&i);
 		ulist_reversed.push_front(&i);
 	}
 
 	CHECK( ulist_reversed.length() == test_list_size );
 	CHECK_THAT( unsortables, IsSameAsList(ulist_reversed, true) );
+
+	auto &removed = unsortables[test_list_size / 2];
+	ulist_reversed.remove(&removed);
+	CHECK( ulist_reversed.length() == test_list_size - 1 );
+	CHECK_THAT( ulist_reversed, !ListContains(removed) );
+}
+
+TEST_CASE( "Sorted list tests", "[containers list]" )
+{
+	using clock = std::chrono::system_clock;
+	unsigned seed = clock::now().time_since_epoch().count();
+	std::default_random_engine rng(seed);
+	std::uniform_int_distribution<int> gen(1, 1000);
 
 	linked_list<sortableT> slist;
 

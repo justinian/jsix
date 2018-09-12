@@ -1,10 +1,33 @@
+#include <utility>
 #include "kutil/assert.h"
 #include "kutil/memory.h"
+#include "kutil/linked_list.h"
+#include "kutil/slab_allocator.h"
 #include "memory.h"
 #include "page_manager.h"
 
 const unsigned efi_page_size = 0x1000;
 const unsigned ident_page_flags = 0xb;
+
+namespace {
+	// Page-by-page initial allocator for the initial page_block allocator
+	struct page_consumer
+	{
+		page_consumer(addr_t start) : current(start) {}
+
+		void * operator()(size_t size) {
+			kassert(size == page_manager::page_size, "page_consumer used with non-page size!");
+			void *retval = reinterpret_cast<void *>(current);
+			current += size;
+			return retval;
+		}
+
+		addr_t current;
+	};
+}
+
+using block_list = kutil::linked_list<page_block>;
+using block_allocator = kutil::slab_allocator<page_block, page_consumer &>;
 
 enum class efi_memory_type : uint32_t
 {
@@ -104,131 +127,80 @@ desc_incr(const efi_memory_descriptor *d, size_t desc_length)
 			reinterpret_cast<const uint8_t *>(d) + desc_length);
 }
 
-static unsigned
-count_table_pages_needed(page_block *used)
-{
-	page_table_indices last_idx{~0ull};
-	unsigned counts[] = {1, 0, 0, 0};
-
-	for (page_block *cur = used; cur; cur = cur->next) {
-		if (!cur->has_flag(page_block_flags::mapped))
-			continue;
-
-		page_table_indices start{cur->virtual_address};
-		page_table_indices end{cur->virtual_address + (cur->count * page_manager::page_size)};
-
-		counts[1] +=
-			((start[0] == last_idx[0]) ? 0 : 1) +
-			(end[0] - start[0]);
-
-		counts[2] +=
-			((start[0] == last_idx[0] &&
-			 start[1] == last_idx[1]) ? 0 : 1) +
-			(end[1] - start[1]);
-
-		counts[3] +=
-			((start[0] == last_idx[0] &&
-			 start[1] == last_idx[1] &&
-			 start[2] == last_idx[2]) ? 0 : 1) +
-			(end[2] - start[2]);
-
-		last_idx = end;
-	}
-
-	return counts[0] + counts[1] + counts[2] + counts[3];
-
-}
-
-page_block *
-remove_block_for(page_block **list, uint64_t phys_start, uint64_t pages, page_block **cache)
+page_block_list::item_type *
+remove_block_for(page_block_list &list, addr_t phys_start, size_t pages, page_block_list &cache)
 {
 	// This is basically just the removal portion of page_manager::unmap_pages,
 	// but with physical addresses, and only ever removing a single block.
 
-	page_block *prev = nullptr;
-	page_block *cur = *list;
-	while (cur && !cur->contains_physical(phys_start)) {
-		prev = cur;
-		cur = cur->next;
-	}
+	for (auto *item : list) {
+		if (!item->contains_physical(phys_start))
+			continue;
 
-	kassert(cur, "Couldn't find block to remove");
+		uint64_t size = page_manager::page_size * pages;
+		uint64_t end = phys_start + size;
+		uint64_t leading = phys_start - item->physical_address;
+		uint64_t trailing = item->physical_end() - end;
 
-	uint64_t size = page_manager::page_size * pages;
-	uint64_t end = phys_start + size;
-	uint64_t leading = phys_start - cur->physical_address;
-	uint64_t trailing = cur->physical_end() - end;
+		if (leading) {
+			uint64_t pages = leading / page_manager::page_size;
 
-	if (leading) {
-		uint64_t pages = leading / page_manager::page_size;
+			page_block_list::item_type *lead_block = cache.pop_front();
 
-		page_block *lead_block = *cache;
-		*cache = (*cache)->next;
+			lead_block->copy(item);
+			lead_block->count = pages;
 
-		lead_block->copy(cur);
-		lead_block->next = cur;
-		lead_block->count = pages;
+			item->count -= pages;
+			item->physical_address += leading;
 
-		cur->count -= pages;
-		cur->physical_address += leading;
+			if (item->virtual_address)
+				item->virtual_address += leading;
 
-		if (cur->virtual_address)
-			cur->virtual_address += leading;
-
-		if (prev) {
-			prev->next = lead_block;
-		} else {
-			prev = lead_block;
-			*list = prev;
+			list.insert_before(item, lead_block);
 		}
+
+		if (trailing) {
+			uint64_t pages = trailing / page_manager::page_size;
+
+			page_block_list::item_type *trail_block = cache.pop_front();
+
+			trail_block->copy(item);
+			trail_block->count = pages;
+			trail_block->physical_address += size;
+
+			item->count -= pages;
+
+			if (item->virtual_address)
+				trail_block->virtual_address += size;
+
+			list.insert_before(item, trail_block);
+		}
+
+		list.remove(item);
+		return item;
 	}
 
-	if (trailing) {
-		uint64_t pages = trailing / page_manager::page_size;
-
-		page_block *trail_block = *cache;
-		*cache = (*cache)->next;
-
-		trail_block->copy(cur);
-		trail_block->next = cur->next;
-		trail_block->count = pages;
-		trail_block->physical_address += size;
-
-		if (cur->virtual_address)
-			trail_block->virtual_address += size;
-
-		cur->count -= pages;
-		cur->next = trail_block;
-	}
-
-	prev->next = cur->next;
-	cur->next = nullptr;
-	return cur;
+	kassert(false, "Couldn't find block to remove");
+	return nullptr;
 }
 
-uint64_t
+void
 gather_block_lists(
-		uint64_t scratch_virt,
+		block_allocator &allocator,
+		block_list &used,
+		block_list &free,
 		const void *memory_map,
 		size_t map_length,
-		size_t desc_length,
-		page_block **free_head,
-		page_block **used_head)
+		size_t desc_length)
 {
-	int i = 0;
-	page_block *free = nullptr;
-	page_block *used = nullptr;
-
-	page_block *block_list = reinterpret_cast<page_block *>(scratch_virt);
 	efi_memory_descriptor const *desc = reinterpret_cast<efi_memory_descriptor const *>(memory_map);
 	efi_memory_descriptor const *end = desc_incr(desc, map_length);
 
 	while (desc < end) {
-		page_block *block = &block_list[i++];
+		auto *block = allocator.pop();
 		block->physical_address = desc->physical_start;
 		block->virtual_address = desc->virtual_start;
 		block->count = desc->pages;
-		block->next = nullptr;
 
 		switch (desc->type) {
 		case efi_memory_type::loader_code:
@@ -264,31 +236,13 @@ gather_block_lists(
 			if (block->virtual_address || !block->physical_address)
 				block->flags |= page_block_flags::mapped;
 
-			used = page_block::insert(used, block);
+			used.push_back(block);
 		} else {
-			free = page_block::insert(free, block);
+			free.push_back(block);
 		}
 
 		desc = desc_incr(desc, desc_length);
 	}
-
-	*free_head = free;
-	*used_head = used;
-	return reinterpret_cast<uint64_t>(&block_list[i]);
-}
-
-page_block *
-fill_page_with_blocks(uint64_t start)
-{
-	uint64_t end = page_align(start);
-	uint64_t count = (end - start) / sizeof(page_block);
-	if (count == 0) return nullptr;
-
-	page_block *blocks = reinterpret_cast<page_block *>(start);
-	for (unsigned i = 0; i < count; ++i)
-		blocks[i].zero(&blocks[i+1]);
-	blocks[count - 1].next = nullptr;
-	return blocks;
 }
 
 void
@@ -459,34 +413,27 @@ memory_initialize(const void *memory_map, size_t map_length, size_t desc_length)
 
 	// We now have pages starting at "free_next" to bootstrap ourselves. Start by
 	// taking inventory of free pages.
-	page_block *free_head = nullptr;
-	page_block *used_head = nullptr;
-	free_next = gather_block_lists(
-			free_next, memory_map, map_length, desc_length,
-			&free_head, &used_head);
+	page_consumer allocator(free_next);
+	block_allocator block_slab(page_manager::page_size, allocator);
+	block_list used;
+	block_list free;
 
-	// Unused page_block structs go here - finish out the current page with them
-	page_block *cache_head = fill_page_with_blocks(free_next);
-	free_next = page_align(free_next);
+	gather_block_lists(block_slab, used, free, memory_map, map_length, desc_length);
+	block_slab.allocate(); // Make sure we have extra
+
+	free_next = allocator.current;
 
 	// Now go back through these lists and consolidate
-	page_block *freed = page_block::consolidate(free_head);
-	cache_head = page_block::append(cache_head, freed);
-
-	freed = page_block::consolidate(used_head);
-	cache_head = page_block::append(cache_head, freed);
-
+	block_slab.append(page_block::consolidate(free));
+	block_slab.append(page_block::consolidate(used));
 
 	// Pull out the block that represents the bootstrap pages we've used
-	uint64_t used = free_next - free_region_start_virt;
-	uint64_t used_pages = used / page_manager::page_size;
+	uint64_t used_bytes = free_next - free_region_start_virt;
+	uint64_t used_pages = used_bytes / page_manager::page_size;
 	uint64_t remaining_pages = want_pages - used_pages;
 
-	page_block *removed = remove_block_for(
-			&free_head,
-			free_region_start_phys,
-			used_pages,
-			&cache_head);
+	auto *removed = remove_block_for(free, free_region_start_phys,
+			used_pages, block_slab);
 
 	kassert(removed, "remove_block_for didn't find the bootstrap region.");
 	kassert(removed->physical_address == free_region_start_phys,
@@ -495,16 +442,13 @@ memory_initialize(const void *memory_map, size_t map_length, size_t desc_length)
 	// Add it to the used list
 	removed->virtual_address = free_region_start_virt;
 	removed->flags = page_block_flags::used | page_block_flags::mapped;
-	used_head = page_block::insert(used_head, removed);
+	used.sorted_insert(removed);
 
 	// Pull out the block that represents the rest
-	uint64_t free_next_phys = free_region_start_phys + used;
+	uint64_t free_next_phys = free_region_start_phys + used_bytes;
 
-	removed = remove_block_for(
-			&free_head,
-			free_next_phys,
-			remaining_pages,
-			&cache_head);
+	removed = remove_block_for(free, free_next_phys,
+			remaining_pages, block_slab);
 
 	kassert(removed, "remove_block_for didn't find the page table region.");
 	kassert(removed->physical_address == free_next_phys,
@@ -516,7 +460,7 @@ memory_initialize(const void *memory_map, size_t map_length, size_t desc_length)
 	// Record that we're about to remap it into the page table address space
 	removed->virtual_address = pt_start_virt;
 	removed->flags = page_block_flags::used | page_block_flags::mapped;
-	used_head = page_block::insert(used_head, removed);
+	used.sorted_insert(removed);
 
 	page_manager *pm = &g_page_manager;
 
@@ -539,9 +483,9 @@ memory_initialize(const void *memory_map, size_t map_length, size_t desc_length)
 	// Give the rest to the page_manager's cache for use in page_in
 	pm->free_table_pages(pml4 + 1, remaining_pages - 1);
 
-	for (page_block *cur = used_head; cur; cur = cur->next) {
-		if (!cur->has_flag(page_block_flags::mapped)) continue;
-		pm->page_in(pml4, cur->physical_address, cur->virtual_address, cur->count);
+	for (auto *block : used) {
+		if (!block->has_flag(page_block_flags::mapped)) continue;
+		pm->page_in(pml4, block->physical_address, block->virtual_address, block->count);
 	}
 
 	// Put our new PML4 into CR3 to start using it
@@ -549,5 +493,8 @@ memory_initialize(const void *memory_map, size_t map_length, size_t desc_length)
 
 	// We now have all used memory mapped ourselves. Let the page_manager take
 	// over from here.
-	g_page_manager.init(free_head, used_head, cache_head);
+	g_page_manager.init(
+			std::move(free),
+			std::move(used),
+			std::move(block_slab));
 }

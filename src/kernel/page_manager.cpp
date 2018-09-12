@@ -42,100 +42,52 @@ void mm_grow_callback(void *next, size_t length)
 }
 
 
-size_t
-page_block::length(page_block *list)
-{
-	size_t i = 0;
-	for (page_block *b = list; b; b = b->next) ++i;
-	return i;
-}
-
-page_block *
-page_block::append(page_block *list, page_block *extra)
-{
-	if (list == nullptr) return extra;
-	else if (extra == nullptr) return list;
-
-	page_block *cur = list;
-	while (cur->next)
-		cur = cur->next;
-	cur->next = extra;
-	return list;
-}
-
-page_block *
-page_block::insert(page_block *list, page_block *block)
-{
-	if (list == nullptr) return block;
-	else if (block == nullptr) return list;
-
-	page_block *cur = list;
-	page_block *prev = nullptr;
-	while (cur && page_block::compare(block, cur) > 0) {
-		prev = cur;
-		cur = cur->next;
-	}
-
-	block->next = cur;
-	if (prev) {
-		prev->next = block;
-		return list;
-	}
-	return block;
-}
-
 int
-page_block::compare(const page_block *lhs, const page_block *rhs)
+page_block::compare(const page_block *rhs) const
 {
-	if (lhs->virtual_address < rhs->virtual_address)
+	if (virtual_address < rhs->virtual_address)
 		return -1;
-	else if (lhs->virtual_address > rhs->virtual_address)
+	else if (virtual_address > rhs->virtual_address)
 		return 1;
 
-	if (lhs->physical_address < rhs->physical_address)
+	if (physical_address < rhs->physical_address)
 		return -1;
-	else if (lhs->physical_address > rhs->physical_address)
+	else if (physical_address > rhs->physical_address)
 		return 1;
 
 	return 0;
 }
 
-page_block *
-page_block::consolidate(page_block *list)
+page_block_list
+page_block::consolidate(page_block_list &list)
 {
-	page_block *freed = nullptr;
-	page_block *cur = list;
+	page_block_list freed;
 
-	while (cur) {
-		page_block *next = cur->next;
+	for (auto *cur : list) {
+		auto *next = cur->next();
 
-		if (next &&
+		while (next &&
 			cur->flags == next->flags &&
 			cur->physical_end() == next->physical_address &&
 			(!cur->has_flag(page_block_flags::mapped) ||
 			cur->virtual_end() == next->virtual_address)) {
 
 			cur->count += next->count;
-			cur->next = next->next;
-
-			next->zero(freed);
-			freed = next;
-			continue;
+			list.remove(next);
+			freed.push_back(next);
 		}
-
-		cur = cur->next;
 	}
 
 	return freed;
 }
 
 void
-page_block::dump(page_block *list, const char *name, bool show_unmapped)
+page_block::dump(const page_block_list &list, const char *name, bool show_unmapped)
 {
 	log::info(logs::memory, "Block list %s:", name);
 
 	int count = 0;
-	for (page_block *cur = list; cur; cur = cur->next) {
+	for (auto *cur : list) {
 		count += 1;
 		if (!(show_unmapped || cur->has_flag(page_block_flags::mapped)))
 			continue;
@@ -161,13 +113,12 @@ page_block::dump(page_block *list, const char *name, bool show_unmapped)
 }
 
 void
-page_block::zero(page_block *set_next)
+page_block::zero()
 {
 	physical_address = 0;
 	virtual_address = 0;
 	count = 0;
 	flags = page_block_flags::free;
-	next = set_next;
 }
 
 void
@@ -177,14 +128,11 @@ page_block::copy(page_block *other)
 	virtual_address = other->virtual_address;
 	count = other->count;
 	flags = other->flags;
-	next = other->next;
 }
 
 
 page_manager::page_manager() :
-	m_free(nullptr),
-	m_used(nullptr),
-	m_block_cache(nullptr),
+	m_block_slab(page_size),
 	m_page_cache(nullptr)
 {
 	kassert(this == &g_page_manager, "Attempt to create another page_manager.");
@@ -192,25 +140,22 @@ page_manager::page_manager() :
 
 void
 page_manager::init(
-	page_block *free,
-	page_block *used,
-	page_block *block_cache)
+	page_block_list free,
+	page_block_list used,
+	page_block_list cache)
 {
-	m_free = free;
-	m_used = used;
-	m_block_cache = block_cache;
-
-	// For now we're ignoring that we've got the scratch pages
-	// allocated, full of page_block structs. Eventually hand
-	// control of that to a slab allocator.
+	m_free.append(free);
+	m_used.append(used);
+	m_block_slab.append(cache);
 
 	consolidate_blocks();
 
 	// Initialize the kernel memory manager
 	addr_t end = 0;
-	for (page_block *b = m_used; b; b = b->next) {
-		if (b->virtual_address < page_offset) {
-			end = b->virtual_end();
+	for (auto *block : m_used) {
+		if (block->virtual_address &&
+			block->virtual_address < page_offset) {
+			end = block->virtual_end();
 		} else {
 			break;
 		}
@@ -258,7 +203,7 @@ page_manager::map_offset_pointer(void **pointer, size_t length)
 	addr_t c = ((length - 1) / page_size) + 1;
 
 	// TODO: cleanly search/split this as a block out of used/free if possible
-	page_block *block = get_block();
+	auto *block = m_block_slab.pop();
 
 	// TODO: page-align
 	block->physical_address = *p;
@@ -269,7 +214,7 @@ page_manager::map_offset_pointer(void **pointer, size_t length)
 		page_block_flags::mapped |
 		page_block_flags::mmio;
 
-	m_used = page_block::insert(m_used, block);
+	m_used.sorted_insert(block);
 
 	page_table *pml4 = get_pml4();
 	page_in(pml4, *p, v, c);
@@ -292,35 +237,6 @@ page_manager::dump_pml4(page_table *pml4, int max_index)
 	pml4->dump(4, max_index);
 }
 
-page_block *
-page_manager::get_block()
-{
-	page_block *block = m_block_cache;
-	if (block) {
-		m_block_cache = block->next;
-		block->next = 0;
-		return block;
-	} else {
-		kassert(0, "NYI: page_manager::get_block() needed to allocate.");
-		return nullptr;
-	}
-}
-
-void
-page_manager::free_blocks(page_block *block)
-{
-	if (!block) return;
-
-	page_block *cur = block;
-	while (cur) {
-		page_block *next = cur->next;
-		cur->zero(cur->next ? cur->next : m_block_cache);
-		cur = next;
-	}
-
-	m_block_cache = block;
-}
-
 page_table *
 page_manager::get_table_page()
 {
@@ -329,11 +245,13 @@ page_manager::get_table_page()
 		size_t n = pop_pages(32, &phys);
 		addr_t virt = phys + page_offset;
 
-		page_block *block = get_block();
+		auto *block = m_block_slab.pop();
+
 		block->physical_address = phys;
 		block->virtual_address = virt;
 		block->count = n;
-		page_block::insert(m_used, block);
+
+		m_used.sorted_insert(block);
 
 		page_in(get_pml4(), phys, virt, n);
 
@@ -372,8 +290,8 @@ page_manager::free_table_pages(void *pages, size_t count)
 void
 page_manager::consolidate_blocks()
 {
-	m_block_cache = page_block::append(m_block_cache, page_block::consolidate(m_free));
-	m_block_cache = page_block::append(m_block_cache, page_block::consolidate(m_used));
+	m_block_slab.append(page_block::consolidate(m_free));
+	m_block_slab.append(page_block::consolidate(m_used));
 }
 
 void *
@@ -383,19 +301,21 @@ page_manager::map_pages(addr_t address, size_t count, bool user, page_table *pml
 	if (!pml4) pml4 = get_pml4();
 
 	while (count) {
-		kassert(m_free, "page_manager::map_pages ran out of free pages!");
+		kassert(!m_free.empty(), "page_manager::map_pages ran out of free pages!");
 
 		addr_t phys = 0;
 		size_t n = pop_pages(count, &phys);
 
-		page_block *block = get_block();
+		auto *block = m_block_slab.pop();
+
 		block->physical_address = phys;
 		block->virtual_address = address;
 		block->count = n;
 		block->flags =
 				page_block_flags::used |
 				page_block_flags::mapped;
-		page_block::insert(m_used, block);
+
+		m_used.sorted_insert(block);
 
 		log::debug(logs::memory, "Paging in %d pages at p:%016lx to v:%016lx into %016lx table",
 				n, phys, address, pml4);
@@ -413,37 +333,28 @@ void *
 page_manager::map_offset_pages(size_t count)
 {
 	page_table *pml4 = get_pml4();
-	page_block *free = m_free;
-	page_block *prev = nullptr;
 
+	for (auto *free : m_free) {
+		if (free->count < count) continue;
 
-	while (free) {
-		if (free->count < count) {
-			prev = free;
-			free = free->next;
-			continue;
-		}
+		auto *used = m_block_slab.pop();
 
-		page_block *used = get_block();
 		used->count = count;
 		used->physical_address = free->physical_address;
 		used->virtual_address = used->physical_address + page_offset;
 		used->flags =
 			page_block_flags::used |
 			page_block_flags::mapped;
-		page_block::insert(m_used, used);
+
+		m_used.sorted_insert(used);
 
 		free->physical_address += count * page_size;
 		free->count -= count;
 
 		if (free->count == 0) {
-			if (prev)
-				prev->next = free->next;
-			else
-				m_free = free->next;
-
-			free->zero(m_block_cache);
-			m_block_cache = free;
+			m_free.remove(free);
+			free->zero();
+			m_block_slab.push(free);
 		}
 
 		log::debug(logs::memory, "Got request for offset map %016lx [%d]", used->virtual_address, count);
@@ -458,67 +369,61 @@ void
 page_manager::unmap_pages(void* address, size_t count)
 {
 	addr_t addr = reinterpret_cast<addr_t>(address);
+	size_t block_count = 0;
 
-	page_block **prev = &m_used;
-	page_block *cur = m_used;
-	while (cur && !cur->contains(addr)) {
-		prev = &cur->next;
-		cur = cur->next;
-	}
+	for (auto *block : m_used) {
+		if (!block->contains(addr)) continue;
 
-	kassert(cur, "Couldn't find existing mapped pages to unmap");
+		size_t size = page_size * count;
+		addr_t end = addr + size;
 
-	size_t size = page_size * count;
-	addr_t end = addr + size;
-
-	while (cur && cur->contains(addr)) {
-		size_t leading = addr - cur->virtual_address;
+		size_t leading = addr - block->virtual_address;
 		size_t trailing =
-			end > cur->virtual_end() ?
-			0 : (cur->virtual_end() - end);
+			end > block->virtual_end() ?
+			0 : (block->virtual_end() - end);
 
 		if (leading) {
 			size_t pages = leading / page_size;
 
-			page_block *lead_block = get_block();
-			lead_block->copy(cur);
-			lead_block->next = cur;
+			auto *lead_block = m_block_slab.pop();
+
+			lead_block->copy(block);
 			lead_block->count = pages;
 
-			cur->count -= pages;
-			cur->physical_address += leading;
-			cur->virtual_address += leading;
+			block->count -= pages;
+			block->physical_address += leading;
+			block->virtual_address += leading;
 
-			*prev = lead_block;
-			prev = &lead_block->next;
+			m_used.insert_before(block, lead_block);
 		}
 
 		if (trailing) {
 			size_t pages = trailing / page_size;
 
-			page_block *trail_block = get_block();
-			trail_block->copy(cur);
-			trail_block->next = cur->next;
+			auto *trail_block = m_block_slab.pop();
+
+			trail_block->copy(block);
 			trail_block->count = pages;
 			trail_block->physical_address += size;
 			trail_block->virtual_address += size;
 
-			cur->count -= pages;
+			block->count -= pages;
 
-			cur->next = trail_block;
+			m_used.insert_after(block, trail_block);
 		}
 
-		addr += cur->count * page_size;
-		page_block *next = cur->next;
+		addr += block->count * page_size;
 
-		*prev = cur->next;
-		cur->next = nullptr;
-		cur->virtual_address = 0;
-		cur->flags = cur->flags & ~(page_block_flags::used | page_block_flags::mapped);
-		m_free = page_block::insert(m_free, cur);
+		block->virtual_address = 0;
+		block->flags = block->flags &
+			~(page_block_flags::used | page_block_flags::mapped);
 
-		cur = next;
+		m_used.remove(block);
+		m_free.sorted_insert(block);
+		++block_count;
 	}
+
+	kassert(block_count, "Couldn't find existing mapped pages to unmap");
 }
 
 void
@@ -608,20 +513,17 @@ page_manager::page_out(page_table *pml4, addr_t virt_addr, size_t count)
 size_t
 page_manager::pop_pages(size_t count, addr_t *address)
 {
-	kassert(m_free, "page_manager::pop_pages ran out of free pages!");
+	kassert(!m_free.empty(), "page_manager::pop_pages ran out of free pages!");
 
-	unsigned n = std::min(count, static_cast<size_t>(m_free->count));
-	*address = m_free->physical_address;
+	auto *first = m_free.front();
 
-	m_free->physical_address += n * page_size;
-	m_free->count -= n;
-	if (m_free->count == 0) {
-		page_block *block = m_free;
-		m_free = m_free->next;
+	unsigned n = std::min(count, static_cast<size_t>(first->count));
+	*address = first->physical_address;
 
-		block->zero(m_block_cache);
-		m_block_cache = block;
-	}
+	first->physical_address += n * page_size;
+	first->count -= n;
+	if (first->count == 0)
+		m_block_slab.push(m_free.pop_front());
 
 	return n;
 }
