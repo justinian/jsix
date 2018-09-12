@@ -13,6 +13,11 @@ dest = "screenfont.psf"
 source = "assets/fonts/tamsyn8x16r.psf"
 
 [[files]]
-dest = "nulldrv"
+dest = "nulldrv1"
+source = "build/kernel/src/drivers/nulldrv/nulldrv"
+executable = true
+
+[[files]]
+dest = "nulldrv2"
 source = "build/kernel/src/drivers/nulldrv/nulldrv"
 executable = true

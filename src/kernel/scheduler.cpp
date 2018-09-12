@@ -20,20 +20,33 @@ const uint64_t rflags_int = 0x202;
 
 extern "C" {
 	void ramdisk_process_loader();
-	void load_process(const void *image_start, size_t butes, cpu_state state);
+	void load_process(const void *image_start, size_t bytes, process *proc, cpu_state state);
 };
 
 scheduler::scheduler(lapic *apic) :
 	m_apic(apic),
-	m_current(0),
-	m_next_pid(0)
+	m_next_pid(1)
 {
-	m_processes.ensure_capacity(50);
-	m_processes.append({m_next_pid++, 0, page_manager::get_pml4()}); // The kernel idle task, also the thread we're in now
+	auto *idle = m_process_allocator.pop();
+
+	uint8_t last_pri = num_priorities - 1;
+
+	// The kernel idle task, also the thread we're in now
+	idle->pid = 0;
+	idle->ppid = 0;
+	idle->priority = last_pri;
+	idle->rsp = 0; // This will get set when we switch away
+	idle->pml4 = page_manager::get_pml4();
+	idle->flags =
+		process_flags::ready |
+		process_flags::const_pri;
+
+	m_runlists[last_pri].push_back(idle);
+	m_current = idle;
 }
 
 void
-load_process(const void *image_start, size_t bytes, cpu_state state)
+load_process(const void *image_start, size_t bytes, process *proc, cpu_state state)
 {
 	// We're now in the process space for this process, allocate memory for the
 	// process code and load it
@@ -85,6 +98,7 @@ load_process(const void *image_start, size_t bytes, cpu_state state)
 	}
 
 	state.rip = image.entrypoint();
+	proc->flags &= ~process_flags::loading;
 
 	log::debug(logs::task, "Loaded! New process state:");
 	log::debug(logs::task, "        CS: %d [%d]", state.cs >> 3, state.cs & 0x07);
@@ -137,14 +151,28 @@ scheduler::create_process(const char *name, const void *data, size_t size)
 	loader_state->rbx = size;
 
 	uint16_t pid = m_next_pid++;
+	auto *proc = m_process_allocator.pop();
+
+	proc->pid = pid;
+	proc->ppid = 0; // TODO
+	proc->priority = default_priority;
+	proc->rsp = reinterpret_cast<addr_t>(loader_state);
+	proc->pml4 = pml4;
+	proc->flags =
+		process_flags::ready |
+		process_flags::loading;
+
+	m_runlists[default_priority].push_back(proc);
+
+	loader_state->rcx = reinterpret_cast<uint64_t>(proc);
+
 	log::debug(logs::task, "Creating process %s:", name);
 	log::debug(logs::task, "      PID %d", pid);
+	log::debug(logs::task, "      Pri %d", pid);
 	log::debug(logs::task, "     RSP0 %016lx", state);
 	log::debug(logs::task, "     RSP3 %016lx", state->user_rsp);
 	log::debug(logs::task, "     PML4 %016lx", pml4);
 	log::debug(logs::task, "  Loading %016lx [%d]", loader_state->rax, loader_state->rbx);
-
-	m_processes.append({pid, reinterpret_cast<addr_t>(loader_state), pml4});
 }
 
 void
@@ -155,21 +183,41 @@ scheduler::start()
 }
 
 addr_t
-scheduler::tick(addr_t rsp0)
+scheduler::schedule(addr_t rsp0)
 {
-	log::debug(logs::task, "Scheduler tick.");
+	m_current->rsp = rsp0;
+	m_runlists[m_current->priority].remove(m_current);
+	m_runlists[m_current->priority].push_back(m_current);
 
-	m_processes[m_current].rsp = rsp0;
-	m_current = (m_current + 1) % m_processes.count();
-	rsp0 = m_processes[m_current].rsp;
+	uint8_t pri = 0;
+	while (m_runlists[pri].empty()) {
+		++pri;
+		kassert(pri < num_priorities, "All runlists are empty");
+	}
+
+	m_current = m_runlists[pri].pop_front();
+	rsp0 = m_current->rsp;
 
 	// Set rsp0 to after the end of the about-to-be-popped cpu state
 	tss_set_stack(0, rsp0 + sizeof(cpu_state));
 
 	// Swap page tables
-	page_table *pml4 = m_processes[m_current].pml4;
+	page_table *pml4 = m_current->pml4;
 	page_manager::set_pml4(pml4);
 
+	bool loading = bitfield_has(m_current->flags, process_flags::loading);
+	log::debug(logs::task, "Scheduler switched to process %d, priority %d%s.",
+			m_current->pid, m_current->priority, loading ? " (loading)" : "");
+
+	return rsp0;
+}
+
+addr_t
+scheduler::tick(addr_t rsp0)
+{
+	// TODO: action based on the task using the whole quantum
+
+	rsp0 = schedule(rsp0);
 	m_apic->reset_timer(quantum);
 	return rsp0;
 }

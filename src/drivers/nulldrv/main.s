@@ -3,7 +3,8 @@ _start:
 	xor rbp, rbp	; Sentinel rbp
 
 .loop:
-	mov rax, 0		; DEBUG syscall
+	;mov rax, 1		; DEBUG syscall
+	mov rax, 0		; NOOP syscall
 	syscall
 
 	jmp .loop
