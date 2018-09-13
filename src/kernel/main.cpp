@@ -43,7 +43,7 @@ init_console()
 	log::enable(logs::apic, log::level::info);
 	log::enable(logs::device, log::level::info);
 	log::enable(logs::driver, log::level::debug);
-	log::enable(logs::memory, log::level::debug);
+	log::enable(logs::memory, log::level::info);
 	log::enable(logs::fs, log::level::debug);
 	log::enable(logs::task, log::level::debug);
 }
@@ -150,5 +150,4 @@ kernel_main(popcorn_data *header)
 	}
 
 	sched->start();
-	g_console.puts("boogity!\n");
 }
