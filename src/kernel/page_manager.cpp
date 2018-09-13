@@ -266,7 +266,7 @@ page_manager::get_table_page()
 		}
 		reinterpret_cast<free_page_header *>(virt)->next = nullptr;
 
-		log::info(logs::memory, "Mappd %d new page table pages at %lx", n, phys);
+		log::debug(logs::memory, "Mappd %d new page table pages at %lx", n, phys);
 	}
 
 	free_page_header *page = m_page_cache;

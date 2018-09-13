@@ -57,6 +57,7 @@ irq_handler_prelude:
 %endmacro
 
 %define EISR(i, name)     EMIT_EISR name, i
+%define UISR(i, name)     EMIT_ISR name, i
 %define  ISR(i, name)     EMIT_ISR name, i
 %define  IRQ(i, q, name)  EMIT_IRQ name, i
 

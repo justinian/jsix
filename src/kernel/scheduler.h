@@ -25,6 +25,7 @@ enum class process_flags : uint32_t
 };
 IS_BITFIELD(process_flags);
 
+/// A process
 struct process
 {
 	uint32_t pid;
@@ -39,6 +40,10 @@ struct process
 
 	addr_t rsp;
 	page_table *pml4;
+
+	/// Helper to check if this process is ready
+	/// \returns  true if the process has the ready flag
+	inline bool ready() { return bitfield_has(flags, process_flags::ready); }
 };
 
 using process_list = kutil::linked_list<process>;
@@ -79,7 +84,6 @@ public:
 	/// \returns  A reference to the global system scheduler
 	static scheduler & get() { return s_instance; }
 
-private:
 	friend addr_t isr_handler(addr_t, cpu_state);
 
 	/// Handle a timer tick
@@ -87,6 +91,7 @@ private:
 	/// \returns   The stack pointer to switch to
 	addr_t tick(addr_t rsp0);
 
+private:
 	lapic *m_apic;
 
 	uint32_t m_next_pid;
@@ -94,6 +99,7 @@ private:
 	process_node *m_current;
 	process_slab m_process_allocator;
 	process_list m_runlists[num_priorities];
+	process_list m_blocked;
 
 	static scheduler s_instance;
 };

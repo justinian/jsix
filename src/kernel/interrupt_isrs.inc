@@ -237,12 +237,13 @@ IRQ (0xde, 0xbe, irqBE)
 IRQ (0xdf, 0xbf, irqBF)
 
 
-ISR (0xe7, isrAssert)
+ISR (0xe0, isrTimer)
+ISR (0xe1, isrLINT0)
+ISR (0xe2, isrLINT1)
+ISR (0xe3, isrSpurious)
+ISR (0xe4, isrAssert)
 
-ISR (0xec, isrTimer)
-ISR (0xed, isrLINT0)
-ISR (0xee, isrLINT1)
-ISR (0xef, isrSpurious)
+UISR(0xee, isrSyscall)
 
 ISR (0xf0, isrIgnore0)
 ISR (0xf1, isrIgnore1)

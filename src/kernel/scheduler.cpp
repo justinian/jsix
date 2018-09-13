@@ -3,6 +3,7 @@
 #include "cpu.h"
 #include "gdt.h"
 #include "interrupts.h"
+#include "io.h"
 #include "log.h"
 #include "page_manager.h"
 #include "scheduler.h"
@@ -11,8 +12,8 @@
 #include "kutil/assert.h"
 
 scheduler scheduler::s_instance(nullptr);
-//static const uint32_t quantum = 2000000;
-static const uint32_t quantum =  20000000;
+static const uint32_t quantum = 2000000;
+//static const uint32_t quantum =  20000000;
 
 const int stack_size = 0x1000;
 const uint64_t rflags_noint = 0x002;
@@ -69,7 +70,7 @@ load_process(const void *image_start, size_t bytes, process *proc, cpu_state sta
 		size_t size = (header->vaddr + header->mem_size) - aligned;
 		size_t pages = page_manager::page_count(size);
 
-		log::debug(logs::task, "  Loadable segment %02d: vaddr %016lx  size %016lx",
+		log::debug(logs::task, "  Loadable segment %02u: vaddr %016lx  size %016lx",
 			i, header->vaddr, header->mem_size);
 
 		log::debug(logs::task, "         - aligned to: vaddr %016lx  pages %d",
@@ -89,7 +90,7 @@ load_process(const void *image_start, size_t bytes, process *proc, cpu_state sta
 			!bitfield_has(header->flags, elf::section_flags::alloc))
 			continue;
 
-		log::debug(logs::task, "  Loadable section %u: vaddr %016lx  size %016lx",
+		log::debug(logs::task, "  Loadable section %02u: vaddr %016lx  size %016lx",
 			i, header->addr, header->size);
 
 		void *dest = reinterpret_cast<void *>(header->addr);
@@ -100,12 +101,7 @@ load_process(const void *image_start, size_t bytes, process *proc, cpu_state sta
 	state.rip = image.entrypoint();
 	proc->flags &= ~process_flags::loading;
 
-	log::debug(logs::task, "Loaded! New process state:");
-	log::debug(logs::task, "        CS: %d [%d]", state.cs >> 3, state.cs & 0x07);
-	log::debug(logs::task, "        SS: %d [%d]", state.ss >> 3, state.ss & 0x07);
-	log::debug(logs::task, "    RFLAGS: %08x", state.rflags);
-	log::debug(logs::task, "       RIP: %016lx", state.rip);
-	log::debug(logs::task, "      uRSP: %016lx", state.user_rsp);
+	log::debug(logs::task, "  Loaded! New process rip: %016lx", state.rip);
 }
 
 void
@@ -166,13 +162,9 @@ scheduler::create_process(const char *name, const void *data, size_t size)
 
 	loader_state->rcx = reinterpret_cast<uint64_t>(proc);
 
-	log::debug(logs::task, "Creating process %s:", name);
-	log::debug(logs::task, "      PID %d", pid);
-	log::debug(logs::task, "      Pri %d", pid);
+	log::debug(logs::task, "Creating process %s: pid %d  pri %d", name, proc->pid, proc->priority);
 	log::debug(logs::task, "     RSP0 %016lx", state);
-	log::debug(logs::task, "     RSP3 %016lx", state->user_rsp);
 	log::debug(logs::task, "     PML4 %016lx", pml4);
-	log::debug(logs::task, "  Loading %016lx [%d]", loader_state->rax, loader_state->rbx);
 }
 
 void
@@ -187,7 +179,11 @@ scheduler::schedule(addr_t rsp0)
 {
 	m_current->rsp = rsp0;
 	m_runlists[m_current->priority].remove(m_current);
-	m_runlists[m_current->priority].push_back(m_current);
+
+	if (m_current->flags && process_flags::ready)
+		m_runlists[m_current->priority].push_back(m_current);
+	else
+		m_blocked.push_back(m_current);
 
 	uint8_t pri = 0;
 	while (m_runlists[pri].empty()) {
@@ -198,14 +194,18 @@ scheduler::schedule(addr_t rsp0)
 	m_current = m_runlists[pri].pop_front();
 	rsp0 = m_current->rsp;
 
+	static const uint64_t ia32_gs_base = 0xc0000101;
+	static const uint64_t ia32_kernel_gs_base = 0xc0000102;
+
 	// Set rsp0 to after the end of the about-to-be-popped cpu state
 	tss_set_stack(0, rsp0 + sizeof(cpu_state));
+	wrmsr(ia32_gs_base, rsp0);
 
 	// Swap page tables
 	page_table *pml4 = m_current->pml4;
 	page_manager::set_pml4(pml4);
 
-	bool loading = bitfield_has(m_current->flags, process_flags::loading);
+	bool loading = m_current->flags && process_flags::loading;
 	log::debug(logs::task, "Scheduler switched to process %d, priority %d%s.",
 			m_current->pid, m_current->priority, loading ? " (loading)" : "");
 
