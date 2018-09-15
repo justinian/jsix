@@ -10,7 +10,7 @@ _start:
 	int 0xee
 
 	inc r11
-	cmp r11, 5
+	cmp r11, 3
 
 	jle .loop
 
