@@ -18,10 +18,10 @@
 #include "scheduler.h"
 #include "screen.h"
 #include "serial.h"
+#include "syscall.h"
 
 extern "C" {
 	void kernel_main(popcorn_data *header);
-	void syscall_enable();
 
 	void *__bss_start, *__bss_end;
 }

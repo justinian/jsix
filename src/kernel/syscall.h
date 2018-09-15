@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include "kutil/memory.h"
 
+struct cpu_state;
+
 enum class syscall : uint64_t
 {
 	noop,
@@ -13,6 +15,6 @@ enum class syscall : uint64_t
 	last_syscall
 };
 
-struct cpu_state;
+void syscall_enable();
 addr_t syscall_dispatch(addr_t, const cpu_state &);
 

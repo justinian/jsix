@@ -5,6 +5,7 @@
 #include "interrupts.h"
 #include "io.h"
 #include "log.h"
+#include "msr.h"
 #include "page_manager.h"
 #include "scheduler.h"
 
@@ -194,12 +195,10 @@ scheduler::schedule(addr_t rsp0)
 	m_current = m_runlists[pri].pop_front();
 	rsp0 = m_current->rsp;
 
-	static const uint64_t ia32_gs_base = 0xc0000101;
-	static const uint64_t ia32_kernel_gs_base = 0xc0000102;
-
 	// Set rsp0 to after the end of the about-to-be-popped cpu state
 	tss_set_stack(0, rsp0 + sizeof(cpu_state));
-	wrmsr(ia32_gs_base, rsp0);
+	wrmsr(msr::ia32_kernel_gs_base, rsp0);
+	log::debug(logs::task, "Scheduler set kernel_gs_base to %016lx", rsp0);
 
 	// Swap page tables
 	page_table *pml4 = m_current->pml4;

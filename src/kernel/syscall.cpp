@@ -1,11 +1,36 @@
 #include "console.h"
 #include "cpu.h"
 #include "debug.h"
+#include "msr.h"
 #include "scheduler.h"
 #include "syscall.h"
 
 extern "C" {
 	void _halt();
+	void syscall_handler_prelude();
+}
+
+void
+syscall_enable()
+{
+	// IA32_EFER - set bit 0, syscall enable
+	uint64_t efer = rdmsr(msr::ia32_efer);
+	wrmsr(msr::ia32_efer, efer|1);
+
+	// IA32_STAR - high 32 bits contain k+u CS
+	// Kernel CS: GDT[1] ring 0 bits[47:32]
+	//   User CS: GDT[3] ring 3 bits[63:48]
+	uint64_t star =
+		(((1ull << 3) | 0) << 32) |
+		(((3ull << 3) | 3) << 48);
+	wrmsr(msr::ia32_star, star);
+
+	// IA32_LSTAR - RIP for syscall
+	wrmsr(msr::ia32_lstar,
+		reinterpret_cast<addr_t>(&syscall_handler_prelude));
+
+	// IA32_FMASK - FLAGS mask inside syscall
+	wrmsr(msr::ia32_fmask, 0x200);
 }
 
 addr_t
