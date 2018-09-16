@@ -2,6 +2,7 @@
 #include "cpu.h"
 #include "debug.h"
 #include "msr.h"
+#include "process.h"
 #include "scheduler.h"
 #include "syscall.h"
 
@@ -62,12 +63,22 @@ syscall_dispatch(addr_t return_rsp, const cpu_state &regs)
 
 			auto &s = scheduler::get();
 			auto *p = s.current();
-			p->flags -= process_flags::ready;
-			//log::debug(logs::task, "Pausing process %d, flags: %08x", p->pid, p->flags);
+			p->wait_on_signal(-1ull);
 			cons->printf("\nReceived PAUSE syscall\n");
 			return_rsp = s.tick(return_rsp);
-			//log::debug(logs::task, "Switching to stack %016lx", return_rsp);
-			cons->printf("\nDONE WITH PAUSE syscall\n");
+			cons->set_color();
+		}
+		break;
+
+	case syscall::sleep:
+		{
+			cons->set_color(11);
+
+			auto &s = scheduler::get();
+			auto *p = s.current();
+			p->wait_on_time(regs.rbx);
+			cons->printf("\nReceived SLEEP syscall\n");
+			return_rsp = s.tick(return_rsp);
 			cons->set_color();
 		}
 		break;

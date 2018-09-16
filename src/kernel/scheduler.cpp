@@ -40,6 +40,7 @@ scheduler::scheduler(lapic *apic) :
 	idle->rsp = 0; // This will get set when we switch away
 	idle->pml4 = page_manager::get_pml4();
 	idle->flags =
+		process_flags::running |
 		process_flags::ready |
 		process_flags::const_pri;
 
@@ -156,6 +157,7 @@ scheduler::create_process(const char *name, const void *data, size_t size)
 	proc->rsp = reinterpret_cast<addr_t>(loader_state);
 	proc->pml4 = pml4;
 	proc->flags =
+		process_flags::running |
 		process_flags::ready |
 		process_flags::loading;
 
@@ -175,9 +177,65 @@ scheduler::start()
 	m_apic->enable_timer(isr::isrTimer, 128, quantum, false);
 }
 
+void scheduler::prune(uint64_t now)
+{
+	// Find processes that aren't ready or aren't running and
+	// move them to the appropriate lists.
+	for (auto &pri_list : m_runlists) {
+		auto *proc = pri_list.front();
+		while (proc) {
+			bool running = proc->flags && process_flags::running;
+			bool ready = proc->flags && process_flags::ready;
+			if (running && ready) {
+				proc = proc->next();
+				continue;
+			}
+
+			auto *remove = proc;
+			proc = proc->next();
+			pri_list.remove(remove);
+
+			if (!(remove->flags && process_flags::running)) {
+				auto *parent = get_process_by_id(remove->ppid);
+				if (parent && parent->wake_on_child(remove)) {
+					m_blocked.remove(parent);
+					m_runlists[parent->priority].push_front(parent);
+					m_process_allocator.push(remove);
+				} else {
+					m_exited.push_back(remove);
+				}
+			} else {
+				m_blocked.push_back(remove);
+			}
+		}
+	}
+
+	// Find blocked processes that are ready (possibly after waking wating
+	// ones) and move them to the appropriate runlist.
+	auto *proc = m_blocked.front();
+	while (proc) {
+		bool ready = proc->flags && process_flags::ready;
+		ready |= proc->wake_on_time(now);
+		if (!ready) {
+			proc = proc->next();
+			continue;
+		}
+
+		auto *remove = proc;
+		proc = proc->next();
+		m_blocked.remove(remove);
+		m_runlists[remove->priority].push_front(remove);
+	}
+}
+
 addr_t
 scheduler::schedule(addr_t rsp0)
 {
+
+	// TODO: lol a real clock
+	static uint64_t now = 0;
+	prune(++now);
+
 	m_current->rsp = rsp0;
 	m_runlists[m_current->priority].remove(m_current);
 
@@ -198,7 +256,6 @@ scheduler::schedule(addr_t rsp0)
 	// Set rsp0 to after the end of the about-to-be-popped cpu state
 	tss_set_stack(0, rsp0 + sizeof(cpu_state));
 	wrmsr(msr::ia32_kernel_gs_base, rsp0);
-	log::debug(logs::task, "Scheduler set kernel_gs_base to %016lx", rsp0);
 
 	// Swap page tables
 	page_table *pml4 = m_current->pml4;
@@ -219,4 +276,25 @@ scheduler::tick(addr_t rsp0)
 	rsp0 = schedule(rsp0);
 	m_apic->reset_timer(quantum);
 	return rsp0;
+}
+
+process_node *
+scheduler::get_process_by_id(uint32_t pid)
+{
+	// TODO: this needs to be a hash map
+	for (auto *proc : m_blocked) {
+		if (proc->pid == pid) return proc;
+	}
+
+	for (int i = 0; i < num_priorities; ++i) {
+		for (auto *proc : m_runlists[i]) {
+			if (proc->pid == pid) return proc;
+		}
+	}
+
+	for (auto *proc : m_exited) {
+		if (proc->pid == pid) return proc;
+	}
+
+	return nullptr;
 }

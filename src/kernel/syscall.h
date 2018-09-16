@@ -11,6 +11,7 @@ enum class syscall : uint64_t
 	debug,
 	message,
 	pause,
+	sleep,
 
 	last_syscall
 };
