@@ -1,6 +1,7 @@
 #pragma once
 /// \file linked_list.h
 /// A generic templatized linked list.
+#include <stddef.h>
 
 namespace kutil {
 
