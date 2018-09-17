@@ -51,10 +51,6 @@ acpi_table_header::validate(uint32_t expected_type) const
 
 void irq2_callback(void *)
 {
-	console *cons = console::get();
-	cons->set_color(11);
-	cons->puts(".");
-	cons->set_color();
 }
 
 void irq4_callback(void *)
@@ -212,8 +208,6 @@ device_manager::load_apic(const acpi_apic *apic)
 		p += length;
 	}
 
-	// m_lapic->enable_timer(isr::isrTimer, 128, 3000000);
-
 	for (uint8_t i = 0; i < m_ioapics[0]->get_num_gsi(); ++i) {
 		switch (i) {
 			case 2: break;
@@ -221,7 +215,6 @@ device_manager::load_apic(const acpi_apic *apic)
 		}
 	}
 
-	m_ioapics[0]->dump_redirs();
 	m_lapic->enable();
 }
 

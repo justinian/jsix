@@ -1,6 +1,7 @@
 #include "kutil/assert.h"
 #include "apic.h"
 #include "interrupts.h"
+#include "io.h"
 #include "log.h"
 #include "page_manager.h"
 
@@ -50,7 +51,46 @@ lapic::lapic(uint32_t *base, isr spurious) :
 }
 
 void
-lapic::enable_timer(isr vector, uint8_t divisor, uint32_t count, bool repeat)
+lapic::calibrate_timer()
+{
+	interrupts_disable();
+
+	log::info(logs::apic, "Calibrating APIC timer...");
+
+	// Set up PIT sleep
+	uint8_t command = 0x30; // channel 0, loybyte/highbyte, mode 0
+	outb(0x43, command);
+
+	const uint32_t initial = -1u;
+	enable_timer_internal(isr::isrIgnore0, 1, initial, false);
+
+	const int iterations = 5;
+	for (int i=0; i<iterations; ++i) {
+		const uint16_t pit_33ms = 39375;
+		uint16_t pit_count = pit_33ms;
+		outb(0x40, pit_count & 0xff);
+		io_wait();
+		outb(0x40, (pit_count >> 8) & 0xff);
+
+
+		while (pit_count <= pit_33ms) {
+			outb(0x43, 0); // latch counter values
+			pit_count =
+				static_cast<uint16_t>(inb(0x40)) |
+				static_cast<uint16_t>(inb(0x40)) << 8;
+		}
+	}
+
+	uint32_t remain = stop_timer();
+	uint32_t ticks_total = initial - remain;
+	m_ticks_per_us = ticks_total / (iterations * 33000);
+	log::info(logs::apic, "APIC timer ticks %d times per nanosecond.", m_ticks_per_us);
+
+	interrupts_enable();
+}
+
+uint32_t
+lapic::enable_timer_internal(isr vector, uint8_t divisor, uint32_t count, bool repeat)
 {
 	uint32_t divbits = 0;
 
@@ -76,12 +116,28 @@ lapic::enable_timer(isr vector, uint8_t divisor, uint32_t count, bool repeat)
 	apic_write(m_base, 0x3e0, divbits);
 
 	reset_timer(count);
+	return count;
+}
+
+uint32_t
+lapic::enable_timer(isr vector, uint64_t interval, bool repeat)
+{
+	uint64_t ticks = interval * m_ticks_per_us;
+
+	int divisor = 1;
+	while (ticks > -1u) {
+		ticks /= 2;
+		divisor *= 2;
+	}
+
+	log::debug(logs::apic, "Enabling APIC timer count %ld, divisor %d.", ticks, divisor);
+	return enable_timer_internal(vector, divisor, static_cast<uint32_t>(ticks), repeat);
 }
 
 uint32_t
 lapic::reset_timer(uint32_t count)
 {
-	uint32_t remaining = apic_read(m_base, 0x380);
+	uint32_t remaining = apic_read(m_base, 0x390);
 	apic_write(m_base, 0x380, count);
 	return remaining;
 }

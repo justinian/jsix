@@ -4,6 +4,7 @@
 #include "initrd/initrd.h"
 #include "kutil/assert.h"
 #include "kutil/memory.h"
+#include "apic.h"
 #include "block_device.h"
 #include "console.h"
 #include "cpu.h"
@@ -22,7 +23,6 @@
 
 extern "C" {
 	void kernel_main(popcorn_data *header);
-
 	void *__bss_start, *__bss_end;
 }
 
@@ -40,7 +40,7 @@ init_console()
 	cons->puts(GIT_VERSION " booting...\n");
 
 	log::init(cons);
-	log::enable(logs::apic, log::level::info);
+	log::enable(logs::apic, log::level::debug);
 	log::enable(logs::device, log::level::info);
 	log::enable(logs::driver, log::level::debug);
 	log::enable(logs::memory, log::level::info);
@@ -141,13 +141,17 @@ kernel_main(popcorn_data *header)
 	}
 	*/
 
+	devices->get_lapic()->calibrate_timer();
+
 	syscall_enable();
 	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic());
 
+	/*
 	for (auto &f : ird.files()) {
 		if (f.executable())
 			sched->create_process(f.name(), f.data(), f.size());
 	}
+	*/
 
 	sched->start();
 }

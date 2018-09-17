@@ -13,8 +13,8 @@
 #include "kutil/assert.h"
 
 scheduler scheduler::s_instance(nullptr);
-static const uint32_t quantum = 2000000;
-//static const uint32_t quantum =  20000000;
+static const uint64_t quantum_micros = 1000000;
+//static const uint32_t quantum_micros =  20000000;
 
 const int stack_size = 0x1000;
 const uint64_t rflags_noint = 0x002;
@@ -174,7 +174,7 @@ void
 scheduler::start()
 {
 	log::info(logs::task, "Starting scheduler.");
-	m_apic->enable_timer(isr::isrTimer, 128, quantum, false);
+	m_tick_count = m_apic->enable_timer(isr::isrTimer, quantum_micros, false);
 }
 
 void scheduler::prune(uint64_t now)
@@ -274,7 +274,7 @@ scheduler::tick(addr_t rsp0)
 	// TODO: action based on the task using the whole quantum
 
 	rsp0 = schedule(rsp0);
-	m_apic->reset_timer(quantum);
+	m_apic->reset_timer(m_tick_count);
 	return rsp0;
 }
 

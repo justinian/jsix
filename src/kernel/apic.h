@@ -32,10 +32,10 @@ public:
 
 	/// Enable interrupts for the LAPIC timer.
 	/// \arg vector   Interrupt vector the timer should use
-	/// \arg divisor  The frequency divisor of the bus Hz (power of 2, <= 128)
-	/// \arg count    The count of ticks before an interrupt
+	/// \arg interval The timer interval, in microseconds
 	/// \arg repeat   If false, this timer is one-off, otherwise repeating
-	void enable_timer(isr vector, uint8_t divisor, uint32_t count, bool repeat = true);
+	/// \returns      The count of ticks the timer is set for
+	uint32_t enable_timer(isr vector, uint64_t interval, bool repeat = true);
 
 	/// Reset the timer countdown.
 	/// \arg count  The count of ticks before an interrupt, or 0 to stop the timer
@@ -55,6 +55,14 @@ public:
 
 	void enable();  ///< Enable servicing of interrupts
 	void disable(); ///< Disable (temporarily) servicing of interrupts
+
+	/// Calibrate the timer speed against the PIT
+	void calibrate_timer();
+
+private:
+	uint32_t enable_timer_internal(isr vector, uint8_t divisor, uint32_t count, bool repeat);
+
+	uint32_t m_ticks_per_us;
 };
 
 

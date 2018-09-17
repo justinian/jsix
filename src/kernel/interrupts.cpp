@@ -1,6 +1,7 @@
 #include <stdint.h>
 
 #include "kutil/memory.h"
+#include "apic.h"
 #include "console.h"
 #include "cpu.h"
 #include "debug.h"
@@ -11,6 +12,9 @@
 #include "log.h"
 #include "scheduler.h"
 #include "syscall.h"
+
+static const uint16_t PIC1 = 0x20;
+static const uint16_t PIC2 = 0xa0;
 
 extern "C" {
 	void _halt();
@@ -58,12 +62,9 @@ get_irq(unsigned vector)
 static void
 disable_legacy_pic()
 {
-	static const uint16_t PIC1 = 0x20;
-	static const uint16_t PIC2 = 0xa0;
-
 	// Mask all interrupts
-	outb(0xa1, 0xff);
-	outb(0x21, 0xff);
+	outb(PIC2+1, 0xfc);
+	outb(PIC1+1, 0xff);
 
 	// Start initialization sequence
 	outb(PIC1, 0x11); io_wait();
@@ -71,7 +72,7 @@ disable_legacy_pic()
 
 	// Remap into ignore ISRs
 	outb(PIC1+1, static_cast<uint8_t>(isr::isrIgnore0)); io_wait();
-	outb(PIC2+1, static_cast<uint8_t>(isr::isrIgnore0)); io_wait();
+	outb(PIC2+1, static_cast<uint8_t>(isr::isrIgnore8)); io_wait();
 
 	// Tell PICs about each other
 	outb(PIC1+1, 0x04); io_wait();
@@ -110,29 +111,6 @@ isr_handler(addr_t return_rsp, cpu_state regs)
 	console *cons = console::get();
 
 	switch (static_cast<isr>(regs.interrupt & 0xff)) {
-	case isr::isrTimer: {
-			scheduler &s = scheduler::get();
-			return_rsp = s.tick(return_rsp);
-		}
-		break;
-
-	case isr::isrLINT0:
-		cons->puts("\nLINT0\n");
-		break;
-
-	case isr::isrLINT1:
-		cons->puts("\nLINT1\n");
-		break;
-
-	case isr::isrIgnore0:
-	case isr::isrIgnore1:
-	case isr::isrIgnore2:
-	case isr::isrIgnore3:
-	case isr::isrIgnore4:
-	case isr::isrIgnore5:
-	case isr::isrIgnore6:
-	case isr::isrIgnore7:
-		break;
 
 	case isr::isrGPFault: {
 			cons->set_color(9);
@@ -199,6 +177,20 @@ isr_handler(addr_t return_rsp, cpu_state regs)
 		_halt();
 		break;
 
+	case isr::isrTimer: {
+			scheduler &s = scheduler::get();
+			return_rsp = s.tick(return_rsp);
+		}
+		break;
+
+	case isr::isrLINT0:
+		cons->puts("\nLINT0\n");
+		break;
+
+	case isr::isrLINT1:
+		cons->puts("\nLINT1\n");
+		break;
+
 	case isr::isrAssert: {
 			cons->set_color();
 			print_regs(regs);
@@ -210,6 +202,31 @@ isr_handler(addr_t return_rsp, cpu_state regs)
 	case isr::isrSyscall: {
 			return_rsp = syscall_dispatch(return_rsp, regs);
 		}
+		break;
+
+	case isr::isrIgnore0:
+	case isr::isrIgnore1:
+	case isr::isrIgnore2:
+	case isr::isrIgnore3:
+	case isr::isrIgnore4:
+	case isr::isrIgnore5:
+	case isr::isrIgnore6:
+	case isr::isrIgnore7:
+		//cons->printf("\nIGNORED: %02x\n", regs.interrupt);
+		outb(PIC1, 0x20);
+		break;
+
+	case isr::isrIgnore8:
+	case isr::isrIgnore9:
+	case isr::isrIgnoreA:
+	case isr::isrIgnoreB:
+	case isr::isrIgnoreC:
+	case isr::isrIgnoreD:
+	case isr::isrIgnoreE:
+	case isr::isrIgnoreF:
+		//cons->printf("\nIGNORED: %02x\n", regs.interrupt);
+		outb(PIC1, 0x20);
+		outb(PIC2, 0x20);
 		break;
 
 	default:

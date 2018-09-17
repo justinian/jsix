@@ -65,6 +65,7 @@ private:
 	lapic *m_apic;
 
 	uint32_t m_next_pid;
+	uint32_t m_tick_count;
 
 	using process_slab = kutil::slab_allocator<process>;
 	process_slab m_process_allocator;
