@@ -62,7 +62,7 @@ lapic::calibrate_timer()
 	outb(0x43, command);
 
 	const uint32_t initial = -1u;
-	enable_timer_internal(isr::isrIgnore0, 1, initial, false);
+	enable_timer_internal(isr::isrSpurious, 1, initial, false);
 
 	const int iterations = 5;
 	for (int i=0; i<iterations; ++i) {

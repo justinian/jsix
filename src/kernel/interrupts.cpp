@@ -204,6 +204,10 @@ isr_handler(addr_t return_rsp, cpu_state regs)
 		}
 		break;
 
+	case isr::isrSpurious:
+		// No EOI for the spurious interrupt
+		return return_rsp;
+
 	case isr::isrIgnore0:
 	case isr::isrIgnore1:
 	case isr::isrIgnore2:
