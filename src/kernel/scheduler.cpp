@@ -13,8 +13,6 @@
 #include "kutil/assert.h"
 
 scheduler scheduler::s_instance(nullptr);
-static const uint64_t quantum_micros = 1000000;
-//static const uint32_t quantum_micros =  20000000;
 
 const int stack_size = 0x1000;
 const uint64_t rflags_noint = 0x002;
@@ -39,6 +37,7 @@ scheduler::scheduler(lapic *apic) :
 	idle->priority = last_pri;
 	idle->rsp = 0; // This will get set when we switch away
 	idle->pml4 = page_manager::get_pml4();
+	idle->quanta = process_quanta;
 	idle->flags =
 		process_flags::running |
 		process_flags::ready |
@@ -156,6 +155,7 @@ scheduler::create_process(const char *name, const void *data, size_t size)
 	proc->priority = default_priority;
 	proc->rsp = reinterpret_cast<addr_t>(loader_state);
 	proc->pml4 = pml4;
+	proc->quanta = process_quanta;
 	proc->flags =
 		process_flags::running |
 		process_flags::ready |
@@ -271,9 +271,10 @@ scheduler::schedule(addr_t rsp0)
 addr_t
 scheduler::tick(addr_t rsp0)
 {
-	// TODO: action based on the task using the whole quantum
-
-	rsp0 = schedule(rsp0);
+	if (--m_current->quanta == 0) {
+		m_current->quanta = process_quanta;
+		rsp0 = schedule(rsp0);
+	}
 	m_apic->reset_timer(m_tick_count);
 	return rsp0;
 }

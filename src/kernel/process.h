@@ -35,7 +35,7 @@ struct process
 
 	process_flags flags;
 
-	uint16_t reserved0;
+	uint16_t quanta;
 
 	uint8_t priority;
 

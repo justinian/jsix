@@ -19,6 +19,12 @@ public:
 	static const uint8_t num_priorities = 8;
 	static const uint8_t default_priority = num_priorities / 2;
 
+	/// How long the timer quantum is
+	static const uint64_t quantum_micros = 100000;
+
+	/// How many quantums a process gets before being rescheduled
+	static const uint16_t process_quanta = 10;
+
 	/// Constructor.
 	/// \arg apic  Pointer to the local APIC object
 	scheduler(lapic *apic);
