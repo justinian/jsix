@@ -111,7 +111,9 @@ lapic::enable_timer_internal(isr vector, uint8_t divisor, uint32_t count, bool r
 	if (repeat)
 		lvte |= 0x20000;
 
-	log::debug(logs::apic, "Enabling APIC timer with isr %d.", vector);
+	log::debug(logs::apic, "Enabling APIC timer count %ld, divisor %d, isr %02x",
+			count, divisor, vector);
+
 	apic_write(m_base, 0x320, lvte);
 	apic_write(m_base, 0x3e0, divbits);
 
@@ -130,7 +132,6 @@ lapic::enable_timer(isr vector, uint64_t interval, bool repeat)
 		divisor *= 2;
 	}
 
-	log::debug(logs::apic, "Enabling APIC timer count %ld, divisor %d.", ticks, divisor);
 	return enable_timer_internal(vector, divisor, static_cast<uint32_t>(ticks), repeat);
 }
 
