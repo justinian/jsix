@@ -1,9 +1,10 @@
 #pragma once
 /// \file process.h
 /// The processes and related definitions
+
+#include <stdint.h>
 #include "kutil/enum_bitfields.h"
 #include "kutil/linked_list.h"
-#include "kutil/memory.h"
 #include "page_manager.h"
 
 
@@ -46,7 +47,7 @@ struct process
 
 	uint32_t reserved1;
 
-	addr_t rsp;
+	uintptr_t rsp;
 	page_table *pml4;
 
 	/// Unready this process until it gets a signal

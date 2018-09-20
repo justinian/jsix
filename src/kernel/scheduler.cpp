@@ -67,7 +67,7 @@ load_process(const void *image_start, size_t bytes, process *proc, cpu_state sta
 		if (header->type != elf::segment_type::load)
 			continue;
 
-		addr_t aligned = header->vaddr & ~(page_manager::page_size - 1);
+		uintptr_t aligned = header->vaddr & ~(page_manager::page_size - 1);
 		size_t size = (header->vaddr + header->mem_size) - aligned;
 		size_t pages = page_manager::page_count(size);
 
@@ -153,7 +153,7 @@ scheduler::create_process(const char *name, const void *data, size_t size)
 	proc->pid = pid;
 	proc->ppid = 0; // TODO
 	proc->priority = default_priority;
-	proc->rsp = reinterpret_cast<addr_t>(loader_state);
+	proc->rsp = reinterpret_cast<uintptr_t>(loader_state);
 	proc->pml4 = pml4;
 	proc->quanta = process_quanta;
 	proc->flags =
@@ -228,8 +228,8 @@ void scheduler::prune(uint64_t now)
 	}
 }
 
-addr_t
-scheduler::schedule(addr_t rsp0)
+uintptr_t
+scheduler::schedule(uintptr_t rsp0)
 {
 
 	// TODO: lol a real clock
@@ -268,8 +268,8 @@ scheduler::schedule(addr_t rsp0)
 	return rsp0;
 }
 
-addr_t
-scheduler::tick(addr_t rsp0)
+uintptr_t
+scheduler::tick(uintptr_t rsp0)
 {
 	if (--m_current->quanta == 0) {
 		m_current->quanta = process_quanta;

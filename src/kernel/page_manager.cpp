@@ -10,15 +10,15 @@ page_manager g_page_manager;
 kutil::memory_manager g_kernel_memory_manager;
 
 
-static addr_t
+static uintptr_t
 pt_to_phys(page_table *pt)
 {
-	return reinterpret_cast<addr_t>(pt) - page_manager::page_offset;
+	return reinterpret_cast<uintptr_t>(pt) - page_manager::page_offset;
 }
 
 
 static page_table *
-pt_from_phys(addr_t p)
+pt_from_phys(uintptr_t p)
 {
 	return reinterpret_cast<page_table *>((p + page_manager::page_offset) & ~0xfffull);
 }
@@ -38,7 +38,7 @@ void mm_grow_callback(void *next, size_t length)
 
 	size_t pages = length / page_manager::page_size;
 	log::info(logs::memory, "Heap manager growing heap by %d pages.", pages);
-	g_page_manager.map_pages(reinterpret_cast<addr_t>(next), pages);
+	g_page_manager.map_pages(reinterpret_cast<uintptr_t>(next), pages);
 }
 
 
@@ -151,7 +151,7 @@ page_manager::init(
 	consolidate_blocks();
 
 	// Initialize the kernel memory manager
-	addr_t end = 0;
+	uintptr_t end = 0;
 	for (auto *block : m_used) {
 		if (block->virtual_address &&
 			block->virtual_address < page_offset) {
@@ -198,9 +198,9 @@ page_manager::delete_process_map(page_table *table)
 void
 page_manager::map_offset_pointer(void **pointer, size_t length)
 {
-	addr_t *p = reinterpret_cast<addr_t *>(pointer);
-	addr_t v = *p + page_offset;
-	addr_t c = ((length - 1) / page_size) + 1;
+	uintptr_t *p = reinterpret_cast<uintptr_t *>(pointer);
+	uintptr_t v = *p + page_offset;
+	uintptr_t c = ((length - 1) / page_size) + 1;
 
 	// TODO: cleanly search/split this as a block out of used/free if possible
 	auto *block = m_block_slab.pop();
@@ -241,9 +241,9 @@ page_table *
 page_manager::get_table_page()
 {
 	if (!m_page_cache) {
-		addr_t phys = 0;
+		uintptr_t phys = 0;
 		size_t n = pop_pages(32, &phys);
-		addr_t virt = phys + page_offset;
+		uintptr_t virt = phys + page_offset;
 
 		auto *block = m_block_slab.pop();
 
@@ -258,7 +258,7 @@ page_manager::get_table_page()
 		m_page_cache = reinterpret_cast<free_page_header *>(virt);
 
 		// The last one needs to be null, so do n-1
-		addr_t end = virt + (n-1) * page_size;
+		uintptr_t end = virt + (n-1) * page_size;
 		while (virt < end) {
 			reinterpret_cast<free_page_header *>(virt)->next =
 				reinterpret_cast<free_page_header *>(virt + page_size);
@@ -277,9 +277,9 @@ page_manager::get_table_page()
 void
 page_manager::free_table_pages(void *pages, size_t count)
 {
-	addr_t start = reinterpret_cast<addr_t>(pages);
+	uintptr_t start = reinterpret_cast<uintptr_t>(pages);
 	for (size_t i = 0; i < count; ++i) {
-		addr_t addr = start + (i * page_size);
+		uintptr_t addr = start + (i * page_size);
 		free_page_header *header = reinterpret_cast<free_page_header *>(addr);
 		header->count = 1;
 		header->next = m_page_cache;
@@ -295,7 +295,7 @@ page_manager::consolidate_blocks()
 }
 
 void *
-page_manager::map_pages(addr_t address, size_t count, bool user, page_table *pml4)
+page_manager::map_pages(uintptr_t address, size_t count, bool user, page_table *pml4)
 {
 	void *ret = reinterpret_cast<void *>(address);
 	if (!pml4) pml4 = get_pml4();
@@ -303,7 +303,7 @@ page_manager::map_pages(addr_t address, size_t count, bool user, page_table *pml
 	while (count) {
 		kassert(!m_free.empty(), "page_manager::map_pages ran out of free pages!");
 
-		addr_t phys = 0;
+		uintptr_t phys = 0;
 		size_t n = pop_pages(count, &phys);
 
 		auto *block = m_block_slab.pop();
@@ -368,14 +368,14 @@ page_manager::map_offset_pages(size_t count)
 void
 page_manager::unmap_pages(void* address, size_t count)
 {
-	addr_t addr = reinterpret_cast<addr_t>(address);
+	uintptr_t addr = reinterpret_cast<uintptr_t>(address);
 	size_t block_count = 0;
 
 	for (auto *block : m_used) {
 		if (!block->contains(addr)) continue;
 
 		size_t size = page_size * count;
-		addr_t end = addr + size;
+		uintptr_t end = addr + size;
 
 		size_t leading = addr - block->virtual_address;
 		size_t trailing =
@@ -437,7 +437,7 @@ page_manager::check_needs_page(page_table *table, unsigned index, bool user)
 }
 
 void
-page_manager::page_in(page_table *pml4, addr_t phys_addr, addr_t virt_addr, size_t count, bool user)
+page_manager::page_in(page_table *pml4, uintptr_t phys_addr, uintptr_t virt_addr, size_t count, bool user)
 {
 	page_table_indices idx{virt_addr};
 	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
@@ -482,7 +482,7 @@ page_manager::page_in(page_table *pml4, addr_t phys_addr, addr_t virt_addr, size
 }
 
 void
-page_manager::page_out(page_table *pml4, addr_t virt_addr, size_t count)
+page_manager::page_out(page_table *pml4, uintptr_t virt_addr, size_t count)
 {
 	page_table_indices idx{virt_addr};
 	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
@@ -511,7 +511,7 @@ page_manager::page_out(page_table *pml4, addr_t virt_addr, size_t count)
 }
 
 size_t
-page_manager::pop_pages(size_t count, addr_t *address)
+page_manager::pop_pages(size_t count, uintptr_t *address)
 {
 	kassert(!m_free.empty(), "page_manager::pop_pages ran out of free pages!");
 

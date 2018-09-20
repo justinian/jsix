@@ -5,7 +5,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "kutil/memory.h"
 #include "kutil/enum_bitfields.h"
 #include "kutil/linked_list.h"
 #include "kutil/slab_allocator.h"
@@ -25,13 +24,13 @@ public:
 	static const size_t page_size = 0x1000;
 
 	/// Start of the higher half.
-	static const addr_t high_offset = 0xffffff0000000000;
+	static const uintptr_t high_offset = 0xffffff0000000000;
 
 	/// Offset from physical where page tables are mapped.
-	static const addr_t page_offset = 0xffffff8000000000;
+	static const uintptr_t page_offset = 0xffffff8000000000;
 
 	/// Initial process thread's stack address
-	static const addr_t initial_stack = 0x0000800000000000;
+	static const uintptr_t initial_stack = 0x0000800000000000;
 
 	/// Initial process thread's stack size, in pages
 	static const unsigned initial_stack_pages = 1;
@@ -50,7 +49,7 @@ public:
 	/// \returns  A pointer to the current PML4 table.
 	static inline page_table * get_pml4()
 	{
-		addr_t pml4 = 0;
+		uintptr_t pml4 = 0;
 		__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (pml4) );
 		return reinterpret_cast<page_table *>((pml4 & ~0xfffull) + page_offset);
 	}
@@ -59,7 +58,7 @@ public:
 	/// \arg pml4  A pointer to the PML4 table to install.
 	static inline void set_pml4(page_table *pml4)
 	{
-		addr_t p = reinterpret_cast<addr_t>(pml4) - page_offset;
+		uintptr_t p = reinterpret_cast<uintptr_t>(pml4) - page_offset;
 		__asm__ __volatile__ ( "mov %0, %%cr3" :: "r" (p & ~0xfffull) );
 	}
 
@@ -77,7 +76,7 @@ public:
 	/// \arg user     True is this memory is user-accessible
 	/// \arg pml4     The pml4 to map into - null for the current one
 	/// \returns      A pointer to the start of the mapped region
-	void * map_pages(addr_t address, size_t count, bool user = false, page_table *pml4 = nullptr);
+	void * map_pages(uintptr_t address, size_t count, bool user = false, page_table *pml4 = nullptr);
 
 	/// Allocate and map contiguous pages into virtual memory, with
 	/// a constant offset from their physical address.
@@ -99,15 +98,15 @@ public:
 	/// Get the physical address of an offset-mapped pointer
 	/// \arg p   Virtual address of memory that has been offset-mapped
 	/// \returns Physical address of the memory pointed to by p
-	inline addr_t offset_phys(void *p) const
+	inline uintptr_t offset_phys(void *p) const
 	{
-		return reinterpret_cast<addr_t>(kutil::offset_pointer(p, -page_offset));
+		return reinterpret_cast<uintptr_t>(kutil::offset_pointer(p, -page_offset));
 	}
 
 	/// Get the virtual address of an offset-mapped physical address
 	/// \arg a   Physical address of memory that has been offset-mapped
 	/// \returns Virtual address of the memory at address a
-	inline void * offset_virt(addr_t a) const
+	inline void * offset_virt(uintptr_t a) const
 	{
 		return kutil::offset_pointer(reinterpret_cast<void *>(a), page_offset);
 	}
@@ -172,8 +171,8 @@ private:
 	/// \art user  True if this is a userspace mapping
 	void page_in(
 			page_table *pml4,
-			addr_t phys_addr,
-			addr_t virt_addr,
+			uintptr_t phys_addr,
+			uintptr_t virt_addr,
 			size_t count,
 			bool user = false);
 
@@ -183,7 +182,7 @@ private:
 	/// \arg count      The number of pages to unmap
 	void page_out(
 			page_table *pml4,
-			addr_t virt_addr,
+			uintptr_t virt_addr,
 			size_t count);
 
 	/// Get free pages from the free list. Only pages from the first free block
@@ -192,7 +191,7 @@ private:
 	/// \arg count    The maximum number of pages to get
 	/// \arg address  [out] The address of the first page
 	/// \returns      The number of pages retrieved
-	size_t pop_pages(size_t count, addr_t *address);
+	size_t pop_pages(size_t count, uintptr_t *address);
 
 	page_table *m_kernel_pml4; ///< The PML4 of just kernel pages
 
@@ -235,17 +234,17 @@ IS_BITFIELD(page_block_flags);
 /// linked list of such structures.
 struct page_block
 {
-	addr_t physical_address;
-	addr_t virtual_address;
+	uintptr_t physical_address;
+	uintptr_t virtual_address;
 	uint32_t count;
 	page_block_flags flags;
 
 	inline bool has_flag(page_block_flags f) const { return bitfield_has(flags, f); }
-	inline addr_t physical_end() const { return physical_address + (count * page_manager::page_size); }
-	inline addr_t virtual_end() const { return virtual_address + (count * page_manager::page_size); }
+	inline uintptr_t physical_end() const { return physical_address + (count * page_manager::page_size); }
+	inline uintptr_t virtual_end() const { return virtual_address + (count * page_manager::page_size); }
 
-	inline bool contains(addr_t vaddr) const { return vaddr >= virtual_address && vaddr < virtual_end(); }
-	inline bool contains_physical(addr_t addr) const { return addr >= physical_address && addr < physical_end(); }
+	inline bool contains(uintptr_t vaddr) const { return vaddr >= virtual_address && vaddr < virtual_end(); }
+	inline bool contains_physical(uintptr_t addr) const { return addr >= physical_address && addr < physical_end(); }
 
 	/// Helper to zero out a block and optionally set the next pointer.
 	void zero();
@@ -318,7 +317,7 @@ template <typename T> inline T
 page_align(T p)
 {
 	return reinterpret_cast<T>(
-		((reinterpret_cast<addr_t>(p) - 1) & ~(page_manager::page_size - 1))
+		((reinterpret_cast<uintptr_t>(p) - 1) & ~(page_manager::page_size - 1))
 		+ page_manager::page_size);
 }
 

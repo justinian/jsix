@@ -1,6 +1,5 @@
 #include <stdint.h>
 
-#include "kutil/memory.h"
 #include "apic.h"
 #include "console.h"
 #include "cpu.h"
@@ -19,9 +18,9 @@ static const uint16_t PIC2 = 0xa0;
 extern "C" {
 	void _halt();
 
-	addr_t isr_handler(addr_t, cpu_state);
-	addr_t irq_handler(addr_t, cpu_state);
-	addr_t syscall_handler(addr_t, cpu_state);
+	uintptr_t isr_handler(uintptr_t, cpu_state);
+	uintptr_t irq_handler(uintptr_t, cpu_state);
+	uintptr_t syscall_handler(uintptr_t, cpu_state);
 
 #define ISR(i, name)     extern void name ();
 #define EISR(i, name)    extern void name ();
@@ -105,8 +104,8 @@ interrupts_init()
 	log::info(logs::boot, "Interrupts enabled.");
 }
 
-addr_t
-isr_handler(addr_t return_rsp, cpu_state regs)
+uintptr_t
+isr_handler(uintptr_t return_rsp, cpu_state regs)
 {
 	console *cons = console::get();
 
@@ -251,8 +250,8 @@ isr_handler(addr_t return_rsp, cpu_state regs)
 	return return_rsp;
 }
 
-addr_t
-irq_handler(addr_t return_rsp, cpu_state regs)
+uintptr_t
+irq_handler(uintptr_t return_rsp, cpu_state regs)
 {
 	console *cons = console::get();
 	uint8_t irq = get_irq(regs.interrupt);
@@ -269,8 +268,8 @@ irq_handler(addr_t return_rsp, cpu_state regs)
 	return return_rsp;
 }
 
-addr_t
-syscall_handler(addr_t return_rsp, cpu_state regs)
+uintptr_t
+syscall_handler(uintptr_t return_rsp, cpu_state regs)
 {
 	return syscall_dispatch(return_rsp, regs);
 }

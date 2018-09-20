@@ -1,7 +1,7 @@
 #pragma once
 #include <stddef.h>
+#include <stdint.h>
 #include "elf/headers.h"
-#include "kutil/memory.h"
 
 namespace elf {
 
@@ -19,9 +19,9 @@ public:
 
 	/// Get the entrypoint address of the program image
 	/// \returns  A pointer to the entrypoint of the program
-	inline addr_t entrypoint() const
+	inline uintptr_t entrypoint() const
 	{
-		return static_cast<addr_t>(header()->entrypoint);
+		return static_cast<uintptr_t>(header()->entrypoint);
 	}
 
 	/// Get the number of program sections in the image

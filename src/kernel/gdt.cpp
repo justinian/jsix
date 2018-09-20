@@ -136,13 +136,13 @@ idt_set_entry(uint8_t i, uint64_t addr, uint16_t selector, uint8_t flags)
 }
 
 void
-tss_set_stack(int ring, addr_t rsp)
+tss_set_stack(int ring, uintptr_t rsp)
 {
 	kassert(ring < 3, "Bad ring passed to tss_set_stack.");
 	g_tss.rsp[ring] = rsp;
 }
 
-addr_t
+uintptr_t
 tss_get_stack(int ring)
 {
 	kassert(ring < 3, "Bad ring passed to tss_get_stack.");
@@ -170,7 +170,7 @@ gdt_init()
 	kutil::memset(&g_tss, 0, sizeof(tss_entry));
 	g_tss.iomap_offset = sizeof(tss_entry);
 
-	addr_t tss_base = reinterpret_cast<addr_t>(&g_tss);
+	uintptr_t tss_base = reinterpret_cast<uintptr_t>(&g_tss);
 
 	// Note that this takes TWO GDT entries
 	tss_set_entry(6, tss_base, sizeof(tss_entry));

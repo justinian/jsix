@@ -1,5 +1,6 @@
 #include "elf/elf.h"
 #include "elf/headers.h"
+#include "kutil/memory.h"
 
 static const uint32_t expected_magic = 0x464c457f;  // "\x7f" "ELF"
 

@@ -4,8 +4,6 @@
 #include <stdint.h>
 
 
-using addr_t = uint64_t;
-
 void * operator new (size_t, void *p) noexcept;
 
 
@@ -50,7 +48,7 @@ inline T read_from(const void *p)
 template <typename T>
 inline T * offset_pointer(T *p, ptrdiff_t n)
 {
-	return reinterpret_cast<T *>(reinterpret_cast<addr_t>(p) + n);
+	return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(p) + n);
 }
 
 /// Return a pointer with the given bits masked out
@@ -58,9 +56,9 @@ inline T * offset_pointer(T *p, ptrdiff_t n)
 /// \arg mask A bitmask of bits to clear from p
 /// \returns  The masked pointer
 template <typename T>
-inline T* mask_pointer(T *p, addr_t mask)
+inline T* mask_pointer(T *p, uintptr_t mask)
 {
-	return reinterpret_cast<T *>(reinterpret_cast<addr_t>(p) & ~mask);
+	return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(p) & ~mask);
 }
 
 /// Do a simple byte-wise checksum of an area of memory.

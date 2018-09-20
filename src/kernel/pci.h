@@ -1,6 +1,7 @@
 #pragma once
 /// \file pci.h
 /// PCI devices and groups
+
 #include <stdint.h>
 #include "kutil/memory.h"
 
@@ -75,7 +76,7 @@ public:
 	/// Write to the MSI registers
 	/// \arg addr  The address to write to the MSI address registers
 	/// \arg data  The value to write to the MSI data register
-	void write_msi_regs(addr_t addr, uint16_t data);
+	void write_msi_regs(uintptr_t addr, uint16_t data);
 
 	/// Get a bus address, given the bus/device/function numbers.
 	/// \arg bus    Number of the bus

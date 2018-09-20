@@ -1,6 +1,5 @@
 #include <utility>
 #include "kutil/assert.h"
-#include "kutil/memory.h"
 #include "kutil/linked_list.h"
 #include "kutil/slab_allocator.h"
 #include "memory.h"
@@ -13,7 +12,7 @@ namespace {
 	// Page-by-page initial allocator for the initial page_block allocator
 	struct page_consumer
 	{
-		page_consumer(addr_t start) : current(start) {}
+		page_consumer(uintptr_t start) : current(start) {}
 
 		void * operator()(size_t size) {
 			kassert(size == page_manager::page_size, "page_consumer used with non-page size!");
@@ -22,7 +21,7 @@ namespace {
 			return retval;
 		}
 
-		addr_t current;
+		uintptr_t current;
 	};
 }
 
@@ -128,7 +127,7 @@ desc_incr(const efi_memory_descriptor *d, size_t desc_length)
 }
 
 page_block_list::item_type *
-remove_block_for(page_block_list &list, addr_t phys_start, size_t pages, page_block_list &cache)
+remove_block_for(page_block_list &list, uintptr_t phys_start, size_t pages, page_block_list &cache)
 {
 	// This is basically just the removal portion of page_manager::unmap_pages,
 	// but with physical addresses, and only ever removing a single block.

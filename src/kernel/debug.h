@@ -2,12 +2,12 @@
 /// \file debug.h
 /// Debugging utilities
 
-#include "kutil/memory.h"
+#include <stdint.h>
 
 extern "C" {
-	addr_t get_rsp();
-	addr_t get_rip();
-	addr_t get_frame(int frame);
+	uintptr_t get_rsp();
+	uintptr_t get_rip();
+	uintptr_t get_frame(int frame);
 
 }
 

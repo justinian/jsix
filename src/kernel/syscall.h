@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdint.h>
-#include "kutil/memory.h"
 
 struct cpu_state;
 
@@ -17,5 +16,5 @@ enum class syscall : uint64_t
 };
 
 void syscall_enable();
-addr_t syscall_dispatch(addr_t, const cpu_state &);
+uintptr_t syscall_dispatch(uintptr_t, const cpu_state &);
 

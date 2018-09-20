@@ -149,7 +149,7 @@ pci_device::set_bar(unsigned i, uint32_t val)
 }
 
 void
-pci_device::write_msi_regs(addr_t address, uint16_t data)
+pci_device::write_msi_regs(uintptr_t address, uint16_t data)
 {
 	kassert(m_msi, "Tried to write MSI for a device without that cap");
 	if (m_msi->id == pci_cap::type::msi) {

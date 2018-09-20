@@ -17,13 +17,13 @@ struct memory_manager::mem_header
 	inline void set_size(uint8_t size)
 	{
 		m_prev = reinterpret_cast<mem_header *>(
-			reinterpret_cast<addr_t>(prev()) | (size & 0x3f));
+			reinterpret_cast<uintptr_t>(prev()) | (size & 0x3f));
 	}
 
 	inline void set_used(bool used)
 	{
 		m_next = reinterpret_cast<mem_header *>(
-			reinterpret_cast<addr_t>(next()) | (used ? 1 : 0));
+			reinterpret_cast<uintptr_t>(next()) | (used ? 1 : 0));
 	}
 
 	inline void set_next(mem_header *next)
@@ -53,13 +53,13 @@ struct memory_manager::mem_header
 
 	inline mem_header * buddy() const {
 		return reinterpret_cast<mem_header *>(
-			reinterpret_cast<addr_t>(this) ^ (1 << size()));
+			reinterpret_cast<uintptr_t>(this) ^ (1 << size()));
 	}
 
 	inline bool eldest() const { return this < buddy(); }
 
-	inline uint8_t size() const { return reinterpret_cast<addr_t>(m_prev) & 0x3f; }
-	inline bool used() const { return reinterpret_cast<addr_t>(m_next) & 0x1; }
+	inline uint8_t size() const { return reinterpret_cast<uintptr_t>(m_prev) & 0x3f; }
+	inline bool used() const { return reinterpret_cast<uintptr_t>(m_next) & 0x1; }
 
 private:
 	mem_header *m_prev;

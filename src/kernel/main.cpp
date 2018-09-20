@@ -3,7 +3,6 @@
 
 #include "initrd/initrd.h"
 #include "kutil/assert.h"
-#include "kutil/memory.h"
 #include "apic.h"
 #include "block_device.h"
 #include "console.h"
@@ -110,7 +109,7 @@ kernel_main(popcorn_data *header)
 	auto r = cpu.get(0x15);
 	log::info(logs::boot, "CPU Crystal: %dHz", r.ecx);
 
-	addr_t cr4 = 0;
+	uintptr_t cr4 = 0;
 	__asm__ __volatile__ ( "mov %%cr4, %0" : "=r" (cr4) );
 	log::info(logs::boot, "cr4: %016x", cr4);
 	*/

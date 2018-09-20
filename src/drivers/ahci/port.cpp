@@ -253,7 +253,7 @@ port::make_command(size_t length, fis_register_h2d **fis)
 		void *mem = pm->map_offset_pages(page_count(prd_len));
 		kutil::memset(mem, 0xaf, prd_len);
 
-		addr_t phys = pm->offset_phys(mem);
+		uintptr_t phys = pm->offset_phys(mem);
 		cmdt.entries[i].data_base_low = phys & 0xffffffff;
 		cmdt.entries[i].data_base_high = phys >> 32;
 		cmdt.entries[i].byte_count = prd_len - 1;
@@ -442,9 +442,9 @@ port::finish_read(int slot)
 	for (int i = 0; i < ent.prd_table_length; ++i) {
 		size_t prd_len = (cmdt.entries[i].byte_count & 0x7fffffff) + 1;
 
-		addr_t phys = 
-			static_cast<addr_t>(cmdt.entries[i].data_base_low) |
-			static_cast<addr_t>(cmdt.entries[i].data_base_high) << 32;
+		uintptr_t phys =
+			static_cast<uintptr_t>(cmdt.entries[i].data_base_low) |
+			static_cast<uintptr_t>(cmdt.entries[i].data_base_high) << 32;
 
 		void *mem = kutil::offset_pointer(pm->offset_virt(phys), offset);
 
@@ -485,9 +485,9 @@ port::finish_identify(int slot)
 
 	size_t prd_len = (cmdt.entries[0].byte_count & 0x7fffffff) + 1;
 
-	addr_t phys =
-		static_cast<addr_t>(cmdt.entries[0].data_base_low) |
-		static_cast<addr_t>(cmdt.entries[0].data_base_high) << 32;
+	uintptr_t phys =
+		static_cast<uintptr_t>(cmdt.entries[0].data_base_low) |
+		static_cast<uintptr_t>(cmdt.entries[0].data_base_high) << 32;
 
 	log::debug(logs::driver, "Reading ident PRD:");
 
@@ -535,9 +535,9 @@ port::free_command(int slot)
 	for (int i = 0; i < ent.prd_table_length; ++i) {
 		size_t prd_len = (cmdt.entries[i].byte_count & 0x7fffffff) + 1;
 
-		addr_t phys =
-			static_cast<addr_t>(cmdt.entries[i].data_base_low) |
-			static_cast<addr_t>(cmdt.entries[i].data_base_high) << 32;
+		uintptr_t phys =
+			static_cast<uintptr_t>(cmdt.entries[i].data_base_low) |
+			static_cast<uintptr_t>(cmdt.entries[i].data_base_high) << 32;
 		void *mem = pm->offset_virt(phys);
 		pm->unmap_pages(mem, page_count(prd_len));
 	}
@@ -557,7 +557,7 @@ port::rebase()
 	size_t pages = 1 + page_count(prd_size * 32);
 
 	void *mem = pm->map_offset_pages(pages);
-	addr_t phys = pm->offset_phys(mem);
+	uintptr_t phys = pm->offset_phys(mem);
 
 	log::debug(logs::driver, "Rebasing address for AHCI port %d to %lx [%d]", m_index, mem, pages);
 

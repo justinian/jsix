@@ -28,14 +28,14 @@ syscall_enable()
 
 	// IA32_LSTAR - RIP for syscall
 	wrmsr(msr::ia32_lstar,
-		reinterpret_cast<addr_t>(&syscall_handler_prelude));
+		reinterpret_cast<uintptr_t>(&syscall_handler_prelude));
 
 	// IA32_FMASK - FLAGS mask inside syscall
 	wrmsr(msr::ia32_fmask, 0x200);
 }
 
-addr_t
-syscall_dispatch(addr_t return_rsp, const cpu_state &regs)
+uintptr_t
+syscall_dispatch(uintptr_t return_rsp, const cpu_state &regs)
 {
 	console *cons = console::get();
 	syscall call = static_cast<syscall>(regs.rax);
