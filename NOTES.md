@@ -5,7 +5,6 @@
 - Better page-allocation model
 - Allow for more than one IOAPIC in ACPI module
   - The objects get created, but GSI lookup only uses the one at index 0
-- Slab allocator for kernel structures
 - mark kernel memory pages global
 - Serial out based on circular/bip biffer and interrupts, not spinning on
   `write_ready()`
@@ -15,6 +14,11 @@
   - optimization using #NM (0x7) to detect SSE usage
 - Clean up of process memory maps
 - Better stack tracer
+- Bootloader rewrite
+  - C++ and sharing library code for ELF, initrd, etc
+  - Parse initrd and pre-load certain ELF images, eg the process loader process?
+  - Do initial memory bootstrap?
+- Calling global ctors
 
 
 - Device Tree
@@ -23,3 +27,4 @@
     - File system
 - Multiprocessing
   - Syscalls
+
