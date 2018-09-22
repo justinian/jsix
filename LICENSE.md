@@ -156,3 +156,8 @@ assume any extra rights that may not actually be granted) for it here:
 > OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 > OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Vendored 'external' works
+
+The `external` directory has several libraries' built outputs vendored into it.
+All the relevant licenses have been copied into the `external/licenses`
+directory for reference.
