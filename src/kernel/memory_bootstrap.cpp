@@ -2,7 +2,7 @@
 #include "kutil/assert.h"
 #include "kutil/linked_list.h"
 #include "kutil/slab_allocator.h"
-#include "memory.h"
+#include "io.h"
 #include "page_manager.h"
 
 const unsigned efi_page_size = 0x1000;
@@ -402,7 +402,7 @@ memory_initialize(const void *memory_map, size_t map_length, size_t desc_length)
 	uint64_t free_next = free_region_start_virt;
 
 	// We'll need to copy any existing tables (except the PML4 which the
-	// bootloader gave us) into our 4 reserved pages so we can edit them.
+	// bootloader gave us) into our reserved pages so we can edit them.
 	page_table_indices fr_idx{free_region_start_virt};
 
 	copy_new_table(&tables[0], fr_idx[0], &tables[1]);
@@ -472,6 +472,10 @@ memory_initialize(const void *memory_map, size_t map_length, size_t desc_length)
 	copy_new_table(&tables[5], pg_idx[2], &tables[6]);
 
 	page_in_ident(&tables[0], pt_start_phys, pt_start_virt, remaining_pages, tables + 4);
+
+	// Make sure the page table is finished updating before we write to memory
+	__sync_synchronize();
+	io_wait();
 
 	// Finally, build an acutal set of kernel page tables that just contains
 	// what the kernel actually has mapped, but making everything writable
