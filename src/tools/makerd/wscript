@@ -9,7 +9,7 @@ def build(bld):
         source = sources,
         name = 'makerd',
         target = 'makerd',
-        use = 'initrd',
+        use = 'INITRD KUTIL',
     )
 
 # vim: ft=python et

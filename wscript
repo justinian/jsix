@@ -27,7 +27,7 @@ def options(opt):
             help='Compile in debugging mode')
 
 
-def common_configure(ctx):
+def common_configure(ctx, phase):
     from os import listdir
     from os.path import join, exists
     from subprocess import check_output
@@ -47,38 +47,45 @@ def common_configure(ctx):
     ctx.env.ARCH_D = join(str(ctx.path), "src", "arch",
             ctx.env.POPCORN_ARCH)
 
-    ctx.env.append_value('INCLUDES', [
-        join(ctx.path.abspath(), "src", "include"),
-        join(ctx.path.abspath(), "src", "include", ctx.env.POPCORN_ARCH),
-        join(ctx.path.abspath(), "src", "libraries"),
-        join(ctx.path.abspath(), "src", "drivers"),
-    ])
-
     libraries = []
-    mod_root = join("src", "libraries")
-    for module in listdir(mod_root):
-        mod_path = join(mod_root, module)
-        if exists(join(mod_path, "wscript")):
-            libraries.append(mod_path)
+    lib_root = join("src", "libraries")
+    for lib in listdir(lib_root):
+        name = lib.upper()
+        lib_path = join(lib_root, lib)
+        out_path = join(
+            ctx.path.get_bld().abspath(), 
+            phase,
+            lib_path)
+
+        ctx.env.append_value('INCLUDES_{}'.format(name), [
+            join(ctx.path.abspath(), lib_path, "include"),
+        ])
+
+        if exists(join(lib_path, "wscript")):
+            ctx.env.append_value('LIB_{}'.format(name), [lib])
+            ctx.env.append_value('LIBPATH_{}'.format(name), [out_path])
+            libraries.append(lib_path)
+
     ctx.env.LIBRARIES = libraries
 
     tools = []
-    mod_root = join("src", "tools")
-    for module in listdir(mod_root):
-        mod_path = join(mod_root, module)
-        if exists(join(mod_path, "wscript")):
-            tools.append(mod_path)
+    tool_root = join("src", "tools")
+    for tool in listdir(tool_root):
+        tool_path = join(tool_root, tool)
+        if exists(join(tool_path, "wscript")):
+            tools.append(tool_path)
     ctx.env.TOOLS = tools
 
     drivers = []
-    mod_root = join("src", "drivers")
-    for module in listdir(mod_root):
-        mod_path = join(mod_root, module)
-        if exists(join(mod_path, "wscript")):
-            drivers.append(mod_path)
+    drv_root = join("src", "drivers")
+    for drv in listdir(drv_root):
+        drv_path = join(drv_root, drv)
+        if exists(join(drv_path, "wscript")):
+            drivers.append(drv_path)
     ctx.env.DRIVERS = drivers
 
     ctx.env.append_value('DEFINES', [
+        'POPCORN_BUILD_PHASE="{}"'.format(phase),
         'GIT_VERSION="{}"'.format(version),
         'GIT_VERSION_WIDE=L"{}"'.format(version),
         "VERSION_MAJOR={}".format(major),
@@ -121,14 +128,24 @@ def configure(ctx):
     ctx.env.LINKFLAGS_cstlib = ['-Bstatic']
 
     baseflags = [
-        '-nostdlib',
-        '-ffreestanding',
         '-nodefaultlibs',
+        '-nostdinc',
+        '-nostdlib',
+        '-nostdlibinc',
+
+        '-ffreestanding',
+        '-nostdinc',
         '-fno-builtin',
         '-mno-sse',
         '-fno-omit-frame-pointer',
         '-mno-red-zone',
     ]
+
+    baseflags += ["-isystem{}".format(i) for i in [
+        join(ctx.path.abspath(), "external", "include", "c++", "v1"),
+        join(ctx.path.abspath(), "src", "include", ctx.options.arch),
+        join(ctx.path.abspath(), "src", "include"),
+        ]]
 
     warnflags = ['-W{}'.format(opt) for opt in [
         'format=2',
@@ -157,7 +174,10 @@ def configure(ctx):
 
     ctx.env.append_value('CFLAGS', baseflags)
     ctx.env.append_value('CFLAGS', warnflags)
-    ctx.env.append_value('CFLAGS', ['-ggdb', '-std=c11'])
+    ctx.env.append_value('CFLAGS', [
+        '-nolibc',
+        '-ggdb',
+        '-std=c11'])
 
     ctx.env.append_value('CXXFLAGS', baseflags)
     ctx.env.append_value('CXXFLAGS', warnflags)
@@ -171,12 +191,13 @@ def configure(ctx):
     ctx.env.append_value('LINKFLAGS', [
         '-g',
         '-nostdlib',
+        '-nostartfiles',
         '-znocombreloc',
         '-Bsymbolic',
         '-nostartfiles',
     ])
 
-    common_configure(ctx)
+    common_configure(ctx, 'kernel')
     base_bare = ctx.env
     ctx.setenv('boot', env=base_bare)
     ctx.recurse(join("src", "boot"))
@@ -189,11 +210,11 @@ def configure(ctx):
         '-fno-rtti',
     ])
 
-    for mod_path in ctx.env.LIBRARIES:
-        ctx.recurse(mod_path)
+    for lib_path in ctx.env.LIBRARIES:
+        ctx.recurse(lib_path)
 
-    for mod_path in ctx.env.DRIVERS:
-        ctx.recurse(mod_path)
+    for drv_path in ctx.env.DRIVERS:
+        ctx.recurse(drv_path)
 
     ctx.recurse(join("src", "kernel"))
 
@@ -204,36 +225,36 @@ def configure(ctx):
     ctx.load('clang++')
     ctx.find_program("mcopy", var="mcopy")
     ctx.find_program("dd", var="dd")
-    common_configure(ctx)
+    common_configure(ctx, 'tools')
 
     ctx.env.CXXFLAGS = ['-g', '-std=c++14']
     ctx.env.LINKFLAGS = ['-g']
 
-    for mod_path in ctx.env.LIBRARIES:
-        ctx.recurse(mod_path)
+    for lib_path in ctx.env.LIBRARIES:
+        ctx.recurse(lib_path)
 
-    for mod_path in ctx.env.TOOLS:
-        ctx.recurse(mod_path)
+    for drv_path in ctx.env.TOOLS:
+        ctx.recurse(drv_path)
 
     ## Image configuration
     ##
     ctx.setenv('image', env=ConfigSet())
     ctx.find_program("mcopy", var="mcopy")
     ctx.find_program("dd", var="dd")
-    common_configure(ctx)
+    common_configure(ctx, 'image')
 
     ## Testing configuration
     ##
     from waflib.ConfigSet import ConfigSet
     ctx.setenv('tests', env=ConfigSet())
     ctx.load('clang++')
-    common_configure(ctx)
+    common_configure(ctx, 'tests')
 
     ctx.env.CXXFLAGS = ['-g', '-std=c++14', '-fno-rtti']
     ctx.env.LINKFLAGS = ['-g']
 
-    for mod_path in ctx.env.LIBRARIES:
-        ctx.recurse(mod_path)
+    for lib_path in ctx.env.LIBRARIES:
+        ctx.recurse(lib_path)
 
     ctx.recurse(join("src", "tests"))
 
@@ -303,18 +324,18 @@ def build(bld):
     ## Tools
     #
     elif bld.variant == 'tools':
-        for mod_path in bld.env.LIBRARIES:
-            bld.recurse(mod_path)
-        for mod_path in bld.env.TOOLS:
-            bld.recurse(mod_path)
+        for lib_path in bld.env.LIBRARIES:
+            bld.recurse(lib_path)
+        for tool_path in bld.env.TOOLS:
+            bld.recurse(tool_path)
 
     ## Kernel
     #
     elif bld.variant == 'kernel':
-        for mod_path in bld.env.LIBRARIES:
-            bld.recurse(mod_path)
-        for mod_path in bld.env.DRIVERS:
-            bld.recurse(mod_path)
+        for lib_path in bld.env.LIBRARIES:
+            bld.recurse(lib_path)
+        for drv_path in bld.env.DRIVERS:
+            bld.recurse(drv_path)
 
         bld.recurse(join("src", "kernel"))
 
@@ -371,15 +392,15 @@ def build(bld):
     ## Tests
     #
     elif bld.variant == 'tests':
-        for mod_path in bld.env.LIBRARIES:
-            bld.recurse(mod_path)
+        for lib_path in bld.env.LIBRARIES:
+            bld.recurse(lib_path)
         bld.recurse(join("src", "tests"))
 
 
 def test(bld):
     from os.path import join
-    for mod_path in bld.env.LIBRARIES:
-        bld.recurse(mod_path)
+    for lib_path in bld.env.LIBRARIES:
+        bld.recurse(lib_path)
 
     bld.recurse(join("src", "tests"))
 

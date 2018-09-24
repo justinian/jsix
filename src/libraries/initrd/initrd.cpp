@@ -1,7 +1,7 @@
+#include "initrd/headers.h"
 #include "initrd/initrd.h"
 #include "kutil/assert.h"
 #include "kutil/enum_bitfields.h"
-#include "headers.h"
 
 namespace initrd {
 

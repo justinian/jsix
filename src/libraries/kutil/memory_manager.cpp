@@ -1,7 +1,7 @@
 #include <stdint.h>
-#include "assert.h"
-#include "memory.h"
-#include "memory_manager.h"
+#include "kutil/assert.h"
+#include "kutil/memory.h"
+#include "kutil/memory_manager.h"
 
 namespace kutil {
 

@@ -7,8 +7,10 @@ def build(bld):
 
     bld.stlib(
         source = sources,
+        includes = 'include',
         name = 'initrd',
         target = 'initrd',
+        use = 'KUTIL',
     )
 
 # vim: ft=python et

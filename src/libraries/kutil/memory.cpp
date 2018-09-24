@@ -1,6 +1,6 @@
-#include "memory.h"
-#include "memory_manager.h"
-#include "type_macros.h"
+#include "kutil/memory.h"
+#include "kutil/memory_manager.h"
+#include "kutil/type_macros.h"
 
 __weak void * operator new (size_t, void *p) noexcept	{ return p; }
 __weak void * operator new (size_t n)					{ return kutil::malloc(n); }
