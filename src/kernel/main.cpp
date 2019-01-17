@@ -13,7 +13,6 @@
 #include "io.h"
 #include "kernel_data.h"
 #include "log.h"
-#include "memory.h"
 #include "page_manager.h"
 #include "scheduler.h"
 #include "screen.h"

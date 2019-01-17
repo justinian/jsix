@@ -5,3 +5,7 @@ tags
 .gdbinit
 popcorn.log
 .waf-*
+*.o
+*.a
+sysroot
+.sconsign*

@@ -1,0 +1,47 @@
+Import('env')
+
+env = env.Clone()
+env.Append(
+    CCFLAGS = [
+        '-nodefaultlibs',
+        '-nostdinc',
+        '-nostdlib',
+        #'-nolibc',
+
+        '-ffreestanding',
+        '-fno-omit-frame-pointer',
+
+        '-isystem', 'sysroot/include',
+        '-mcmodel=large',
+
+        '-fno-PIC',
+    ],
+
+    LINKFLAGS = [
+        '-g',
+        '-nostdlib',
+        #'-znocombreloc',
+        #'-Bsymbolic',
+        '-nostartfiles',
+    ],
+
+    LIBS = [
+        #'c++',
+        #'c++abi',
+        'unwind',
+    ],
+
+    CXXFLAGS = [
+        #'-nostdlibinc',
+        '-fno-exceptions',
+        '-fno-rtti',
+        '-D_LIBCPP_NO_EXCEPTIONS',
+        '-D_LIBCPP_HAS_NO_THREADS',
+        '-D__ELF__',
+        '-mcmodel=large',
+    ],
+)
+
+Return('env')
+
+# vim: ft=python et

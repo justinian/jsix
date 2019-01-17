@@ -1,7 +1,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ahci/driver.h"
 #include "kutil/assert.h"
 #include "kutil/memory.h"
 #include "acpi_tables.h"
@@ -10,7 +9,6 @@
 #include "device_manager.h"
 #include "interrupts.h"
 #include "log.h"
-#include "memory.h"
 #include "page_manager.h"
 
 

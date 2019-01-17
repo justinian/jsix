@@ -3,7 +3,6 @@
 #include "kutil/memory.h"
 #include "console.h"
 #include "font.h"
-#include "memory.h"
 #include "screen.h"
 #include "serial.h"
 

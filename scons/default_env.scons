@@ -1,0 +1,85 @@
+from subprocess import check_output
+
+target = 'x86_64-elf'
+
+version = check_output("git describe --always", shell=True).strip()
+git_sha = check_output("git rev-parse --short HEAD", shell=True).strip()
+major, minor, patch_dirty = version.split(".")
+dirty = 'dirty' in patch_dirty
+patch = patch_dirty.split('-')[0]
+
+defines = {
+    'GIT_VERSION': r'\"{}\"'.format(version),
+    'GIT_VERSION_WIDE': r'L\"{}\"'.format(version),
+    'VERSION_MAJOR': major,
+    'VERSION_MINOR': minor,
+    'VERSION_PATCH': patch,
+    'VERSION_GITSHA': '0x{}{}'.format({True:1}.get(dirty, 0), git_sha),
+}
+
+warnings = [
+    'format=2',
+    'init-self',
+    'float-equal',
+    'inline',
+    'missing-format-attribute',
+    'missing-include-dirs',
+    'switch',
+    'undef',
+    'disabled-optimization',
+    'pointer-arith',
+    'no-attributes',
+    'no-sign-compare',
+    'no-multichar',
+    'no-div-by-zero',
+    'no-endif-labels',
+    'no-pragmas',
+    'no-format-extra-args',
+    'no-unused-result',
+    'no-deprecated-declarations',
+    'no-unused-function',
+
+    'error'
+]
+
+asflags = ['-felf64']
+asflags += ['-D{}={}'.format(k,v) for k, v in defines.items()]
+
+ccflags = [
+    '--sysroot={}'.format(Dir('#sysroot').abspath),
+]
+ccflags += ['-W{}'.format(opt) for opt in warnings]
+
+env = Environment(
+    #CC = File('#sysroot/bin/' + target + '-gcc').abspath,
+    #CXX = File('#sysroot/bin/' + target + '-g++').abspath,
+    LINK = File('#sysroot/bin/' + target + '-ld').abspath,
+
+    CC = File('#sysroot/bin/clang').abspath,
+    CXX = File('#sysroot/bin/clang++').abspath,
+    #LINK = File('#sysroot/bin/ld.lld').abspath,
+
+    AS = File('#sysroot/bin/nasm').abspath,
+    ASFLAGS = asflags,
+    CXXFLAGS = [
+        '-std=c++14',
+        '-isystem', Dir('#sysroot/include/c++/v1').abspath,
+    ],
+    CFLAGS = ['-std=c11'],
+    CCFLAGS = ccflags,
+    CPPPATH = ['src/include'],
+    CPPDEFINES = defines,
+    LINKFLAGS = ['-static'],
+    LIBPATH = ['#sysroot/lib'],
+
+    #CCCOMSTR     = '  compile  $TARGET',
+    #CXXCOMSTR    = '  compile  $TARGET',
+    #ASCOMSTR     = ' assemble  $TARGET',
+    #LINKCOMSTR   = '     link  $TARGET',
+    ARCOMSTR     = '  archive  $TARGET',
+    RANLIBCOMSTR = '   ranlib  $TARGET',
+)
+
+Return('env')
+
+# vim: ft=python et

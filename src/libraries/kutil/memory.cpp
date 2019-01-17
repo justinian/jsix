@@ -1,12 +1,15 @@
 #include "kutil/memory.h"
 #include "kutil/memory_manager.h"
-#include "kutil/type_macros.h"
 
-__weak void * operator new (size_t, void *p) noexcept	{ return p; }
-__weak void * operator new (size_t n)					{ return kutil::malloc(n); }
-__weak void * operator new[] (size_t n)					{ return kutil::malloc(n); }
-__weak void operator delete (void *p) noexcept			{ return kutil::free(p); }
-__weak void operator delete[] (void *p) noexcept		{ return kutil::free(p); }
+namespace std {
+	enum class __attribute__ ((__type_visibility("default"))) align_val_t : size_t { };
+}
+
+void * operator new(size_t n, std::align_val_t) { return kutil::malloc(n); }
+void * operator new (size_t n)					{ return kutil::malloc(n); }
+void * operator new[] (size_t n)				{ return kutil::malloc(n); }
+void operator delete (void *p) noexcept			{ return kutil::free(p); }
+void operator delete[] (void *p) noexcept		{ return kutil::free(p); }
 
 namespace kutil {
 

@@ -1,0 +1,12 @@
+Import('target')
+
+env = target.Clone()
+env.Append(
+    CPPPATH = ['.', 'include', '#src/libraries/kutil/include'],
+)
+
+lib = env.Library('initrd', Glob('*.cpp'))
+
+Return('lib')
+
+# vim: ft=python et

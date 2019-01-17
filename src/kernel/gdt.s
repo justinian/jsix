@@ -3,17 +3,17 @@ extern g_gdtr
 
 global idt_write
 idt_write:
-	lidt [rel g_idtr]
+	lidt [g_idtr]
 	ret
 
 global idt_load
 idt_load:
-	sidt [rel g_idtr]
+	sidt [g_idtr]
 	ret
 
 global gdt_write
 gdt_write:
-	lgdt [rel g_gdtr]
+	lgdt [g_gdtr]
 	mov ax, si ; second arg is data segment
 	mov ds, ax
 	mov es, ax
@@ -30,6 +30,6 @@ gdt_write:
 
 global gdt_load
 gdt_load:
-	sgdt [rel g_gdtr]
+	sgdt [g_gdtr]
 	ret
 
