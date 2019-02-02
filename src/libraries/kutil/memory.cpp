@@ -5,7 +5,7 @@ namespace std {
 	enum class __attribute__ ((__type_visibility("default"))) align_val_t : size_t { };
 }
 
-#ifndef KUTIL_EXCLUDE_NEW_DELETE
+#ifdef __POPCORN__
 void * operator new(size_t n, std::align_val_t) { return kutil::malloc(n); }
 void * operator new (size_t n)					{ return kutil::malloc(n); }
 void * operator new[] (size_t n)				{ return kutil::malloc(n); }
