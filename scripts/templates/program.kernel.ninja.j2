@@ -4,5 +4,6 @@
 
 asflags = $asflags -I${srcroot}/src/kernel/
 libs = $libs -lc
+ldflags = $ldflags -T ${srcroot}/src/arch/x86_64/kernel.ld
 
 {% endblock %}

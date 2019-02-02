@@ -3,11 +3,11 @@
 {{ super() }}
 
 libs = $
-	-L${builddir} $
+    -L${builddir} $
     {%- for dep in module.deps %}
     -l{{dep}} $
     {%- endfor %}
-	$libs
+    $libs
 
 {% endblock %}
-{% block artifact %}{{ module.output }} : exe{% endblock %}
+{% block artifact %}${builddir}/{{ module.output }} : exe{% endblock %}

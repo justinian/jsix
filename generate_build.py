@@ -13,6 +13,9 @@ MODULES = {
     "kutil":     library('src/libraries/kutil', []),
 
     "makerd":    program('src/tools/makerd', ["initrd", "kutil"], "makerd", ["native"]),
+
+    "nulldrv":   program('src/drivers/nulldrv', [], "nulldrv", ["host"]),
+
     "boot":      program('src/boot', ["elf"], "boot.elf", ["host"]),
     "kernel":    program('src/kernel', ["elf", "initrd", "kutil"], "popcorn.elf", ["host"]),
 }
@@ -26,9 +29,9 @@ def get_template(env, typename, name):
         return env.get_template("{}.default.ninja.j2".format(typename))
 
 
-def get_sources(path):
+def get_sources(path, srcroot):
     import os
-    from os.path import abspath, join, splitext
+    from os.path import abspath, join, relpath, splitext
 
     actions = {'.c': 'cc', '.cpp': 'cxx', '.s': 'nasm'}
 
@@ -40,7 +43,7 @@ def get_sources(path):
             name = join(root, f)
             sources.append(
                 source(
-                    name,
+                    relpath(name, srcroot),
                     abspath(name),
                     f + ".o",
                     actions[ext]))
@@ -68,8 +71,12 @@ def main(buildroot):
     import os
     from os.path import abspath, dirname, isdir, join
 
-    buildroot = abspath(buildroot)
-    srcroot = dirname(abspath(__file__))
+    generator = abspath(__file__)
+    srcroot = dirname(generator)
+
+    if buildroot is None:
+        buildroot = join(srcroot, "build")
+
     if not isdir(buildroot):
         os.mkdir(buildroot)
 
@@ -96,7 +103,7 @@ def main(buildroot):
                     open_list.extend(dep.deps)
                     targets[target].add(depname)
 
-        sources = get_sources(join(srcroot, mod.path))
+        sources = get_sources(join(srcroot, mod.path), join(srcroot, "src"))
         buildfile = join(buildroot, name + ".ninja")
         buildfiles.append(buildfile)
         with open(buildfile, 'w') as out:
@@ -141,12 +148,12 @@ def main(buildroot):
             buildfile=buildfile,
             buildfiles=buildfiles,
             templates=[abspath(f) for f in templates],
-            generator=abspath(__file__),
+            generator=generator,
             version=git_version))
 
 if __name__ == "__main__":
     import sys
-    buildroot = "build"
+    buildroot = None
     if len(sys.argv) > 1:
         buildroot = sys.argv[1]
     main(buildroot)

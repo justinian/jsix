@@ -5,12 +5,14 @@ cxx = ${srcroot}/sysroot/bin/clang++
 ld = ${srcroot}/sysroot/bin/x86_64-elf-ld
 ar = ${srcroot}/sysroot/bin/x86_64-elf-ar
 nasm = ${srcroot}/sysroot/bin/nasm
+objcopy = ${srcroot}/sysroot/bin/x86_64-elf-objcopy
 {% endblock %}
 
 {% block variables %}
 
 ccflags = $ccflags $
     -D__ELF__ $
+    -D__POPCORN__ $
     -nodefaultlibs $
     -nostdinc $
     -nostdlib $

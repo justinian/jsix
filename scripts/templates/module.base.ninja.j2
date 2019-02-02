@@ -22,5 +22,8 @@ build {% block artifact %} ${builddir}/lib{{ name }}.a : lib {% endblock %} $
 {%- if module.deps %}| {% for dep in module.deps %} ${builddir}/lib{{ dep }}.a {% endfor %}{% endif %}
     name = {{ name }}
 
-# End
+{% block extra %}
+{% endblock %}
+
+# vim: ft=ninja et ts=4 sts=4 sw=4
 
