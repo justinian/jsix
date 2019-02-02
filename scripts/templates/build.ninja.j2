@@ -1,0 +1,54 @@
+builddir = {{ buildroot }}
+srcroot = {{ srcroot }}
+
+ccflags = $
+    -I${srcroot}/src/include $
+    -I${srcroot}/src/include/x86_64 $
+    -DVERSION_MAJOR={{ version.major }} $
+    -DVERSION_MINOR={{ version.minor }} $
+    -DVERSION_PATCH={{ version.patch }} $
+    -DVERSION_GITSHA=\"{{ version.sha }}\" $
+    -DGIT_VERSION=\"{{ version.major }}.{{ version.minor }}.{{ version.patch }}-{{ version.sha }}\"
+
+asflags = $
+    -DVERSION_MAJOR={{ version.major }} $
+    -DVERSION_MINOR={{ version.minor }} $
+    -DVERSION_PATCH={{ version.patch }} $
+    -DVERSION_GITSHA=\"{{ version.sha }}\"
+
+cflags = -std=c11
+cxxflags = -std=c++14
+libs =
+
+rule cc
+    deps = gcc
+    depfile = $out.d
+    description = Compiling $name
+    command = $cc -MMD -MF $out.d $ccflags $cflags -o $out -c $in
+
+rule cxx
+    deps = gcc
+    depfile = $out.d
+    description = Compiling $name
+    command = $cxx -MMD -MF $out.d $cxxflags $ccflags -o $out -c $in
+
+rule nasm
+    deps = gcc
+    depfile = $out.d
+    description = Assembling $name
+    command = $nasm -o $out -felf64 -MD $out.d $asflags $in
+
+rule exe
+    description = Linking $name
+    command = $ld -o $out $in $libs
+
+rule lib
+    description = Archiving $name
+    command = $ar qcs $out $in
+
+{% for target in targets %}
+subninja {{ target }}/target.ninja
+{% endfor %}
+
+# vim: et ts=4 sts=4 sw=4
+

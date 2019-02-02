@@ -1,0 +1,16 @@
+builddir = $builddir/{{ target }}
+
+{% block variables %}
+{% endblock %}
+
+{% block binaries %}
+cc = clang
+cxx = clang++
+ld = clang++
+ar = ar
+nasm = nasm
+{% endblock %}
+
+{% for module in modules %}
+subninja {{ module }}.ninja
+{% endfor %}

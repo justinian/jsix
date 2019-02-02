@@ -1,0 +1,8 @@
+{% extends "program.default.ninja.j2" %}
+{% block variables %}
+{{ super() }}
+
+asflags = $asflags -I${srcroot}/src/kernel/
+libs = $libs -lc
+
+{% endblock %}

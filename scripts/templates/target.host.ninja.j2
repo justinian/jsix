@@ -1,0 +1,39 @@
+{% extends "target.default.ninja.j2" %}
+{% block binaries %}
+cc = ${srcroot}/sysroot/bin/clang
+cxx = ${srcroot}/sysroot/bin/clang++
+ld = ${srcroot}/sysroot/bin/x86_64-elf-ld
+ar = ${srcroot}/sysroot/bin/x86_64-elf-ar
+nasm = ${srcroot}/sysroot/bin/nasm
+{% endblock %}
+
+{% block variables %}
+
+ccflags = $ccflags $
+    -D__ELF__ $
+    -nodefaultlibs $
+    -nostdinc $
+    -nostdlib $
+    -ffreestanding $
+    -mno-sse $
+    -fno-omit-frame-pointer $
+    -mno-red-zone $
+    -mcmodel=large $
+    -isystem${srcroot}/sysroot/include $
+    --sysroot="${srcroot}/sysroot"
+
+cxxflags = $cxxflags $
+    -nostdlibinc $
+    -isystem${srcroot}/sysroot/include/c++/v1 $
+    -fno-exceptions $
+    -fno-rtti
+
+ldflags = $ldflags $
+    -g $
+    -nostdlib $
+    -nostartfiles $
+    -znocombreloc $
+    -Bsymbolic $
+    -nostartfiles
+
+{% endblock %}

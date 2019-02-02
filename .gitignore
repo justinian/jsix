@@ -1,11 +1,9 @@
 .lock*
-build
+/build*
 *.bak
 tags
 .gdbinit
 popcorn.log
-.waf-*
 *.o
 *.a
 sysroot
-.sconsign*

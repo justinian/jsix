@@ -1,0 +1,13 @@
+{% extends "module.base.ninja.j2" %}
+{% block variables %}
+{{ super() }}
+
+libs = $
+	-L${builddir} $
+    {%- for dep in module.deps %}
+    -l{{dep}} $
+    {%- endfor %}
+	$libs
+
+{% endblock %}
+{% block artifact %}{{ module.output }} : exe{% endblock %}

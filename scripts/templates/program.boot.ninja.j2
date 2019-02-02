@@ -1,0 +1,18 @@
+{% extends "program.default.ninja.j2" %}
+{% block variables %}
+{{ super() }}
+
+cflags = $cflags $
+	-DKERNEL_FILENAME=L\"popcorn.elf\" $
+	-DGNU_EFI_USE_MS_ABI $
+	-DHAVE_USE_MS_ABI $
+	-DEFI_DEBUG=0 $
+	-DEFI_DEBUG_CLEAR_MEMORY=0 $
+	-fPIC $
+	-fshort-wchar
+
+ldflags = $ldflags $
+	-shared $
+	-T ${srcroot}/src/arch/x86_64/boot.ld
+
+{% endblock %}

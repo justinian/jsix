@@ -1,0 +1,26 @@
+moddir = ${builddir}/{{ name }}.dir
+
+{% block variables %}
+ccflags = $ccflags $
+    {%- for dep in module.deps %}
+    -I${srcroot}/src/libraries/{{ dep }}/include $
+    {%- endfor %}
+    -I${srcroot}/{{ module.path }} $
+    -I${srcroot}/{{ module.path }}/include
+{% endblock %}
+
+{% for source in sources %}
+build ${moddir}/{{ source.output }} : {{ source.action }} {{ source.input }}
+    name = {{ source.name }}
+{% endfor %}
+
+build {% block artifact %} ${builddir}/lib{{ name }}.a : lib {% endblock %} $
+{%- block extrasources %}{% endblock -%}
+{%- for source in sources %}
+    ${moddir}/{{ source.output }}{% if not loop.last %} ${% endif %}
+{%- endfor -%}
+{%- if module.deps %}| {% for dep in module.deps %} ${builddir}/lib{{ dep }}.a {% endfor %}{% endif %}
+    name = {{ name }}
+
+# End
+
