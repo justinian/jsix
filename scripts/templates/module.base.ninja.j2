@@ -10,7 +10,7 @@ ccflags = $ccflags $
 {% endblock %}
 
 {% for source in sources %}
-build ${moddir}/{{ source.output }} : {{ source.action }} {{ source.input }}
+build ${moddir}/{{ source.output }} : {{ source.action }} {{ source.input }} || {{ buildfile }}
     name = {{ source.name }}
 {% endfor %}
 

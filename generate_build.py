@@ -49,7 +49,19 @@ def get_sources(path):
 
 
 def get_git_version():
-    return version(0,5,0,'aaaaaa')
+    from subprocess import run
+    cp = run(['git', 'describe', '--always'],
+            check=True, capture_output=True)
+    full_version = cp.stdout.decode('utf-8').strip()
+
+    parts1 = full_version.split('-')
+    parts2 = parts1[0].split('.')
+
+    return version(
+        parts2[0],
+        parts2[1],
+        parts2[2],
+        parts1[-1])
 
 
 def main(buildroot):
@@ -62,11 +74,15 @@ def main(buildroot):
         os.mkdir(buildroot)
 
     git_version = get_git_version()
+    print("Generating build files for Popcorn {}.{}.{}-{}...".format(
+        git_version.major, git_version.minor, git_version.patch, git_version.sha))
 
     from jinja2 import Environment, FileSystemLoader
-    env = Environment(loader=FileSystemLoader("scripts/templates"))
+    env = Environment(loader=FileSystemLoader(join(srcroot, "scripts", "templates")))
 
     targets = {}
+    templates = set()
+    buildfiles = []
     for name, mod in MODULES.items():
         if isinstance(mod, program):
             for target in mod.targets:
@@ -80,14 +96,18 @@ def main(buildroot):
                     open_list.extend(dep.deps)
                     targets[target].add(depname)
 
-        sources = get_sources(mod.path)
-        with open(join(buildroot, name + ".ninja"), 'w') as out:
-            print("Generating module", name)
+        sources = get_sources(join(srcroot, mod.path))
+        buildfile = join(buildroot, name + ".ninja")
+        buildfiles.append(buildfile)
+        with open(buildfile, 'w') as out:
+            #print("Generating module", name)
             template = get_template(env, type(mod).__name__, name)
+            templates.add(template.filename)
             out.write(template.render(
                 name=name,
                 module=mod,
                 sources=sources,
+                buildfile=buildfile,
                 version=git_version))
 
     for target, mods in targets.items():
@@ -95,21 +115,33 @@ def main(buildroot):
         if not isdir(root):
             os.mkdir(root)
 
-        with open(join(root, "target.ninja"), 'w') as out:
-            print("Generating target", target)
+        buildfile = join(root, "target.ninja")
+        buildfiles.append(buildfile)
+        with open(buildfile, 'w') as out:
+            #print("Generating target", target)
             template = get_template(env, "target", target)
+            templates.add(template.filename)
             out.write(template.render(
                 target=target,
                 modules=mods,
+                buildfile=buildfile,
                 version=git_version))
 
-    with open(join(buildroot, 'build.ninja'), 'w') as out:
-        print("Generating main build.ninja")
+    buildfile = join(buildroot, "build.ninja")
+    buildfiles.append(buildfile)
+    with open(buildfile, 'w') as out:
+        #print("Generating main build.ninja")
         template = env.get_template('build.ninja.j2')
+        templates.add(template.filename)
+
         out.write(template.render(
             targets=targets,
             buildroot=buildroot,
             srcroot=srcroot,
+            buildfile=buildfile,
+            buildfiles=buildfiles,
+            templates=[abspath(f) for f in templates],
+            generator=abspath(__file__),
             version=git_version))
 
 if __name__ == "__main__":
