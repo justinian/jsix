@@ -3,14 +3,23 @@
 #include <iostream>
 #include <string>
 #include <vector>
+
+#include <unistd.h>
 #include "cpptoml.h"
 #include "initrd/headers.h"
 #include "entry.h"
 
 int main(int argc, char **argv)
 {
-	if (argc != 3) {
-		std::cerr << "Usage: " << argv[0] << " <manifest> <output>" << std::endl;
+	if (argc < 3 && argc > 4) {
+		std::cerr << "Usage: " << argv[0] << " <manifest> <output> [sourceroot]" << std::endl;
+		return 1;
+	}
+
+	if (argc == 4 && chdir(argv[3]) != 0) {
+		std::cerr
+			<< "Failed to change to " << argv[3] << ": "
+			<< std::strerror(errno) << std::endl;
 		return 1;
 	}
 
