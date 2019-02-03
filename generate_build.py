@@ -53,9 +53,13 @@ def get_sources(path, srcroot):
 
 def get_git_version():
     from subprocess import run
-    cp = run(['git', 'describe', '--dirty', '--abbrev=7'],
+    cp = run(['git', 'describe', '--dirty'],
             check=True, capture_output=True)
     full_version = cp.stdout.decode('utf-8').strip()
+
+    cp = run(['git', 'rev-parse', 'HEAD'],
+            check=True, capture_output=True)
+    full_sha = cp.stdout.decode('utf-8').strip()
 
     dirty = False
     parts1 = full_version.split('-')
@@ -69,7 +73,7 @@ def get_git_version():
         parts2[0],
         parts2[1],
         parts2[2],
-        parts1[-1][1:],
+        full_sha[:7],
         dirty)
 
 
