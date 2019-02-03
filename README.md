@@ -27,18 +27,28 @@ The design goals of the project are:
 
 ## Building
 
-Popcorn uses the `waf` build tool, which is included in the repo. The other
-requirements are:
+Popcorn uses the `ninja` build tool, and generates the build files for it with
+the `generate_build.py` script.  The other requirements are:
 
-* python (to run waf)
+* python 3 for generating the build config
+  * The Jinja2 package is also required
 * clang
-* nasm
 * mtools
+* ninja
+* curl for downloading the toolchain
 
-After cloning, run `waf configure`. Then you can run `waf build` to build the
-project, and `waf test` to run the tests. A floppy disk image will be built in
-`build/popcorn.img`. If you have `qemu-system-x86_64` installed, then you can
-run `waf qemu` to run it in `-nographic` mode.
+### Setting up the cross toolchain
+
+If you have `clang` and `curl` installed, runing the `scripts/build_sysroot_clang.sh`
+script will download and build a nasm/binutils/LLVM toolchain configured for building
+Popcorn host binaries.
+
+### Building and running Popcorn
+
+Once the toolchain has been set up, running `generate_build.py` will set up the
+build configuration, and `ninja -C build` will actually run the build.  If you
+have `qemu-system-x86_64` installed, the `qemu.sh` script will to run Popcorn
+in QEMU `-nographic` mode.
 
 I personally run this either from a real debian amd64 testing/buster machine or
 a windows WSL debian testing/buster installation. The following should be
