@@ -103,7 +103,7 @@ rule makefat
     description = Creating $name
     command = $
         cp $srcroot/assets/diskbase.img $out; $
-        mcopy -s -D o -i $out@@1024K $builddir/fatroot/* ::/
+        mcopy -s -D o -i $out@@1M $builddir/fatroot/* ::/
 
 {% for target in targets %}
 subninja {{ target }}/target.ninja

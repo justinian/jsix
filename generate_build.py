@@ -144,9 +144,13 @@ def main(buildroot):
                 buildfile=buildfile,
                 version=git_version))
 
-    buildfile = join(buildroot, "build.ninja")
+    # Top level buildfile cannot use an absolute path or ninja won't
+    # reload itself properly on changes.
+    # See: https://github.com/ninja-build/ninja/issues/1240
+    buildfile = "build.ninja"
     buildfiles.append(buildfile)
-    with open(buildfile, 'w') as out:
+
+    with open(join(buildroot, buildfile), 'w') as out:
         #print("Generating main build.ninja")
         template = env.get_template('build.ninja.j2')
         templates.add(template.filename)
