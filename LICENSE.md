@@ -121,9 +121,3 @@ to assume any extra rights that may not actually be granted) for it here:
 
 Popcorn's UEFI loader uses code from Intel's EFI Application toolkit. Relevant
 code includes license statements at the top of each file.
-
-# Vendored 'external' works
-
-The `external` directory has several libraries' built outputs vendored into it.
-All the relevant licenses have been copied into the `external/licenses`
-directory for reference.
