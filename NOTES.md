@@ -19,12 +19,18 @@
   - Parse initrd and pre-load certain ELF images, eg the process loader process?
   - Do initial memory bootstrap?
 - Calling global ctors
-
-
 - Device Tree
   - Actual serial driver
   - Disk driver
     - File system
 - Multiprocessing
   - Syscalls
+
+### Build
+
+- Clean up build generator and its templates
+  - More robust objects to represent modules & targets to pass to templates
+  - Read project setup from a simple JSON/TOML/etc
+  - Better compartmentalizing when doing template inheritance
+- Move to LLD as sysroot linker
 
