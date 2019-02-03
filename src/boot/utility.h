@@ -5,8 +5,8 @@
 
 #define UNUSED __attribute__((unused))
 
-size_t wstrlen(const CHAR16 *s);
-const CHAR16 *util_error_message(EFI_STATUS status);
+size_t wstrlen(const wchar_t *s);
+const wchar_t *util_error_message(EFI_STATUS status);
 
 #define CHECK_EFI_STATUS_OR_RETURN(s, msg, ...) \
 	if (EFI_ERROR((s))) { \

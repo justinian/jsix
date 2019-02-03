@@ -10,7 +10,7 @@ size_t fixup_pointer_index = 0;
 void **fixup_pointers[64];
 uint64_t *new_pml4 = 0;
 
-const CHAR16 *memory_type_names[] = {
+const wchar_t *memory_type_names[] = {
 	L"EfiReservedMemoryType",
 	L"EfiLoaderCode",
 	L"EfiLoaderData",
@@ -28,10 +28,10 @@ const CHAR16 *memory_type_names[] = {
 	L"EfiPersistentMemory",
 };
 
-static const CHAR16 *
+static const wchar_t *
 memory_type_name(UINT32 value)
 {
-	if (value >= (sizeof(memory_type_names) / sizeof(CHAR16 *))) {
+	if (value >= (sizeof(memory_type_names) / sizeof(wchar_t *))) {
 		if (value == KERNEL_DATA_MEMTYPE) return L"Kernel Data";
 		else if (value == KERNEL_MEMTYPE) return L"Kernel Image";
 		else return L"Bad Type Value";

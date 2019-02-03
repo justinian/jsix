@@ -11,7 +11,7 @@ size_t COLS = 0;
 
 static EFI_SIMPLE_TEXT_OUT_PROTOCOL *con_out = 0;
 
-const CHAR16 digits[] = {u'0', u'1', u'2', u'3', u'4', u'5', u'6', u'7', u'8', u'9', u'a', u'b', u'c', u'd', u'e', u'f'};
+const wchar_t digits[] = {u'0', u'1', u'2', u'3', u'4', u'5', u'6', u'7', u'8', u'9', u'a', u'b', u'c', u'd', u'e', u'f'};
 
 EFI_STATUS
 con_pick_mode(EFI_BOOT_SERVICES *bootsvc)
@@ -54,7 +54,7 @@ con_pick_mode(EFI_BOOT_SERVICES *bootsvc)
 }
 
 EFI_STATUS
-con_initialize(EFI_SYSTEM_TABLE *system_table, const CHAR16 *version)
+con_initialize(EFI_SYSTEM_TABLE *system_table, const wchar_t *version)
 {
 	EFI_STATUS status;
 
@@ -73,13 +73,13 @@ con_initialize(EFI_SYSTEM_TABLE *system_table, const CHAR16 *version)
 	CHECK_EFI_STATUS_OR_RETURN(status, "ClearScreen");
 
 	con_out->SetAttribute(con_out, EFI_LIGHTCYAN);
-	con_out->OutputString(con_out, (CHAR16 *)L"Popcorn loader ");
+	con_out->OutputString(con_out, (wchar_t *)L"Popcorn loader ");
 
 	con_out->SetAttribute(con_out, EFI_LIGHTMAGENTA);
-	con_out->OutputString(con_out, (CHAR16 *)version);
+	con_out->OutputString(con_out, (wchar_t *)version);
 
 	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (CHAR16 *)L" booting...\r\n\n");
+	con_out->OutputString(con_out, (wchar_t *)L" booting...\r\n\n");
 
 	return status;
 }
@@ -87,8 +87,8 @@ con_initialize(EFI_SYSTEM_TABLE *system_table, const CHAR16 *version)
 size_t
 con_print_hex(uint32_t n)
 {
-	CHAR16 buffer[9];
-	CHAR16 *p = buffer;
+	wchar_t buffer[9];
+	wchar_t *p = buffer;
 	for (int i = 7; i >= 0; --i) {
 		uint8_t nibble = (n & (0xf << (i*4))) >> (i*4);
 		*p++ = digits[nibble];
@@ -101,8 +101,8 @@ con_print_hex(uint32_t n)
 size_t
 con_print_long_hex(uint64_t n)
 {
-	CHAR16 buffer[17];
-	CHAR16 *p = buffer;
+	wchar_t buffer[17];
+	wchar_t *p = buffer;
 	for (int i = 15; i >= 0; --i) {
 		uint8_t nibble = (n & (0xf << (i*4))) >> (i*4);
 		*p++ = digits[nibble];
@@ -115,8 +115,8 @@ con_print_long_hex(uint64_t n)
 size_t
 con_print_dec(uint32_t n)
 {
-	CHAR16 buffer[11];
-	CHAR16 *p = buffer + 10;
+	wchar_t buffer[11];
+	wchar_t *p = buffer + 10;
 	*p-- = 0;
 	do {
 		*p-- = digits[n % 10];
@@ -130,8 +130,8 @@ con_print_dec(uint32_t n)
 size_t
 con_print_long_dec(uint64_t n)
 {
-	CHAR16 buffer[21];
-	CHAR16 *p = buffer + 20;
+	wchar_t buffer[21];
+	wchar_t *p = buffer + 20;
 	*p-- = 0;
 	do {
 		*p-- = digits[n % 10];
@@ -143,11 +143,11 @@ con_print_long_dec(uint64_t n)
 }
 
 size_t
-con_printf(const CHAR16 *fmt, ...)
+con_printf(const wchar_t *fmt, ...)
 {
-	CHAR16 buffer[256];
-	const CHAR16 *r = fmt;
-	CHAR16 *w = buffer;
+	wchar_t buffer[256];
+	const wchar_t *r = fmt;
+	wchar_t *w = buffer;
 	va_list args;
 	size_t count = 0;
 
@@ -168,7 +168,7 @@ con_printf(const CHAR16 *fmt, ...)
 
 		switch (*r++) {
 			case L'%':
-				con_out->OutputString(con_out, L"%");
+				con_out->OutputString(con_out, const_cast<wchar_t*>(L"%"));
 				count++;
 				break;
 
@@ -183,7 +183,7 @@ con_printf(const CHAR16 *fmt, ...)
 
 			case L's':
 				{
-					CHAR16 *s = va_arg(args, CHAR16*);
+					wchar_t *s = va_arg(args, wchar_t*);
 					count += wstrlen(s);
 					con_out->OutputString(con_out, s);
 				}
@@ -218,37 +218,37 @@ con_printf(const CHAR16 *fmt, ...)
 }
 
 void
-con_status_begin(const CHAR16 *message)
+con_status_begin(const wchar_t *message)
 {
 	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (CHAR16 *)message);
+	con_out->OutputString(con_out, (wchar_t *)message);
 }
 
 void
 con_status_ok()
 {
 	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (CHAR16 *)L"[");
+	con_out->OutputString(con_out, (wchar_t *)L"[");
 	con_out->SetAttribute(con_out, EFI_GREEN);
-	con_out->OutputString(con_out, (CHAR16 *)L"  ok  ");
+	con_out->OutputString(con_out, (wchar_t *)L"  ok  ");
 	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (CHAR16 *)L"]\r\n");
+	con_out->OutputString(con_out, (wchar_t *)L"]\r\n");
 }
 
 void
-con_status_fail(const CHAR16 *error)
+con_status_fail(const wchar_t *error)
 {
 	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (CHAR16 *)L"[");
+	con_out->OutputString(con_out, (wchar_t *)L"[");
 	con_out->SetAttribute(con_out, EFI_LIGHTRED);
-	con_out->OutputString(con_out, (CHAR16 *)L"failed");
+	con_out->OutputString(con_out, (wchar_t *)L"failed");
 	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (CHAR16 *)L"]\r\n");
+	con_out->OutputString(con_out, (wchar_t *)L"]\r\n");
 
 	con_out->SetAttribute(con_out, EFI_RED);
-	con_out->OutputString(con_out, (CHAR16 *)error);
+	con_out->OutputString(con_out, (wchar_t *)error);
 	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (CHAR16 *)L"\r\n");
+	con_out->OutputString(con_out, (wchar_t *)L"\r\n");
 }
 
 EFI_STATUS

@@ -2,7 +2,7 @@
 
 struct error_code_desc {
 	EFI_STATUS code;
-	CHAR16 *name;
+	const wchar_t *name;
 };
 
 // Based off the gnu-efi table
@@ -47,7 +47,7 @@ struct error_code_desc error_table[] = {
 	{ 0, NULL }
 };
 
-const CHAR16 *
+const wchar_t *
 util_error_message(EFI_STATUS status)
 {
 	int32_t i = -1;
@@ -62,7 +62,7 @@ util_error_message(EFI_STATUS status)
 }
 
 size_t
-wstrlen(const CHAR16 *s)
+wstrlen(const wchar_t *s)
 {
 	size_t count = 0;
 	while (s && *s++) count++;

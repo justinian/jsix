@@ -30,7 +30,9 @@ struct kernel_header {
 };
 #pragma pack(pop)
 
-EFI_STATUS
+using kernel_entry = void (*)(popcorn_data *);
+
+extern "C" EFI_STATUS
 efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 {
 	EFI_STATUS status;
@@ -65,8 +67,8 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	status = memory_get_map_length(bootsvc, &data_length);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-	size_t header_size = sizeof(struct popcorn_data);
-	const size_t header_align = alignof(struct popcorn_data);
+	size_t header_size = sizeof(popcorn_data);
+	const size_t header_align = alignof(popcorn_data);
 	if (header_size % header_align)
 		header_size += header_align - (header_size % header_align);
 
@@ -97,7 +99,8 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 			version->gitsha & 0xf0000000 ? "*" : "");
 	con_printf(L"    Entrypoint 0x%x\r\n", load.kernel_entry);
 
-	void (*kernel_main)() = load.kernel_entry;
+	kernel_entry kernel_main =
+		reinterpret_cast<kernel_entry>(load.kernel_entry);
 	memory_mark_pointer_fixup((void **)&kernel_main);
 
 	// Set up the kernel data pages to pass to the kernel
@@ -148,8 +151,9 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	// Save the memory map and tell the firmware we're taking control.
 	//
 	struct memory_map map;
-	map.entries = data_header->memory_map;
 	map.length = (load.data_length - header_size);
+	map.entries =
+		reinterpret_cast<EFI_MEMORY_DESCRIPTOR *>(data_header->memory_map);
 
 	status = memory_get_map(bootsvc, &map);
 	CHECK_EFI_STATUS_OR_FAIL(status);

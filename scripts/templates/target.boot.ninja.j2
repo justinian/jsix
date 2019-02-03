@@ -17,11 +17,11 @@ ccflags = $ccflags $
     -fno-builtin $
     -mno-sse $
     -fno-omit-frame-pointer $
-    -mno-red-zone
+    -mno-red-zone $
+    -fshort-wchar
 
 cxxflags = $cxxflags $
     -nostdlibinc $
-    -isystem${srcroot}/sysroot/include/c++/v1 $
     -fno-exceptions $
     -fno-rtti
 

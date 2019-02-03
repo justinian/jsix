@@ -6,8 +6,8 @@
 
 #define PAGE_SIZE 0x1000
 
-static CHAR16 kernel_name[] = KERNEL_FILENAME;
-static CHAR16 initrd_name[] = INITRD_FILENAME;
+static wchar_t kernel_name[] = KERNEL_FILENAME;
+static wchar_t initrd_name[] = INITRD_FILENAME;
 
 EFI_STATUS
 loader_alloc_pages(
@@ -46,7 +46,7 @@ loader_load_initrd(
 	EFI_STATUS status;
 
 	EFI_FILE_PROTOCOL *file = NULL;
-	status = root->Open(root, &file, (CHAR16 *)initrd_name, EFI_FILE_MODE_READ,
+	status = root->Open(root, &file, (wchar_t *)initrd_name, EFI_FILE_MODE_READ,
 						EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
 
 	if (status == EFI_NOT_FOUND)
@@ -87,10 +87,10 @@ loader_load_elf(
 {
 	EFI_STATUS status;
 
-	con_debug(L"Opening kernel file %s\r\n", (CHAR16 *)kernel_name);
+	con_debug(L"Opening kernel file %s\r\n", (wchar_t *)kernel_name);
 
 	EFI_FILE_PROTOCOL *file = NULL;
-	status = root->Open(root, &file, (CHAR16 *)kernel_name, EFI_FILE_MODE_READ,
+	status = root->Open(root, &file, (wchar_t *)kernel_name, EFI_FILE_MODE_READ,
 						EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
 
 	if (status == EFI_NOT_FOUND)

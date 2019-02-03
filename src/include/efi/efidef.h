@@ -20,9 +20,9 @@ Revision History
 
 --*/
 
-typedef UINT16          CHAR16;
-typedef UINT8           CHAR8;
-typedef UINT8           BOOLEAN;
+typedef wchar_t         CHAR16;
+typedef char            CHAR8;
+typedef uint8_t         BOOLEAN;
 #ifndef CONST
    #define CONST const
 #endif

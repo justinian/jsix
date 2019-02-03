@@ -12,8 +12,8 @@ ccflags = $ccflags $
     -DHAVE_USE_MS_ABI $
     -DEFI_DEBUG=0 $
     -DEFI_DEBUG_CLEAR_MEMORY=0 $
-    -fPIC $
-    -fshort-wchar
+	-DBOOTLOADER_DEBUG $
+    -fPIC
 
 ldflags = $ldflags $
     -T ${srcroot}/src/arch/x86_64/boot.ld $

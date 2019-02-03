@@ -38,12 +38,13 @@ init_console()
 	cons->puts(GIT_VERSION " booting...\n");
 
 	log::init(cons);
-	log::enable(logs::apic, log::level::debug);
-	log::enable(logs::device, log::level::info);
+	//log::enable(logs::apic, log::level::debug);
+	//log::enable(logs::device, log::level::info);
 	log::enable(logs::driver, log::level::debug);
 	log::enable(logs::memory, log::level::info);
 	log::enable(logs::fs, log::level::debug);
 	log::enable(logs::task, log::level::debug);
+	//log::enable(logs::boot, log::level::debug);
 }
 
 void
@@ -144,12 +145,10 @@ kernel_main(popcorn_data *header)
 	syscall_enable();
 	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic());
 
-	/*
 	for (auto &f : ird.files()) {
 		if (f.executable())
 			sched->create_process(f.name(), f.data(), f.size());
 	}
-	*/
 
 	sched->start();
 }

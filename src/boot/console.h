@@ -2,11 +2,11 @@
 #include <stddef.h>
 #include <efi/efi.h>
 
-EFI_STATUS con_initialize(EFI_SYSTEM_TABLE *system_table, const CHAR16 *version);
-void con_status_begin(const CHAR16 *message);
+EFI_STATUS con_initialize(EFI_SYSTEM_TABLE *system_table, const wchar_t *version);
+void con_status_begin(const wchar_t *message);
 void con_status_ok();
-void con_status_fail(const CHAR16 *error);
-size_t con_printf(const CHAR16 *fmt, ...);
+void con_status_fail(const wchar_t *error);
+size_t con_printf(const wchar_t *fmt, ...);
 
 EFI_STATUS
 con_get_framebuffer(
