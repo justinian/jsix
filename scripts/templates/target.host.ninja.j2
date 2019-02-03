@@ -11,30 +11,32 @@ objcopy = ${srcroot}/sysroot/bin/x86_64-elf-objcopy
 {% block variables %}
 
 ccflags = $ccflags $
-    -D__ELF__ $
-    -D__POPCORN__ $
-    -nodefaultlibs $
-    -nostdinc $
     -nostdlib $
     -ffreestanding $
+    -nodefaultlibs $
+    -fno-builtin $
     -mno-sse $
     -fno-omit-frame-pointer $
     -mno-red-zone $
+    -g $
     -mcmodel=large $
+    -D__ELF__ $
+    -D__POPCORN__ $
     -isystem${srcroot}/sysroot/include $
     --sysroot="${srcroot}/sysroot"
 
 cxxflags = $cxxflags $
-    -nostdlibinc $
-    -isystem${srcroot}/sysroot/include/c++/v1 $
     -fno-exceptions $
-    -fno-rtti
+    -fno-rtti $
+    -isystem${srcroot}/sysroot/include/c++/v1
 
 ldflags = $ldflags $
     -g $
     -nostdlib $
-    -nostartfiles $
     -znocombreloc $
-    -nostartfiles
+    -Bsymbolic $
+    -nostartfiles $
+    -Bstatic
 
 {% endblock %}
+# vim: et ts=4 sts=4 sw=4

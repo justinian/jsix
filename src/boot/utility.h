@@ -32,3 +32,9 @@ const CHAR16 *util_error_message(EFI_STATUS status);
 			: "r"((uint64_t)s), "r"((uint64_t)d), "r"((uint64_t)__LINE__) \
 			: "rax", "rdx", "r8", "r9", "r10"); \
 	}
+
+#ifdef BOOTLOADER_DEBUG
+#define con_debug(...) con_printf(L"DEBUG: " __VA_ARGS__)
+#else
+#define con_debug(...)
+#endif

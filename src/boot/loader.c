@@ -87,6 +87,8 @@ loader_load_elf(
 {
 	EFI_STATUS status;
 
+	con_debug(L"Opening kernel file %s\r\n", (CHAR16 *)kernel_name);
+
 	EFI_FILE_PROTOCOL *file = NULL;
 	status = root->Open(root, &file, (CHAR16 *)kernel_name, EFI_FILE_MODE_READ,
 						EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
@@ -106,6 +108,8 @@ loader_load_elf(
 	length = sizeof(struct elf_header);
 	status = file->Read(file, &length, &header);
 	CHECK_EFI_STATUS_OR_RETURN(status, L"Reading ELF header");
+
+	con_debug(L"Read %u bytes of ELF header\r\n", length);
 
 	if (length < sizeof(struct elf_header))
 		CHECK_EFI_STATUS_OR_RETURN(EFI_LOAD_ERROR, L"Incomplete read of ELF header");
@@ -131,10 +135,14 @@ loader_load_elf(
 		header.machine != 0x3e)
 		CHECK_EFI_STATUS_OR_RETURN(EFI_LOAD_ERROR, L"ELF load error: wrong machine architecture");
 
+	con_debug(L"ELF is valid, entrypoint %lu\r\n", header.entrypoint);
+
 	data->kernel_entry = (void *)header.entrypoint;
 
 	struct elf_program_header prog_header;
 	for (int i = 0; i < header.ph_num; ++i) {
+		con_debug(L"Reading ELF program header %d\r\n", i);
+
 		status = file->SetPosition(file, header.ph_offset + i * header.ph_entsize);
 		CHECK_EFI_STATUS_OR_RETURN(status, L"Setting ELF file position");
 
@@ -156,6 +164,8 @@ loader_load_elf(
 
 	struct elf_section_header sec_header;
 	for (int i = 0; i < header.sh_num; ++i) {
+		con_debug(L"Reading ELF section header %d ", i);
+
 		status = file->SetPosition(file, header.sh_offset + i * header.sh_entsize);
 		CHECK_EFI_STATUS_OR_RETURN(status, L"Setting ELF file position");
 
@@ -163,11 +173,15 @@ loader_load_elf(
 		status = file->Read(file, &length, &sec_header);
 		CHECK_EFI_STATUS_OR_RETURN(status, L"Reading ELF section header");
 
-		if ((sec_header.flags & ELF_SHF_ALLOC) == 0) continue;
+		if ((sec_header.flags & ELF_SHF_ALLOC) == 0) {
+			con_debug(L"SHF_ALLOC section\r\n");
+			continue;
+		}
 
 		void *addr = (void *)(sec_header.addr - KERNEL_VIRT_ADDRESS);
 
 		if (sec_header.type == ELF_ST_PROGBITS) {
+			con_debug(L"PROGBITS section\r\n");
 			status = file->SetPosition(file, sec_header.offset);
 			CHECK_EFI_STATUS_OR_RETURN(status, L"Setting ELF file position");
 
@@ -175,7 +189,10 @@ loader_load_elf(
 			status = file->Read(file, &length, addr);
 			CHECK_EFI_STATUS_OR_RETURN(status, L"Reading file");
 		} else if (sec_header.type == ELF_ST_NOBITS) {
+			con_debug(L"NOBITS section\r\n");
 			bootsvc->SetMem(addr, sec_header.size, 0);
+		} else {
+			con_debug(L"other section\r\n");
 		}
 	}
 

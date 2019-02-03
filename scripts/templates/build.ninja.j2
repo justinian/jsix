@@ -31,15 +31,16 @@ ccflags = $
     -DVERSION_MAJOR={{ version.major }} $
     -DVERSION_MINOR={{ version.minor }} $
     -DVERSION_PATCH={{ version.patch }} $
-    -DVERSION_GITSHA=\"{{ version.sha }}\" $
+    -DVERSION_GITSHA=0x{% if version.dirty %}1{% else %}0{% endif %}{{ version.sha }} $
     -DGIT_VERSION=\"{{ version.major }}.{{ version.minor }}.{{ version.patch }}-{{ version.sha }}\" $
+    -DGIT_VERSION_WIDE=L\"{{ version.major }}.{{ version.minor }}.{{ version.patch }}-{{ version.sha }}\" $
     $warnflags
 
 asflags = $
     -DVERSION_MAJOR={{ version.major }} $
     -DVERSION_MINOR={{ version.minor }} $
     -DVERSION_PATCH={{ version.patch }} $
-    -DVERSION_GITSHA=\"{{ version.sha }}\"
+    -DVERSION_GITSHA=0x{% if version.dirty %}1{% else %}0{% endif %}{{ version.sha }}
 
 cflags = -std=c11
 cxxflags = -std=c++14
@@ -119,9 +120,6 @@ build $
     {{ generator }}
 
 build $builddir/flash.img : cp $srcroot/assets/ovmf/x64/OVMF.fd
-    name = flash.img
-
-build $builddir/popcorn.fat : cp $srcroot/assets/ovmf/x64/OVMF.fd
     name = flash.img
 
 build $builddir/fatroot/popcorn.elf : cp $builddir/host/popcorn.elf

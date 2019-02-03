@@ -5,7 +5,7 @@ from collections import namedtuple
 library = namedtuple('library', ['path', 'deps'])
 program = namedtuple('program', ['path', 'deps', 'output', 'targets'])
 source = namedtuple('source', ['name', 'input', 'output', 'action'])
-version = namedtuple('version', ['major', 'minor', 'patch', 'sha'])
+version = namedtuple('version', ['major', 'minor', 'patch', 'sha', 'dirty'])
 
 MODULES = {
     "elf":       library('src/libraries/elf', ['kutil']),
@@ -45,7 +45,7 @@ def get_sources(path, srcroot):
                 source(
                     relpath(name, srcroot),
                     abspath(name),
-                    f + ".o",
+                    relpath(abspath(name), path) + ".o",
                     actions[ext]))
 
     return sources
@@ -53,18 +53,24 @@ def get_sources(path, srcroot):
 
 def get_git_version():
     from subprocess import run
-    cp = run(['git', 'describe', '--always'],
+    cp = run(['git', 'describe', '--dirty', '--abbrev=7'],
             check=True, capture_output=True)
     full_version = cp.stdout.decode('utf-8').strip()
 
+    dirty = False
     parts1 = full_version.split('-')
+    if parts1[-1] == "dirty":
+        dirty = True
+        parts1 = parts1[:-1]
+
     parts2 = parts1[0].split('.')
 
     return version(
         parts2[0],
         parts2[1],
         parts2[2],
-        parts1[-1])
+        parts1[-1][1:],
+        dirty)
 
 
 def main(buildroot):

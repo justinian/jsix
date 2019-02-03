@@ -27,7 +27,7 @@ SECTIONS
 		*(.note.*)
 	}
 
-	.bss ALIGN(0x1000) : {
+	.bss ALIGN(16) : {
 		__bss_start = .;
 		*(.bss)
 		__bss_end = .;
