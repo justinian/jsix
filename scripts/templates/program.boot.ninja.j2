@@ -2,7 +2,11 @@
 {% block variables %}
 {{ super() }}
 
-cflags = $cflags $
+ld = ld
+cc = clang
+cxx = clang++
+
+ccflags = $ccflags $
     -DKERNEL_FILENAME=L\"popcorn.elf\" $
     -DGNU_EFI_USE_MS_ABI $
     -DHAVE_USE_MS_ABI $
@@ -12,8 +16,8 @@ cflags = $cflags $
     -fshort-wchar
 
 ldflags = $ldflags $
-    -shared $
-    -T ${srcroot}/src/arch/x86_64/boot.ld
+    -T ${srcroot}/src/arch/x86_64/boot.ld $
+    -shared
 
 {% endblock %}
 

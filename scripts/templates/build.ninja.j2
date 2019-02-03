@@ -65,7 +65,7 @@ rule nasm
 
 rule exe
     description = Linking $name
-    command = $ld -o $out $in $libs
+    command = $ld $ldflags -o $out $in $libs
 
 rule lib
     description = Archiving $name
@@ -127,7 +127,7 @@ build $builddir/popcorn.fat : cp $srcroot/assets/ovmf/x64/OVMF.fd
 build $builddir/fatroot/popcorn.elf : cp $builddir/host/popcorn.elf
     name = kernel to FAT image
 
-build $builddir/fatroot/efi/boot/bootx64.efi : cp $builddir/host/boot.efi
+build $builddir/fatroot/efi/boot/bootx64.efi : cp $builddir/boot/boot.efi
     name = bootloader to FAT image
 
 build $builddir/fatroot/initrd.img : makerd ${srcroot}/assets/initrd.toml | $

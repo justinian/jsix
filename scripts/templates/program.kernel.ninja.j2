@@ -3,7 +3,7 @@
 {{ super() }}
 
 asflags = $asflags -I${srcroot}/src/kernel/
-libs = $libs -lc
+libs = $libs
 ldflags = $ldflags -T ${srcroot}/src/arch/x86_64/kernel.ld
 
 {% endblock %}

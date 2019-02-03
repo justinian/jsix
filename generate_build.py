@@ -14,9 +14,9 @@ MODULES = {
 
     "makerd":    program('src/tools/makerd', ["initrd", "kutil"], "makerd", ["native"]),
 
-    "nulldrv":   program('src/drivers/nulldrv', [], "nulldrv", ["host"]),
+    "boot":      program('src/boot', [], "boot.elf", ["boot"]),
 
-    "boot":      program('src/boot', ["elf"], "boot.elf", ["host"]),
+    "nulldrv":   program('src/drivers/nulldrv', [], "nulldrv", ["host"]),
     "kernel":    program('src/kernel', ["elf", "initrd", "kutil"], "popcorn.elf", ["host"]),
 }
 
