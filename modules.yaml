@@ -40,6 +40,27 @@ kernel:
         - src/kernel/syscall.s
         - src/kernel/crtn.s
 
+boot:
+    kind: exe
+    target: boot
+    output: boot.elf
+    source:
+        - src/boot/crt0.s
+        - src/boot/console.cpp
+        - src/boot/guids.cpp
+        - src/boot/loader.cpp
+        - src/boot/main.cpp
+        - src/boot/memory.cpp
+        - src/boot/reloc.cpp
+        - src/boot/utility.cpp
+
+nulldrv:
+    kind: exe
+    target: host
+    output: nulldrv
+    source:
+        - src/drivers/nulldrv/main.s
+
 elf:
     kind: lib
     output: libelf.a
@@ -90,24 +111,3 @@ tests:
         - src/tests/linked_list.cpp
         - src/tests/main.cpp
         - src/tests/memory_manager.cpp
-
-boot:
-    kind: exe
-    target: boot
-    output: boot.elf
-    source:
-        - src/boot/crt0.s
-        - src/boot/console.cpp
-        - src/boot/guids.cpp
-        - src/boot/loader.cpp
-        - src/boot/main.cpp
-        - src/boot/memory.cpp
-        - src/boot/reloc.cpp
-        - src/boot/utility.cpp
-
-nulldrv:
-    kind: exe
-    target: host
-    output: nulldrv
-    source:
-        - src/drivers/nulldrv/main.s
