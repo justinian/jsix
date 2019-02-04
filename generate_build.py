@@ -7,48 +7,89 @@ program = namedtuple('program', ['path', 'deps', 'output', 'targets'])
 source = namedtuple('source', ['name', 'input', 'output', 'action'])
 version = namedtuple('version', ['major', 'minor', 'patch', 'sha', 'dirty'])
 
-MODULES = {
-    "elf":       library('src/libraries/elf', ['kutil']),
-    "initrd":    library('src/libraries/initrd', ["kutil"]),
-    "kutil":     library('src/libraries/kutil', []),
+MODULES = {}
 
-    "makerd":    program('src/tools/makerd', ["initrd", "kutil"], "makerd", ["native"]),
+class Source:
+    Actions = {'.c': 'cc', '.cpp': 'cxx', '.s': 'nasm'}
 
-    "boot":      program('src/boot', [], "boot.elf", ["boot"]),
+    def __init__(self, path, root, modroot):
+        from os.path import relpath, splitext
+        self.input = path
+        self.name = relpath(path, root)
+        self.output = relpath(path, modroot) + ".o"
+        self.action = self.Actions.get(splitext(path)[1], None)
 
-    "nulldrv":   program('src/drivers/nulldrv', [], "nulldrv", ["host"]),
-    "kernel":    program('src/kernel', ["elf", "initrd", "kutil"], "popcorn.elf", ["host"]),
-}
+    def __str__(self):
+        return "{} {}:{}:{}".format(self.action, self.output, self.name, self.input)
+
+
+class Module:
+    def __init__(self, name, output, root, **kwargs):
+        from os.path import commonpath, dirname, isdir, join
+
+        self.name = name
+        self.output = output
+        self.kind = kwargs.get("kind", "exe")
+        self.target = kwargs.get("target", None)
+        self.deps = kwargs.get("deps", tuple())
+        self.includes = kwargs.get("includes", tuple())
+        self.depmods = []
+
+        sources = [join(root, f) for f in kwargs.get("source", tuple())]
+        modroot = commonpath(sources)
+        while not isdir(modroot):
+            modroot = dirname(modroot)
+
+        self.sources = [Source(f, root, modroot) for f in sources]
+
+    def __str__(self):
+        return "Module {} {}\n\t".format(self.kind, self.name)
+
+    def __find_depmods(self, modules):
+        self.depmods = set()
+        open_list = set(self.deps)
+        closed_list = set()
+
+        while open_list:
+            dep = modules[open_list.pop()]
+            open_list |= (set(dep.deps) - closed_list)
+            self.depmods.add(dep)
+
+        self.libdeps = [d for d in self.depmods if d.kind == "lib"]
+        self.exedeps = [d for d in self.depmods if d.kind != "lib"]
+
+    @classmethod
+    def load(cls, filename):
+        from os.path import abspath, dirname
+        from yaml import load
+
+        root = dirname(filename)
+        modules = {}
+        moddata = load(open(filename, "r"))
+
+        for name, data in moddata.items():
+            modules[name] = cls(name, root=root, **data)
+
+        for mod in modules.values():
+            mod.__find_depmods(modules)
+
+        targets = {}
+        for mod in modules.values():
+            if mod.target is None: continue
+            if mod.target not in targets:
+                targets[mod.target] = set()
+            targets[mod.target].add(mod)
+            targets[mod.target] |= mod.depmods
+
+        return modules.values(), targets
 
 
 def get_template(env, typename, name):
     from jinja2.exceptions import TemplateNotFound
     try:
-        return env.get_template("{}.{}.ninja.j2".format(typename, name))
+        return env.get_template("{}.{}.j2".format(typename, name))
     except TemplateNotFound:
-        return env.get_template("{}.default.ninja.j2".format(typename))
-
-
-def get_sources(path, srcroot):
-    import os
-    from os.path import abspath, join, relpath, splitext
-
-    actions = {'.c': 'cc', '.cpp': 'cxx', '.s': 'nasm'}
-
-    sources = []
-    for root, dirs, files in os.walk(path):
-        for f in files:
-            base, ext = splitext(f)
-            if not ext in actions: continue
-            name = join(root, f)
-            sources.append(
-                source(
-                    relpath(name, srcroot),
-                    abspath(name),
-                    relpath(abspath(name), path) + ".o",
-                    actions[ext]))
-
-    return sources
+        return env.get_template("{}.default.j2".format(typename))
 
 
 def get_git_version():
@@ -77,15 +118,17 @@ def get_git_version():
         dirty)
 
 
-def main(buildroot):
+def main(buildroot="build", modulefile="modules.yaml"):
     import os
-    from os.path import abspath, dirname, isdir, join
+    from os.path import abspath, dirname, isabs, isdir, join
 
     generator = abspath(__file__)
     srcroot = dirname(generator)
+    if not isabs(modulefile):
+        modulefile = join(srcroot, modulefile)
 
-    if buildroot is None:
-        buildroot = join(srcroot, "build")
+    if not isabs(buildroot):
+        buildroot = join(srcroot, buildroot)
 
     if not isdir(buildroot):
         os.mkdir(buildroot)
@@ -95,35 +138,21 @@ def main(buildroot):
         git_version.major, git_version.minor, git_version.patch, git_version.sha))
 
     from jinja2 import Environment, FileSystemLoader
-    env = Environment(loader=FileSystemLoader(join(srcroot, "scripts", "templates")))
+    template_dir = join(srcroot, "scripts", "templates")
+    env = Environment(loader=FileSystemLoader(template_dir))
 
-    targets = {}
-    templates = set()
     buildfiles = []
-    for name, mod in MODULES.items():
-        if isinstance(mod, program):
-            for target in mod.targets:
-                if not target in targets:
-                    targets[target] = set()
+    templates = set()
+    modules, targets = Module.load(modulefile)
 
-                open_list = [name]
-                while open_list:
-                    depname = open_list.pop()
-                    dep = MODULES[depname]
-                    open_list.extend(dep.deps)
-                    targets[target].add(depname)
-
-        sources = get_sources(join(srcroot, mod.path), join(srcroot, "src"))
-        buildfile = join(buildroot, name + ".ninja")
+    for mod in modules:
+        buildfile = join(buildroot, mod.name + ".ninja")
         buildfiles.append(buildfile)
         with open(buildfile, 'w') as out:
-            #print("Generating module", name)
-            template = get_template(env, type(mod).__name__, name)
+            template = get_template(env, mod.kind, mod.name)
             templates.add(template.filename)
             out.write(template.render(
-                name=name,
                 module=mod,
-                sources=sources,
                 buildfile=buildfile,
                 version=git_version))
 
@@ -135,7 +164,6 @@ def main(buildroot):
         buildfile = join(root, "target.ninja")
         buildfiles.append(buildfile)
         with open(buildfile, 'w') as out:
-            #print("Generating target", target)
             template = get_template(env, "target", target)
             templates.add(template.filename)
             out.write(template.render(
@@ -151,8 +179,7 @@ def main(buildroot):
     buildfiles.append(buildfile)
 
     with open(join(buildroot, buildfile), 'w') as out:
-        #print("Generating main build.ninja")
-        template = env.get_template('build.ninja.j2')
+        template = env.get_template("build.ninja.j2")
         templates.add(template.filename)
 
         out.write(template.render(
@@ -163,11 +190,9 @@ def main(buildroot):
             buildfiles=buildfiles,
             templates=[abspath(f) for f in templates],
             generator=generator,
+            modulefile=modulefile,
             version=git_version))
 
 if __name__ == "__main__":
     import sys
-    buildroot = None
-    if len(sys.argv) > 1:
-        buildroot = sys.argv[1]
-    main(buildroot)
+    main(*sys.argv[1:])

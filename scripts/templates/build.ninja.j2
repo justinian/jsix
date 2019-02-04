@@ -1,6 +1,7 @@
 ninja_required_version = 1.3
 builddir = {{ buildroot }}
 srcroot = {{ srcroot }}
+modulefile = {{ modulefile }}
 
 warnflags = $
     -Wformat=2 $
@@ -75,7 +76,7 @@ rule lib
 rule regen
     generator = true
     description = Regenrating build files
-    command = {{ generator }} $builddir
+    command = {{ generator }} $builddir $modulefile
 
 rule cp
     description = Copying $name
@@ -117,6 +118,7 @@ build $
     {%- for template in templates %}
     {{ template }} $
     {%- endfor %}
+    $modulefile $
     {{ generator }}
 
 build $builddir/flash.img : cp $srcroot/assets/ovmf/x64/OVMF.fd

@@ -13,5 +13,5 @@ objcopy = objcopy
 {% endblock %}
 
 {% for module in modules %}
-subninja {{ module }}.ninja
+subninja {{ module.name }}.ninja
 {% endfor %}

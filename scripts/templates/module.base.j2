@@ -1,0 +1,38 @@
+moddir = ${builddir}/{{ module.name }}.dir
+
+{% block variables %}
+ccflags = $ccflags $
+    {%- for dep in module.depmods %}
+    {%- for inc in dep.includes %}
+    -I${srcroot}/{{ inc }} $
+    {%- endfor %}
+    {%- endfor %}
+    {%- for inc in module.includes %}
+    -I${srcroot}/{{ inc }} $
+    {%- endfor %}
+{% endblock %}
+
+{% for source in module.sources %}
+build ${moddir}/{{ source.output }} : {{ source.action }} {{ source.input }} || {{ buildfile }}
+    name = {{ source.name }}
+{% endfor %}
+
+build ${builddir}/{{ module.output }} : {{ module.kind }} $
+{%- for source in module.sources %}
+    ${moddir}/{{ source.output }} $
+{%- endfor -%}
+{%- for dep in module.libdeps %}
+    ${builddir}/{{ dep.output }} $
+{%- endfor %}
+    | $
+{% for dep in module.exedeps %}
+    ${builddir}/{{ dep.output }} $
+{%- endfor -%}
+    {{ buildfile }}
+    name = {{ module.name }}
+
+{% block extra %}
+{% endblock %}
+
+# vim: ft=ninja et ts=4 sts=4 sw=4
+

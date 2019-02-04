@@ -1,0 +1,12 @@
+{% extends "module.base.j2" %}
+{% block variables %}
+{{ super() }}
+
+libs = $
+    -L${builddir} $
+    {%- for dep in module.libdeps %}
+    -l{{ dep.name }} $
+    {%- endfor %}
+    $libs
+
+{% endblock %}
