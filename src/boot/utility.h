@@ -10,13 +10,13 @@ const wchar_t *util_error_message(EFI_STATUS status);
 
 #define CHECK_EFI_STATUS_OR_RETURN(s, msg, ...) \
 	if (EFI_ERROR((s))) { \
-		con_printf(L"ERROR: " msg L": %s\r\n", ##__VA_ARGS__, util_error_message(s)); \
+		console::print(L"ERROR: " msg L": %s\r\n", ##__VA_ARGS__, util_error_message(s)); \
 		return (s); \
 	}
 
 #define CHECK_EFI_STATUS_OR_FAIL(s) \
 	if (EFI_ERROR((s))) { \
-		con_status_fail(util_error_message(s)); \
+		console::get().status_fail(util_error_message(s)); \
 		while (1) __asm__("hlt"); \
 	}
 
@@ -34,7 +34,7 @@ const wchar_t *util_error_message(EFI_STATUS status);
 	}
 
 #ifdef BOOTLOADER_DEBUG
-#define con_debug(...) con_printf(L"DEBUG: " __VA_ARGS__)
+#define con_debug(...) console::print(L"DEBUG: " __VA_ARGS__)
 #else
 #define con_debug(...)
 #endif

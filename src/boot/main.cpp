@@ -39,10 +39,12 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	EFI_BOOT_SERVICES *bootsvc = system_table->BootServices;
 	EFI_RUNTIME_SERVICES *runsvc = system_table->RuntimeServices;
 
+	console con(system_table);
+
 	// When checking console initialization, use CHECK_EFI_STATUS_OR_RETURN
 	// because we can't be sure if the console was fully set up
-	status = con_initialize(system_table, GIT_VERSION_WIDE);
-	CHECK_EFI_STATUS_OR_RETURN(status, "con_initialize");
+	status = con.initialize(GIT_VERSION_WIDE);
+	CHECK_EFI_STATUS_OR_RETURN(status, "console::initialize");
 	// From here on out, we can use CHECK_EFI_STATUS_OR_FAIL instead
 
 	memory_init_pointer_fixup(bootsvc, runsvc);
@@ -77,27 +79,27 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 
 	// Load the kernel image from disk and check it
 	//
-	con_printf(L"Loading kernel into memory...\r\n");
+	console::print(L"Loading kernel into memory...\r\n");
 
 	struct loader_data load;
 	load.data_length = data_length;
 	status = loader_load_kernel(bootsvc, &load);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-	con_printf(L"    %u image bytes at 0x%x\r\n", load.kernel_length, load.kernel);
-	con_printf(L"    %u initrd bytes at 0x%x\r\n", load.initrd_length, load.initrd);
-	con_printf(L"    %u data bytes at 0x%x\r\n", load.data_length, load.data);
+	console::print(L"    %u image bytes at 0x%x\r\n", load.kernel_length, load.kernel);
+	console::print(L"    %u initrd bytes at 0x%x\r\n", load.initrd_length, load.initrd);
+	console::print(L"    %u data bytes at 0x%x\r\n", load.data_length, load.data);
 
 	struct kernel_header *version = (struct kernel_header *)load.kernel;
 	if (version->magic != KERNEL_HEADER_MAGIC) {
-		con_printf(L"    bad magic %x\r\n", version->magic);
+		console::print(L"    bad magic %x\r\n", version->magic);
 		CHECK_EFI_STATUS_OR_FAIL(EFI_CRC_ERROR);
 	}
 
-	con_printf(L"    Kernel version %d.%d.%d %x%s\r\n",
+	console::print(L"    Kernel version %d.%d.%d %x%s\r\n",
 			version->major, version->minor, version->patch, version->gitsha & 0x0fffffff,
 			version->gitsha & 0xf0000000 ? "*" : "");
-	con_printf(L"    Entrypoint 0x%x\r\n", load.kernel_entry);
+	console::print(L"    Entrypoint 0x%x\r\n", load.kernel_entry);
 
 	kernel_entry kernel_main =
 		reinterpret_cast<kernel_entry>(load.kernel_entry);

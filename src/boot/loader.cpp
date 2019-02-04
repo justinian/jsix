@@ -141,7 +141,6 @@ loader_load_elf(
 
 	struct elf_program_header prog_header;
 	for (int i = 0; i < header.ph_num; ++i) {
-		con_debug(L"Reading ELF program header %d\r\n", i);
 
 		status = file->SetPosition(file, header.ph_offset + i * header.ph_entsize);
 		CHECK_EFI_STATUS_OR_RETURN(status, L"Setting ELF file position");
@@ -161,11 +160,10 @@ loader_load_elf(
 			data->kernel = addr;
 		data->kernel_length = (uint64_t)addr + length - (uint64_t)data->kernel;
 	}
+	con_debug(L"Read %d ELF program headers\r\n", header.ph_num);
 
 	struct elf_section_header sec_header;
 	for (int i = 0; i < header.sh_num; ++i) {
-		con_debug(L"Reading ELF section header %d ", i);
-
 		status = file->SetPosition(file, header.sh_offset + i * header.sh_entsize);
 		CHECK_EFI_STATUS_OR_RETURN(status, L"Setting ELF file position");
 
@@ -174,14 +172,12 @@ loader_load_elf(
 		CHECK_EFI_STATUS_OR_RETURN(status, L"Reading ELF section header");
 
 		if ((sec_header.flags & ELF_SHF_ALLOC) == 0) {
-			con_debug(L"SHF_ALLOC section\r\n");
 			continue;
 		}
 
 		void *addr = (void *)(sec_header.addr - KERNEL_VIRT_ADDRESS);
 
 		if (sec_header.type == ELF_ST_PROGBITS) {
-			con_debug(L"PROGBITS section\r\n");
 			status = file->SetPosition(file, sec_header.offset);
 			CHECK_EFI_STATUS_OR_RETURN(status, L"Setting ELF file position");
 
@@ -189,12 +185,10 @@ loader_load_elf(
 			status = file->Read(file, &length, addr);
 			CHECK_EFI_STATUS_OR_RETURN(status, L"Reading file");
 		} else if (sec_header.type == ELF_ST_NOBITS) {
-			con_debug(L"NOBITS section\r\n");
 			bootsvc->SetMem(addr, sec_header.size, 0);
-		} else {
-			con_debug(L"other section\r\n");
 		}
 	}
+	con_debug(L"Read %d ELF section headers\r\n", header.ph_num);
 
 	status = file->Close(file);
 	CHECK_EFI_STATUS_OR_RETURN(status, L"Closing file handle");

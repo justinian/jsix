@@ -1,4 +1,3 @@
-#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -9,16 +8,55 @@
 size_t ROWS = 0;
 size_t COLS = 0;
 
-static EFI_SIMPLE_TEXT_OUT_PROTOCOL *con_out = 0;
+static EFI_SIMPLE_TEXT_OUT_PROTOCOL *m_out = 0;
 
-const wchar_t digits[] = {u'0', u'1', u'2', u'3', u'4', u'5', u'6', u'7', u'8', u'9', u'a', u'b', u'c', u'd', u'e', u'f'};
+static const wchar_t digits[] = {u'0', u'1', u'2', u'3', u'4', u'5',
+	u'6', u'7', u'8', u'9', u'a', u'b', u'c', u'd', u'e', u'f'};
+
+console::console(EFI_SYSTEM_TABLE *system_table) :
+	m_rows(0),
+	m_cols(0),
+	m_out(nullptr)
+{
+	s_console = this;
+	m_boot = system_table->BootServices;
+	m_out = system_table->ConOut;
+}
 
 EFI_STATUS
-con_pick_mode(EFI_BOOT_SERVICES *bootsvc)
+console::initialize(const wchar_t *version)
+{
+	EFI_STATUS status;
+
+	// Might not find a video device at all, so ignore not found errors
+	status = pick_mode();
+	if (status != EFI_NOT_FOUND)
+		CHECK_EFI_STATUS_OR_FAIL(status);
+
+	status = m_out->QueryMode(m_out, m_out->Mode->Mode, &m_cols, &m_rows);
+	CHECK_EFI_STATUS_OR_RETURN(status, "QueryMode");
+
+	status = m_out->ClearScreen(m_out);
+	CHECK_EFI_STATUS_OR_RETURN(status, "ClearScreen");
+
+	m_out->SetAttribute(m_out, EFI_LIGHTCYAN);
+	m_out->OutputString(m_out, (wchar_t *)L"Popcorn loader ");
+
+	m_out->SetAttribute(m_out, EFI_LIGHTMAGENTA);
+	m_out->OutputString(m_out, (wchar_t *)version);
+
+	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
+	m_out->OutputString(m_out, (wchar_t *)L" booting...\r\n\n");
+
+	return status;
+}
+
+EFI_STATUS
+console::pick_mode()
 {
 	EFI_STATUS status;
 	EFI_GRAPHICS_OUTPUT_PROTOCOL *gfx_out_proto;
-	status = bootsvc->LocateProtocol(&guid_gfx_out, NULL, (void **)&gfx_out_proto);
+	status = m_boot->LocateProtocol(&guid_gfx_out, NULL, (void **)&gfx_out_proto);
 	CHECK_EFI_STATUS_OR_RETURN(status, "LocateProtocol gfx");
 
 	const uint32_t modes = gfx_out_proto->Mode->MaxMode;
@@ -53,39 +91,8 @@ con_pick_mode(EFI_BOOT_SERVICES *bootsvc)
 	return EFI_SUCCESS;
 }
 
-EFI_STATUS
-con_initialize(EFI_SYSTEM_TABLE *system_table, const wchar_t *version)
-{
-	EFI_STATUS status;
-
-	EFI_BOOT_SERVICES *bootsvc = system_table->BootServices;
-	con_out = system_table->ConOut;
-
-	// Might not find a video device at all, so ignore not found errors
-	status = con_pick_mode(bootsvc);
-	if (status != EFI_NOT_FOUND)
-		CHECK_EFI_STATUS_OR_RETURN(status, "con_pick_mode");
-
-	status = con_out->QueryMode(con_out, con_out->Mode->Mode, &COLS, &ROWS);
-	CHECK_EFI_STATUS_OR_RETURN(status, "QueryMode");
-
-	status = con_out->ClearScreen(con_out);
-	CHECK_EFI_STATUS_OR_RETURN(status, "ClearScreen");
-
-	con_out->SetAttribute(con_out, EFI_LIGHTCYAN);
-	con_out->OutputString(con_out, (wchar_t *)L"Popcorn loader ");
-
-	con_out->SetAttribute(con_out, EFI_LIGHTMAGENTA);
-	con_out->OutputString(con_out, (wchar_t *)version);
-
-	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (wchar_t *)L" booting...\r\n\n");
-
-	return status;
-}
-
 size_t
-con_print_hex(uint32_t n)
+console::print_hex(uint32_t n) const
 {
 	wchar_t buffer[9];
 	wchar_t *p = buffer;
@@ -94,12 +101,12 @@ con_print_hex(uint32_t n)
 		*p++ = digits[nibble];
 	}
 	*p = 0;
-	con_out->OutputString(con_out, buffer);
+	m_out->OutputString(m_out, buffer);
 	return 8;
 }
 
 size_t
-con_print_long_hex(uint64_t n)
+console::print_long_hex(uint64_t n) const
 {
 	wchar_t buffer[17];
 	wchar_t *p = buffer;
@@ -108,12 +115,12 @@ con_print_long_hex(uint64_t n)
 		*p++ = digits[nibble];
 	}
 	*p = 0;
-	con_out->OutputString(con_out, buffer);
+	m_out->OutputString(m_out, buffer);
 	return 16;
 }
 
 size_t
-con_print_dec(uint32_t n)
+console::print_dec(uint32_t n) const
 {
 	wchar_t buffer[11];
 	wchar_t *p = buffer + 10;
@@ -123,12 +130,12 @@ con_print_dec(uint32_t n)
 		n /= 10;
 	} while (n != 0);
 
-	con_out->OutputString(con_out, ++p);
+	m_out->OutputString(m_out, ++p);
 	return 10 - (p - buffer);
 }
 
 size_t
-con_print_long_dec(uint64_t n)
+console::print_long_dec(uint64_t n) const
 {
 	wchar_t buffer[21];
 	wchar_t *p = buffer + 20;
@@ -138,20 +145,17 @@ con_print_long_dec(uint64_t n)
 		n /= 10;
 	} while (n != 0);
 
-	con_out->OutputString(con_out, ++p);
+	m_out->OutputString(m_out, ++p);
 	return 20 - (p - buffer);
 }
 
 size_t
-con_printf(const wchar_t *fmt, ...)
+console::vprintf(const wchar_t *fmt, va_list args) const
 {
 	wchar_t buffer[256];
 	const wchar_t *r = fmt;
 	wchar_t *w = buffer;
-	va_list args;
 	size_t count = 0;
-
-	va_start(args, fmt);
 
 	while (r && *r) {
 		if (*r != L'%') {
@@ -161,43 +165,43 @@ con_printf(const wchar_t *fmt, ...)
 		}
 
 		*w = 0;
-		con_out->OutputString(con_out, buffer);
+		m_out->OutputString(m_out, buffer);
 		w = buffer;
 
 		r++; // chomp the %
 
 		switch (*r++) {
 			case L'%':
-				con_out->OutputString(con_out, const_cast<wchar_t*>(L"%"));
+				m_out->OutputString(m_out, const_cast<wchar_t*>(L"%"));
 				count++;
 				break;
 
 			case L'x':
-				count += con_print_hex(va_arg(args, uint32_t));
+				count += print_hex(va_arg(args, uint32_t));
 				break;
 
 			case L'd':
 			case L'u':
-				count += con_print_dec(va_arg(args, uint32_t));
+				count += print_dec(va_arg(args, uint32_t));
 				break;
 
 			case L's':
 				{
 					wchar_t *s = va_arg(args, wchar_t*);
 					count += wstrlen(s);
-					con_out->OutputString(con_out, s);
+					m_out->OutputString(m_out, s);
 				}
 				break;
 
 			case L'l':
 				switch (*r++) {
 					case L'x':
-						count += con_print_long_hex(va_arg(args, uint64_t));
+						count += print_long_hex(va_arg(args, uint64_t));
 						break;
 
 					case L'd':
 					case L'u':
-						count += con_print_long_dec(va_arg(args, uint64_t));
+						count += print_long_dec(va_arg(args, uint64_t));
 						break;
 
 					default:
@@ -211,44 +215,66 @@ con_printf(const wchar_t *fmt, ...)
 	}
 
 	*w = 0;
-	con_out->OutputString(con_out, buffer);
-
-	va_end(args);
+	m_out->OutputString(m_out, buffer);
 	return count;
 }
 
-void
-con_status_begin(const wchar_t *message)
+size_t
+console::printf(const wchar_t *fmt, ...) const
 {
-	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (wchar_t *)message);
+	va_list args;
+	va_start(args, fmt);
+
+	size_t result = vprintf(fmt, args);
+
+	va_end(args);
+	return result;
+}
+
+size_t
+console::print(const wchar_t *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+
+	size_t result = get().vprintf(fmt, args);
+
+	va_end(args);
+	return result;
 }
 
 void
-con_status_ok()
+console::status_begin(const wchar_t *message) const
 {
-	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (wchar_t *)L"[");
-	con_out->SetAttribute(con_out, EFI_GREEN);
-	con_out->OutputString(con_out, (wchar_t *)L"  ok  ");
-	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (wchar_t *)L"]\r\n");
+	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
+	m_out->OutputString(m_out, (wchar_t *)message);
 }
 
 void
-con_status_fail(const wchar_t *error)
+console::status_ok() const
 {
-	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (wchar_t *)L"[");
-	con_out->SetAttribute(con_out, EFI_LIGHTRED);
-	con_out->OutputString(con_out, (wchar_t *)L"failed");
-	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (wchar_t *)L"]\r\n");
+	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
+	m_out->OutputString(m_out, (wchar_t *)L"[");
+	m_out->SetAttribute(m_out, EFI_GREEN);
+	m_out->OutputString(m_out, (wchar_t *)L"  ok  ");
+	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
+	m_out->OutputString(m_out, (wchar_t *)L"]\r\n");
+}
 
-	con_out->SetAttribute(con_out, EFI_RED);
-	con_out->OutputString(con_out, (wchar_t *)error);
-	con_out->SetAttribute(con_out, EFI_LIGHTGRAY);
-	con_out->OutputString(con_out, (wchar_t *)L"\r\n");
+void
+console::status_fail(const wchar_t *error) const
+{
+	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
+	m_out->OutputString(m_out, (wchar_t *)L"[");
+	m_out->SetAttribute(m_out, EFI_LIGHTRED);
+	m_out->OutputString(m_out, (wchar_t *)L"failed");
+	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
+	m_out->OutputString(m_out, (wchar_t *)L"]\r\n");
+
+	m_out->SetAttribute(m_out, EFI_RED);
+	m_out->OutputString(m_out, (wchar_t *)error);
+	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
+	m_out->OutputString(m_out, (wchar_t *)L"\r\n");
 }
 
 EFI_STATUS

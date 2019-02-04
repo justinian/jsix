@@ -139,19 +139,19 @@ memory_dump_map(struct memory_map *map)
 
 	const size_t count = map->length / map->size;
 
-	con_printf(L"Memory map:\n");
-	con_printf(L"\t	Descriptor Count: %d (%d bytes)\n", count, map->length);
-	con_printf(L"\t  Descriptor Size: %d bytes\n", map->size);
-	con_printf(L"\t      Type offset: %d\n\n", offsetof(EFI_MEMORY_DESCRIPTOR, Type));
+	console::print(L"Memory map:\n");
+	console::print(L"\t	Descriptor Count: %d (%d bytes)\n", count, map->length);
+	console::print(L"\t  Descriptor Size: %d bytes\n", map->size);
+	console::print(L"\t      Type offset: %d\n\n", offsetof(EFI_MEMORY_DESCRIPTOR, Type));
 
 	EFI_MEMORY_DESCRIPTOR *end = INCREMENT_DESC(map->entries, map->length);
 	EFI_MEMORY_DESCRIPTOR *d = map->entries;
 	while (d < end) {
 		int runtime = (d->Attribute & EFI_MEMORY_RUNTIME) == EFI_MEMORY_RUNTIME;
-		con_printf(L"%s%s ", memory_type_name(d->Type), runtime ? L"*" : L" ");
-		con_printf(L"%lx ", d->PhysicalStart);
-		con_printf(L"%lx ", d->VirtualStart);
-		con_printf(L"[%4d]\n", d->NumberOfPages);
+		console::print(L"%s%s ", memory_type_name(d->Type), runtime ? L"*" : L" ");
+		console::print(L"%lx ", d->PhysicalStart);
+		console::print(L"%lx ", d->VirtualStart);
+		console::print(L"[%4d]\n", d->NumberOfPages);
 
 		d = INCREMENT_DESC(d, map->size);
 	}
