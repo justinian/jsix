@@ -40,20 +40,23 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 	console *cons = console::get();
 	syscall call = static_cast<syscall>(regs.rax);
 
+	auto &s = scheduler::get();
+	auto *p = s.current();
+
 	switch (call) {
 	case syscall::noop:
 		break;
 
 	case syscall::debug:
 		cons->set_color(11);
-		cons->printf("\nReceived DEBUG syscall\n");
+		cons->printf("\nProcess %u: Received DEBUG syscall\n", p->pid);
 		cons->set_color();
 		print_regs(regs);
 		break;
 
 	case syscall::message:
 		cons->set_color(11);
-		cons->printf("\nReceived MESSAGE syscall\n");
+		cons->printf("\nProcess %u: Received MESSAGE syscall\n", p->pid);
 		cons->set_color();
 		break;
 
@@ -64,7 +67,7 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 			auto &s = scheduler::get();
 			auto *p = s.current();
 			p->wait_on_signal(-1ull);
-			cons->printf("\nReceived PAUSE syscall\n");
+			cons->printf("\nProcess %u: Received PAUSE syscall\n", p->pid);
 			return_rsp = s.schedule(return_rsp);
 			cons->set_color();
 		}
@@ -73,15 +76,22 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 	case syscall::sleep:
 		{
 			cons->set_color(11);
-
-			auto &s = scheduler::get();
-			auto *p = s.current();
-			p->wait_on_time(regs.rbx);
-			cons->printf("\nReceived SLEEP syscall\n");
-			return_rsp = s.schedule(return_rsp);
+			cons->printf("\nProcess %u: Received SLEEP syscall\n", p->pid);
+			cons->printf("Sleeping until %lu\n", regs.rbx);
 			cons->set_color();
+
+			p->wait_on_time(regs.rbx);
+			return_rsp = s.schedule(return_rsp);
 		}
 		break;
+
+	case syscall::getpid:
+		cons->set_color(11);
+		cons->printf("\nProcess %u: Received GETPID syscall\n", p->pid);
+		cons->set_color();
+		regs.rax = p->pid;
+		break;
+
 
 	default:
 		cons->set_color(9);

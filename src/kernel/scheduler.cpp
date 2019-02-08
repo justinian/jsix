@@ -216,13 +216,11 @@ void scheduler::prune(uint64_t now)
 	while (proc) {
 		bool ready = proc->flags && process_flags::ready;
 		ready |= proc->wake_on_time(now);
-		if (!ready) {
-			proc = proc->next();
-			continue;
-		}
 
 		auto *remove = proc;
 		proc = proc->next();
+		if (!ready) continue;
+
 		m_blocked.remove(remove);
 		m_runlists[remove->priority].push_front(remove);
 	}
@@ -234,15 +232,17 @@ scheduler::schedule(uintptr_t rsp0)
 
 	// TODO: lol a real clock
 	static uint64_t now = 0;
-	prune(++now);
 
 	m_current->rsp = rsp0;
 	m_runlists[m_current->priority].remove(m_current);
 
-	if (m_current->flags && process_flags::ready)
+	if (m_current->flags && process_flags::ready) {
 		m_runlists[m_current->priority].push_back(m_current);
-	else
+	} else {
 		m_blocked.push_back(m_current);
+	}
+
+	prune(++now);
 
 	uint8_t pri = 0;
 	while (m_runlists[pri].empty()) {
