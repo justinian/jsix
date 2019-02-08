@@ -53,11 +53,33 @@ rule cc
     description = Compiling $name
     command = $cc -MMD -MF $out.d $ccflags $cflags -o $out -c $in
 
+rule dump_cc_defs
+    description = Dumping CC defines for $target
+    command = echo "" | $cc $ccflags $cflags -dM -E - > $out
+
+rule dump_cc_run
+    description = Dumping CC arguments for $target
+    command = $
+        echo "#!/bin/bash" > $out; $
+        echo '$cc $ccflags $cflags $$*' > $out; $
+        chmod a+x $out
+
 rule cxx
     deps = gcc
     depfile = $out.d
     description = Compiling $name
     command = $cxx -MMD -MF $out.d $cxxflags $ccflags -o $out -c $in
+
+rule dump_cxx_defs
+    description = Dumping C++ defines for $target
+    command = echo "" | $cxx -x c++ $cxxflags $ccflags -dM -E - > $out
+
+rule dump_cxx_run
+    description = Dumping C++ arguments for $target
+    command = $
+        echo "#!/bin/bash" > $out; $
+        echo '$cc $cxxflags $ccflags $$*' > $out; $
+        chmod a+x $out
 
 rule nasm
     deps = gcc

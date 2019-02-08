@@ -1,4 +1,5 @@
 builddir = $builddir/{{ target }}
+target = {{ target }}
 
 {% block variables %}
 {% endblock %}
@@ -15,3 +16,9 @@ objcopy = objcopy
 {% for module in modules %}
 subninja {{ module.name }}.ninja
 {% endfor %}
+
+build ${builddir}/cc.defs : dump_cc_defs | {{ buildfile }}
+build ${builddir}/cxx.defs : dump_cxx_defs | {{ buildfile }}
+build ${builddir}/cc.run : dump_cc_run | {{ buildfile }}
+build ${builddir}/cxx.run : dump_cxx_run | {{ buildfile }}
+
