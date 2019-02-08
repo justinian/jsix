@@ -35,7 +35,7 @@ syscall_enable()
 }
 
 uintptr_t
-syscall_dispatch(uintptr_t return_rsp, const cpu_state &regs)
+syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 {
 	console *cons = console::get();
 	syscall call = static_cast<syscall>(regs.rax);
@@ -65,7 +65,7 @@ syscall_dispatch(uintptr_t return_rsp, const cpu_state &regs)
 			auto *p = s.current();
 			p->wait_on_signal(-1ull);
 			cons->printf("\nReceived PAUSE syscall\n");
-			return_rsp = s.tick(return_rsp);
+			return_rsp = s.schedule(return_rsp);
 			cons->set_color();
 		}
 		break;
@@ -78,7 +78,7 @@ syscall_dispatch(uintptr_t return_rsp, const cpu_state &regs)
 			auto *p = s.current();
 			p->wait_on_time(regs.rbx);
 			cons->printf("\nReceived SLEEP syscall\n");
-			return_rsp = s.tick(return_rsp);
+			return_rsp = s.schedule(return_rsp);
 			cons->set_color();
 		}
 		break;

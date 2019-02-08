@@ -10,7 +10,7 @@ class lapic;
 struct page_table;
 struct cpu_state;
 
-extern "C" uintptr_t isr_handler(uintptr_t, cpu_state);
+extern "C" uintptr_t isr_handler(uintptr_t, cpu_state*);
 
 
 /// The task scheduler
@@ -59,8 +59,8 @@ public:
 	static scheduler & get() { return s_instance; }
 
 private:
-	friend uintptr_t syscall_dispatch(uintptr_t, const cpu_state &);
-	friend uintptr_t isr_handler(uintptr_t, cpu_state);
+	friend uintptr_t syscall_dispatch(uintptr_t, cpu_state &);
+	friend uintptr_t isr_handler(uintptr_t, cpu_state*);
 
 	/// Handle a timer tick
 	/// \arg rsp0  The stack pointer of the current interrupt handler

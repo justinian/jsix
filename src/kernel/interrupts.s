@@ -6,6 +6,7 @@ isr_handler_prelude:
 	push_all_and_segments
 
 	mov rdi, rsp
+	mov rsi, rsp
 	call isr_handler
 	mov rsp, rax
 
@@ -21,6 +22,7 @@ irq_handler_prelude:
 	push_all_and_segments
 
 	mov rdi, rsp
+	mov rsi, rsp
 	call irq_handler
 	mov rsp, rax
 
@@ -56,8 +58,8 @@ irq_handler_prelude:
 		jmp irq_handler_prelude
 %endmacro
 
-%define EISR(i, name)     EMIT_EISR name, i
-%define UISR(i, name)     EMIT_ISR name, i
+%define EISR(i, name)     EMIT_EISR name, i   ; ISR with error code
+%define UISR(i, name)     EMIT_ISR name, i    ; ISR callable from user space
 %define  ISR(i, name)     EMIT_ISR name, i
 %define  IRQ(i, q, name)  EMIT_IRQ name, i
 

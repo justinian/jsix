@@ -18,8 +18,8 @@ static const uint16_t PIC2 = 0xa0;
 extern "C" {
 	void _halt();
 
-	uintptr_t isr_handler(uintptr_t, cpu_state);
-	uintptr_t irq_handler(uintptr_t, cpu_state);
+	uintptr_t isr_handler(uintptr_t, cpu_state*);
+	uintptr_t irq_handler(uintptr_t, cpu_state*);
 	uintptr_t syscall_handler(uintptr_t, cpu_state);
 
 #define ISR(i, name)     extern void name ();
@@ -105,23 +105,23 @@ interrupts_init()
 }
 
 uintptr_t
-isr_handler(uintptr_t return_rsp, cpu_state regs)
+isr_handler(uintptr_t return_rsp, cpu_state *regs)
 {
 	console *cons = console::get();
 
-	switch (static_cast<isr>(regs.interrupt & 0xff)) {
+	switch (static_cast<isr>(regs->interrupt & 0xff)) {
 
 	case isr::isrGPFault: {
 			cons->set_color(9);
 			cons->puts("\nGeneral Protection Fault:\n");
 			cons->set_color();
 
-			cons->printf("   errorcode: %lx", regs.errorcode);
-			if (regs.errorcode & 0x01) cons->puts(" external");
+			cons->printf("   errorcode: %lx", regs->errorcode);
+			if (regs->errorcode & 0x01) cons->puts(" external");
 
-			int index = (regs.errorcode & 0xffff) >> 4;
+			int index = (regs->errorcode & 0xffff) >> 4;
 			if (index) {
-				switch ((regs.errorcode & 0x07) >> 1) {
+				switch ((regs->errorcode & 0x07) >> 1) {
 				case 0:
 					cons->printf(" GDT[%x]\n", index);
 					gdt_dump();
@@ -140,10 +140,10 @@ isr_handler(uintptr_t return_rsp, cpu_state regs)
 			} else {
 				cons->putc('\n');
 			}
-			print_regs(regs);
+			print_regs(*regs);
 			/*
 			print_stacktrace(2);
-			print_stack(regs);
+			print_stack(*regs);
 			*/
 
 		}
@@ -156,19 +156,19 @@ isr_handler(uintptr_t return_rsp, cpu_state regs)
 			cons->set_color();
 
 			cons->puts("       flags:");
-			if (regs.errorcode & 0x01) cons->puts(" present");
-			if (regs.errorcode & 0x02) cons->puts(" write");
-			if (regs.errorcode & 0x04) cons->puts(" user");
-			if (regs.errorcode & 0x08) cons->puts(" reserved");
-			if (regs.errorcode & 0x10) cons->puts(" ip");
+			if (regs->errorcode & 0x01) cons->puts(" present");
+			if (regs->errorcode & 0x02) cons->puts(" write");
+			if (regs->errorcode & 0x04) cons->puts(" user");
+			if (regs->errorcode & 0x08) cons->puts(" reserved");
+			if (regs->errorcode & 0x10) cons->puts(" ip");
 			cons->puts("\n");
 
 			uint64_t cr2 = 0;
 			__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
 			print_reg("cr2", cr2);
 
-			print_reg("rsp", regs.user_rsp);
-			print_reg("rip", regs.rip);
+			print_reg("rsp", regs->user_rsp);
+			print_reg("rip", regs->rip);
 
 			cons->puts("\n");
 			print_stacktrace(2);
@@ -192,14 +192,14 @@ isr_handler(uintptr_t return_rsp, cpu_state regs)
 
 	case isr::isrAssert: {
 			cons->set_color();
-			print_regs(regs);
+			print_regs(*regs);
 			print_stacktrace(2);
 		}
 		_halt();
 		break;
 
 	case isr::isrSyscall: {
-			return_rsp = syscall_dispatch(return_rsp, regs);
+			return_rsp = syscall_dispatch(return_rsp, *regs);
 		}
 		break;
 
@@ -215,7 +215,7 @@ isr_handler(uintptr_t return_rsp, cpu_state regs)
 	case isr::isrIgnore5:
 	case isr::isrIgnore6:
 	case isr::isrIgnore7:
-		//cons->printf("\nIGNORED: %02x\n", regs.interrupt);
+		//cons->printf("\nIGNORED: %02x\n", regs->interrupt);
 		outb(PIC1, 0x20);
 		break;
 
@@ -227,7 +227,7 @@ isr_handler(uintptr_t return_rsp, cpu_state regs)
 	case isr::isrIgnoreD:
 	case isr::isrIgnoreE:
 	case isr::isrIgnoreF:
-		//cons->printf("\nIGNORED: %02x\n", regs.interrupt);
+		//cons->printf("\nIGNORED: %02x\n", regs->interrupt);
 		outb(PIC1, 0x20);
 		outb(PIC2, 0x20);
 		break;
@@ -235,13 +235,13 @@ isr_handler(uintptr_t return_rsp, cpu_state regs)
 	default:
 		cons->set_color(9);
 		cons->printf("\nReceived %02x interrupt:\n",
-				(static_cast<isr>(regs.interrupt)));
+				(static_cast<isr>(regs->interrupt)));
 
 		cons->set_color();
 		cons->printf("         ISR: %02lx  ERR: %lx\n\n",
-				regs.interrupt, regs.errorcode);
+				regs->interrupt, regs->errorcode);
 
-		print_regs(regs);
+		print_regs(*regs);
 		//print_stacktrace(2);
 		_halt();
 	}
@@ -251,16 +251,16 @@ isr_handler(uintptr_t return_rsp, cpu_state regs)
 }
 
 uintptr_t
-irq_handler(uintptr_t return_rsp, cpu_state regs)
+irq_handler(uintptr_t return_rsp, cpu_state *regs)
 {
 	console *cons = console::get();
-	uint8_t irq = get_irq(regs.interrupt);
+	uint8_t irq = get_irq(regs->interrupt);
 	if (! device_manager::get().dispatch_irq(irq)) {
 		cons->set_color(11);
 		cons->printf("\nReceived unknown IRQ: %d (vec %d)\n",
-				irq, regs.interrupt);
+				irq, regs->interrupt);
 		cons->set_color();
-		print_regs(regs);
+		print_regs(*regs);
 		_halt();
 	}
 
