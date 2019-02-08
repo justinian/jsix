@@ -92,6 +92,31 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 		regs.rax = p->pid;
 		break;
 
+	case syscall::send:
+		{
+			uint32_t target = regs.rdi;
+
+			cons->set_color(11);
+			cons->printf("\nProcess %u: Received SEND syscall, target %u\n", p->pid, target);
+			cons->set_color();
+
+			if (p->wait_on_send(target))
+				return_rsp = s.schedule(return_rsp);
+		}
+		break;
+
+	case syscall::receive:
+		{
+			uint32_t source = regs.rdi;
+
+			cons->set_color(11);
+			cons->printf("\nProcess %u: Received RECEIVE syscall, source %u\n", p->pid, source);
+			cons->set_color();
+
+			if (p->wait_on_receive(source))
+				return_rsp = s.schedule(return_rsp);
+		}
+		break;
 
 	default:
 		cons->set_color(9);

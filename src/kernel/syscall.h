@@ -12,6 +12,8 @@ enum class syscall : uint64_t
 	pause,
 	sleep,
 	getpid,
+	send,
+	receive,
 
 	last_syscall
 };
