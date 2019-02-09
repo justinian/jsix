@@ -25,7 +25,7 @@ gdt_write:
 	push rax
 	o64 retf
 .next:
-	ltr dx
+	ltr dx ; third arg is the TSS
 	ret
 
 global gdt_load
