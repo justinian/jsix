@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+debug=""
+if [[ $1 = "--debug" ]]; then
+	debug="-s"
+	shift
+fi
+
 build=${1:-"$(dirname $0)/build"}
 
 kvm=""
@@ -19,4 +25,4 @@ exec qemu-system-x86_64 \
 	-M q35 \
 	-no-reboot \
 	-nographic \
-	$kvm
+	$kvm $debug

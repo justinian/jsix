@@ -10,6 +10,9 @@ ccflags = $ccflags $
     {%- for inc in module.includes %}
     -I${srcroot}/{{ inc }} $
     {%- endfor %}
+    {%- for define in module.defines %}
+    -D{{ define }} $
+    {%- endfor %}
 {% endblock %}
 
 {% for source in module.sources %}

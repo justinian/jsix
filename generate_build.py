@@ -33,6 +33,7 @@ class Module:
         self.target = kwargs.get("target", None)
         self.deps = kwargs.get("deps", tuple())
         self.includes = kwargs.get("includes", tuple())
+        self.defines = kwargs.get("defines", tuple())
         self.depmods = []
 
         sources = [join(root, f) for f in kwargs.get("source", tuple())]
