@@ -1,19 +1,29 @@
 #!/usr/bin/env bash
 
+build="$(dirname $0)/build"
 debug=""
-if [[ $1 = "--debug" ]]; then
-	debug="-s"
-	shift
-fi
+gfx="-nographic"
 
-build=${1:-"$(dirname $0)/build"}
+for arg in $@; do
+	case "${arg}" in
+		--debug)
+			debug="-s"
+			;;
+		--gfx)
+			gfx=""
+			;;
+		*)
+			build="${arg}"
+			;;
+	esac
+done
 
 kvm=""
-if [[ -f /dev/kvm ]]; then
-	kvm="--enable-kvm"
+if [[ -c /dev/kvm ]]; then
+	kvm="-enable-kvm"
 fi
 
-ninja -C $build && \
+ninja -C "${build}" && \
 exec qemu-system-x86_64 \
 	-drive "if=pflash,format=raw,file=${build}/flash.img" \
 	-drive "format=raw,file=${build}/popcorn.img" \
@@ -24,5 +34,4 @@ exec qemu-system-x86_64 \
 	-cpu Broadwell \
 	-M q35 \
 	-no-reboot \
-	-nographic \
-	$kvm $debug
+	$gfx $kvm $debug
