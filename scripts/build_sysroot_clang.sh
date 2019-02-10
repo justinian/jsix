@@ -216,5 +216,5 @@ update_links
 
 export CC="${SYSROOT}/bin/clang"
 export CXX="${SYSROOT}/bin/clang++"
-export LD="${SYSROOT}/bin/ld.lld"
+export LD="${SYSROOT}/bin/ld"
 build_libc
