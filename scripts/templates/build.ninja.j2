@@ -128,6 +128,15 @@ rule makefat
         cp $srcroot/assets/diskbase.img $out; $
         mcopy -s -D o -i $out@@1M $builddir/fatroot/* ::/
 
+rule strip
+    description = Stripping $name
+    command = $
+        cp $in $out; $
+        objcopy --only-keep-debug $out $out.debug; $
+        strip -g $out; $
+        objcopy --add-gnu-debuglink=$out.debug $out
+
+
 {% for target in targets %}
 subninja {{ target }}/target.ninja
 {% endfor %}
@@ -146,7 +155,10 @@ build $
 build $builddir/flash.img : cp $srcroot/assets/ovmf/x64/OVMF.fd
     name = flash.img
 
-build $builddir/fatroot/popcorn.elf : cp $builddir/host/popcorn.elf
+build $builddir/popcorn.elf | $builddir/popcorn.elf.debug : strip $builddir/host/popcorn.elf
+    name = kernel
+
+build $builddir/fatroot/popcorn.elf : cp $builddir/popcorn.elf
     name = kernel to FAT image
 
 build $builddir/fatroot/efi/boot/bootx64.efi : cp $builddir/boot/boot.efi
