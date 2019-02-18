@@ -2,7 +2,9 @@
 
 ## TODO
 
-- Better page-allocation model
+- Paging manager
+  - Copy-on-write pages
+  - Better page-allocation model?
 - Allow for more than one IOAPIC in ACPI module
   - The objects get created, but GSI lookup only uses the one at index 0
 - mark kernel memory pages global
@@ -24,7 +26,7 @@
   - Disk driver
     - File system
 - Multiprocessing
-  - Syscalls
+  - Fast syscalls using syscall/sysret
 
 ### Build
 
