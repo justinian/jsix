@@ -1,5 +1,5 @@
 #pragma once
-/// \file memory_manager.h
+/// \file heap_manager.h
 /// A buddy allocator and related definitions.
 
 #include <stddef.h>
@@ -7,19 +7,19 @@
 namespace kutil {
 
 
-/// Manager for allocation of virtual memory.
-class memory_manager
+/// Manager for allocation of heap memory.
+class heap_manager
 {
 public:
 	using grow_callback = void (*)(void *start, size_t length);
 
 	/// Default constructor. Creates an invalid manager.
-	memory_manager();
+	heap_manager();
 
 	/// Constructor.
 	/// \arg start    Pointer to the start of the heap to be managed
 	/// \arg grow_cb  Function pointer to grow the heap size
-	memory_manager(void *start, grow_callback grow_cb);
+	heap_manager(void *start, grow_callback grow_cb);
 
 	/// Allocate memory from the area managed.
 	/// \arg length  The amount of memory to allocate, in bytes
@@ -63,7 +63,7 @@ protected:
 
 	grow_callback m_grow;
 
-	memory_manager(const memory_manager &) = delete;
+	heap_manager(const heap_manager &) = delete;
 };
 
 } // namespace kutil

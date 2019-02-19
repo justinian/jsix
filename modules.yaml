@@ -88,8 +88,8 @@ kutil:
         - src/libraries/kutil/include
     source:
         - src/libraries/kutil/assert.cpp
+        - src/libraries/kutil/heap_manager.cpp
         - src/libraries/kutil/memory.cpp
-        - src/libraries/kutil/memory_manager.cpp
 
 makerd:
     kind: exe
@@ -109,5 +109,5 @@ tests:
         - kutil
     source:
         - src/tests/linked_list.cpp
+        - src/tests/heap_manager.cpp
         - src/tests/main.cpp
-        - src/tests/memory_manager.cpp

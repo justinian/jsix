@@ -1,12 +1,12 @@
 #include <stdint.h>
 #include "kutil/assert.h"
 #include "kutil/memory.h"
-#include "kutil/memory_manager.h"
+#include "kutil/heap_manager.h"
 
 namespace kutil {
 
 
-struct memory_manager::mem_header
+struct heap_manager::mem_header
 {
 	mem_header(mem_header *prev, mem_header *next, uint8_t size) :
 		m_prev(prev), m_next(next)
@@ -67,7 +67,7 @@ private:
 };
 
 
-memory_manager::memory_manager() :
+heap_manager::heap_manager() :
 	m_start(nullptr),
 	m_length(0),
 	m_grow(nullptr)
@@ -75,7 +75,7 @@ memory_manager::memory_manager() :
 	kutil::memset(m_free, 0, sizeof(m_free));
 }
 
-memory_manager::memory_manager(void *start, grow_callback grow_cb) :
+heap_manager::heap_manager(void *start, grow_callback grow_cb) :
 	m_start(start),
 	m_length(0),
 	m_grow(grow_cb)
@@ -85,7 +85,7 @@ memory_manager::memory_manager(void *start, grow_callback grow_cb) :
 }
 
 void *
-memory_manager::allocate(size_t length)
+heap_manager::allocate(size_t length)
 {
 	size_t total = length + sizeof(mem_header);
 	unsigned size = min_size;
@@ -98,7 +98,7 @@ memory_manager::allocate(size_t length)
 }
 
 void
-memory_manager::free(void *p)
+heap_manager::free(void *p)
 {
 	mem_header *header = reinterpret_cast<mem_header *>(p);
 	header -= 1; // p points after the header
@@ -120,7 +120,7 @@ memory_manager::free(void *p)
 }
 
 void
-memory_manager::grow_memory()
+heap_manager::grow_memory()
 {
 	size_t length = (1 << max_size);
 
@@ -136,7 +136,7 @@ memory_manager::grow_memory()
 }
 
 void
-memory_manager::ensure_block(unsigned size)
+heap_manager::ensure_block(unsigned size)
 {
 	if (get_free(size) != nullptr) return;
 	else if (size == max_size) {
@@ -154,8 +154,8 @@ memory_manager::ensure_block(unsigned size)
 	get_free(size) = orig;
 }
 
-memory_manager::mem_header *
-memory_manager::pop_free(unsigned size)
+heap_manager::mem_header *
+heap_manager::pop_free(unsigned size)
 {
 	ensure_block(size);
 	mem_header *block = get_free(size);

@@ -1,5 +1,5 @@
 #include "kutil/memory.h"
-#include "kutil/memory_manager.h"
+#include "kutil/heap_manager.h"
 
 namespace std {
 	enum class __attribute__ ((__type_visibility("default"))) align_val_t : size_t { };
@@ -17,10 +17,10 @@ namespace kutil {
 
 namespace setup {
 
-static memory_manager *heap_memory_manager;
+static heap_manager *heap_memory_manager;
 
 void
-set_heap(memory_manager *mm)
+set_heap(heap_manager *mm)
 {
 	setup::heap_memory_manager = mm;
 }

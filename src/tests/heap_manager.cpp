@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #include "kutil/memory.h"
-#include "kutil/memory_manager.h"
+#include "kutil/heap_manager.h"
 #include "catch.hpp"
 
 using namespace kutil;
@@ -35,7 +35,7 @@ TEST_CASE( "Buddy blocks tests", "[memory buddy]" )
 
 	memory = aligned_alloc(max_block, 4 * max_block);
 
-	memory_manager mm(memory, grow_callback);
+	heap_manager mm(memory, grow_callback);
 
 	// The ctor should have allocated an initial block
 	CHECK( total_alloc_size == max_block );

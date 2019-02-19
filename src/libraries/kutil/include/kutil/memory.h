@@ -68,13 +68,13 @@ inline T* mask_pointer(T *p, uintptr_t mask)
 uint8_t checksum(const void *p, size_t len, size_t off = 0);
 
 
-class memory_manager;
+class heap_manager;
 
 namespace setup {
 
 /// Set the heap that malloc() / free() will use.
 /// \arg mm  The heap manager for the heap to use.
-void set_heap(memory_manager *mm);
+void set_heap(heap_manager *mm);
 
 } // namespace kutil::setup
 } // namespace kutil

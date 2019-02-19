@@ -1,13 +1,13 @@
 #include <algorithm>
 
 #include "kutil/assert.h"
-#include "kutil/memory_manager.h"
+#include "kutil/heap_manager.h"
 #include "console.h"
 #include "log.h"
 #include "page_manager.h"
 
 page_manager g_page_manager;
-kutil::memory_manager g_kernel_memory_manager;
+kutil::heap_manager g_kernel_heap_manager;
 
 
 static uintptr_t
@@ -161,10 +161,10 @@ page_manager::init(
 		}
 	}
 
-	new (&g_kernel_memory_manager) kutil::memory_manager(
+	new (&g_kernel_heap_manager) kutil::heap_manager(
 			reinterpret_cast<void *>(end),
 			mm_grow_callback);
-	kutil::setup::set_heap(&g_kernel_memory_manager);
+	kutil::setup::set_heap(&g_kernel_heap_manager);
 
 	m_kernel_pml4 = get_pml4();
 }
