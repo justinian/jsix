@@ -11,7 +11,10 @@ namespace kutil {
 class heap_manager
 {
 public:
-	using grow_callback = void (*)(void *start, size_t length);
+	/// Callback signature for growth function. The next pointer is just a
+	/// hint; memory returned does not need to be contiguous, but needs to be
+	/// alined to the length requested.
+	using grow_callback = void * (*)(void *next, size_t length);
 
 	/// Default constructor. Creates an invalid manager.
 	heap_manager();

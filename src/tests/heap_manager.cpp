@@ -11,19 +11,26 @@
 
 using namespace kutil;
 
+std::vector<void *> memory;
 
-void *memory = nullptr;
 size_t total_alloc_size = 0;
 size_t total_alloc_calls = 0;
 
 const size_t hs = 0x10; // header size
 const size_t max_block = 1 << 16;
 
+std::vector<size_t> sizes = {
+	16000, 8000, 4000, 4000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 150,
+	150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 48, 48, 48, 13 };
 
-void grow_callback(void *start, size_t length)
+void * grow_callback(void *start, size_t length)
 {
-	total_alloc_size += length;
 	total_alloc_calls += 1;
+	total_alloc_size += length;
+
+	void *p = aligned_alloc(max_block, length * 2);
+	memory.push_back(p);
+	return p;
 }
 
 
@@ -33,9 +40,7 @@ TEST_CASE( "Buddy blocks tests", "[memory buddy]" )
 	unsigned seed = clock::now().time_since_epoch().count();
 	std::default_random_engine rng(seed);
 
-	memory = aligned_alloc(max_block, 4 * max_block);
-
-	heap_manager mm(memory, grow_callback);
+	heap_manager mm(nullptr, grow_callback);
 
 	// The ctor should have allocated an initial block
 	CHECK( total_alloc_size == max_block );
@@ -51,6 +56,7 @@ TEST_CASE( "Buddy blocks tests", "[memory buddy]" )
 	// Should not have grown
 	CHECK( total_alloc_size == max_block );
 	CHECK( total_alloc_calls == 1 );
+	CHECK( memory[0] != nullptr );
 
 	// Blocks should be:
 	// 16: [0-64K]
@@ -65,7 +71,7 @@ TEST_CASE( "Buddy blocks tests", "[memory buddy]" )
 
 	// We have free memory at 1526 and 2K, but we should get 4K
 	void *big = mm.allocate(4000); // size 12
-	REQUIRE( big == offset_pointer(memory, 4096 + hs) );
+	REQUIRE( big == offset_pointer(memory[0], 4096 + hs) );
 	mm.free(big);
 
 	// free up 512
@@ -79,7 +85,7 @@ TEST_CASE( "Buddy blocks tests", "[memory buddy]" )
 
 	// A request for a 512-block should not cross the buddy divide
 	big = mm.allocate(500); // size 9
-	REQUIRE( big >= offset_pointer(memory, 1536 + hs) );
+	REQUIRE( big >= offset_pointer(memory[0], 1536 + hs) );
 	mm.free(big);
 
 	mm.free(allocs[0]);
@@ -87,10 +93,6 @@ TEST_CASE( "Buddy blocks tests", "[memory buddy]" )
 	mm.free(allocs[2]);
 	mm.free(allocs[5]);
 	allocs.clear();
-
-	std::vector<size_t> sizes = {
-		16000, 8000, 4000, 4000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 150,
-		150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 48, 48, 48, 13 };
 
 	std::shuffle(sizes.begin(), sizes.end(), rng);
 
@@ -110,5 +112,79 @@ TEST_CASE( "Buddy blocks tests", "[memory buddy]" )
 	CHECK( total_alloc_calls == 1 );
 
 	// And we should have gotten back the start of memory
-	CHECK( big == offset_pointer(memory, hs) );
+	CHECK( big == offset_pointer(memory[0], hs) );
+
+	for (void *p : memory) ::free(p);
+	memory.clear();
+	total_alloc_size = 0;
+	total_alloc_calls = 0;
 }
+
+bool check_in_memory(void *p)
+{
+	for (void *mem : memory)
+		if (p >= mem && p <= offset_pointer(mem, max_block))
+			return true;
+	return false;
+}
+
+TEST_CASE( "Non-contiguous blocks tests", "[memory buddy]" )
+{
+	using clock = std::chrono::system_clock;
+	unsigned seed = clock::now().time_since_epoch().count();
+	std::default_random_engine rng(seed);
+
+	heap_manager mm(nullptr, grow_callback);
+	std::vector<void *> allocs;
+
+	const int blocks = 3;
+	for (int i = 0; i < blocks; ++i) {
+		void *p = mm.allocate(64000);
+		REQUIRE( memory[i] != nullptr );
+		REQUIRE( p == offset_pointer(memory[i], hs) );
+		allocs.push_back(p);
+	}
+
+	CHECK( total_alloc_size == max_block * blocks );
+	CHECK( total_alloc_calls == blocks );
+
+	for (void *p : allocs)
+		mm.free(p);
+	allocs.clear();
+
+	allocs.reserve(sizes.size() * blocks);
+
+	for (int i = 0; i < blocks; ++i) {
+		std::shuffle(sizes.begin(), sizes.end(), rng);
+
+		for (size_t size : sizes)
+			allocs.push_back(mm.allocate(size));
+	}
+
+	for (void *p : allocs)
+		CHECK( check_in_memory(p) );
+
+	std::shuffle(allocs.begin(), allocs.end(), rng);
+	for (void *p: allocs)
+		mm.free(p);
+	allocs.clear();
+
+	CHECK( total_alloc_size == max_block * blocks );
+	CHECK( total_alloc_calls == blocks );
+
+	for (int i = 0; i < blocks; ++i)
+		allocs.push_back(mm.allocate(64000));
+
+	// If everything was freed / joined correctly, that should not have allocated
+	CHECK( total_alloc_size == max_block * blocks );
+	CHECK( total_alloc_calls == blocks );
+
+	for (void *p : allocs)
+		CHECK( check_in_memory(p) );
+
+	for (void *p : memory) ::free(p);
+	memory.clear();
+	total_alloc_size = 0;
+	total_alloc_calls = 0;
+}
+

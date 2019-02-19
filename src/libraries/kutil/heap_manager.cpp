@@ -104,7 +104,7 @@ heap_manager::free(void *p)
 	header -= 1; // p points after the header
 	header->set_used(false);
 
-	while (true) {
+	while (header->size() != max_size) {
 		mem_header *buddy = header->buddy();
 		if (buddy->used() || buddy->size() != header->size()) break;
 		buddy->remove();
@@ -124,9 +124,8 @@ heap_manager::grow_memory()
 {
 	size_t length = (1 << max_size);
 
-	void *next = kutil::offset_pointer(m_start, m_length);
 	kassert(m_grow, "Tried to grow heap without a growth callback");
-	m_grow(next, length);
+	void *next = m_grow(kutil::offset_pointer(m_start, m_length), length);
 
 	mem_header *block = new (next) mem_header(nullptr, get_free(max_size), max_size);
 	get_free(max_size) = block;

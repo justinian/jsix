@@ -31,7 +31,7 @@ struct free_page_header
 };
 
 
-void mm_grow_callback(void *next, size_t length)
+void * mm_grow_callback(void *next, size_t length)
 {
 	kassert(length % page_manager::page_size == 0,
 			"Heap manager requested a fractional page.");
@@ -39,6 +39,7 @@ void mm_grow_callback(void *next, size_t length)
 	size_t pages = length / page_manager::page_size;
 	log::info(logs::memory, "Heap manager growing heap by %d pages.", pages);
 	g_page_manager.map_pages(reinterpret_cast<uintptr_t>(next), pages);
+	return next;
 }
 
 
