@@ -1,0 +1,7 @@
+{% extends "exe.default.j2" %}
+{% block variables %}
+{{ super() }}
+
+ccflags = $ccflags -ggdb
+
+{% endblock %}
