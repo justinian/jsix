@@ -87,7 +87,6 @@ kutil:
     includes:
         - src/libraries/kutil/include
     source:
-        - src/libraries/kutil/address_manager.cpp
         - src/libraries/kutil/assert.cpp
         - src/libraries/kutil/heap_manager.cpp
         - src/libraries/kutil/memory.cpp
