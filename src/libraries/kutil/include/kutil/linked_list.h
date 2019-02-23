@@ -189,10 +189,7 @@ public:
 	item_type * pop_front()
 	{
 		item_type *item = m_head;
-		if (m_head) {
-			m_head = item->m_next;
-			item->m_next = nullptr;
-		}
+		remove(item);
 		return item;
 	}
 
@@ -201,10 +198,7 @@ public:
 	item_type * pop_back()
 	{
 		item_type *item = m_tail;
-		if (m_tail) {
-			m_tail = item->m_prev;
-			item->m_prev = nullptr;
-		}
+		remove(item);
 		return item;
 	}
 

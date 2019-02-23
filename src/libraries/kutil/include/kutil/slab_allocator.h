@@ -1,6 +1,7 @@
 #pragma once
 /// \file slab_allocator.h
 /// A slab allocator and related definitions
+#include "kutil/assert.h"
 #include "kutil/linked_list.h"
 #include "kutil/memory.h"
 
@@ -29,6 +30,7 @@ public:
 	inline item_type * pop()
 	{
 		if (this->empty()) allocate();
+		kassert(!this->empty(), "Slab allocator is empty after allocate()");
 		item_type *item = this->pop_front();
 		kutil::memset(item, 0, sizeof(item_type));
 		return item;

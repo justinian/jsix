@@ -87,6 +87,7 @@ kutil:
     includes:
         - src/libraries/kutil/include
     source:
+        - src/libraries/kutil/address_manager.cpp
         - src/libraries/kutil/assert.cpp
         - src/libraries/kutil/heap_manager.cpp
         - src/libraries/kutil/memory.cpp
@@ -108,6 +109,7 @@ tests:
     deps:
         - kutil
     source:
+        - src/tests/address_manager.cpp
         - src/tests/linked_list.cpp
         - src/tests/heap_manager.cpp
         - src/tests/main.cpp

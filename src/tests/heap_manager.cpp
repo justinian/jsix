@@ -11,10 +11,10 @@
 
 using namespace kutil;
 
-std::vector<void *> memory;
+static std::vector<void *> memory;
 
-size_t total_alloc_size = 0;
-size_t total_alloc_calls = 0;
+static size_t total_alloc_size = 0;
+static size_t total_alloc_calls = 0;
 
 const size_t hs = 0x10; // header size
 const size_t max_block = 1 << 16;
@@ -33,6 +33,13 @@ void * grow_callback(void *start, size_t length)
 	return p;
 }
 
+void free_memory()
+{
+	for (void *p : memory) ::free(p);
+	memory.clear();
+	total_alloc_size = 0;
+	total_alloc_calls = 0;
+}
 
 TEST_CASE( "Buddy blocks tests", "[memory buddy]" )
 {
@@ -114,10 +121,7 @@ TEST_CASE( "Buddy blocks tests", "[memory buddy]" )
 	// And we should have gotten back the start of memory
 	CHECK( big == offset_pointer(memory[0], hs) );
 
-	for (void *p : memory) ::free(p);
-	memory.clear();
-	total_alloc_size = 0;
-	total_alloc_calls = 0;
+	free_memory();
 }
 
 bool check_in_memory(void *p)
@@ -182,9 +186,6 @@ TEST_CASE( "Non-contiguous blocks tests", "[memory buddy]" )
 	for (void *p : allocs)
 		CHECK( check_in_memory(p) );
 
-	for (void *p : memory) ::free(p);
-	memory.clear();
-	total_alloc_size = 0;
-	total_alloc_calls = 0;
+	free_memory();
 }
 
