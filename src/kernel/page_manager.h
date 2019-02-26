@@ -131,9 +131,6 @@ private:
 			page_block_list used,
 			page_block_list cache);
 
-	/// Initialize the virtual memory manager based on this object's state
-	void init_memory_manager();
-
 	/// Create a `page_block` struct or pull one from the cache.
 	/// \returns  An empty `page_block` struct
 	page_block * get_block();
