@@ -31,10 +31,8 @@ TEST_CASE( "Frame allocator tests", "[memory frame]" )
 	f->count = 1;
 	free.sorted_insert(f);
 
-	frame_allocator fa(
-		std::move(free),
-		std::move(used),
-		std::move(cache));
+	frame_allocator fa(std::move(cache));
+	fa.init(std::move(free), std::move(used));
 
 	uintptr_t a = 0;
 	size_t c = fa.allocate(2, &a);

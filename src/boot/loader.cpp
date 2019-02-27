@@ -64,7 +64,7 @@ loader_load_initrd(
 
 	status = loader_alloc_pages(
 			bootsvc,
-			INITRD_MEMTYPE,
+			memtype_initrd,
 			&data->initrd_length,
 			&data->initrd);
 	CHECK_EFI_STATUS_OR_RETURN(status, L"Allocating pages");
@@ -153,7 +153,7 @@ loader_load_elf(
 
 		length = prog_header.mem_size;
 		void *addr = (void *)(prog_header.vaddr - KERNEL_VIRT_ADDRESS);
-		status = loader_alloc_pages(bootsvc, KERNEL_MEMTYPE, &length, &addr);
+		status = loader_alloc_pages(bootsvc, memtype_kernel, &length, &addr);
 		CHECK_EFI_STATUS_OR_RETURN(status, L"Allocating kernel pages");
 
 		if (data->kernel == 0)
@@ -237,7 +237,7 @@ loader_load_kernel(
 		data->data_length += PAGE_SIZE; // extra page for map growth
 		status = loader_alloc_pages(
 				bootsvc,
-				KERNEL_DATA_MEMTYPE,
+				memtype_data,
 				&data->data_length,
 				&data->data);
 		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_alloc_pages: kernel data");

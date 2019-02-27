@@ -44,7 +44,7 @@ init_console()
 	log::enable(logs::memory, log::level::info);
 	log::enable(logs::fs, log::level::debug);
 	log::enable(logs::task, log::level::debug);
-	//log::enable(logs::boot, log::level::debug);
+	log::enable(logs::boot, log::level::debug);
 }
 
 void
@@ -65,16 +65,17 @@ kernel_main(popcorn_data *header)
 	gdt_init();
 	interrupts_init();
 
-	page_manager *pager = new (&g_page_manager) page_manager;
-
 	memory_initialize(
+			header->scratch_pages,
 			header->memory_map,
 			header->memory_map_length,
 			header->memory_map_desc_size);
 
-	pager->map_offset_pointer(
-			&header->frame_buffer,
-			header->frame_buffer_length);
+	if (header->frame_buffer && header->frame_buffer_length) {
+		page_manager::get()->map_offset_pointer(
+				&header->frame_buffer,
+				header->frame_buffer_length);
+	}
 
 	init_console();
 
@@ -91,8 +92,8 @@ kernel_main(popcorn_data *header)
 		log::info(logs::boot, "  %s%s (%d bytes).", f.executable() ? "*" : "", f.name(), f.size());
 
 	/*
-	pager->dump_pml4(nullptr, 0);
-	pager->dump_blocks(true);
+	   page_manager::get()->dump_pml4(nullptr, 0);
+	   page_manager::get()->dump_blocks(true);
 	*/
 
 	device_manager *devices =

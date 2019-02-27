@@ -53,14 +53,18 @@ frame_block::copy(frame_block *other)
 
 
 frame_allocator::frame_allocator(
-	frame_block_list free,
-	frame_block_list used,
 	frame_block_list cache)
+{
+	m_block_slab.append(cache);
+}
+
+void
+frame_allocator::init(
+	frame_block_list free,
+	frame_block_list used)
 {
 	m_free.append(free);
 	m_used.append(used);
-	m_block_slab.append(cache);
-
 	consolidate_blocks();
 }
 

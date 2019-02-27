@@ -6,17 +6,14 @@
 #include <stdint.h>
 
 #include "kutil/enum_bitfields.h"
+#include "kutil/frame_allocator.h"
 #include "kutil/linked_list.h"
 #include "kutil/slab_allocator.h"
 
-struct page_block;
 struct page_table;
 struct free_page_header;
 
-using page_block_list = kutil::linked_list<page_block>;
-using page_block_slab = kutil::slab_allocator<page_block>;
-
-/// Manager for allocation of physical pages.
+/// Manager for allocation and mapping of pages
 class page_manager
 {
 public:
@@ -35,7 +32,7 @@ public:
 	/// Initial process thread's stack size, in pages
 	static const unsigned initial_stack_pages = 1;
 
-	page_manager();
+	page_manager(kutil::frame_allocator &frames);
 
 	/// Helper to get the number of pages needed for a given number of bytes.
 	/// \arg bytes  The number of bytes desired
@@ -78,13 +75,6 @@ public:
 	/// \returns      A pointer to the start of the mapped region
 	void * map_pages(uintptr_t address, size_t count, bool user = false, page_table *pml4 = nullptr);
 
-	/// Allocate and map contiguous pages into virtual memory, with
-	/// a constant offset from their physical address.
-	/// \arg count    The number of pages to map
-	/// \returns      A pointer to the start of the mapped region, or
-	/// nullptr if no region could be found to fit the request.
-	void * map_offset_pages(size_t count);
-
 	/// Unmap existing pages from memory.
 	/// \arg address  The virtual address of the memory to unmap
 	/// \arg count    The number of pages to unmap
@@ -111,10 +101,6 @@ public:
 		return kutil::offset_pointer(reinterpret_cast<void *>(a), page_offset);
 	}
 
-	/// Log the current free/used block lists.
-	/// \arg used_only  If true, skip printing free list. Default false.
-	void dump_blocks(bool used_only = false);
-
 	/// Dump the given or current PML4 to the console
 	/// \arg pml4       The page table to use, null for the current one
 	/// \arg max_index  The max index of pml4 to print
@@ -125,20 +111,6 @@ public:
 	static page_manager * get();
 
 private:
-	/// Set up the memory manager from bootstraped memory
-	void init(
-			page_block_list free,
-			page_block_list used,
-			page_block_list cache);
-
-	/// Create a `page_block` struct or pull one from the cache.
-	/// \returns  An empty `page_block` struct
-	page_block * get_block();
-
-	/// Return a list of `page_block` structs to the cache.
-	/// \arg block   A list of `page_block` structs
-	void free_blocks(page_block *block);
-
 	/// Allocate a page for a page table, or pull one from the cache
 	/// \returns  An empty page mapped in page space
 	page_table * get_table_page();
@@ -147,10 +119,6 @@ private:
 	/// \arg pages  Pointer to the first page to be returned
 	/// \arg count  Number of pages in the range
 	void free_table_pages(void *pages, size_t count);
-
-	/// Consolidate the free and used block lists. Return freed blocks
-	/// to the cache.
-	void consolidate_blocks();
 
 	/// Helper function to allocate a new page table. If table entry `i` in
 	/// table `base` is empty, allocate a new page table and point `base[i]` at
@@ -182,23 +150,11 @@ private:
 			uintptr_t virt_addr,
 			size_t count);
 
-	/// Get free pages from the free list. Only pages from the first free block
-	/// are returned, so the number may be less than requested, but they will
-	/// be contiguous. Pages will not be mapped into virtual memory.
-	/// \arg count    The maximum number of pages to get
-	/// \arg address  [out] The address of the first page
-	/// \returns      The number of pages retrieved
-	size_t pop_pages(size_t count, uintptr_t *address);
-
 	page_table *m_kernel_pml4; ///< The PML4 of just kernel pages
-
-	page_block_list m_free; ///< Free pages list
-	page_block_list m_used; ///< In-use pages list
-	page_block_slab m_block_slab; ///< page_block slab allocator
-
 	free_page_header *m_page_cache; ///< Cache of free pages to use for tables
+	kutil::frame_allocator &m_frames;
 
-	friend void memory_initialize(const void *, size_t, size_t);
+	friend void memory_initialize(uint16_t, const void *, size_t, size_t);
 	page_manager(const page_manager &) = delete;
 };
 
@@ -206,67 +162,6 @@ private:
 extern page_manager g_page_manager;
 
 inline page_manager * page_manager::get() { return &g_page_manager; }
-
-/// Flags used by `page_block`.
-enum class page_block_flags : uint32_t
-{
-	free         = 0x00000000,  ///< Not a flag, value for free memory
-	used         = 0x00000001,  ///< Memory is in use
-	mapped       = 0x00000002,  ///< Memory is mapped to virtual address
-
-	mmio         = 0x00000010,  ///< Memory is a MMIO region
-	nonvolatile  = 0x00000020,  ///< Memory is non-volatile storage
-
-	pending_free = 0x10000000,  ///< Memory should be freed
-	acpi_wait    = 0x40000000,  ///< Memory should be freed after ACPI init
-	permanent    = 0x80000000,  ///< Memory is permanently unusable
-
-	max_flags
-};
-IS_BITFIELD(page_block_flags);
-
-
-/// A block of contiguous pages. Each `page_block` represents contiguous
-/// physical pages with the same attributes. A `page_block *` is also a
-/// linked list of such structures.
-struct page_block
-{
-	uintptr_t physical_address;
-	uintptr_t virtual_address;
-	uint32_t count;
-	page_block_flags flags;
-
-	inline bool has_flag(page_block_flags f) const { return bitfield_has(flags, f); }
-	inline uintptr_t physical_end() const { return physical_address + (count * page_manager::page_size); }
-	inline uintptr_t virtual_end() const { return virtual_address + (count * page_manager::page_size); }
-
-	inline bool contains(uintptr_t vaddr) const { return vaddr >= virtual_address && vaddr < virtual_end(); }
-	inline bool contains_physical(uintptr_t addr) const { return addr >= physical_address && addr < physical_end(); }
-
-	/// Helper to zero out a block and optionally set the next pointer.
-	void zero();
-
-	/// Helper to copy a bock from another block
-	/// \arg other  The block to copy from
-	void copy(page_block *other);
-
-	/// Compare two blocks by address.
-	/// \arg rhs   The right-hand comparator
-	/// \returns   <0 if this is sorts earlier, >0 if this sorts later, 0 for equal
-	int compare(const page_block *rhs) const;
-
-	/// Traverse the list, joining adjacent blocks where possible.
-	/// \arg list  The list to consolidate
-	/// \returns   A linked list of freed page_block structures.
-	static page_block_list consolidate(page_block_list &list);
-
-	/// Traverse the list, printing debug info on this list.
-	/// \arg list  The list to print
-	/// \arg name  [optional] String to print as the name of this list
-	/// \arg show_permanent [optional] If false, hide unmapped blocks
-	static void dump(const page_block_list &list, const char *name = nullptr, bool show_unmapped = false);
-};
-
 
 
 /// Struct to allow easy accessing of a memory page being used as a page table.
@@ -293,19 +188,19 @@ struct page_table
 /// Helper struct for computing page table indices of a given address.
 struct page_table_indices
 {
-	page_table_indices(uint64_t v = 0) :
-		index{
-			(v >> 39) & 0x1ff,
-			(v >> 30) & 0x1ff,
-			(v >> 21) & 0x1ff,
-			(v >> 12) & 0x1ff }
-	{}
+	page_table_indices(uint64_t v = 0);
+
+	uintptr_t addr() const;
+
+	inline operator uintptr_t() const { return addr(); }
 
 	/// Get the index for a given level of page table.
 	uint64_t & operator[](size_t i) { return index[i]; }
+	uint64_t operator[](size_t i) const { return index[i]; }
 	uint64_t index[4]; ///< Indices for each level of tables.
 };
 
+bool operator==(const page_table_indices &l, const page_table_indices &r);
 
 /// Calculate a page-aligned address.
 /// \arg p    The address to align.
@@ -336,4 +231,4 @@ inline size_t page_count(size_t n) { return ((n - 1) / page_manager::page_size) 
 
 
 /// Bootstrap the memory managers.
-void memory_initialize(const void *memory_map, size_t map_length, size_t desc_length);
+void memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_length, size_t desc_length);

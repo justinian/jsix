@@ -4,6 +4,11 @@
 #include "memory.h"
 #include "utility.h"
 
+const EFI_MEMORY_TYPE memtype_kernel  = static_cast<EFI_MEMORY_TYPE>(0x80000000);
+const EFI_MEMORY_TYPE memtype_data    = static_cast<EFI_MEMORY_TYPE>(0x80000001);
+const EFI_MEMORY_TYPE memtype_initrd  = static_cast<EFI_MEMORY_TYPE>(0x80000002);
+const EFI_MEMORY_TYPE memtype_scratch = static_cast<EFI_MEMORY_TYPE>(0x80000003);
+
 #define INCREMENT_DESC(p, b)  (EFI_MEMORY_DESCRIPTOR*)(((uint8_t*)(p))+(b))
 
 size_t fixup_pointer_index = 0;
@@ -32,9 +37,13 @@ static const wchar_t *
 memory_type_name(UINT32 value)
 {
 	if (value >= (sizeof(memory_type_names) / sizeof(wchar_t *))) {
-		if (value == KERNEL_DATA_MEMTYPE) return L"Kernel Data";
-		else if (value == KERNEL_MEMTYPE) return L"Kernel Image";
-		else return L"Bad Type Value";
+		switch (value) {
+			case memtype_kernel:  return L"Kernel Data";
+			case memtype_data:    return L"Kernel Data";
+			case memtype_initrd:  return L"Initial Ramdisk";
+			case memtype_scratch: return L"Kernel Scratch Space";
+			default: return L"Bad Type Value";
+		}
 	}
 	return memory_type_names[value];
 }
@@ -50,7 +59,7 @@ memory_update_marked_addresses(EFI_EVENT UNUSED *event, void *context)
 }
 
 EFI_STATUS
-memory_init_pointer_fixup(EFI_BOOT_SERVICES *bootsvc, EFI_RUNTIME_SERVICES *runsvc)
+memory_init_pointer_fixup(EFI_BOOT_SERVICES *bootsvc, EFI_RUNTIME_SERVICES *runsvc, unsigned scratch_pages)
 {
 	EFI_STATUS status;
 	EFI_EVENT event;
@@ -67,7 +76,7 @@ memory_init_pointer_fixup(EFI_BOOT_SERVICES *bootsvc, EFI_RUNTIME_SERVICES *runs
 	// Reserve a page for our replacement PML4, plus some pages for the kernel to use
 	// as page tables while it gets started.
 	EFI_PHYSICAL_ADDRESS addr = 0;
-	status = bootsvc->AllocatePages(AllocateAnyPages, EfiLoaderData, 16, &addr);
+	status = bootsvc->AllocatePages(AllocateAnyPages, memtype_scratch, scratch_pages, &addr);
 	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to allocate page table pages.");
 
 	new_pml4 = (uint64_t *)addr;
@@ -187,9 +196,10 @@ memory_virtualize(EFI_RUNTIME_SERVICES *runsvc, struct memory_map *map)
 	EFI_MEMORY_DESCRIPTOR *d = map->entries;
 	while (d < end) {
 		switch (d->Type) {
-		case KERNEL_MEMTYPE:
-		case INITRD_MEMTYPE:
-		case KERNEL_DATA_MEMTYPE:
+		case memtype_kernel:
+		case memtype_data:
+		case memtype_initrd:
+		case memtype_scratch:
 			d->Attribute |= EFI_MEMORY_RUNTIME;
 			d->VirtualStart = d->PhysicalStart + KERNEL_VIRT_ADDRESS;
 

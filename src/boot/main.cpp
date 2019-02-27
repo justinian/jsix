@@ -10,6 +10,10 @@
 #include "memory.h"
 #include "utility.h"
 
+#ifndef SCRATCH_PAGES
+#define SCRATCH_PAGES 64
+#endif
+
 #ifndef GIT_VERSION_WIDE
 #define GIT_VERSION_WIDE L"no version"
 #endif
@@ -47,7 +51,7 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	CHECK_EFI_STATUS_OR_RETURN(status, "console::initialize");
 	// From here on out, we can use CHECK_EFI_STATUS_OR_FAIL instead
 
-	memory_init_pointer_fixup(bootsvc, runsvc);
+	memory_init_pointer_fixup(bootsvc, runsvc, SCRATCH_PAGES);
 
 	// Find ACPI tables. Ignore ACPI 1.0 if a 2.0 table is found.
 	//
@@ -114,6 +118,7 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	data_header->version = DATA_HEADER_VERSION;
 	data_header->length = sizeof(struct popcorn_data);
 
+	data_header->scratch_pages = SCRATCH_PAGES;
 	data_header->flags = 0;
 
 	data_header->initrd = load.initrd;

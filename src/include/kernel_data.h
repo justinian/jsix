@@ -13,7 +13,8 @@ struct popcorn_data {
 	uint16_t version;
 	uint16_t length;
 
-	uint32_t _reserved0;
+	uint16_t _reserved0;
+	uint16_t scratch_pages;
 	uint32_t flags;
 
 	void *initrd;

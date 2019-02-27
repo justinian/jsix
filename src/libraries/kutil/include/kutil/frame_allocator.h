@@ -21,14 +21,19 @@ public:
 	/// Size of a single page frame.
 	static const size_t frame_size = 0x1000;
 
-	/// Constructor. Sets up the frame allocator from bootstraped memory.
+	/// Default constructor
+	frame_allocator() = default;
+
+	/// Constructor with a provided initial frame_block cache.
+	/// \arg cache  List of pre-allocated but unused frame_block structures
+	frame_allocator(frame_block_list cache);
+
+	/// Initialize the frame allocator from bootstraped memory.
 	/// \arg free   List of free blocks
 	/// \arg used   List of currently used blocks
-	/// \arg cache  List of pre-allocated but unused frame_block structures
-	frame_allocator(
+	void init(
 			frame_block_list free,
-			frame_block_list used,
-			frame_block_list cache);
+			frame_block_list used);
 
 	/// Get free frames from the free list. Only frames from the first free block
 	/// are returned, so the number may be less than requested, but they will
@@ -59,14 +64,22 @@ private:
 /// Flags used by `frame_block`.
 enum class frame_block_flags : uint32_t
 {
-	none         = 0x00,
+	none         = 0x0000,
 
-	mmio         = 0x01,  ///< Memory is a MMIO region
-	nonvolatile  = 0x02,  ///< Memory is non-volatile storage
+	mmio         = 0x0001,  ///< Memory is a MMIO region
+	nonvolatile  = 0x0002,  ///< Memory is non-volatile storage
 
-	pending_free = 0x10,  ///< Memory should be freed
-	acpi_wait    = 0x40,  ///< Memory should be freed after ACPI init
-	permanent    = 0x80   ///< Memory is permanently unusable
+	pending_free = 0x0020,  ///< Memory should be freed
+	acpi_wait    = 0x0040,  ///< Memory should be freed after ACPI init
+	permanent    = 0x0080,  ///< Memory is permanently unusable
+
+	// The following are used only during the memory bootstraping
+	// process, and tell the page manager where to initially map
+	// the given block.
+	map_ident    = 0x0100,  ///< Identity map
+	map_kernel   = 0x0200,  ///< Map into normal kernel space
+	map_offset   = 0x0400,  ///< Map into offset kernel space
+	map_mask     = 0x0700,  ///< Mask of all map_* values
 };
 
 } // namespace kutil

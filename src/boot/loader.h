@@ -12,18 +12,6 @@
 #define KERNEL_VIRT_ADDRESS 0xFFFFFF0000000000
 #endif
 
-#ifndef KERNEL_MEMTYPE
-#define KERNEL_MEMTYPE static_cast<EFI_MEMORY_TYPE>(0x80000000)
-#endif
-
-#ifndef INITRD_MEMTYPE
-#define INITRD_MEMTYPE static_cast<EFI_MEMORY_TYPE>(0x80000001)
-#endif
-
-#ifndef KERNEL_DATA_MEMTYPE
-#define KERNEL_DATA_MEMTYPE static_cast<EFI_MEMORY_TYPE>(0x80000002)
-#endif
-
 #ifndef KERNEL_FILENAME
 #define KERNEL_FILENAME L"kernel.elf"
 #endif
