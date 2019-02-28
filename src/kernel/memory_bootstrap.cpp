@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <utility>
+#include "kutil/address_manager.h"
 #include "kutil/assert.h"
 #include "kutil/frame_allocator.h"
 #include "kutil/heap_manager.h"
@@ -16,17 +17,21 @@ static const size_t page_size = page_manager::page_size;
 
 extern kutil::frame_allocator g_frame_allocator;
 
+kutil::address_manager g_kernel_address_manager;
 kutil::heap_manager g_kernel_heap_manager;
 
-void * mm_grow_callback(void *next, size_t length)
+void * mm_grow_callback(size_t length)
 {
 	kassert(length % page_manager::page_size == 0,
 			"Heap manager requested a fractional page.");
 
 	size_t pages = length / page_manager::page_size;
 	log::info(logs::memory, "Heap manager growing heap by %d pages.", pages);
-	g_page_manager.map_pages(reinterpret_cast<uintptr_t>(next), pages);
-	return next;
+
+	uintptr_t addr = g_kernel_address_manager.allocate(length);
+	g_page_manager.map_pages(addr, pages);
+
+	return reinterpret_cast<void *>(addr);
 }
 
 
@@ -59,6 +64,8 @@ namespace {
 
 	using block_allocator =
 		kutil::slab_allocator<kutil::frame_block, page_consumer &>;
+	using region_allocator =
+		kutil::slab_allocator<kutil::buddy_region, page_consumer &>;
 }
 
 enum class efi_memory_type : uint32_t
@@ -151,7 +158,9 @@ gather_block_lists(
 
 		case efi_memory_type::popcorn_kernel:
 			block_used = true;
-			block->flags = frame_block_flags::map_kernel;
+			block->flags =
+				frame_block_flags::permanent |
+				frame_block_flags::map_kernel;
 			break;
 
 		case efi_memory_type::popcorn_data:
@@ -297,6 +306,16 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 	block_slab.append(frame_block::consolidate(free));
 	block_slab.append(frame_block::consolidate(used));
 
+	region_allocator region_slab(page_size, allocator);
+	region_slab.allocate(); // Allocate some buddy regions for the address_manager
+
+	kutil::address_manager *am =
+		new (&g_kernel_address_manager) kutil::address_manager(std::move(region_slab));
+
+	am->add_regions(
+			page_manager::high_offset,
+			page_manager::page_offset - page_manager::high_offset);
+
 	// Finally, build an acutal set of kernel page tables that just contains
 	// what the kernel actually has mapped, but making everything writable
 	// (especially the page tables themselves)
@@ -312,8 +331,6 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 			reinterpret_cast<void *>(allocator.current),
 			allocator.left());
 
-	uintptr_t heap_start = page_manager::high_offset;
-
 	for (auto *block : used) {
 		uintptr_t virt_addr = 0;
 
@@ -324,8 +341,10 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 
 			case frame_block_flags::map_kernel:
 				virt_addr = block->address + page_manager::high_offset;
-				heap_start = std::max(heap_start,
-						virt_addr + block->count * page_size);
+				if (block->flags && frame_block_flags::permanent)
+					am->mark_permanent(virt_addr, block->count * page_size);
+				else
+					am->mark(virt_addr, block->count * page_size);
 				break;
 
 			case frame_block_flags::map_offset:
@@ -348,8 +367,6 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 	pm->m_kernel_pml4 = pml4;
 
 	// Set the heap manager
-	new (&g_kernel_heap_manager) kutil::heap_manager(
-			reinterpret_cast<void *>(heap_start),
-			mm_grow_callback);
+	new (&g_kernel_heap_manager) kutil::heap_manager(mm_grow_callback);
 	kutil::setup::set_heap(&g_kernel_heap_manager);
 }

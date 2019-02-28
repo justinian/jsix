@@ -11,18 +11,16 @@ namespace kutil {
 class heap_manager
 {
 public:
-	/// Callback signature for growth function. The next pointer is just a
-	/// hint; memory returned does not need to be contiguous, but needs to be
-	/// alined to the length requested.
-	using grow_callback = void * (*)(void *next, size_t length);
+	/// Callback signature for growth function. Memory returned does not need
+	/// to be contiguous, but needs to be alined to the length requested.
+	using grow_callback = void * (*)(size_t length);
 
 	/// Default constructor. Creates an invalid manager.
 	heap_manager();
 
 	/// Constructor.
-	/// \arg start    Pointer to the start of the heap to be managed
 	/// \arg grow_cb  Function pointer to grow the heap size
-	heap_manager(void *start, grow_callback grow_cb);
+	heap_manager(grow_callback grow_cb);
 
 	/// Allocate memory from the area managed.
 	/// \arg length  The amount of memory to allocate, in bytes
@@ -60,9 +58,7 @@ protected:
 	/// \returns    A detached block of the given size
 	mem_header * pop_free(unsigned size);
 
-	mem_header *m_free[max_size - min_size];
-	void *m_start;
-	size_t m_length;
+	mem_header *m_free[max_size - min_size + 1];
 
 	grow_callback m_grow;
 

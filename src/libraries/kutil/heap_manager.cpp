@@ -68,16 +68,11 @@ private:
 
 
 heap_manager::heap_manager() :
-	m_start(nullptr),
-	m_length(0),
 	m_grow(nullptr)
 {
-	kutil::memset(m_free, 0, sizeof(m_free));
 }
 
-heap_manager::heap_manager(void *start, grow_callback grow_cb) :
-	m_start(start),
-	m_length(0),
+heap_manager::heap_manager(grow_callback grow_cb) :
 	m_grow(grow_cb)
 {
 	kutil::memset(m_free, 0, sizeof(m_free));
@@ -125,13 +120,12 @@ heap_manager::grow_memory()
 	size_t length = (1 << max_size);
 
 	kassert(m_grow, "Tried to grow heap without a growth callback");
-	void *next = m_grow(kutil::offset_pointer(m_start, m_length), length);
+	void *next = m_grow(length);
 
 	mem_header *block = new (next) mem_header(nullptr, get_free(max_size), max_size);
 	get_free(max_size) = block;
 	if (block->next())
 		block->next()->set_prev(block);
-	m_length += length;
 }
 
 void

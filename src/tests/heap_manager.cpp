@@ -23,7 +23,7 @@ std::vector<size_t> sizes = {
 	16000, 8000, 4000, 4000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 150,
 	150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 48, 48, 48, 13 };
 
-void * grow_callback(void *start, size_t length)
+void * grow_callback(size_t length)
 {
 	total_alloc_calls += 1;
 	total_alloc_size += length;
@@ -47,7 +47,7 @@ TEST_CASE( "Buddy blocks tests", "[memory buddy]" )
 	unsigned seed = clock::now().time_since_epoch().count();
 	std::default_random_engine rng(seed);
 
-	heap_manager mm(nullptr, grow_callback);
+	heap_manager mm(grow_callback);
 
 	// The ctor should have allocated an initial block
 	CHECK( total_alloc_size == max_block );
@@ -138,7 +138,7 @@ TEST_CASE( "Non-contiguous blocks tests", "[memory buddy]" )
 	unsigned seed = clock::now().time_since_epoch().count();
 	std::default_random_engine rng(seed);
 
-	heap_manager mm(nullptr, grow_callback);
+	heap_manager mm(grow_callback);
 	std::vector<void *> allocs;
 
 	const int blocks = 3;

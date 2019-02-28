@@ -12,7 +12,7 @@
 
 using namespace kutil;
 
-extern void * grow_callback(void*, size_t);
+extern void * grow_callback(size_t);
 extern void free_memory();
 
 const size_t max_block = 1ull << 36;
@@ -21,14 +21,15 @@ const size_t GB = 1ull << 30;
 
 TEST_CASE( "Buddy addresses tests", "[address buddy]" )
 {
-	heap_manager mm(nullptr, grow_callback);
+	heap_manager mm(grow_callback);
 	kutil::setup::set_heap(&mm);
 
 	using clock = std::chrono::system_clock;
 	unsigned seed = clock::now().time_since_epoch().count();
 	std::default_random_engine rng(seed);
 
-	address_manager am(start, max_block * 2);
+	address_manager am;
+	am.add_regions(start, max_block * 2);
 
 	// Blocks should be:
 	// 36: 0-64G, 64-128G

@@ -19,10 +19,24 @@ template<
 class buddy_allocator
 {
 public:
+	using region_node = list_node<region_type>;
+	using region_list = linked_list<region_type>;
+
 	/// Constructor.
+	buddy_allocator() {}
+
+	/// Constructor with an initial cache of region structs from bootstrapped
+	/// memory.
+	/// \arg cache  List of pre-allocated ununused region_type structures
+	buddy_allocator(region_list cache)
+	{
+		m_alloc.append(cache);
+	}
+
+	/// Add address space to be managed.
 	/// \arg start   Initial address in the managed range
 	/// \arg length  Size of the managed range, in bytes
-	buddy_allocator(uintptr_t start, size_t length)
+	void add_regions(uintptr_t start, size_t length)
 	{
 		uintptr_t p = start;
 		unsigned size = size_max;
@@ -89,6 +103,7 @@ public:
 		for (unsigned i = size_max; i >= size_min && !found; --i) {
 			for (auto *r : free_bucket(i)) {
 				if (start >= r->address && end <= r->end()) {
+					free_bucket(i).remove(r);
 					found = r;
 					break;
 				}
@@ -99,27 +114,31 @@ public:
 		if (!found)
 			return 0;
 
-		while (found->size > size_min) {
-			// Split if the request fits in the second half
-			if (start >= found->half()) {
-				region_node *other = split(found);
-				free_bucket(found->size).sorted_insert(found);
-				found = other;
-			}
-
-			// Split if the request fits in the first half
-			else if (start + length < found->half()) {
-				region_node *other = split(found);
-				free_bucket(other->size).sorted_insert(other);
-			}
-
-			// If neither, we've split as much as possible
-			else
-				break;
-		}
-
+		found = maybe_split(found, start, end);
 		used_bucket(found->size).sorted_insert(found);
 		return found->address;
+	}
+
+	/// Mark a region as permanently allocated. The region is not returned,
+	/// as the block can never be freed. This may remove several smaller
+	/// regions in order to more closely fit the region described.
+	/// \arg start   The start of the region
+	/// \arg length  The size of the region, in bytes
+	/// \returns     The address of the start of the allocated area, or 0 on
+	///              failure. This may be less than `start`.
+	void mark_permanent(uintptr_t start, size_t length)
+	{
+		uintptr_t end = start + length;
+		for (unsigned i = size_max; i >= size_min; --i) {
+			for (auto *r : free_bucket(i)) {
+				if (start >= r->address && end <= r->end()) {
+					delete_region(r, start, end);
+					return;
+				}
+			}
+		}
+
+		kassert(false, "buddy_allocator::mark_permanent called for unknown region");
 	}
 
 	/// Free a previous allocation.
@@ -151,10 +170,6 @@ public:
 	}
 
 protected:
-
-	using region_node = list_node<region_type>;
-	using region_list = linked_list<region_type>;
-
 	/// Split a region of the given size into two smaller regions, returning
 	/// the new latter half
 	region_node * split(region_node *reg)
@@ -189,10 +204,48 @@ protected:
 		return nullptr;
 	}
 
+	region_node * maybe_split(region_node *reg, uintptr_t start, uintptr_t end)
+	{
+		while (reg->size > size_min) {
+			// Split if the request fits in the second half
+			if (start >= reg->half()) {
+				region_node *other = split(reg);
+				free_bucket(reg->size).sorted_insert(reg);
+				reg = other;
+			}
+
+			// Split if the request fits in the first half
+			else if (end <= reg->half()) {
+				region_node *other = split(reg);
+				free_bucket(other->size).sorted_insert(other);
+			}
+
+			// If neither, we've split as much as possible
+			else break;
+		}
+
+		return reg;
+	}
+
+	void delete_region(region_node *reg, uintptr_t start, uintptr_t end)
+	{
+		reg = maybe_split(reg, start, end);
+
+		size_t leading = start - reg->address;
+		size_t trailing = reg->end() - end;
+		if (leading > (1<<size_min) || trailing > (1<<size_min)) {
+			region_node *tail = split(reg);
+			delete_region(reg, start, reg->end());
+			delete_region(tail, tail->address, end);
+		} else {
+			m_alloc.push(reg);
+		}
+	}
+
 	region_list & used_bucket(unsigned size) { return m_used[size - size_min]; }
 	region_list & free_bucket(unsigned size) { return m_free[size - size_min]; }
 
-	static const unsigned buckets = (size_max - size_min);
+	static const unsigned buckets = (size_max - size_min + 1);
 
 	region_list m_free[buckets];
 	region_list m_used[buckets];

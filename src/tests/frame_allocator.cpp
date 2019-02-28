@@ -5,7 +5,7 @@
 
 using namespace kutil;
 
-extern void * grow_callback(void*, size_t);
+extern void * grow_callback(size_t);
 extern void free_memory();
 
 const size_t max_block = 1ull << 36;
@@ -14,7 +14,7 @@ const size_t GB = 1ull << 30;
 
 TEST_CASE( "Frame allocator tests", "[memory frame]" )
 {
-	heap_manager mm(nullptr, grow_callback);
+	heap_manager mm(grow_callback);
 	kutil::setup::set_heap(&mm);
 
 	frame_block_list free;
