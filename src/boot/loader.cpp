@@ -14,12 +14,19 @@ loader_alloc_pages(
 	EFI_BOOT_SERVICES *bootsvc,
 	EFI_MEMORY_TYPE mem_type,
 	size_t *length,
-	void **pages)
+	void **pages,
+	bool align)
 {
 	EFI_STATUS status;
 
 	size_t page_count = ((*length - 1) / PAGE_SIZE) + 1;
 	EFI_PHYSICAL_ADDRESS addr = (EFI_PHYSICAL_ADDRESS)*pages;
+
+	if (align) {
+		// Align addr to the next multiple of N pages
+		size_t align_size = page_count * PAGE_SIZE;
+		addr = ((addr - 1) & ~(align_size - 1)) + align_size;
+	}
 
 	status = bootsvc->AllocatePages(AllocateAddress, mem_type, page_count, &addr);
 	if (status == EFI_NOT_FOUND || status == EFI_OUT_OF_RESOURCES) {
@@ -66,7 +73,8 @@ loader_load_initrd(
 			bootsvc,
 			memtype_initrd,
 			&data->initrd_length,
-			&data->initrd);
+			&data->initrd,
+			true);
 	CHECK_EFI_STATUS_OR_RETURN(status, L"Allocating pages");
 
 	status = file->Read(file, &data->initrd_length, data->initrd);
@@ -153,7 +161,7 @@ loader_load_elf(
 
 		length = prog_header.mem_size;
 		void *addr = (void *)(prog_header.vaddr - KERNEL_VIRT_ADDRESS);
-		status = loader_alloc_pages(bootsvc, memtype_kernel, &length, &addr);
+		status = loader_alloc_pages(bootsvc, memtype_kernel, &length, &addr, false);
 		CHECK_EFI_STATUS_OR_RETURN(status, L"Allocating kernel pages");
 
 		if (data->kernel == 0)
@@ -239,7 +247,8 @@ loader_load_kernel(
 				bootsvc,
 				memtype_data,
 				&data->data_length,
-				&data->data);
+				&data->data,
+				true);
 		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_alloc_pages: kernel data");
 
 		return EFI_SUCCESS;

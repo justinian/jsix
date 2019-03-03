@@ -304,7 +304,6 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 
 	// Now go back through these lists and consolidate
 	block_slab.append(frame_block::consolidate(free));
-	block_slab.append(frame_block::consolidate(used));
 
 	region_allocator region_slab(page_size, allocator);
 	region_slab.allocate(); // Allocate some buddy regions for the address_manager

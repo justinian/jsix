@@ -132,6 +132,7 @@ public:
 		for (unsigned i = size_max; i >= size_min; --i) {
 			for (auto *r : free_bucket(i)) {
 				if (start >= r->address && end <= r->end()) {
+					free_bucket(i).remove(r);
 					delete_region(r, start, end);
 					return;
 				}

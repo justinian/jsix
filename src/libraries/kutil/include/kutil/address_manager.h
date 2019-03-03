@@ -8,7 +8,7 @@ namespace kutil {
 
 using address_manager =
 	buddy_allocator<
-		16,  // Min allocation: 64KiB
+		12,  // Min allocation:  4KiB
 		36   // Max allocation: 64GiB
 	>;
 
