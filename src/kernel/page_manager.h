@@ -5,41 +5,30 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "kutil/address_manager.h"
 #include "kutil/enum_bitfields.h"
 #include "kutil/frame_allocator.h"
 #include "kutil/linked_list.h"
 #include "kutil/slab_allocator.h"
+#include "kernel_memory.h"
+#include "page_table.h"
 
-struct page_table;
 struct free_page_header;
 
 /// Manager for allocation and mapping of pages
 class page_manager
 {
 public:
-	/// Size of a single page.
-	static const size_t page_size = 0x1000;
-
-	/// Start of the higher half.
-	static const uintptr_t high_offset = 0xffffff0000000000;
-
-	/// Offset from physical where page tables are mapped.
-	static const uintptr_t page_offset = 0xffffff8000000000;
-
-	/// Initial process thread's stack address
-	static const uintptr_t initial_stack = 0x0000800000000000;
-
-	/// Initial process thread's stack size, in pages
-	static const unsigned initial_stack_pages = 1;
-
-	page_manager(kutil::frame_allocator &frames);
+	page_manager(
+		kutil::frame_allocator &frames,
+		kutil::address_manager &addrs);
 
 	/// Helper to get the number of pages needed for a given number of bytes.
 	/// \arg bytes  The number of bytes desired
 	/// \returns    The number of pages needed to contain the desired bytes
 	static inline size_t page_count(size_t bytes)
 	{
-		return (bytes - 1) / page_size + 1;
+		return (bytes - 1) / memory::frame_size + 1;
 	}
 
 	/// Helper to read the PML4 table from CR3.
@@ -48,14 +37,14 @@ public:
 	{
 		uintptr_t pml4 = 0;
 		__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (pml4) );
-		return reinterpret_cast<page_table *>((pml4 & ~0xfffull) + page_offset);
+		return reinterpret_cast<page_table *>((pml4 & ~0xfffull) + memory::page_offset);
 	}
 
 	/// Helper to set the PML4 table pointer in CR3.
 	/// \arg pml4  A pointer to the PML4 table to install.
 	static inline void set_pml4(page_table *pml4)
 	{
-		uintptr_t p = reinterpret_cast<uintptr_t>(pml4) - page_offset;
+		uintptr_t p = reinterpret_cast<uintptr_t>(pml4) - memory::page_offset;
 		__asm__ __volatile__ ( "mov %0, %%cr3" :: "r" (p & ~0xfffull) );
 	}
 
@@ -64,8 +53,16 @@ public:
 	/// \returns      A pointer to the PML4 table
 	page_table * create_process_map();
 
-	/// Deallocate a process' PML4 table.
-	void delete_process_map(page_table *table);
+	/// Deallocate a process' PML4 table and entries.
+	/// \arg pml4  The process' PML4 table
+	void delete_process_map(page_table *pml4);
+
+	/// Copy a process' memory mappings (and memory pages).
+	/// \arg from  Page table to copy from
+	/// \arg lvl   Level of the given tables (default is PML4)
+	/// \returns   The new page table
+	page_table * copy_table(page_table *from,
+			page_table::level lvl = page_table::level::pml4);
 
 	/// Allocate and map pages into virtual memory.
 	/// \arg address  The virtual address at which to map the pages
@@ -75,10 +72,11 @@ public:
 	/// \returns      A pointer to the start of the mapped region
 	void * map_pages(uintptr_t address, size_t count, bool user = false, page_table *pml4 = nullptr);
 
-	/// Unmap existing pages from memory.
+	/// Unmap and free existing pages from memory.
 	/// \arg address  The virtual address of the memory to unmap
 	/// \arg count    The number of pages to unmap
-	void unmap_pages(void *address, size_t count);
+	/// \arg pml4     The pml4 to unmap from - null for the current one
+	void unmap_pages(void *address, size_t count, page_table *pml4 = nullptr);
 
 	/// Offset-map a pointer. No physical pages will be mapped.
 	/// \arg pointer  Pointer to a pointer to the memory area to be mapped
@@ -90,7 +88,7 @@ public:
 	/// \returns Physical address of the memory pointed to by p
 	inline uintptr_t offset_phys(void *p) const
 	{
-		return reinterpret_cast<uintptr_t>(kutil::offset_pointer(p, -page_offset));
+		return reinterpret_cast<uintptr_t>(kutil::offset_pointer(p, -memory::page_offset));
 	}
 
 	/// Get the virtual address of an offset-mapped physical address
@@ -98,19 +96,24 @@ public:
 	/// \returns Virtual address of the memory at address a
 	inline void * offset_virt(uintptr_t a) const
 	{
-		return kutil::offset_pointer(reinterpret_cast<void *>(a), page_offset);
+		return kutil::offset_pointer(reinterpret_cast<void *>(a), memory::page_offset);
 	}
 
 	/// Dump the given or current PML4 to the console
-	/// \arg pml4       The page table to use, null for the current one
-	/// \arg max_index  The max index of pml4 to print
-	void dump_pml4(page_table *pml4 = nullptr, int max_index = 511);
+	/// \arg pml4     The page table to use, null for the current one
+	/// \arg recurse  Whether to print sub-tables
+	void dump_pml4(page_table *pml4 = nullptr, bool recurse = true);
 
 	/// Get the system page manager.
 	/// \returns  A pointer to the system page manager
 	static page_manager * get();
 
 private:
+	/// Copy a physical page
+	/// \arg orig  Physical address of the page to copy
+	/// \returns   Physical address of the new page
+	uintptr_t copy_page(uintptr_t orig);
+
 	/// Allocate a page for a page table, or pull one from the cache
 	/// \returns  An empty page mapped in page space
 	page_table * get_table_page();
@@ -145,14 +148,21 @@ private:
 	/// \arg pml4       The root page table for this mapping
 	/// \arg virt_addr  The starting virtual address ot the memory to be unmapped
 	/// \arg count      The number of pages to unmap
+	/// \arg free       Whether to return the pages to the frame allocator
 	void page_out(
 			page_table *pml4,
 			uintptr_t virt_addr,
-			size_t count);
+			size_t count,
+			bool free = false);
+
+	/// Low-level routine for unmapping an entire table of memory at once
+	void unmap_table(page_table *table, page_table::level lvl, bool free);
 
 	page_table *m_kernel_pml4; ///< The PML4 of just kernel pages
 	free_page_header *m_page_cache; ///< Cache of free pages to use for tables
+
 	kutil::frame_allocator &m_frames;
+	kutil::address_manager &m_addrs;
 
 	friend void memory_initialize(uint16_t, const void *, size_t, size_t);
 	page_manager(const page_manager &) = delete;
@@ -164,44 +174,6 @@ extern page_manager g_page_manager;
 inline page_manager * page_manager::get() { return &g_page_manager; }
 
 
-/// Struct to allow easy accessing of a memory page being used as a page table.
-struct page_table
-{
-	using pm = page_manager;
-
-	uint64_t entries[512];
-
-	inline page_table * get(int i) const {
-		uint64_t entry = entries[i];
-		if ((entry & 0x1) == 0) return nullptr;
-		return reinterpret_cast<page_table *>((entry & ~0xfffull) + pm::page_offset);
-	}
-
-	inline void set(int i, page_table *p, uint16_t flags) {
-		entries[i] = (reinterpret_cast<uint64_t>(p) - pm::page_offset) | (flags & 0xfff);
-	}
-
-	void dump(int level = 4, int max_index = 511, uint64_t offset = page_manager::page_offset);
-};
-
-
-/// Helper struct for computing page table indices of a given address.
-struct page_table_indices
-{
-	page_table_indices(uint64_t v = 0);
-
-	uintptr_t addr() const;
-
-	inline operator uintptr_t() const { return addr(); }
-
-	/// Get the index for a given level of page table.
-	uint64_t & operator[](size_t i) { return index[i]; }
-	uint64_t operator[](size_t i) const { return index[i]; }
-	uint64_t index[4]; ///< Indices for each level of tables.
-};
-
-bool operator==(const page_table_indices &l, const page_table_indices &r);
-
 /// Calculate a page-aligned address.
 /// \arg p    The address to align.
 /// \returns  The next page-aligned address _after_ `p`.
@@ -209,8 +181,8 @@ template <typename T> inline T
 page_align(T p)
 {
 	return reinterpret_cast<T>(
-		((reinterpret_cast<uintptr_t>(p) - 1) & ~(page_manager::page_size - 1))
-		+ page_manager::page_size);
+		((reinterpret_cast<uintptr_t>(p) - 1) & ~(memory::frame_size - 1))
+		+ memory::frame_size);
 }
 
 /// Calculate a page-table-aligned address. That is, an address that is
@@ -222,12 +194,6 @@ page_table_align(T p)
 {
 	return ((p - 1) & ~0x1fffffull) + 0x200000;
 }
-
-
-/// Calculate the number of pages needed for the give number of bytes.
-/// \arg n   Number of bytes
-/// \returns Number of pages
-inline size_t page_count(size_t n) { return ((n - 1) / page_manager::page_size) + 1; }
 
 
 /// Bootstrap the memory managers.

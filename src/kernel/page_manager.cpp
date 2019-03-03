@@ -5,21 +5,28 @@
 #include "log.h"
 #include "page_manager.h"
 
-kutil::frame_allocator g_frame_allocator;
-page_manager g_page_manager(g_frame_allocator);
+using memory::frame_size;
+using memory::kernel_offset;
+using memory::page_offset;
+
+extern kutil::frame_allocator g_frame_allocator;
+extern kutil::address_manager g_kernel_address_manager;
+page_manager g_page_manager(
+	g_frame_allocator,
+	g_kernel_address_manager);
 
 
 static uintptr_t
 pt_to_phys(page_table *pt)
 {
-	return reinterpret_cast<uintptr_t>(pt) - page_manager::page_offset;
+	return reinterpret_cast<uintptr_t>(pt) - page_offset;
 }
 
 
 static page_table *
 pt_from_phys(uintptr_t p)
 {
-	return reinterpret_cast<page_table *>((p + page_manager::page_offset) & ~0xfffull);
+	return reinterpret_cast<page_table *>((p + page_offset) & ~0xfffull);
 }
 
 
@@ -30,9 +37,12 @@ struct free_page_header
 };
 
 
-page_manager::page_manager(kutil::frame_allocator &frames) :
+page_manager::page_manager(
+		kutil::frame_allocator &frames,
+		kutil::address_manager &addrs) :
 	m_page_cache(nullptr),
-	m_frames(frames)
+	m_frames(frames),
+	m_addrs(addrs)
 {
 }
 
@@ -41,25 +51,82 @@ page_manager::create_process_map()
 {
 	page_table *table = get_table_page();
 
-	kutil::memset(table, 0, page_size);
+	kutil::memset(table, 0, frame_size);
 	table->entries[510] = m_kernel_pml4->entries[510];
 	table->entries[511] = m_kernel_pml4->entries[511];
 
 	// Create the initial user stack
 	map_pages(
-		initial_stack - (initial_stack_pages * page_size),
-		initial_stack_pages,
+		memory::initial_stack - (memory::initial_stack_pages * frame_size),
+		memory::initial_stack_pages,
 		true, // This is the ring3 stack, user = true
 		table);
 
 	return table;
 }
 
-void
-page_manager::delete_process_map(page_table *table)
+uintptr_t
+page_manager::copy_page(uintptr_t orig)
 {
-	// TODO: recurse table entries and mark them free
-	unmap_pages(table, 1);
+	uintptr_t virt = m_addrs.allocate(2 * frame_size);
+	uintptr_t copy = 0;
+
+	size_t n = m_frames.allocate(1, &copy);
+	kassert(n, "copy_page could not allocate page");
+
+	page_in(get_pml4(), orig, virt, 1);
+	page_in(get_pml4(), copy, virt + frame_size, 1);
+
+	kutil::memcpy(
+			reinterpret_cast<void *>(virt + frame_size),
+			reinterpret_cast<void *>(virt),
+			frame_size);
+
+	page_out(get_pml4(), virt, 2);
+
+	m_addrs.free(virt);
+	return copy;
+}
+
+page_table *
+page_manager::copy_table(page_table *from, page_table::level lvl)
+{
+	page_table *to = get_table_page();
+
+	const int max =
+		lvl == page_table::level::pml4 ?
+			510 :
+			512;
+
+	for (int i = 0; i < max; ++i) {
+		if (!from->is_present(i)) {
+			to->entries[i] = 0;
+			continue;
+		}
+
+		bool is_page =
+			lvl == page_table::level::pt ||
+			from->is_large_page(lvl, i);
+
+		if (is_page) {
+			uint16_t flags = from->entries[i] &  0xfffull;
+			uintptr_t orig = from->entries[i] & ~0xfffull;
+			to->entries[i] = copy_page(orig) | flags;
+		} else {
+			uint16_t flags = 0;
+			page_table *next_from = from->get(i, &flags);
+			page_table *next_to = copy_table(next_from, page_table::deeper(lvl));
+			to->set(i, next_to, flags);
+		}
+	}
+
+	return to;
+}
+
+void
+page_manager::delete_process_map(page_table *pml4)
+{
+	unmap_table(pml4, page_table::level::pml4, true);
 }
 
 void
@@ -67,7 +134,7 @@ page_manager::map_offset_pointer(void **pointer, size_t length)
 {
 	uintptr_t *p = reinterpret_cast<uintptr_t *>(pointer);
 	uintptr_t v = *p + page_offset;
-	uintptr_t c = ((length - 1) / page_size) + 1;
+	uintptr_t c = ((length - 1) / frame_size) + 1;
 
 	page_table *pml4 = get_pml4();
 	page_in(pml4, *p, v, c);
@@ -75,11 +142,10 @@ page_manager::map_offset_pointer(void **pointer, size_t length)
 }
 
 void
-page_manager::dump_pml4(page_table *pml4, int max_index)
+page_manager::dump_pml4(page_table *pml4, bool recurse)
 {
-	if (pml4 == nullptr)
-		pml4 = get_pml4();
-	pml4->dump(4, max_index);
+	if (pml4 == nullptr) pml4 = get_pml4();
+	pml4->dump(page_table::level::pml4, recurse);
 }
 
 page_table *
@@ -94,11 +160,11 @@ page_manager::get_table_page()
 		m_page_cache = reinterpret_cast<free_page_header *>(virt);
 
 		// The last one needs to be null, so do n-1
-		uintptr_t end = virt + (n-1) * page_size;
+		uintptr_t end = virt + (n-1) * frame_size;
 		while (virt < end) {
 			reinterpret_cast<free_page_header *>(virt)->next =
-				reinterpret_cast<free_page_header *>(virt + page_size);
-			virt += page_size;
+				reinterpret_cast<free_page_header *>(virt + frame_size);
+			virt += frame_size;
 		}
 		reinterpret_cast<free_page_header *>(virt)->next = nullptr;
 
@@ -115,7 +181,7 @@ page_manager::free_table_pages(void *pages, size_t count)
 {
 	uintptr_t start = reinterpret_cast<uintptr_t>(pages);
 	for (size_t i = 0; i < count; ++i) {
-		uintptr_t addr = start + (i * page_size);
+		uintptr_t addr = start + (i * frame_size);
 		free_page_header *header = reinterpret_cast<free_page_header *>(addr);
 		header->count = 1;
 		header->next = m_page_cache;
@@ -138,7 +204,7 @@ page_manager::map_pages(uintptr_t address, size_t count, bool user, page_table *
 
 		page_in(pml4, phys, address, n, user);
 
-		address += n * page_size;
+		address += n * frame_size;
 		count -= n;
 	}
 
@@ -146,10 +212,53 @@ page_manager::map_pages(uintptr_t address, size_t count, bool user, page_table *
 }
 
 void
-page_manager::unmap_pages(void* address, size_t count)
+page_manager::unmap_table(page_table *table, page_table::level lvl, bool free)
 {
-	// TODO: uh, actually unmap that shit??
-	m_frames.free(reinterpret_cast<uintptr_t>(address), count);
+	const int max =
+		lvl == page_table::level::pml4 ?
+			510 :
+			512;
+
+	uintptr_t free_start = 0;
+	uintptr_t free_count = 0;
+
+	size_t size =
+		lvl == page_table::level::pdp ? (1<<30) :
+		lvl == page_table::level::pd  ? (1<<21) :
+		lvl == page_table::level::pt  ? (1<<12) :
+		0;
+
+	for (int i = 0; i < max; ++i) {
+		if (!table->is_present(i)) continue;
+
+		bool is_page =
+			lvl == page_table::level::pt ||
+			table->is_large_page(lvl, i);
+
+		if (is_page) {
+			uintptr_t frame = table->entries[i] & ~0xfffull;
+			if (!free_count || free_start != frame + free_count * size) {
+				if (free_count && free)
+					m_frames.free(free_start, free_count * size / frame_size);
+				free_start = frame;
+				free_count = 1;
+			}
+		} else {
+			page_table *next = table->get(i);
+			unmap_table(next, page_table::deeper(lvl), free);
+		}
+	}
+
+	if (free_count && free)
+		m_frames.free(free_start, free_count * size / frame_size);
+	free_table_pages(table, 1);
+}
+
+void
+page_manager::unmap_pages(void* address, size_t count, page_table *pml4)
+{
+	if (!pml4) pml4 = get_pml4();
+	page_out(pml4, reinterpret_cast<uintptr_t>(address), count, true);
 }
 
 void
@@ -186,7 +295,7 @@ page_manager::page_in(page_table *pml4, uintptr_t phys_addr, uintptr_t virt_addr
 					tables[2]->get(idx[2]) == nullptr) {
 					// Do a 2MiB page instead
 					tables[2]->entries[idx[2]] = phys_addr | flags | 0x80;
-					phys_addr += page_size * 512;
+					phys_addr += frame_size * 512;
 					count -= 512;
 					if (count == 0) return;
 					continue;
@@ -197,7 +306,7 @@ page_manager::page_in(page_table *pml4, uintptr_t phys_addr, uintptr_t virt_addr
 
 				for (; idx[3] < 512; idx[3] += 1) {
 					tables[3]->entries[idx[3]] = phys_addr | flags;
-					phys_addr += page_size;
+					phys_addr += frame_size;
 					if (--count == 0) return;
 				}
 			}
@@ -208,26 +317,41 @@ page_manager::page_in(page_table *pml4, uintptr_t phys_addr, uintptr_t virt_addr
 }
 
 void
-page_manager::page_out(page_table *pml4, uintptr_t virt_addr, size_t count)
+page_manager::page_out(page_table *pml4, uintptr_t virt_addr, size_t count, bool free)
 {
 	page_table_indices idx{virt_addr};
 	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
 
+	bool found = false;
+	uintptr_t free_start = 0;
+	unsigned free_count = 0;
+
 	for (; idx[0] < 512; idx[0] += 1) {
-		tables[1] = reinterpret_cast<page_table *>(
-				tables[0]->entries[idx[0]] & ~0xfffull);
+		tables[1] = tables[0]->get(idx[0]);
 
 		for (; idx[1] < 512; idx[1] += 1) {
-			tables[2] = reinterpret_cast<page_table *>(
-					tables[1]->entries[idx[1]] & ~0xfffull);
+			tables[2] = tables[1]->get(idx[1]);
 
 			for (; idx[2] < 512; idx[2] += 1) {
-				tables[3] = reinterpret_cast<page_table *>(
-						tables[2]->entries[idx[2]] & ~0xfffull);
+				tables[3] = tables[2]->get(idx[2]);
 
 				for (; idx[3] < 512; idx[3] += 1) {
+					uintptr_t entry = tables[3]->entries[idx[3]] & ~0xfffull;
+					if (!found || entry != free_start + free_count * frame_size) {
+						if (found && free) m_frames.free(free_start, free_count);
+						free_start = tables[3]->entries[idx[3]] & ~0xfffull;
+						free_count = 1;
+						found = true;
+					} else {
+						free_count++;
+					}
+
 					tables[3]->entries[idx[3]] = 0;
-					if (--count == 0) return;
+
+					if (--count == 0) {
+						if (free) m_frames.free(free_start, free_count);
+						return;
+					}
 				}
 			}
 		}
@@ -237,40 +361,36 @@ page_manager::page_out(page_table *pml4, uintptr_t virt_addr, size_t count)
 }
 
 void
-page_table::dump(int level, int max_index, uint64_t offset)
+page_table::dump(page_table::level lvl, bool recurse)
 {
 	console *cons = console::get();
 
-	cons->printf("\nLevel %d page table @ %lx (off %lx):\n", level, this, offset);
+	cons->printf("\nLevel %d page table @ %lx:\n", lvl, this);
 	for (int i=0; i<512; ++i) {
 		uint64_t ent = entries[i];
-		if (ent == 0) continue;
 
-		if ((ent & 0x1) == 0) {
+		if ((ent & 0x1) == 0)
 			cons->printf("  %3d: %016lx   NOT PRESENT\n", i, ent);
-			continue;
-		}
 
-		if ((level == 2 || level == 3) && (ent & 0x80) == 0x80) {
+		else if ((lvl == level::pdp || lvl == level::pd) && (ent & 0x80) == 0x80)
 			cons->printf("  %3d: %016lx -> Large page at    %016lx\n", i, ent, ent & ~0xfffull);
-			continue;
-		} else if (level == 1) {
+
+		else if (lvl == level::pt)
 			cons->printf("  %3d: %016lx -> Page at          %016lx\n", i, ent, ent & ~0xfffull);
-		} else {
+
+		else
 			cons->printf("  %3d: %016lx -> Level %d table at %016lx\n",
-					i, ent, level - 1, (ent & ~0xfffull) + offset);
-			continue;
-		}
+					i, ent, deeper(lvl), (ent & ~0xfffull) + page_offset);
 	}
 
-	if (--level > 0) {
-		for (int i=0; i<=max_index; ++i) {
-			uint64_t ent = entries[i];
-			if ((ent & 0x1) == 0) continue;
-			if ((ent & 0x80)) continue;
+	if (lvl != level::pt && recurse) {
+		for (int i=0; i<=512; ++i) {
+			if (is_large_page(lvl, i))
+				continue;
 
-			page_table *next = reinterpret_cast<page_table *>((ent & ~0xffful) + offset); 
-			next->dump(level, 511, offset);
+			page_table *next = get(i);
+			if (next)
+				next->dump(deeper(lvl), true);
 		}
 	}
 }

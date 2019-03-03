@@ -4,6 +4,7 @@
 #include "gdt.h"
 #include "interrupts.h"
 #include "io.h"
+#include "kernel_memory.h"
 #include "log.h"
 #include "msr.h"
 #include "page_manager.h"
@@ -11,6 +12,8 @@
 
 #include "elf/elf.h"
 #include "kutil/assert.h"
+
+using memory::initial_stack;
 
 scheduler scheduler::s_instance(nullptr);
 
@@ -67,7 +70,7 @@ load_process(const void *image_start, size_t bytes, process *proc, cpu_state sta
 		if (header->type != elf::segment_type::load)
 			continue;
 
-		uintptr_t aligned = header->vaddr & ~(page_manager::page_size - 1);
+		uintptr_t aligned = header->vaddr & ~(memory::frame_size - 1);
 		size_t size = (header->vaddr + header->mem_size) - aligned;
 		size_t pages = page_manager::page_count(size);
 
@@ -80,7 +83,7 @@ load_process(const void *image_start, size_t bytes, process *proc, cpu_state sta
 		void *mapped = pager->map_pages(aligned, pages, true);
 		kassert(mapped, "Tried to map userspace pages and failed!");
 
-		kutil::memset(mapped, 0, pages * page_manager::page_size);
+		kutil::memset(mapped, 0, pages * memory::frame_size);
 	}
 
 	const unsigned section_count = image.section_count();
@@ -132,7 +135,7 @@ scheduler::create_process(const char *name, const void *data, size_t size)
 	state->cs = cs;
 	state->rflags = rflags_int;
 	state->rip = 0; // to be filled by the loader
-	state->user_rsp = page_manager::initial_stack;
+	state->user_rsp = initial_stack;
 
 	// Next state in the stack is the loader's kernel stack. The scheduler will
 	// iret to this which will kick off the loading:

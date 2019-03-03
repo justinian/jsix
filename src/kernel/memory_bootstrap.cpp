@@ -11,21 +11,22 @@
 using kutil::frame_block;
 using kutil::frame_block_flags;
 using kutil::frame_block_list;
+using memory::frame_size;
+using memory::kernel_offset;
+using memory::page_offset;
 
 static const unsigned ident_page_flags = 0xb;
-static const size_t page_size = page_manager::page_size;
 
-extern kutil::frame_allocator g_frame_allocator;
-
+kutil::frame_allocator g_frame_allocator;
 kutil::address_manager g_kernel_address_manager;
 kutil::heap_manager g_kernel_heap_manager;
 
 void * mm_grow_callback(size_t length)
 {
-	kassert(length % page_manager::page_size == 0,
+	kassert(length % frame_size == 0,
 			"Heap manager requested a fractional page.");
 
-	size_t pages = length / page_manager::page_size;
+	size_t pages = length / frame_size;
 	log::info(logs::memory, "Heap manager growing heap by %d pages.", pages);
 
 	uintptr_t addr = g_kernel_address_manager.allocate(length);
@@ -40,19 +41,19 @@ namespace {
 	struct page_consumer
 	{
 		page_consumer(uintptr_t start, unsigned count, unsigned used = 0) :
-			current(start + used * page_size),
+			current(start + used * frame_size),
 			used(used),
 			max(count) {}
 
 		void * get_page() {
 			kassert(used++ < max, "page_consumer ran out of pages");
 			void *retval = reinterpret_cast<void *>(current);
-			current += page_size;
+			current += frame_size;
 			return retval;
 		}
 
 		void * operator()(size_t size) {
-			kassert(size == page_size, "page_consumer used with non-page size!");
+			kassert(size == frame_size, "page_consumer used with non-page size!");
 			return get_page();
 		}
 
@@ -233,7 +234,7 @@ page_in_ident(
 					// Do a 2MiB page instead
 					tables[2]->entries[idx[2]] = phys_addr | 0x80 | ident_page_flags;
 
-					phys_addr += page_size * 512;
+					phys_addr += frame_size * 512;
 					count -= 512;
 					if (count == 0) return pages_consumed;
 					continue;
@@ -245,7 +246,7 @@ page_in_ident(
 
 				for (; idx[3] < 512; idx[3] += 1) {
 					tables[3]->entries[idx[3]] = phys_addr | ident_page_flags;
-					phys_addr += page_size;
+					phys_addr += frame_size;
 					if (--count == 0) return pages_consumed;
 				}
 			}
@@ -277,7 +278,7 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 	// The tables are ident-mapped currently, so the cr3 physical address works. But let's
 	// get them into the offset-mapped area asap.
 	page_table *tables = reinterpret_cast<page_table *>(scratch_phys);
-	uintptr_t scratch_virt = scratch_phys + page_manager::page_offset;
+	uintptr_t scratch_virt = scratch_phys + page_offset;
 
 	uint64_t used_pages = 1; // starts with PML4
 	used_pages += page_in_ident(
@@ -295,7 +296,7 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 	// taking inventory of free pages.
 	page_consumer allocator(scratch_virt, scratch_pages, used_pages);
 
-	block_allocator block_slab(page_size, allocator);
+	block_allocator block_slab(frame_size, allocator);
 	frame_block_list used;
 	frame_block_list free;
 
@@ -305,15 +306,13 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 	// Now go back through these lists and consolidate
 	block_slab.append(frame_block::consolidate(free));
 
-	region_allocator region_slab(page_size, allocator);
+	region_allocator region_slab(frame_size, allocator);
 	region_slab.allocate(); // Allocate some buddy regions for the address_manager
 
 	kutil::address_manager *am =
 		new (&g_kernel_address_manager) kutil::address_manager(std::move(region_slab));
 
-	am->add_regions(
-			page_manager::high_offset,
-			page_manager::page_offset - page_manager::high_offset);
+	am->add_regions(kernel_offset, page_offset - kernel_offset);
 
 	// Finally, build an acutal set of kernel page tables that just contains
 	// what the kernel actually has mapped, but making everything writable
@@ -323,7 +322,7 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 
 	kutil::frame_allocator *fa =
 		new (&g_frame_allocator) kutil::frame_allocator(std::move(block_slab));
-	page_manager *pm = new (&g_page_manager) page_manager(*fa);
+	page_manager *pm = new (&g_page_manager) page_manager(*fa, *am);
 
 	// Give the rest to the page_manager's cache for use in page_in
 	pm->free_table_pages(
@@ -339,15 +338,15 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 				break;
 
 			case frame_block_flags::map_kernel:
-				virt_addr = block->address + page_manager::high_offset;
+				virt_addr = block->address + kernel_offset;
 				if (block->flags && frame_block_flags::permanent)
-					am->mark_permanent(virt_addr, block->count * page_size);
+					am->mark_permanent(virt_addr, block->count * frame_size);
 				else
-					am->mark(virt_addr, block->count * page_size);
+					am->mark(virt_addr, block->count * frame_size);
 				break;
 
 			case frame_block_flags::map_offset:
-				virt_addr = block->address + page_manager::page_offset;
+				virt_addr = block->address + page_offset;
 				break;
 
 			default:
