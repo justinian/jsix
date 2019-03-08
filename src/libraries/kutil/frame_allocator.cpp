@@ -65,7 +65,6 @@ frame_allocator::init(
 {
 	m_free.append(free);
 	m_used.append(used);
-	consolidate_blocks();
 }
 
 void

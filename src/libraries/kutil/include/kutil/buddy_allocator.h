@@ -22,6 +22,9 @@ public:
 	using region_node = list_node<region_type>;
 	using region_list = linked_list<region_type>;
 
+	static const size_t min_alloc = (1 << size_min);
+	static const size_t max_alloc = (1 << size_max);
+
 	/// Constructor.
 	buddy_allocator() {}
 

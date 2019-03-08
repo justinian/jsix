@@ -48,11 +48,11 @@ public:
 	/// \arg count    The number of frames to be freed
 	void free(uintptr_t address, size_t count);
 
-private:
 	/// Consolidate the free and used block lists. Return freed blocks
 	/// to the cache.
 	void consolidate_blocks();
 
+private:
 	frame_block_list m_free; ///< Free frames list
 	frame_block_list m_used; ///< In-use frames list
 	frame_block_slab m_block_slab; ///< frame_block slab allocator
