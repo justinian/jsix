@@ -1,15 +1,22 @@
+section .bss
+mypid: resq 1
+mychild: resq 1
+
+section .text
 global _start
 _start:
 	xor rbp, rbp	; Sentinel rbp
 
 	mov rax, 5		; GETPID syscall
 	int 0xee
-	mov r12, rax	; save pid to r12
+	mov [mypid], rax
 
 	mov rax, 8		; FORK syscall
 	int 0xee
+	mov [mychild], rax
 
-	mov r10, rax
+	mov r12, [mypid]
+	mov r13, [mychild]
 	mov rax, 1		; DEBUG syscall
 	int 0xee
 
@@ -22,7 +29,7 @@ _start:
 	mov rbx, 20		; sleep timeout
 
 .loop:
-	mov rax, 2		; MESSAGE syscall
+	mov rax, 1		; MESSAGE syscall
 	;mov rax, 0		; NOOP syscall
 	;syscall
 	int 0xee

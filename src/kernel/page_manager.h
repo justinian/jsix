@@ -136,13 +136,15 @@ private:
 	/// \arg phys_addr  The starting physical address of the pages to be mapped
 	/// \arg virt_addr  The starting virtual address ot the memory to be mapped
 	/// \arg count      The number of pages to map
-	/// \art user  True if this is a userspace mapping
+	/// \arg user       True if this is a userspace mapping
+	/// \arg large      Whether to allow large pages
 	void page_in(
 			page_table *pml4,
 			uintptr_t phys_addr,
 			uintptr_t virt_addr,
 			size_t count,
-			bool user = false);
+			bool user = false,
+			bool large = false);
 
 	/// Low-level routine for unmapping a number of pages from the given page table.
 	/// \arg pml4       The root page table for this mapping

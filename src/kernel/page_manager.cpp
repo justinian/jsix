@@ -92,7 +92,7 @@ page_table *
 page_manager::copy_table(page_table *from, page_table::level lvl)
 {
 	page_table *to = get_table_page();
-	log::debug(logs::memory, "Page manager copying level %d table at %016lx to %016lx.", lvl, from, to);
+	log::debug(logs::paging, "Page manager copying level %d table at %016lx to %016lx.", lvl, from, to);
 
 	if (lvl == page_table::level::pml4) {
 		to->entries[510] = m_kernel_pml4->entries[510];
@@ -129,7 +129,7 @@ page_manager::copy_table(page_table *from, page_table::level lvl)
 	}
 
 	if (pages_copied)
-		log::debug(logs::memory, "   copied %3u pages", pages_copied);
+		log::debug(logs::paging, "   copied %3u pages", pages_copied);
 
 	return to;
 }
@@ -147,8 +147,10 @@ page_manager::map_offset_pointer(void **pointer, size_t length)
 	uintptr_t v = *p + page_offset;
 	uintptr_t c = ((length - 1) / frame_size) + 1;
 
+	log::info(logs::paging, "Mapping offset pointer region at %016lx size 0x%lx", *pointer, length);
+
 	page_table *pml4 = get_pml4();
-	page_in(pml4, *p, v, c);
+	page_in(pml4, *p, v, c, false, true);
 	*p = v;
 }
 
@@ -179,7 +181,7 @@ page_manager::get_table_page()
 		}
 		reinterpret_cast<free_page_header *>(virt)->next = nullptr;
 
-		log::debug(logs::memory, "Mappd %d new page table pages at %lx", n, phys);
+		log::info(logs::paging, "Mappd %d new page table pages at %lx", n, phys);
 	}
 
 	free_page_header *page = m_page_cache;
@@ -210,7 +212,7 @@ page_manager::map_pages(uintptr_t address, size_t count, bool user, page_table *
 		uintptr_t phys = 0;
 		size_t n = m_frames.allocate(count, &phys);
 
-		log::debug(logs::memory, "Paging in %d pages at p:%016lx to v:%016lx into %016lx table",
+		log::info(logs::paging, "Paging in %d pages at p:%016lx to v:%016lx into %016lx table",
 				n, phys, address, pml4);
 
 		page_in(pml4, phys, address, n, user);
@@ -283,8 +285,11 @@ page_manager::check_needs_page(page_table *table, unsigned index, bool user)
 }
 
 void
-page_manager::page_in(page_table *pml4, uintptr_t phys_addr, uintptr_t virt_addr, size_t count, bool user)
+page_manager::page_in(page_table *pml4, uintptr_t phys_addr, uintptr_t virt_addr, size_t count, bool user, bool large)
 {
+	log::debug(logs::paging, "page_in for table %016lx p:%016lx v:%016lx c:%4d u:%d l:%d",
+			pml4, phys_addr, virt_addr, count, user, large);
+
 	page_table_indices idx{virt_addr};
 	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
 
@@ -301,7 +306,8 @@ page_manager::page_in(page_table *pml4, uintptr_t phys_addr, uintptr_t virt_addr
 			tables[2] = tables[1]->get(idx[1]);
 
 			for (; idx[2] < 512; idx[2] += 1, idx[3] = 0) {
-				if (idx[3] == 0 &&
+				if (large &&
+					idx[3] == 0 &&
 					count >= 512 &&
 					tables[2]->get(idx[2]) == nullptr) {
 					// Do a 2MiB page instead

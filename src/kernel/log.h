@@ -14,6 +14,7 @@ enum class logs
 	driver,
 	fs,
 	task,
+	paging,
 
 	max
 };

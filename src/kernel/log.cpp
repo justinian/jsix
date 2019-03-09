@@ -17,6 +17,7 @@ static const char *areas[] = {
 	"driver",
 	"file  ",
 	"task  ",
+	"paging",
 
 	nullptr
 };

@@ -38,13 +38,14 @@ init_console()
 	cons->puts(GIT_VERSION " booting...\n");
 
 	log::init(cons);
-	//log::enable(logs::apic, log::level::debug);
-	//log::enable(logs::device, log::level::info);
+	log::enable(logs::apic, log::level::info);
+	log::enable(logs::device, log::level::info);
 	log::enable(logs::driver, log::level::debug);
 	log::enable(logs::memory, log::level::debug);
 	log::enable(logs::fs, log::level::debug);
 	log::enable(logs::task, log::level::debug);
 	log::enable(logs::boot, log::level::debug);
+	log::enable(logs::paging, log::level::warn);
 }
 
 void
