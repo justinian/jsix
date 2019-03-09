@@ -41,7 +41,7 @@ init_console()
 	//log::enable(logs::apic, log::level::debug);
 	//log::enable(logs::device, log::level::info);
 	log::enable(logs::driver, log::level::debug);
-	log::enable(logs::memory, log::level::info);
+	log::enable(logs::memory, log::level::debug);
 	log::enable(logs::fs, log::level::debug);
 	log::enable(logs::task, log::level::debug);
 	log::enable(logs::boot, log::level::debug);
@@ -148,7 +148,7 @@ kernel_main(popcorn_data *header)
 
 	for (auto &f : ird.files()) {
 		if (f.executable())
-			sched->create_process(f.name(), f.data(), f.size());
+			sched->load_process(f.name(), f.data(), f.size());
 	}
 
 	sched->start();

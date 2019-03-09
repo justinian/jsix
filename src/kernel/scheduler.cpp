@@ -108,9 +108,20 @@ load_process(const void *image_start, size_t bytes, process *proc, cpu_state sta
 	log::debug(logs::task, "  Loaded! New process rip: %016lx", state.rip);
 }
 
-void
-scheduler::create_process(const char *name, const void *data, size_t size)
+process_node *
+scheduler::create_process()
 {
+	auto *proc = m_process_allocator.pop();
+	proc->pid = m_next_pid++;
+	proc->priority = default_priority;
+	return proc;
+}
+
+void
+scheduler::load_process(const char *name, const void *data, size_t size)
+{
+	auto *proc = create_process();
+
 	uint16_t kcs = (1 << 3) | 0; // Kernel CS is GDT entry 1, ring 0
 	uint16_t cs = (5 << 3) | 3;  // User CS is GDT entry 5, ring 3
 
@@ -121,8 +132,7 @@ scheduler::create_process(const char *name, const void *data, size_t size)
 	page_table *pml4 = page_manager::get()->create_process_map();
 
 	// Create a one-page kernel stack space
-	void *stack0 = kutil::malloc(stack_size);
-	kutil::memset(stack0, 0, stack_size);
+	void *stack0 = proc->setup_kernel_stack(stack_size, 0);
 
 	// Stack grows down, point to the end
 	void *sp0 = kutil::offset_pointer(stack0, stack_size);
@@ -150,12 +160,6 @@ scheduler::create_process(const char *name, const void *data, size_t size)
 	loader_state->rax = reinterpret_cast<uint64_t>(data);
 	loader_state->rbx = size;
 
-	uint16_t pid = m_next_pid++;
-	auto *proc = m_process_allocator.pop();
-
-	proc->pid = pid;
-	proc->ppid = 0; // TODO
-	proc->priority = default_priority;
 	proc->rsp = reinterpret_cast<uintptr_t>(loader_state);
 	proc->pml4 = pml4;
 	proc->quanta = process_quanta;

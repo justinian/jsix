@@ -7,6 +7,8 @@
 #include "kutil/linked_list.h"
 #include "page_manager.h"
 
+typedef uint32_t pid_t;
+
 
 enum class process_flags : uint32_t
 {
@@ -33,8 +35,8 @@ enum class process_wait : uint8_t
 /// A process
 struct process
 {
-	uint32_t pid;
-	uint32_t ppid;
+	pid_t pid;
+	pid_t ppid;
 
 	process_flags flags;
 
@@ -51,6 +53,15 @@ struct process
 
 	uintptr_t rsp;
 	page_table *pml4;
+
+	uintptr_t kernel_stack;
+	size_t kernel_stack_size;
+
+	/// Copy this process.
+	/// \arg in_rsp The RSP of the calling process
+	/// \returns    Returns the child's pid to the parent, and
+	///             0 to the child.
+	pid_t fork(uint64_t in_rsp);
 
 	/// Unready this process until it gets a signal
 	/// \arg sigmask  A bitfield of signals to wake on
@@ -104,6 +115,16 @@ struct process
 	/// \returns  True if this wake was handled
 	bool wake_on_receive(process *source);
 
+private:
+	friend class scheduler;
+
+	/// Set up a new kernel stack for this process, optionally copying the
+	/// given stack. Sets the kernel stack on the process object, but also
+	/// returns it.
+	/// \arg size  Size of the stack to allocate
+	/// \arg orig  Address of a stack to copy, or 0 for no copying.
+	/// \returns   The address of the new stack as a pointer
+	void * setup_kernel_stack(size_t size, uintptr_t orig);
 };
 
 using process_list = kutil::linked_list<process>;

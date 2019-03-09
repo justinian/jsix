@@ -92,12 +92,19 @@ page_table *
 page_manager::copy_table(page_table *from, page_table::level lvl)
 {
 	page_table *to = get_table_page();
+	log::debug(logs::memory, "Page manager copying level %d table at %016lx to %016lx.", lvl, from, to);
+
+	if (lvl == page_table::level::pml4) {
+		to->entries[510] = m_kernel_pml4->entries[510];
+		to->entries[511] = m_kernel_pml4->entries[511];
+	}
 
 	const int max =
 		lvl == page_table::level::pml4 ?
 			510 :
 			512;
 
+	unsigned pages_copied = 0;
 	for (int i = 0; i < max; ++i) {
 		if (!from->is_present(i)) {
 			to->entries[i] = 0;
@@ -112,6 +119,7 @@ page_manager::copy_table(page_table *from, page_table::level lvl)
 			uint16_t flags = from->entries[i] &  0xfffull;
 			uintptr_t orig = from->entries[i] & ~0xfffull;
 			to->entries[i] = copy_page(orig) | flags;
+			pages_copied++;
 		} else {
 			uint16_t flags = 0;
 			page_table *next_from = from->get(i, &flags);
@@ -119,6 +127,9 @@ page_manager::copy_table(page_table *from, page_table::level lvl)
 			to->set(i, next_to, flags);
 		}
 	}
+
+	if (pages_copied)
+		log::debug(logs::memory, "   copied %3u pages", pages_copied);
 
 	return to;
 }

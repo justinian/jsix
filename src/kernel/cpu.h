@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 struct cpu_state
 {
 	uint64_t ds;

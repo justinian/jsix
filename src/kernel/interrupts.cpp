@@ -171,7 +171,7 @@ isr_handler(uintptr_t return_rsp, cpu_state *regs)
 			print_reg("rip", regs->rip);
 
 			cons->puts("\n");
-			print_stacktrace(2);
+			//print_stacktrace(2);
 		}
 		_halt();
 		break;

@@ -1,6 +1,58 @@
+#include "cpu.h"
+#include "log.h"
 #include "process.h"
 #include "scheduler.h"
 
+
+pid_t
+process::fork(uintptr_t in_rsp)
+{
+	auto &sched = scheduler::get();
+	auto *child = sched.create_process();
+	kassert(child, "process::fork() got null child");
+
+	child->ppid = pid;
+	child->flags =
+		process_flags::running |
+		process_flags::ready;
+
+	sched.m_runlists[child->priority].push_back(child);
+
+	child->rsp = in_rsp;
+
+	child->pml4 = page_manager::get()->copy_table(pml4);
+	kassert(child->pml4, "process::fork() got null pml4");
+
+	child->setup_kernel_stack(kernel_stack_size, kernel_stack);
+	child->rsp = child->kernel_stack + (in_rsp - kernel_stack);
+
+	log::debug(logs::task, "Copied process %d to %d, new PML4 %016lx.",
+			pid, child->pid, child->pml4);
+	log::debug(logs::task, "  copied stack %016lx to %016lx, rsp %016lx to %016lx.",
+			kernel_stack, child->kernel_stack, in_rsp, child->rsp);
+
+	// Add in the faked fork return value
+	cpu_state *regs = reinterpret_cast<cpu_state *>(child->rsp);
+	regs->rax = 0;
+
+	return child->pid;
+}
+
+void *
+process::setup_kernel_stack(size_t size, uintptr_t orig)
+{
+	void *stack0 = kutil::malloc(size);
+
+	if (orig)
+		kutil::memcpy(stack0, reinterpret_cast<void*>(orig), size);
+	else
+		kutil::memset(stack0, 0, size);
+
+	kernel_stack_size = size;
+	kernel_stack = reinterpret_cast<uintptr_t>(stack0);
+
+	return stack0;
+}
 
 bool
 process::wait_on_signal(uint64_t sigmask)

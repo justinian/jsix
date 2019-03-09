@@ -6,14 +6,15 @@ struct cpu_state;
 
 enum class syscall : uint64_t
 {
-	noop,
-	debug,
-	message,
-	pause,
-	sleep,
-	getpid,
-	send,
-	receive,
+	noop           = 0x0000,
+	debug          = 0x0001,
+	message        = 0x0002,
+	pause          = 0x0003,
+	sleep          = 0x0004,
+	getpid         = 0x0005,
+	send           = 0x0006,
+	receive        = 0x0007,
+	fork           = 0x0008,
 
 	last_syscall
 };

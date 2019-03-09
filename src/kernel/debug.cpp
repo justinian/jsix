@@ -2,6 +2,7 @@
 #include "cpu.h"
 #include "debug.h"
 #include "gdt.h"
+#include "page_manager.h"
 
 #define print_reg(name, value) cons->printf("         %s: %016lx\n", name, (value));
 
@@ -39,6 +40,9 @@ print_regs(const cpu_state &regs)
 
 	cons->puts("\n");
 	print_reg("rip", regs.rip);
+
+	cons->puts("\n");
+	print_reg("cr3", page_manager::get()->get_pml4());
 }
 
 void

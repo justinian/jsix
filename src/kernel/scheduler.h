@@ -34,7 +34,7 @@ public:
 	/// \arg name  Name of the program image
 	/// \arg data  Pointer to the image data
 	/// \arg size  Size of the program image, in bytes
-	void create_process(const char *name, const void *data, size_t size);
+	void load_process(const char *name, const void *data, size_t size);
 
 	/// Start the scheduler working. This may involve starting
 	/// timer interrupts or other preemption methods.
@@ -61,6 +61,12 @@ public:
 private:
 	friend uintptr_t syscall_dispatch(uintptr_t, cpu_state &);
 	friend uintptr_t isr_handler(uintptr_t, cpu_state*);
+	friend class process;
+
+	/// Create a new process object. This process will have its pid
+	/// set but nothing else.
+	/// \returns  The new process object
+	process_node * create_process();
 
 	/// Handle a timer tick
 	/// \arg rsp0  The stack pointer of the current interrupt handler

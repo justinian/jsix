@@ -68,8 +68,8 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 			auto *p = s.current();
 			p->wait_on_signal(-1ull);
 			cons->printf("\nProcess %u: Received PAUSE syscall\n", p->pid);
-			return_rsp = s.schedule(return_rsp);
 			cons->set_color();
+			return_rsp = s.schedule(return_rsp);
 		}
 		break;
 
@@ -115,6 +115,19 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 
 			if (p->wait_on_receive(source))
 				return_rsp = s.schedule(return_rsp);
+		}
+		break;
+
+	case syscall::fork:
+		{
+			cons->set_color(11);
+			cons->printf("\nProcess %u: Received FORK syscall\n", p->pid);
+			cons->set_color();
+
+			pid_t pid = p->fork(return_rsp);
+			if (pid == scheduler::get().current()->pid)
+				pid = 0;
+			regs.rax = pid;
 		}
 		break;
 

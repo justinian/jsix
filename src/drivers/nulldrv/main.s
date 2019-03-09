@@ -6,6 +6,10 @@ _start:
 	int 0xee
 	mov r12, rax	; save pid to r12
 
+	mov rax, 8		; FORK syscall
+	int 0xee
+
+	mov r10, rax
 	mov rax, 1		; DEBUG syscall
 	int 0xee
 
