@@ -192,71 +192,6 @@ gather_block_lists(
 	}
 }
 
-static unsigned
-check_needs_page_ident(page_table *table, unsigned index, page_table **free_pages)
-{
-	if ((table->entries[index] & 0x1) == 1) return 0;
-
-	kassert(*free_pages, "check_needs_page_ident needed to allocate but had no free pages");
-
-	page_table *new_table = (*free_pages)++;
-	for (int i=0; i<512; ++i) new_table->entries[i] = 0;
-	table->entries[index] = reinterpret_cast<uint64_t>(new_table) | ident_page_flags;
-	return 1;
-}
-
-static unsigned
-page_in_ident(
-		page_table *pml4,
-		uint64_t phys_addr,
-		uint64_t virt_addr,
-		uint64_t count,
-		page_table *free_pages)
-{
-	page_table_indices idx{virt_addr};
-	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
-
-	unsigned pages_consumed = 0;
-	for (; idx[0] < 512; idx[0] += 1) {
-		pages_consumed += check_needs_page_ident(tables[0], idx[0], &free_pages);
-		tables[1] = reinterpret_cast<page_table *>(
-				tables[0]->entries[idx[0]] & ~0xfffull);
-
-		for (; idx[1] < 512; idx[1] += 1, idx[2] = 0, idx[3] = 0) {
-			pages_consumed += check_needs_page_ident(tables[1], idx[1], &free_pages);
-			tables[2] = reinterpret_cast<page_table *>(
-					tables[1]->entries[idx[1]] & ~0xfffull);
-
-			for (; idx[2] < 512; idx[2] += 1, idx[3] = 0) {
-				if (idx[3] == 0 &&
-					count >= 512 &&
-					tables[2]->get(idx[2]) == nullptr) {
-					// Do a 2MiB page instead
-					tables[2]->entries[idx[2]] = phys_addr | 0x80 | ident_page_flags;
-
-					phys_addr += frame_size * 512;
-					count -= 512;
-					if (count == 0) return pages_consumed;
-					continue;
-				}
-
-				pages_consumed += check_needs_page_ident(tables[2], idx[2], &free_pages);
-				tables[3] = reinterpret_cast<page_table *>(
-						tables[2]->entries[idx[2]] & ~0xfffull);
-
-				for (; idx[3] < 512; idx[3] += 1) {
-					tables[3]->entries[idx[3]] = phys_addr | ident_page_flags;
-					phys_addr += frame_size;
-					if (--count == 0) return pages_consumed;
-				}
-			}
-		}
-	}
-
-	kassert(0, "Ran to end of page_in_ident");
-	return 0; // Cannot reach
-}
-
 void
 memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_length, size_t desc_length)
 {
@@ -278,15 +213,12 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 	// The tables are ident-mapped currently, so the cr3 physical address works. But let's
 	// get them into the offset-mapped area asap.
 	page_table *tables = reinterpret_cast<page_table *>(scratch_phys);
-	uintptr_t scratch_virt = scratch_phys + page_offset;
 
-	uint64_t used_pages = 1; // starts with PML4
-	used_pages += page_in_ident(
-			&tables[0],
-			scratch_phys,
-			scratch_virt,
-			scratch_pages,
-			tables + used_pages);
+	page_table *id_pml4 = &tables[0];
+	page_table *id_pdp = &tables[1];
+	for (int i=0; i<512; ++i)
+		id_pdp->entries[i] = (static_cast<uintptr_t>(i) << 30) | 0x18b;
+	id_pml4->entries[511] = reinterpret_cast<uintptr_t>(id_pdp) | 0x10b;
 
 	// Make sure the page table is finished updating before we write to memory
 	__sync_synchronize();
@@ -294,6 +226,8 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 
 	// We now have pages starting at "scratch_virt" to bootstrap ourselves. Start by
 	// taking inventory of free pages.
+	uintptr_t scratch_virt = scratch_phys + page_offset;
+	uint64_t used_pages = 2; // starts with PML4 + offset PDP
 	page_consumer allocator(scratch_virt, scratch_pages, used_pages);
 
 	block_allocator block_slab(frame_size, allocator);
@@ -318,7 +252,8 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 	// what the kernel actually has mapped, but making everything writable
 	// (especially the page tables themselves)
 	page_table *pml4 = reinterpret_cast<page_table *>(allocator.get_page());
-	for (int i=0; i<512; ++i) pml4->entries[i] = 0;
+	kutil::memset(pml4, 0, sizeof(page_table));
+	pml4->entries[511] = reinterpret_cast<uintptr_t>(id_pdp) | 0x10b;
 
 	kutil::frame_allocator *fa =
 		new (&g_frame_allocator) kutil::frame_allocator(std::move(block_slab));
@@ -345,10 +280,6 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 					am->mark(virt_addr, block->count * frame_size);
 				break;
 
-			case frame_block_flags::map_offset:
-				virt_addr = block->address + page_offset;
-				break;
-
 			default:
 				break;
 		}
@@ -363,6 +294,7 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 	// Put our new PML4 into CR3 to start using it
 	page_manager::set_pml4(pml4);
 	pm->m_kernel_pml4 = pml4;
+	pm->dump_pml4();
 
 	// Set the heap manager
 	new (&g_kernel_heap_manager) kutil::heap_manager(mm_grow_callback);

@@ -143,15 +143,8 @@ page_manager::delete_process_map(page_table *pml4)
 void
 page_manager::map_offset_pointer(void **pointer, size_t length)
 {
-	uintptr_t *p = reinterpret_cast<uintptr_t *>(pointer);
-	uintptr_t v = *p + page_offset;
-	uintptr_t c = ((length - 1) / frame_size) + 1;
-
 	log::info(logs::paging, "Mapping offset pointer region at %016lx size 0x%lx", *pointer, length);
-
-	page_table *pml4 = get_pml4();
-	page_in(pml4, *p, v, c, false, true);
-	*p = v;
+	*pointer = kutil::offset_pointer(*pointer, page_offset);
 }
 
 void
@@ -166,9 +159,8 @@ page_manager::get_table_page()
 {
 	if (!m_page_cache) {
 		uintptr_t phys = 0;
-		size_t n = m_frames.allocate(32, &phys);
+		size_t n = m_frames.allocate(32, &phys); // TODO: indicate frames must be offset-mappable
 		uintptr_t virt = phys + page_offset;
-		page_in(get_pml4(), phys, virt, n);
 
 		m_page_cache = reinterpret_cast<free_page_header *>(virt);
 
