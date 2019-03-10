@@ -294,7 +294,9 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 	// Put our new PML4 into CR3 to start using it
 	page_manager::set_pml4(pml4);
 	pm->m_kernel_pml4 = pml4;
-	pm->dump_pml4();
+
+	// Give the old pml4 back to the page_manager to recycle
+	pm->free_table_pages(reinterpret_cast<void *>(scratch_virt), 1);
 
 	// Set the heap manager
 	new (&g_kernel_heap_manager) kutil::heap_manager(mm_grow_callback);
