@@ -2,7 +2,6 @@
 /build*
 *.bak
 tags
-.gdbinit
 popcorn.log
 *.o
 *.a

@@ -158,6 +158,9 @@ build $builddir/flash.img : cp $srcroot/assets/ovmf/x64/OVMF.fd
 build $builddir/popcorn.elf | $builddir/popcorn.elf.debug : strip $builddir/host/popcorn.elf
     name = kernel
 
+build $builddir/popcorn.elf-gdb.py : cp ${srcroot}/assets/debugging/popcorn.elf-gdb.py
+    name = kernel debug python scripts
+
 build $builddir/fatroot/popcorn.elf : cp $builddir/popcorn.elf
     name = kernel to FAT image
 
