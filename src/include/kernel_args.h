@@ -7,8 +7,10 @@
 #define DATA_HEADER_MAGIC     0x600dda7a
 #define DATA_HEADER_VERSION   1
 
+#define POPCORN_FLAG_DEBUG    0x00000001
+
 #pragma pack(push, 1)
-struct popcorn_data {
+struct kernel_args {
 	uint32_t magic;
 	uint16_t version;
 	uint16_t length;

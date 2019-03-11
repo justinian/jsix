@@ -18,9 +18,3 @@ __kernel_assert(const char *file, unsigned line, const char *message)
 	__asm__ ( "int $0e7h" );
 	while (1) __asm__ ("hlt");
 }
-
-extern "C" [[noreturn]] void
-__assert_fail(const char *message, const char *file, unsigned int line, const char *function)
-{
-	__kernel_assert(file, line, message);
-}

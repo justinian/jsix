@@ -152,8 +152,11 @@ build $
     $modulefile $
     {{ generator }}
 
-build $builddir/flash.img : cp $srcroot/assets/ovmf/x64/OVMF.fd
-    name = flash.img
+build $builddir/ovmf.fd : cp $srcroot/assets/ovmf/x64/ovmf.fd
+    name = ovmf.fd
+
+build $builddir/ovmf_debug.fd : cp $srcroot/assets/ovmf/x64/ovmf_debug.fd
+    name = ovmf_debug.fd
 
 build $builddir/popcorn.elf | $builddir/popcorn.elf.debug : strip $builddir/host/popcorn.elf
     name = kernel
@@ -177,5 +180,5 @@ build $builddir/popcorn.img : makefat | $
     $builddir/fatroot/efi/boot/bootx64.efi
     name = popcorn.img
 
-# vim: et ts=4 sts=4 sw=4
+# vim: ft=ninja et ts=4 sts=4 sw=4
 

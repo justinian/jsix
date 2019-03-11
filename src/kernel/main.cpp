@@ -11,7 +11,7 @@
 #include "gdt.h"
 #include "interrupts.h"
 #include "io.h"
-#include "kernel_data.h"
+#include "kernel_args.h"
 #include "log.h"
 #include "page_manager.h"
 #include "scheduler.h"
@@ -20,7 +20,7 @@
 #include "syscall.h"
 
 extern "C" {
-	void kernel_main(popcorn_data *header);
+	void kernel_main(kernel_args *header);
 	void *__bss_start, *__bss_end;
 }
 
@@ -39,28 +39,21 @@ init_console()
 
 	log::init(cons);
 	log::enable(logs::apic, log::level::info);
-	log::enable(logs::device, log::level::info);
+	log::enable(logs::device, log::level::debug);
+	log::enable(logs::paging, log::level::info);
 
 	log::enable(logs::driver, log::level::debug);
 	log::enable(logs::memory, log::level::debug);
 	log::enable(logs::fs, log::level::debug);
 	log::enable(logs::task, log::level::debug);
 	log::enable(logs::boot, log::level::debug);
-	log::enable(logs::paging, log::level::debug);
 }
 
 void
-kernel_main(popcorn_data *header)
+kernel_main(kernel_args *header)
 {
-#ifdef DEBUG
-	// Run `waf configure --debug` to enable compiling with DEBUG turned on.
-	// Then attach to QEMU's gdb server and `set waiting = false` to start
-	// the kernel. This compensates for GDB's poor handling of QEMU going
-	// through the x86 PC startup and switching to 64 bit mode when you
-	// attach to qemu with the -S option.
-	bool waiting = true;
+	bool waiting = header && (header->flags && POPCORN_FLAG_DEBUG);
 	while (waiting);
-#endif
 
 	kutil::assert_set_callback(__kernel_assert);
 

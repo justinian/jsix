@@ -143,7 +143,7 @@ loader_load_elf(
 		header.machine != 0x3e)
 		CHECK_EFI_STATUS_OR_RETURN(EFI_LOAD_ERROR, L"ELF load error: wrong machine architecture");
 
-	con_debug(L"ELF is valid, entrypoint %lu\r\n", header.entrypoint);
+	con_debug(L"ELF is valid, entrypoint %lx\r\n", header.entrypoint);
 
 	data->kernel_entry = (void *)header.entrypoint;
 

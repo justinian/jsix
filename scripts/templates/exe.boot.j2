@@ -2,18 +2,13 @@
 {% block variables %}
 {{ super() }}
 
-ld = ld
-cc = clang
-cxx = clang++
-
 ccflags = $ccflags $
     -DKERNEL_FILENAME=L\"popcorn.elf\" $
     -DGNU_EFI_USE_MS_ABI $
     -DHAVE_USE_MS_ABI $
     -DEFI_DEBUG=0 $
     -DEFI_DEBUG_CLEAR_MEMORY=0 $
-	-DBOOTLOADER_DEBUG $
-    -fPIC
+    -DBOOTLOADER_DEBUG
 
 ldflags = $ldflags $
     -T ${srcroot}/src/arch/x86_64/boot.ld $
@@ -27,3 +22,6 @@ build $builddir/boot.efi : makeefi ${builddir}/{{ module.output }}
     name = boot.efi
 
 {% endblock %}
+
+# vim: ft=ninja et ts=4 sts=4 sw=4
+

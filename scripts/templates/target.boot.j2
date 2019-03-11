@@ -1,35 +1,41 @@
 {% extends "target.default.j2" %}
 
 {% block binaries %}
-ld = ld
 cc = clang
 cxx = clang++
+ld = ld
+ar = ar
 nasm = nasm
+objcopy = objcopy
 {% endblock %}
 
 {% block variables %}
 
 ccflags = $ccflags $
-    -ggdb $
-    -nostdlib $
-    -ffreestanding $
-    -nodefaultlibs $
-    -fno-builtin $
-    -mno-sse $
-    -fno-omit-frame-pointer $
-    -mno-red-zone $
-    -fshort-wchar
+	-ggdb $
+	-nostdlib $
+	-ffreestanding $
+	-nodefaultlibs $
+	-fno-builtin $
+	-mno-sse $
+	-fno-omit-frame-pointer $
+	-mno-red-zone $
+	-fshort-wchar $
+	-D__ELF__ $
+	-fPIC
 
 cxxflags = $cxxflags $
-    -nostdlibinc $
-    -fno-exceptions $
-    -fno-rtti
+	-fno-exceptions $
+	-fno-rtti $
 
 ldflags = $ldflags $
-    -g $
-    -nostdlib $
-    -znocombreloc $
+	-g $
+	-nostdlib $
+	-znocombreloc $
 	-Bsymbolic $
-    -nostartfiles
+	-nostartfiles
 
 {% endblock %}
+
+# vim: ft=ninja et ts=4 sts=4 sw=4
+

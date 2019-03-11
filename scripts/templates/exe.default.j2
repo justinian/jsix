@@ -2,11 +2,7 @@
 {% block variables %}
 {{ super() }}
 
-libs = $
-    -L${builddir} $
-    {%- for dep in module.libdeps %}
-    -l{{ dep.name }} $
-    {%- endfor %}
-    $libs
-
 {% endblock %}
+
+# vim: ft=ninja et ts=4 sts=4 sw=4
+

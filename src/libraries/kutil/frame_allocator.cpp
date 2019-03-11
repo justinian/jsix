@@ -1,5 +1,3 @@
-#include <algorithm>
-
 #include "kutil/frame_allocator.h"
 
 namespace kutil {
@@ -81,7 +79,7 @@ frame_allocator::allocate(size_t count, uintptr_t *address)
 
 	auto *first = m_free.front();
 
-	unsigned n = std::min(count, static_cast<size_t>(first->count));
+	unsigned n = count < first->count ? count : first->count;
 	*address = first->address;
 
 	if (count >= first->count) {

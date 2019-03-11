@@ -5,7 +5,7 @@
 
 #include "console.h"
 #include "guids.h"
-#include "kernel_data.h"
+#include "kernel_args.h"
 #include "loader.h"
 #include "memory.h"
 #include "utility.h"
@@ -34,7 +34,51 @@ struct kernel_header {
 };
 #pragma pack(pop)
 
-using kernel_entry = void (*)(popcorn_data *);
+using kernel_entry = void (*)(kernel_args *);
+
+static void
+type_to_wchar(wchar_t *into, uint32_t type)
+{
+	for (int j=0; j<4; ++j)
+		into[j] = static_cast<wchar_t>(reinterpret_cast<char *>(&type)[j]);
+}
+
+EFI_STATUS
+detect_debug_mode(EFI_RUNTIME_SERVICES *run, kernel_args *header) {
+	wchar_t var_name[] = L"debug";
+
+	EFI_STATUS status;
+	uint8_t debug = 0;
+	UINTN var_size = sizeof(debug);
+
+#ifdef __POPCORN_SET_DEBUG_UEFI_VAR__
+	debug = __POPCORN_SET_DEBUG_UEFI_VAR__;
+	uint32_t attrs =
+		EFI_VARIABLE_NON_VOLATILE |
+		EFI_VARIABLE_BOOTSERVICE_ACCESS |
+		EFI_VARIABLE_RUNTIME_ACCESS;
+	status = run->SetVariable(
+			var_name,
+			&guid_popcorn_vendor,
+			attrs,
+			var_size,
+			&debug);
+	CHECK_EFI_STATUS_OR_RETURN(status, "detect_debug_mode::SetVariable");
+#endif
+
+	status = run->GetVariable(
+			var_name,
+			&guid_popcorn_vendor,
+			nullptr,
+			&var_size,
+			&debug);
+	CHECK_EFI_STATUS_OR_RETURN(status, "detect_debug_mode::GetVariable");
+
+	if (debug)
+		header->flags |= POPCORN_FLAG_DEBUG;
+
+	return EFI_SUCCESS;
+}
 
 extern "C" EFI_STATUS
 efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
@@ -73,13 +117,12 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	status = memory_get_map_length(bootsvc, &data_length);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-	size_t header_size = sizeof(popcorn_data);
-	const size_t header_align = alignof(popcorn_data);
+	size_t header_size = sizeof(kernel_args);
+	const size_t header_align = alignof(kernel_args);
 	if (header_size % header_align)
 		header_size += header_align - (header_size % header_align);
 
 	data_length += header_size;
-
 
 	// Load the kernel image from disk and check it
 	//
@@ -111,12 +154,12 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 
 	// Set up the kernel data pages to pass to the kernel
 	//
-	struct popcorn_data *data_header = (struct popcorn_data *)load.data; 
+	struct kernel_args *data_header = (struct kernel_args *)load.data;
 	memory_mark_pointer_fixup((void **)&data_header);
 
 	data_header->magic = DATA_HEADER_MAGIC;
 	data_header->version = DATA_HEADER_VERSION;
-	data_header->length = sizeof(struct popcorn_data);
+	data_header->length = sizeof(struct kernel_args);
 
 	data_header->scratch_pages = SCRATCH_PAGES;
 	data_header->flags = 0;
@@ -167,6 +210,8 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 
 	data_header->memory_map_length = map.length;
 	data_header->memory_map_desc_size = map.size;
+
+	detect_debug_mode(runsvc, data_header);
 
 	// bootsvc->Stall(5000000);
 

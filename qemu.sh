@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 
 build="$(dirname $0)/build"
+assets="$(dirname $0)/assets"
 debug=""
+flash_name="ovmf.fd"
 gfx="-nographic"
 
 for arg in $@; do
 	case "${arg}" in
 		--debug)
 			debug="-s"
+			flash_name="ovmf_debug.fd"
 			;;
 		--gfx)
 			gfx=""
@@ -28,11 +31,16 @@ if ! ninja -C "${build}"; then
 fi
 
 if [[ -n $TMUX ]]; then
-	tmux split-window "sleep 1; telnet localhost 45454" &
+	if [[ -n $debug ]]; then
+		tmux split-window "gdb ${build}/popcorn.elf" &
+	else
+		tmux split-window "sleep 1; telnet localhost 45454" &
+	fi
 fi
 
+touch "${build}/popd_table.data"
 exec qemu-system-x86_64 \
-	-drive "if=pflash,format=raw,file=${build}/flash.img" \
+	-drive "if=pflash,format=raw,file=${build}/${flash_name}" \
 	-drive "format=raw,file=${build}/popcorn.img" \
 	-monitor telnet:localhost:45454,server,nowait \
 	-smp 1 \
