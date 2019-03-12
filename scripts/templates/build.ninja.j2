@@ -152,11 +152,11 @@ build $
     $modulefile $
     {{ generator }}
 
-build $builddir/ovmf.fd : cp $srcroot/assets/ovmf/x64/ovmf.fd
-    name = ovmf.fd
+build $builddir/ovmf_vars.fd : cp $srcroot/assets/ovmf/x64/ovmf_vars.fd
+    name = ovmf_vars.fd
 
-build $builddir/ovmf_debug.fd : cp $srcroot/assets/ovmf/x64/ovmf_debug.fd
-    name = ovmf_debug.fd
+build $builddir/ovmf_vars_d.fd : cp $srcroot/assets/ovmf/x64/ovmf_vars_d.fd
+    name = ovmf_vars_d.fd
 
 build $builddir/popcorn.elf | $builddir/popcorn.elf.debug : strip $builddir/host/popcorn.elf
     name = kernel

@@ -3,14 +3,14 @@
 build="$(dirname $0)/build"
 assets="$(dirname $0)/assets"
 debug=""
-flash_name="ovmf.fd"
+flash_name="ovmf_vars"
 gfx="-nographic"
 
 for arg in $@; do
 	case "${arg}" in
 		--debug)
 			debug="-s"
-			flash_name="ovmf_debug.fd"
+			flash_name="ovmf_vars_d"
 			;;
 		--gfx)
 			gfx=""
@@ -40,7 +40,8 @@ fi
 
 touch "${build}/popd_table.data"
 exec qemu-system-x86_64 \
-	-drive "if=pflash,format=raw,file=${build}/${flash_name}" \
+	-drive "if=pflash,format=raw,readonly,file=${assets}/ovmf/x64/ovmf_code.fd" \
+	-drive "if=pflash,format=raw,file=${build}/${flash_name}.fd" \
 	-drive "format=raw,file=${build}/popcorn.img" \
 	-monitor telnet:localhost:45454,server,nowait \
 	-smp 1 \
