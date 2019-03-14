@@ -198,9 +198,12 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 	// make sure the options we want in CR4 are set
 	uint64_t cr4;
 	__asm__ __volatile__ ( "mov %%cr4, %0" : "=r" (cr4) );
-	cr4 |= 0x00080; // Enable global pages
-	cr4 |= 0x00200; // Enable FXSAVE/FXRSTOR
-	cr4 |= 0x20000; // Enable PCIDs
+	cr4 |=
+		0x000080 | // Enable global pages
+		0x000200 | // Enable FXSAVE/FXRSTOR
+		0x010000 | // Enable FSGSBASE
+		0x020000 | // Enable PCIDs
+		0;
 	__asm__ __volatile__ ( "mov %0, %%cr4" :: "r" (cr4) );
 
 	// The bootloader reserved "scratch_pages" pages for page tables and
