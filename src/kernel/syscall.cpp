@@ -52,6 +52,8 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 		cons->printf("\nProcess %u: Received DEBUG syscall\n", p->pid);
 		cons->set_color();
 		print_regs(regs);
+		cons->printf("\n         Syscall enters: %8d\n", __counter_syscall_enter);
+		cons->printf("         Syscall sysret: %8d\n", __counter_syscall_sysret);
 		break;
 
 	case syscall::message:

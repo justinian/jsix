@@ -44,4 +44,13 @@
 	pop rax
 %endmacro
 
+%macro check_swap_gs 0
+	mov rax, [rsp+0x90]
+	and rax, 0x03 ; mask out the RPL
+	cmp rax, 0x03
+	jne %%noswapgs
+	swapgs
+%%noswapgs:
+%endmacro
+
 ; vim: ft=asm

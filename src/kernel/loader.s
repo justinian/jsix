@@ -18,6 +18,15 @@ ramdisk_process_loader:
 	mov rdx, rcx
 	call load_process
 
+	swapgs
+
+	xor rax, rax
+	mov ax, ss
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
+
 	pop_all_and_segments
 	add rsp, 16		; because the ISRs add err/num
 	iretq

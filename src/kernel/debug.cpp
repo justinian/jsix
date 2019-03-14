@@ -6,6 +6,9 @@
 
 #define print_reg(name, value) cons->printf("         %s: %016lx\n", name, (value));
 
+size_t __counter_syscall_enter = 0;
+size_t __counter_syscall_sysret = 0;
+
 void
 print_regs(const cpu_state &regs)
 {

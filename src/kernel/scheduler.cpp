@@ -1,6 +1,7 @@
 #include "apic.h"
 #include "console.h"
 #include "cpu.h"
+#include "debug.h"
 #include "gdt.h"
 #include "interrupts.h"
 #include "io.h"
@@ -25,6 +26,14 @@ extern "C" {
 	void ramdisk_process_loader();
 	void load_process(const void *image_start, size_t bytes, process *proc, cpu_state state);
 };
+
+struct cpu_data
+{
+	uintptr_t rsp0;
+	uintptr_t rsp3;
+};
+
+static cpu_data bsp_cpu_data;
 
 scheduler::scheduler(lapic *apic) :
 	m_apic(apic),
@@ -181,6 +190,7 @@ void
 scheduler::start()
 {
 	log::info(logs::task, "Starting scheduler.");
+	wrmsr(msr::ia32_gs_base, reinterpret_cast<uintptr_t>(&bsp_cpu_data));
 	m_tick_count = m_apic->enable_timer(isr::isrTimer, quantum_micros, false);
 }
 
@@ -236,7 +246,6 @@ void scheduler::prune(uint64_t now)
 uintptr_t
 scheduler::schedule(uintptr_t rsp0)
 {
-
 	// TODO: lol a real clock
 	static uint64_t now = 0;
 
@@ -262,7 +271,8 @@ scheduler::schedule(uintptr_t rsp0)
 
 	// Set rsp0 to after the end of the about-to-be-popped cpu state
 	tss_set_stack(0, rsp0 + sizeof(cpu_state));
-	wrmsr(msr::ia32_kernel_gs_base, rsp0);
+	bsp_cpu_data.rsp0 = rsp0;
+
 
 	// Swap page tables
 	page_table *pml4 = m_current->pml4;

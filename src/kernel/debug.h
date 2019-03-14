@@ -12,6 +12,9 @@ extern "C" {
 
 }
 
+extern size_t __counter_syscall_enter;
+extern size_t __counter_syscall_sysret;
+
 void print_regs(const cpu_state &regs);
 void print_stack(const cpu_state &regs);
 void print_stacktrace(int skip = 0);

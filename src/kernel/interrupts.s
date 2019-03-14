@@ -4,38 +4,37 @@ extern isr_handler
 global isr_handler_prelude
 isr_handler_prelude:
 	push_all_and_segments
+	check_swap_gs
 
 	mov rdi, rsp
 	mov rsi, rsp
 	call isr_handler
 	mov rsp, rax
-
-	pop_all_and_segments
-
-	add rsp, 16		; because the ISRs added err/num
-	sti
-	iretq
+	jmp isr_handler_return
 
 extern irq_handler
 global irq_handler_prelude
 irq_handler_prelude:
 	push_all_and_segments
+	check_swap_gs
 
 	mov rdi, rsp
 	mov rsi, rsp
 	call irq_handler
 	mov rsp, rax
+	; fall through to isr_handler_return
 
+global isr_handler_return
+isr_handler_return:
+	check_swap_gs
 	pop_all_and_segments
 
 	add rsp, 16		; because the ISRs added err/num
-	sti
 	iretq
 
 %macro EMIT_ISR 2
 	global %1
 	%1:
-		cli
 		push 0
 		push %2
 		jmp isr_handler_prelude
@@ -44,7 +43,6 @@ irq_handler_prelude:
 %macro EMIT_EISR 2
 	global %1
 	%1:
-		cli
 		push %2
 		jmp isr_handler_prelude
 %endmacro
@@ -52,7 +50,6 @@ irq_handler_prelude:
 %macro EMIT_IRQ 2
 	global %1
 	%1:
-		cli
 		push 0
 		push %2
 		jmp irq_handler_prelude
