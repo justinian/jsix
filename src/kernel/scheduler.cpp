@@ -141,7 +141,7 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 
 	// Highest state in the stack is the process' kernel stack for the loader
 	// to iret to:
-	state->ds = state->ss = ss;
+	state->ss = ss;
 	state->cs = cs;
 	state->rflags = rflags_int;
 	state->rip = 0; // to be filled by the loader
@@ -151,7 +151,7 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	// iret to this which will kick off the loading:
 	cpu_state *loader_state = reinterpret_cast<cpu_state *>(sp0) - 2;
 
-	loader_state->ds = loader_state->ss = kss;
+	loader_state->ss = kss;
 	loader_state->cs = kcs;
 	loader_state->rflags = rflags_noint;
 	loader_state->rip = reinterpret_cast<uint64_t>(ramdisk_process_loader);

@@ -1,32 +1,31 @@
 %macro push_all_and_segments 0
-	push rax
-	push rcx
-	push rdx
-	push rbx
-	push rbp
-	push rsi
-	push rdi
+	; ss        ; rsp + a8
+	; rsp       ; rsp + a0
+	; rflags    ; rsp + 98
+	; cs        ; rsp + 90
+	; rip       ; rsp + 88
+	; error     ; rsp + 80
+	; vector    ; rsp + 78
 
-	push r8
-	push r9
-	push r10
-	push r11
-	push r12
-	push r13
-	push r14
-	push r15
+	push rax    ; rsp + 70
+	push rcx    ; rsp + 68
+	push rdx    ; rsp + 60
+	push rbx    ; rsp + 58
+	push rbp    ; rsp + 50
+	push rsi    ; rsp + 48
+	push rdi    ; rsp + 40
 
-	mov ax, ds
-	push rax
+	push r8     ; rsp + 38
+	push r9     ; rsp + 30
+	push r10    ; rsp + 28
+	push r11    ; rsp + 20
+	push r12    ; rsp + 18
+	push r13    ; rsp + 10
+	push r14    ; rsp + 08
+	push r15    ; rsp + 00
 %endmacro
 
 %macro pop_all_and_segments 0
-	pop rax
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-
 	pop r15
 	pop r14
 	pop r13

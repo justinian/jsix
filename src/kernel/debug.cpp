@@ -34,7 +34,6 @@ print_regs(const cpu_state &regs)
 	print_reg("sp0", tss_get_stack(0));
 
 	cons->puts("\n");
-	print_reg(" ds", regs.ds);
 	print_reg(" cs", regs.cs);
 	print_reg(" ss", regs.ss);
 
