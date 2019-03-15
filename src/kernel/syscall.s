@@ -18,7 +18,7 @@ syscall_handler_prelude:
 	push rcx	; user rip
 	push 0		; bogus interrupt
 	push 0		; bogus errorcode
-	push_all_and_segments
+	push_all
 
 	inc qword [rel __counter_syscall_enter]
 
@@ -39,7 +39,7 @@ syscall_handler_prelude:
 
 	swapgs
 
-	pop_all_and_segments
+	pop_all
 	add rsp, 16	; ignore bogus interrupt / error
 	pop rcx		; user rip
 	add rsp, 32 ; ignore cs, flags, rsp, ss

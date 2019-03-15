@@ -27,7 +27,7 @@ ramdisk_process_loader:
 	mov fs, ax
 	mov gs, ax
 
-	pop_all_and_segments
+	pop_all
 	add rsp, 16		; because the ISRs add err/num
 	iretq
 

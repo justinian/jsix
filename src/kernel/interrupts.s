@@ -3,7 +3,7 @@
 extern isr_handler
 global isr_handler_prelude
 isr_handler_prelude:
-	push_all_and_segments
+	push_all
 	check_swap_gs
 
 	mov rdi, rsp
@@ -15,7 +15,7 @@ isr_handler_prelude:
 extern irq_handler
 global irq_handler_prelude
 irq_handler_prelude:
-	push_all_and_segments
+	push_all
 	check_swap_gs
 
 	mov rdi, rsp
@@ -27,7 +27,7 @@ irq_handler_prelude:
 global isr_handler_return
 isr_handler_return:
 	check_swap_gs
-	pop_all_and_segments
+	pop_all
 
 	add rsp, 16		; because the ISRs added err/num
 	iretq

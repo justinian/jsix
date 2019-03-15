@@ -63,6 +63,6 @@ _start:
 	syscall ; int 0xee
 	jmp .preloop
 
-.doexit
+.doexit:
 	mov rax, 9      ; EXIT syscall
 	syscall
