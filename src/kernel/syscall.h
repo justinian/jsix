@@ -15,6 +15,7 @@ enum class syscall : uint64_t
 	send           = 0x0006,
 	receive        = 0x0007,
 	fork           = 0x0008,
+	exit           = 0x0009,
 
 	last_syscall
 };

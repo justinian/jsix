@@ -4,6 +4,13 @@
 #include "scheduler.h"
 
 
+void
+process::exit(uint32_t code)
+{
+	return_code = code;
+	flags -= process_flags::running;
+}
+
 pid_t
 process::fork(uintptr_t in_rsp)
 {

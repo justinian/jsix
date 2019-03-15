@@ -127,10 +127,16 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 			cons->set_color();
 
 			pid_t pid = p->fork(return_rsp);
-			if (pid == scheduler::get().current()->pid)
-				pid = 0;
 			regs.rax = pid;
 		}
+		break;
+
+	case syscall::exit:
+		cons->set_color(11);
+		cons->printf("\nProcess %u: Received EXIT syscall\n", p->pid);
+		cons->set_color();
+		p->exit(regs.rdi);
+		return_rsp = s.schedule(return_rsp);
 		break;
 
 	default:

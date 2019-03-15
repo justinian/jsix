@@ -57,6 +57,10 @@ struct process
 	uintptr_t kernel_stack;
 	size_t kernel_stack_size;
 
+	/// Terminate this process.
+	/// \arg code   The return code to exit with.
+	void exit(unsigned code);
+
 	/// Copy this process.
 	/// \arg in_rsp The RSP of the calling process
 	/// \returns    Returns the child's pid to the parent, and

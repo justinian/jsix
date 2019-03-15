@@ -20,6 +20,9 @@ _start:
 	mov rax, 1		; DEBUG syscall
 	syscall ; int 0xee
 
+	cmp r13, 0
+	je .doexit
+
 	cmp r12, 1
 	je .dosend
 	jne .doreceive
@@ -59,3 +62,7 @@ _start:
 	mov rdi, 1      ; source is pid 2
 	syscall ; int 0xee
 	jmp .preloop
+
+.doexit
+	mov rax, 9      ; EXIT syscall
+	syscall
