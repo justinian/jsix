@@ -25,7 +25,9 @@ void tss_set_stack(int ring, uintptr_t rsp);
 uintptr_t tss_get_stack(int ring);
 
 /// Dump information about the current GDT to the screen
-void gdt_dump();
+/// \arg index  Which entry to print, or -1 for all entries
+void gdt_dump(int index = -1);
 
 /// Dump information about the current IDT to the screen
-void idt_dump();
+/// \arg index  Which entry to print, or -1 for all entries
+void idt_dump(int index = -1);

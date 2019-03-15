@@ -184,18 +184,25 @@ gdt_init()
 }
 
 void
-gdt_dump()
+gdt_dump(int index)
 {
 	const table_ptr &table = g_gdtr;
 
 	console *cons = console::get();
-	cons->printf("         GDT: loc:%lx size:%d\n", table.base, table.limit+1);
 
+	int start = 0;
 	int count = (table.limit + 1) / sizeof(gdt_descriptor);
+	if (index != -1) {
+		start = index;
+		count = 1;
+	} else {
+		cons->printf("         GDT: loc:%lx size:%d\n", table.base, table.limit+1);
+	}
+
 	const gdt_descriptor *gdt =
 		reinterpret_cast<const gdt_descriptor *>(table.base);
 
-	for (int i = 0; i < count; ++i) {
+	for (int i = start; i < start+count; ++i) {
 		uint32_t base =
 			(gdt[i].base_high << 24) |
 			(gdt[i].base_mid << 16) |
@@ -233,17 +240,25 @@ gdt_dump()
 }
 
 void
-idt_dump()
+idt_dump(int index)
 {
 	const table_ptr &table = g_idtr;
 
-	log::info(logs::boot, "Loaded IDT at: %lx size: %d bytes", table.base, table.limit+1);
 
+	int start = 0;
 	int count = (table.limit + 1) / sizeof(idt_descriptor);
+	if (index != -1) {
+		start = index;
+		count = 1;
+		log::info(logs::boot, "IDT FOR INDEX %02x", index);
+	} else {
+		log::info(logs::boot, "Loaded IDT at: %lx size: %d bytes", table.base, table.limit+1);
+	}
+
 	const idt_descriptor *idt =
 		reinterpret_cast<const idt_descriptor *>(table.base);
 
-	for (int i = 0; i < count; ++i) {
+	for (int i = start; i < start+count; ++i) {
 		uint64_t base =
 			(static_cast<uint64_t>(idt[i].base_high) << 32) |
 			(static_cast<uint64_t>(idt[i].base_mid)  << 16) |

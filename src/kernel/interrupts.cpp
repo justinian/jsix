@@ -124,13 +124,13 @@ isr_handler(uintptr_t return_rsp, cpu_state *regs)
 				switch ((regs->errorcode & 0x07) >> 1) {
 				case 0:
 					cons->printf(" GDT[%x]\n", index);
-					gdt_dump();
+					gdt_dump(index);
 					break;
 
 				case 1:
 				case 3:
 					cons->printf(" IDT[%x]\n", index);
-					idt_dump();
+					idt_dump(index);
 					break;
 
 				default:

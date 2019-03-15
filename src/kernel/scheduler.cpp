@@ -143,8 +143,9 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	// Create a one-page kernel stack space
 	void *stack0 = proc->setup_kernel_stack(stack_size, 0);
 
-	// Stack grows down, point to the end
-	void *sp0 = kutil::offset_pointer(stack0, stack_size);
+	// Stack grows down, point to the end, resere space for initial null frame
+	static const size_t null_frame = sizeof(uint64_t);
+	void *sp0 = kutil::offset_pointer(stack0, stack_size - null_frame);
 
 	cpu_state *state = reinterpret_cast<cpu_state *>(sp0) - 1;
 

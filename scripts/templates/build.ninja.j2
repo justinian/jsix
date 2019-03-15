@@ -136,6 +136,10 @@ rule strip
         strip -g $out; $
         objcopy --add-gnu-debuglink=$out.debug $out
 
+rule dump
+    description = Dumping decompiled $name
+    command = objdump -DS $in > $out
+
 
 {% for target in targets %}
 subninja {{ target }}/target.ninja
@@ -159,6 +163,9 @@ build $builddir/ovmf_vars_d.fd : cp $srcroot/assets/ovmf/x64/ovmf_vars_d.fd
     name = ovmf_vars_d.fd
 
 build $builddir/popcorn.elf | $builddir/popcorn.elf.debug : strip $builddir/host/popcorn.elf
+    name = kernel
+
+build $builddir/popcorn.dump : dump $builddir/host/popcorn.elf
     name = kernel
 
 build $builddir/popcorn.elf-gdb.py : cp ${srcroot}/assets/debugging/popcorn.elf-gdb.py

@@ -8,13 +8,14 @@ __kernel_assert(const char *file, unsigned line, const char *message)
 	if (cons) {
 		cons->set_color(9 , 0);
 		cons->puts("\n\n       ERROR: ");
+		cons->puts(message);
+		cons->puts("\n              ");
 		cons->puts(file);
 		cons->puts(":");
 		cons->put_dec(line);
-		cons->puts(":  ");
-		cons->puts(message);
+		cons->puts("\n");
 	}
 
-	__asm__ ( "int $0e7h" );
+	__asm__ ( "int $0e4h" );
 	while (1) __asm__ ("hlt");
 }
