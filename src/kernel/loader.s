@@ -4,18 +4,15 @@ extern load_process
 
 global ramdisk_process_loader
 ramdisk_process_loader:
-
 	; create_process already pushed a cpu_state onto the stack for us, this
 	; acts both as the cpu_state parameter to load_process, and the saved
 	; state for the following iretq
 	;
 	; Additional parameters:
-	;  rax - the address of the program image
-	;  rbx - the size of the program image
-	;  rcx - the address of this process' process structure
-	mov rdi, rax
-	mov rsi, rbx
-	mov rdx, rcx
+	;  rdi - the address of the program image
+	;  rsi - the size of the program image
+	;  rdx - the address of this process' process structure
+	;  rcx - the stack pointer, which points at the cpu_state
 	call load_process
 
 	swapgs

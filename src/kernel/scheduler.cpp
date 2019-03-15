@@ -24,7 +24,7 @@ const uint64_t rflags_int = 0x202;
 
 extern "C" {
 	void ramdisk_process_loader();
-	void load_process(const void *image_start, size_t bytes, process *proc, cpu_state state);
+	void load_process(const void *image_start, size_t bytes, process *proc, cpu_state *state);
 };
 
 struct cpu_data
@@ -60,7 +60,7 @@ scheduler::scheduler(lapic *apic) :
 }
 
 void
-load_process(const void *image_start, size_t bytes, process *proc, cpu_state state)
+load_process(const void *image_start, size_t bytes, process *proc, cpu_state *state)
 {
 	// We're now in the process space for this process, allocate memory for the
 	// process code and load it
@@ -111,10 +111,10 @@ load_process(const void *image_start, size_t bytes, process *proc, cpu_state sta
 		kutil::memcpy(dest, src, header->size);
 	}
 
-	state.rip = image.entrypoint();
+	state->rip = image.entrypoint();
 	proc->flags &= ~process_flags::loading;
 
-	log::debug(logs::task, "  Loaded! New process rip: %016lx", state.rip);
+	log::debug(logs::task, "  Loaded! New process rip: %016lx", state->rip);
 }
 
 process_node *
@@ -167,8 +167,11 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	loader_state->rip = reinterpret_cast<uint64_t>(ramdisk_process_loader);
 	loader_state->user_rsp = reinterpret_cast<uint64_t>(state);
 
-	loader_state->rax = reinterpret_cast<uint64_t>(data);
-	loader_state->rbx = size;
+	// Set up the registers to have the arguments to the load_process call
+	loader_state->rdi = reinterpret_cast<uint64_t>(data); // arg 1
+	loader_state->rsi = size; // arg 2
+	loader_state->rdx = reinterpret_cast<uint64_t>(proc); // arg 3
+	loader_state->rcx = loader_state->user_rsp; // arg 4
 
 	proc->rsp = reinterpret_cast<uintptr_t>(loader_state);
 	proc->pml4 = pml4;
@@ -180,7 +183,6 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 
 	m_runlists[default_priority].push_back(proc);
 
-	loader_state->rcx = reinterpret_cast<uint64_t>(proc);
 
 	log::debug(logs::task, "Creating process %s: pid %d  pri %d", name, proc->pid, proc->priority);
 	log::debug(logs::task, "     RSP0 %016lx", state);
