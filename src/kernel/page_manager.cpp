@@ -137,6 +137,13 @@ page_manager::copy_table(page_table *from, page_table::level lvl)
 void
 page_manager::delete_process_map(page_table *pml4)
 {
+	bool was_pml4 = (pml4 == get_pml4());
+	if (was_pml4)
+		set_pml4(m_kernel_pml4);
+
+	log::info(logs::paging, "Deleting process pml4 at %016lx%s",
+			pml4, was_pml4 ? " (was current)" : "");
+
 	unmap_table(pml4, page_table::level::pml4, true);
 }
 
@@ -219,6 +226,9 @@ page_manager::map_pages(uintptr_t address, size_t count, bool user, page_table *
 void
 page_manager::unmap_table(page_table *table, page_table::level lvl, bool free)
 {
+	log::debug(logs::paging, "Unmapping%s lv %d table at %016lx",
+			free ? " (and freeing)" : "", lvl, table);
+
 	const int max =
 		lvl == page_table::level::pml4 ?
 			510 :
@@ -242,12 +252,17 @@ page_manager::unmap_table(page_table *table, page_table::level lvl, bool free)
 
 		if (is_page) {
 			uintptr_t frame = table->entries[i] & ~0xfffull;
-			if (!free_count || free_start != frame + free_count * size) {
-				if (free_count && free)
-					m_frames.free(free_start, free_count * size / frame_size);
-				free_start = frame;
-				free_count = 1;
+			if (!free_count || frame != free_start + free_count * size) {
+				if (free_count && free) {
+					m_frames.free(free_start, (free_count * size) / frame_size);
+					free_count = 0;
+				}
+
+				if (!free_count)
+					free_start = frame;
 			}
+
+			free_count += 1;
 		} else {
 			page_table *next = table->get(i);
 			unmap_table(next, page_table::deeper(lvl), free);
@@ -255,7 +270,7 @@ page_manager::unmap_table(page_table *table, page_table::level lvl, bool free)
 	}
 
 	if (free_count && free)
-		m_frames.free(free_start, free_count * size / frame_size);
+		m_frames.free(free_start, (free_count * size) / frame_size);
 	free_table_pages(table, 1);
 }
 
