@@ -1,0 +1,130 @@
+#include "kutil/assert.h"
+#include "kutil/logger.h"
+#include "kutil/memory.h"
+#include "kutil/printf.h"
+
+namespace kutil {
+namespace log {
+
+using kutil::memset;
+using kutil::memcpy;
+
+struct entry_header
+{
+	uint8_t bytes;
+	uint8_t area;
+	uint8_t level;
+	uint8_t sequence;
+	char message[0];
+};
+
+logger *logger::s_log = nullptr;
+const char *logger::s_level_names[] = {"debug", " info", " warn", "error", "fatal"};
+
+logger::logger() :
+	m_buffer(nullptr, 0),
+	m_sequence(0)
+{
+	memset(&m_levels, 0, sizeof(m_levels));
+	memset(&m_names, 0, sizeof(m_names));
+	s_log = this;
+}
+
+logger::logger(uint8_t *buffer, size_t size) :
+	m_buffer(buffer, size),
+	m_sequence(0)
+{
+	memset(&m_levels, 0, sizeof(m_levels));
+	memset(&m_names, 0, sizeof(m_names));
+	s_log = this;
+}
+
+void
+logger::set_level(area_t area, level l)
+{
+	unsigned uarea = static_cast<unsigned>(area);
+	uint8_t ulevel = static_cast<uint8_t>(l) & 0x0f;
+	uint8_t &flags = m_levels[uarea / 2];
+	if (uarea & 1)
+		flags = (flags & 0x0f) | (ulevel << 4);
+	else
+		flags = (flags & 0xf0) | ulevel;
+}
+
+level
+logger::get_level(area_t area)
+{
+	unsigned uarea = static_cast<unsigned>(area);
+	uint8_t &flags = m_levels[uarea / 2];
+	if (uarea & 1)
+		return static_cast<level>((flags & 0xf0) >> 4);
+	else
+		return static_cast<level>(flags & 0x0f);
+}
+
+void
+logger::register_area(area_t area, const char *name, level verbosity)
+{
+	m_names[area] = name;
+	set_level(area, verbosity);
+}
+
+void
+logger::output(level severity, area_t area, const char *fmt, va_list args)
+{
+	uint8_t buffer[256];
+	entry_header *header = reinterpret_cast<entry_header *>(buffer);
+	header->bytes = sizeof(entry_header);
+	header->area = area;
+	header->level = static_cast<uint8_t>(severity);
+	header->sequence = m_sequence++;
+
+	header->bytes +=
+		vsnprintf(header->message, sizeof(buffer) - sizeof(entry_header), fmt, args);
+
+	uint8_t *out;
+	size_t n = m_buffer.reserve(header->bytes, reinterpret_cast<void**>(&out));
+	if (n < sizeof(entry_header)) {
+		m_buffer.commit(0); // Cannot even write the header, abort
+		return;
+	}
+
+	if (n < header->bytes)
+		header->bytes = n;
+
+	memcpy(out, buffer, n);
+	m_buffer.commit(n);
+}
+
+#define LOG_LEVEL_FUNCTION(name) \
+	void name (area_t area, const char *fmt, ...) { \
+		logger *l = logger::s_log; \
+		if (!l) return; \
+		level limit = l->get_level(area); \
+		if (limit == level::none || level::name < limit) return; \
+		va_list args; \
+		va_start(args, fmt); \
+		l->output(level::name, area, fmt, args); \
+		va_end(args); \
+	}
+
+LOG_LEVEL_FUNCTION(debug);
+LOG_LEVEL_FUNCTION(info);
+LOG_LEVEL_FUNCTION(warn);
+LOG_LEVEL_FUNCTION(error);
+
+void fatal(area_t area, const char *fmt, ...)
+{
+	logger *l = logger::s_log;
+	if (!l) return;
+
+	va_list args;
+	va_start(args, fmt);
+	l->output(level::fatal, area, fmt, args);
+	va_end(args);
+
+	kassert(false, "log::fatal");
+}
+
+} // namespace log
+} // namespace kutil

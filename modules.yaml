@@ -91,7 +91,9 @@ kutil:
         - src/libraries/kutil/bip_buffer.cpp
         - src/libraries/kutil/frame_allocator.cpp
         - src/libraries/kutil/heap_manager.cpp
+        - src/libraries/kutil/logger.cpp
         - src/libraries/kutil/memory.cpp
+        - src/libraries/kutil/printf.c
 
 makerd:
     kind: exe
@@ -114,5 +116,6 @@ tests:
         - src/tests/constexpr_hash.cpp
         - src/tests/frame_allocator.cpp
         - src/tests/linked_list.cpp
+        - src/tests/logger.cpp
         - src/tests/heap_manager.cpp
         - src/tests/main.cpp
