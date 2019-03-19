@@ -9,17 +9,8 @@ namespace log {
 using kutil::memset;
 using kutil::memcpy;
 
-struct entry_header
-{
-	uint8_t bytes;
-	uint8_t area;
-	uint8_t level;
-	uint8_t sequence;
-	char message[0];
-};
-
 logger *logger::s_log = nullptr;
-const char *logger::s_level_names[] = {"debug", " info", " warn", "error", "fatal"};
+const char *logger::s_level_names[] = {"", "debug", " info", " warn", "error", "fatal"};
 
 logger::logger() :
 	m_buffer(nullptr, 0),
@@ -73,18 +64,18 @@ void
 logger::output(level severity, area_t area, const char *fmt, va_list args)
 {
 	uint8_t buffer[256];
-	entry_header *header = reinterpret_cast<entry_header *>(buffer);
-	header->bytes = sizeof(entry_header);
+	entry *header = reinterpret_cast<entry *>(buffer);
+	header->bytes = sizeof(entry);
 	header->area = area;
-	header->level = static_cast<uint8_t>(severity);
+	header->severity = severity;
 	header->sequence = m_sequence++;
 
 	header->bytes +=
-		vsnprintf(header->message, sizeof(buffer) - sizeof(entry_header), fmt, args);
+		vsnprintf(header->message, sizeof(buffer) - sizeof(entry), fmt, args);
 
 	uint8_t *out;
 	size_t n = m_buffer.reserve(header->bytes, reinterpret_cast<void**>(&out));
-	if (n < sizeof(entry_header)) {
+	if (n < sizeof(entry)) {
 		m_buffer.commit(0); // Cannot even write the header, abort
 		return;
 	}
@@ -94,6 +85,28 @@ logger::output(level severity, area_t area, const char *fmt, va_list args)
 
 	memcpy(out, buffer, n);
 	m_buffer.commit(n);
+}
+
+size_t
+logger::get_entry(void *buffer, size_t size)
+{
+	void *out;
+	size_t out_size = m_buffer.get_block(&out);
+	entry *ent = reinterpret_cast<entry *>(out);
+	if (out_size == 0)
+		return 0;
+
+	kassert(out_size >= sizeof(entry), "Couldn't read a full entry");
+	if (out_size < sizeof(entry))
+		return 0;
+
+	kassert(size >= ent->bytes, "Didn't pass a big enough buffer");
+	if (size < ent->bytes)
+		return 0;
+
+	memcpy(buffer, out, ent->bytes);
+	m_buffer.consume(ent->bytes);
+	return ent->bytes;
 }
 
 #define LOG_LEVEL_FUNCTION(name) \

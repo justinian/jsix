@@ -55,6 +55,21 @@ public:
 		va_end(args);
 	}
 
+	struct entry
+	{
+		uint8_t bytes;
+		area_t area;
+		level severity;
+		uint8_t sequence;
+		char message[0];
+	};
+
+	/// Get the next log entry from the buffer
+	/// \arg buffer  The buffer to copy the log message into
+	/// \arg size    Size of the passed-in buffer, in bytes
+	/// \returns     Number of bytes copied into the buffer
+	size_t get_entry(void *buffer, size_t size);
+
 private:
 	friend void debug(area_t area, const char *fmt, ...);
 	friend void info (area_t area, const char *fmt, ...);
