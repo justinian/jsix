@@ -16,11 +16,6 @@ static log::logger g_logger(log_buffer, sizeof(log_buffer));
 
 static const uint8_t level_colors[] = {0x07, 0x07, 0x0f, 0x0b, 0x09};
 
-static void
-output_log(log::level severity, log::area_t area, const char *message)
-{
-}
-
 void
 output_logs()
 {
