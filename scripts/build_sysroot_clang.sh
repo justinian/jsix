@@ -3,6 +3,7 @@
 TARGET="x86_64-elf"
 NASM_VERSION="2.13.03"
 BINUTILS_VERSION="2.31.1"
+LLVM_BRANCH="release_80"
 
 TOOLS="clang" # lld libunwind libcxxabi libcxx"
 PROJECTS="compiler-rt libcxxabi libcxx libunwind"
@@ -77,7 +78,7 @@ function build_llvm() {
 	if [[ ! -d "${WORK}/llvm" ]]; then
 		echo "Downloading LLVM..."
 		git clone -q \
-			--branch release_70 \
+			--branch "${LLVM_BRANCH}" \
 			--depth 1 \
 			"https://git.llvm.org/git/llvm.git" "${WORK}/llvm"
 	fi
@@ -86,7 +87,7 @@ function build_llvm() {
 		if [[ ! -d "${WORK}/llvm/tools/${tool}" ]]; then
 			echo "Downloading ${tool}..."
 			git clone -q \
-				--branch release_70 \
+				--branch "${LLVM_BRANCH}" \
 				--depth 1 \
 				"https://git.llvm.org/git/${tool}.git" "${WORK}/llvm/tools/${tool}"
 		fi
@@ -95,7 +96,7 @@ function build_llvm() {
 	if [[ ! -d "${WORK}/llvm/tools/clang/tools/extra" ]]; then
 		echo "Downloading clang-tools-extra..."
 		git clone -q \
-			--branch release_70 \
+			--branch "${LLVM_BRANCH}" \
 			--depth 1 \
 			"https://git.llvm.org/git/clang-tools-extra.git" "${WORK}/llvm/tools/clang/tools/extra"
 	fi
@@ -104,7 +105,7 @@ function build_llvm() {
 		if [[ ! -d "${WORK}/llvm/projects/${proj}" ]]; then
 			echo "Downloading ${proj}..."
 			git clone -q \
-				--branch release_70 \
+				--branch "${LLVM_BRANCH}" \
 				--depth 1 \
 				"https://git.llvm.org/git/${proj}.git" "${WORK}/llvm/projects/${proj}"
 		fi
@@ -114,7 +115,7 @@ function build_llvm() {
 		if [[ ! -d "${WORK}/llvm/runtimes/${proj}" ]]; then
 			echo "Downloading ${proj}..."
 			git clone -q \
-				--branch release_70 \
+				--branch "${LLVM_BRANCH}" \
 				--depth 1 \
 				"https://git.llvm.org/git/${proj}.git" "${WORK}/llvm/runtime/${proj}"
 		fi
