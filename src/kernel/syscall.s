@@ -11,19 +11,19 @@ syscall_handler_prelude:
 	mov [gs:0x08], rsp
 	mov rsp, [gs:0x00]
 
-	push 0x23	; ss
-	push rsp
-	pushf
-	push 0x2b	; cs
-	push rcx	; user rip
-	push 0		; bogus interrupt
-	push 0		; bogus errorcode
+	push 0x23   ; ss
+	push 0x00   ; rsp - to be filled
+	push r11    ; rflags
+	push 0x2b   ; cs
+	push rcx    ; user rip
+	push 0      ; bogus error
+	push 0      ; bogus vector
 	push_all
 
 	inc qword [rel __counter_syscall_enter]
 
 	mov rax, [gs:0x08]
-	mov [rsp + 0x98], rax
+	mov [rsp + 0xa0], rax
 	mov rax, [rsp + 0x70]
 
 	mov rdi, rsp
@@ -37,11 +37,18 @@ syscall_handler_prelude:
 
 	inc qword [rel __counter_syscall_sysret]
 
-	swapgs
+	mov rax, [rsp + 0xa0]
+	mov [gs:0x08], rax
 
 	pop_all
-	add rsp, 16	; ignore bogus interrupt / error
-	pop rcx		; user rip
-	add rsp, 32 ; ignore cs, flags, rsp, ss
+	add rsp, 16 ; ignore bogus interrupt / error
+	pop rcx     ; user rip
+	add rsp, 8  ; ignore cs
+	pop r11     ; flags
+	add rsp, 16 ; rsp, ss
 
+	mov [gs:0x00], rsp
+	mov rsp, [gs:0x08]
+
+	swapgs
 	o64 sysret
