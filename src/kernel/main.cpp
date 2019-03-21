@@ -132,6 +132,8 @@ kernel_main(kernel_args *header)
 	syscall_enable();
 	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic());
 
+	sched->create_kernel_task(-1, logs::logger_task);
+
 	for (auto &f : ird.files()) {
 		if (f.executable())
 			sched->load_process(f.name(), f.data(), f.size());

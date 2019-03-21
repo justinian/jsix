@@ -108,6 +108,9 @@ public:
 	/// \returns  A pointer to the system page manager
 	static page_manager * get();
 
+	/// Get a pointer to the kernel's PML4
+	inline page_table * get_kernel_pml4() { return m_kernel_pml4; }
+
 private:
 	/// Copy a physical page
 	/// \arg orig  Physical address of the page to copy

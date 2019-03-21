@@ -11,6 +11,7 @@ namespace logs {
 #undef LOG
 
 void init();
+void logger_task();
 
 } // namespace logs
 

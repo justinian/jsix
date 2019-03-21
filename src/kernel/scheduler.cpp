@@ -27,14 +27,6 @@ extern "C" {
 	void load_process(const void *image_start, size_t bytes, process *proc, cpu_state *state);
 };
 
-struct cpu_data
-{
-	uintptr_t rsp0;
-	uintptr_t rsp3;
-};
-
-static cpu_data bsp_cpu_data;
-
 scheduler::scheduler(lapic *apic) :
 	m_apic(apic),
 	m_next_pid(1)
@@ -118,10 +110,12 @@ load_process(const void *image_start, size_t bytes, process *proc, cpu_state *st
 }
 
 process_node *
-scheduler::create_process()
+scheduler::create_process(pid_t pid)
 {
+	kassert(pid <= 0, "Cannot specify a positive pid in create_process");
+
 	auto *proc = m_process_allocator.pop();
-	proc->pid = m_next_pid++;
+	proc->pid = pid ? pid : m_next_pid++;
 	proc->priority = default_priority;
 	return proc;
 }
@@ -187,6 +181,44 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	log::debug(logs::task, "Creating process %s: pid %d  pri %d", name, proc->pid, proc->priority);
 	log::debug(logs::task, "     RSP0 %016lx", state);
 	log::debug(logs::task, "     PML4 %016lx", pml4);
+}
+
+void
+scheduler::create_kernel_task(pid_t pid, void (*task)())
+{
+	auto *proc = create_process(pid);
+
+	uint16_t kcs = (1 << 3) | 0; // Kernel CS is GDT entry 1, ring 0
+	uint16_t kss = (2 << 3) | 0; // Kernel SS is GDT entry 2, ring 0
+
+	// Create a one-page kernel stack space
+	void *stack0 = proc->setup_kernel_stack(stack_size, 0);
+
+	// Stack grows down, point to the end, resere space for initial null frame
+	static const size_t null_frame = sizeof(uint64_t);
+	void *sp0 = kutil::offset_pointer(stack0, stack_size - null_frame);
+
+	cpu_state *state = reinterpret_cast<cpu_state *>(sp0) - 1;
+
+	// Highest state in the stack is the process' kernel stack for the loader
+	// to iret to:
+	state->ss = kss;
+	state->cs = kcs;
+	state->rflags = rflags_int;
+	state->rip = reinterpret_cast<uint64_t>(task);
+	state->user_rsp = reinterpret_cast<uint64_t>(state);
+
+	proc->rsp = reinterpret_cast<uintptr_t>(state);
+	proc->pml4 = page_manager::get()->get_kernel_pml4();
+	proc->quanta = process_quanta;
+	proc->flags =
+		process_flags::running |
+		process_flags::ready;
+
+	m_runlists[default_priority].push_back(proc);
+
+	log::debug(logs::task, "Creating kernel task: pid %d  pri %d", proc->pid, proc->priority);
+	log::debug(logs::task, "     RSP0 %016lx", state);
 }
 
 void
@@ -275,7 +307,6 @@ scheduler::schedule(uintptr_t rsp0)
 	// Set rsp0 to after the end of the about-to-be-popped cpu state
 	tss_set_stack(0, rsp0 + sizeof(cpu_state));
 	bsp_cpu_data.rsp0 = rsp0;
-
 
 	// Swap page tables
 	page_table *pml4 = m_current->pml4;

@@ -4,10 +4,6 @@
 #include "gdt.h"
 #include "page_manager.h"
 
-#define print_regL(name, value) cons->printf("       %s: %016lx", name, (value));
-#define print_regM(name, value) cons->printf("    %s: %016lx", name, (value));
-#define print_regR(name, value) cons->printf("    %s: %016lx\n", name, (value));
-
 size_t __counter_syscall_enter = 0;
 size_t __counter_syscall_sysret = 0;
 
@@ -36,7 +32,7 @@ print_regs(const cpu_state &regs)
 	cons->puts("\n\n");
 	print_regL("rbp", regs.rbp);
 	print_regM("rsp", regs.user_rsp);
-	print_regR("sp0", tss_get_stack(0));
+	print_regR("sp0", bsp_cpu_data.rsp0);
 
 	print_regL("rip", regs.rip);
 	print_regM("cr3", page_manager::get()->get_pml4());

@@ -101,7 +101,7 @@ logger::get_entry(void *buffer, size_t size)
 	void *out;
 	size_t out_size = m_buffer.get_block(&out);
 	entry *ent = reinterpret_cast<entry *>(out);
-	if (out_size == 0)
+	if (out_size == 0 || out == 0)
 		return 0;
 
 	kassert(out_size >= sizeof(entry), "Couldn't read a full entry");

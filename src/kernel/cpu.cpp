@@ -3,6 +3,8 @@
 #include "cpu.h"
 #include "log.h"
 
+cpu_data bsp_cpu_data;
+
 inline static void
 __cpuid(
 	uint32_t leaf,

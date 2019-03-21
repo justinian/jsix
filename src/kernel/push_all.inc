@@ -1,6 +1,14 @@
 %macro push_all 0
 	sub rsp, 0x78
 
+	; ss3      rsp + 0xa8
+	; rsp3     rsp + 0xa0
+	; flags3   rsp + 0x98
+	; cs3      rsp + 0x90
+	; rip3     rsp + 0x88
+	; error    rsp + 0x80
+	; vector   rsp + 0x78
+
 	mov [rsp + 0x70], rax
 	mov [rsp + 0x68], rcx
 	mov [rsp + 0x60], rdx

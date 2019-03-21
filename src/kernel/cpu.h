@@ -10,6 +10,14 @@ struct cpu_state
 	uint64_t rip, cs, rflags, user_rsp, ss;
 };
 
+struct cpu_data
+{
+	uintptr_t rsp0;
+	uintptr_t rsp3;
+};
+
+extern cpu_data bsp_cpu_data;
+
 class cpu_id
 {
 public:

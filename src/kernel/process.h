@@ -7,7 +7,7 @@
 #include "kutil/linked_list.h"
 #include "page_manager.h"
 
-typedef uint32_t pid_t;
+typedef int32_t pid_t;
 
 
 enum class process_flags : uint32_t

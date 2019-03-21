@@ -111,6 +111,38 @@ isr_handler(uintptr_t return_rsp, cpu_state *regs)
 
 	switch (static_cast<isr>(regs->interrupt & 0xff)) {
 
+	case isr::isrDebug: {
+			cons->set_color(11);
+			cons->puts("\nDebug Exception:\n");
+			cons->set_color();
+
+			uint64_t dr = 0;
+
+			__asm__ __volatile__ ("mov %%dr0, %0" : "=r"(dr));
+			print_regL("dr0", dr);
+
+			__asm__ __volatile__ ("mov %%dr1, %0" : "=r"(dr));
+			print_regM("dr1", dr);
+
+			__asm__ __volatile__ ("mov %%dr2, %0" : "=r"(dr));
+			print_regM("dr2", dr);
+
+			__asm__ __volatile__ ("mov %%dr3, %0" : "=r"(dr));
+			print_regR("dr3", dr);
+
+			__asm__ __volatile__ ("mov %%dr6, %0" : "=r"(dr));
+			print_regL("dr6", dr);
+
+			__asm__ __volatile__ ("mov %%dr7, %0" : "=r"(dr));
+			print_regR("dr7", dr);
+
+			print_regL("rip", regs->rip);
+			print_regM("rsp", regs->user_rsp);
+			print_regM("fla", regs->rflags);
+			_halt();
+		}
+		break;
+
 	case isr::isrGPFault: {
 			cons->set_color(9);
 			cons->puts("\nGeneral Protection Fault:\n");
@@ -145,7 +177,6 @@ isr_handler(uintptr_t return_rsp, cpu_state *regs)
 			print_stacktrace(2);
 			print_stack(*regs);
 			*/
-
 		}
 		_halt();
 		break;
@@ -165,12 +196,9 @@ isr_handler(uintptr_t return_rsp, cpu_state *regs)
 
 			uint64_t cr2 = 0;
 			__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
-			print_reg("cr2", cr2);
-
-			print_reg("rsp", regs->user_rsp);
-			print_reg("rip", regs->rip);
-
-			cons->puts("\n");
+			print_regL("cr2", cr2);
+			print_regM("rsp", regs->user_rsp);
+			print_regR("rip", regs->rip);
 			//print_stacktrace(2);
 		}
 		_halt();
@@ -242,7 +270,7 @@ isr_handler(uintptr_t return_rsp, cpu_state *regs)
 				regs->interrupt, regs->errorcode);
 
 		print_regs(*regs);
-		//print_stacktrace(2);
+		print_stacktrace(2);
 		_halt();
 	}
 	*reinterpret_cast<uint32_t *>(0xffffff80fee000b0) = 0;

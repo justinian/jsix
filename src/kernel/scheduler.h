@@ -21,10 +21,10 @@ public:
 	static const uint8_t default_priority = num_priorities / 2;
 
 	/// How long the timer quantum is
-	static const uint64_t quantum_micros = 100000;
+	static const uint64_t quantum_micros = 1000;
 
 	/// How many quantums a process gets before being rescheduled
-	static const uint16_t process_quanta = 10;
+	static const uint16_t process_quanta = 100;
 
 	/// Constructor.
 	/// \arg apic  Pointer to the local APIC object
@@ -35,6 +35,11 @@ public:
 	/// \arg data  Pointer to the image data
 	/// \arg size  Size of the program image, in bytes
 	void load_process(const char *name, const void *data, size_t size);
+
+	/// Create a new kernel task
+	/// \arg pid   Pid to use for this task, must be negative
+	/// \arg proc  Function to run as a kernel task
+	void create_kernel_task(pid_t pid, void (*task)());
 
 	/// Start the scheduler working. This may involve starting
 	/// timer interrupts or other preemption methods.
@@ -65,8 +70,9 @@ private:
 
 	/// Create a new process object. This process will have its pid
 	/// set but nothing else.
+	/// \arg pid  The pid to give the process (0 for automatic)
 	/// \returns  The new process object
-	process_node * create_process();
+	process_node * create_process(pid_t pid = 0);
 
 	/// Handle a timer tick
 	/// \arg rsp0  The stack pointer of the current interrupt handler
