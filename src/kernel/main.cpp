@@ -138,5 +138,4 @@ kernel_main(kernel_args *header)
 	}
 
 	sched->start();
-	logs::output_logs();
 }

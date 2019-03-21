@@ -11,7 +11,6 @@ namespace logs {
 #undef LOG
 
 void init();
-void output_logs();
 
 } // namespace logs
 

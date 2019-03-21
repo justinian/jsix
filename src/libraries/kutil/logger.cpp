@@ -14,6 +14,7 @@ const char *logger::s_level_names[] = {"", "debug", " info", " warn", "error", "
 
 logger::logger() :
 	m_buffer(nullptr, 0),
+	m_immediate(nullptr),
 	m_sequence(0)
 {
 	memset(&m_levels, 0, sizeof(m_levels));
@@ -23,6 +24,7 @@ logger::logger() :
 
 logger::logger(uint8_t *buffer, size_t size) :
 	m_buffer(buffer, size),
+	m_immediate(nullptr),
 	m_sequence(0)
 {
 	memset(&m_levels, 0, sizeof(m_levels));
@@ -72,6 +74,12 @@ logger::output(level severity, area_t area, const char *fmt, va_list args)
 
 	header->bytes +=
 		vsnprintf(header->message, sizeof(buffer) - sizeof(entry), fmt, args);
+
+	if (m_immediate) {
+		buffer[header->bytes] = 0;
+		m_immediate(area, severity, header->message);
+		return;
+	}
 
 	uint8_t *out;
 	size_t n = m_buffer.reserve(header->bytes, reinterpret_cast<void**>(&out));

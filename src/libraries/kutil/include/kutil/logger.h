@@ -30,6 +30,12 @@ public:
 	/// \arg verbosity What level of logs to print for this area
 	void register_area(area_t area, const char *name, level verbosity);
 
+	/// Callback type for immediate-mode logging
+	typedef void (*immediate)(area_t, level, const char *);
+
+	/// Register an immediate-mode log callback
+	inline void set_immediate(immediate cb) { m_immediate = cb; }
+
 	/// Get the default logger.
 	inline logger & get() { return *s_log; }
 
@@ -85,6 +91,7 @@ private:
 	static const unsigned num_areas = 1 << (sizeof(area_t) * 8);
 	uint8_t m_levels[num_areas / 2];
 	const char *m_names[num_areas];
+	immediate m_immediate;
 
 	uint8_t m_sequence;
 
