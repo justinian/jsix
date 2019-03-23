@@ -284,6 +284,8 @@ scheduler::schedule(uintptr_t rsp0)
 	// TODO: lol a real clock
 	static uint64_t now = 0;
 
+	pid_t lastpid = m_current->pid;
+
 	m_current->rsp = rsp0;
 	m_runlists[m_current->priority].remove(m_current);
 
@@ -312,9 +314,11 @@ scheduler::schedule(uintptr_t rsp0)
 	page_table *pml4 = m_current->pml4;
 	page_manager::set_pml4(pml4);
 
-	bool loading = m_current->flags && process_flags::loading;
-	log::debug(logs::task, "Scheduler switched to process %d, priority %d%s.",
-			m_current->pid, m_current->priority, loading ? " (loading)" : "");
+	if (lastpid != m_current->pid) {
+		bool loading = m_current->flags && process_flags::loading;
+		log::debug(logs::task, "Scheduler switched to process %d, priority %d%s.",
+				m_current->pid, m_current->priority, loading ? " (loading)" : "");
+	}
 
 	return rsp0;
 }

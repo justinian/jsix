@@ -49,7 +49,7 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 
 	case syscall::debug:
 		cons->set_color(11);
-		cons->printf("\nProcess %u: Received DEBUG syscall\n", p->pid);
+		cons->printf("\nProcess %d: Received DEBUG syscall\n", p->pid);
 		cons->set_color();
 		print_regs(regs);
 		cons->printf("\n         Syscall enters: %8d\n", __counter_syscall_enter);
@@ -58,7 +58,7 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 
 	case syscall::message:
 		cons->set_color(11);
-		cons->printf("\nProcess %u: Received MESSAGE syscall\n", p->pid);
+		cons->printf("\nProcess %d: Received MESSAGE syscall\n", p->pid);
 		cons->set_color();
 		break;
 
@@ -69,7 +69,7 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 			auto &s = scheduler::get();
 			auto *p = s.current();
 			p->wait_on_signal(-1ull);
-			cons->printf("\nProcess %u: Received PAUSE syscall\n", p->pid);
+			cons->printf("\nProcess %d: Received PAUSE syscall\n", p->pid);
 			cons->set_color();
 			return_rsp = s.schedule(return_rsp);
 		}
@@ -78,7 +78,7 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 	case syscall::sleep:
 		{
 			cons->set_color(11);
-			cons->printf("\nProcess %u: Received SLEEP syscall\n", p->pid);
+			cons->printf("\nProcess %d: Received SLEEP syscall\n", p->pid);
 			cons->printf("Sleeping until %lu\n", regs.rbx);
 			cons->set_color();
 
@@ -89,17 +89,18 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 
 	case syscall::getpid:
 		cons->set_color(11);
-		cons->printf("\nProcess %u: Received GETPID syscall\n", p->pid);
+		cons->printf("\nProcess %d: Received GETPID syscall\n", p->pid);
 		cons->set_color();
 		regs.rax = p->pid;
 		break;
 
 	case syscall::send:
 		{
-			uint32_t target = regs.rdi;
+			pid_t target = regs.rdi;
+			uintptr_t data = regs.rsi;
 
 			cons->set_color(11);
-			cons->printf("\nProcess %u: Received SEND syscall, target %u\n", p->pid, target);
+			cons->printf("\nProcess %d: Received SEND syscall, target %d, data %016lx\n", p->pid, target, data);
 			cons->set_color();
 
 			if (p->wait_on_send(target))
@@ -109,10 +110,11 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 
 	case syscall::receive:
 		{
-			uint32_t source = regs.rdi;
+			pid_t source = regs.rdi;
+			uintptr_t data = regs.rsi;
 
 			cons->set_color(11);
-			cons->printf("\nProcess %u: Received RECEIVE syscall, source %u\n", p->pid, source);
+			cons->printf("\nProcess %d: Received RECEIVE syscall, source %d, dat %016lx\n", p->pid, source, data);
 			cons->set_color();
 
 			if (p->wait_on_receive(source))
@@ -123,7 +125,7 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 	case syscall::fork:
 		{
 			cons->set_color(11);
-			cons->printf("\nProcess %u: Received FORK syscall\n", p->pid);
+			cons->printf("\nProcess %d: Received FORK syscall\n", p->pid);
 			cons->set_color();
 
 			pid_t pid = p->fork(return_rsp);
@@ -133,7 +135,7 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 
 	case syscall::exit:
 		cons->set_color(11);
-		cons->printf("\nProcess %u: Received EXIT syscall\n", p->pid);
+		cons->printf("\nProcess %d: Received EXIT syscall\n", p->pid);
 		cons->set_color();
 		p->exit(regs.rdi);
 		return_rsp = s.schedule(return_rsp);
