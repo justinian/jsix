@@ -16,6 +16,6 @@ __kernel_assert(const char *file, unsigned line, const char *message)
 		cons->puts("\n");
 	}
 
-	__asm__ ( "int $0xe4" );
 	while (1) __asm__ ("hlt");
+	__asm__ ( "int $0xe4" );
 }
