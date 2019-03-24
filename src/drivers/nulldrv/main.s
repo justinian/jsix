@@ -1,68 +1,63 @@
 section .bss
-mypid: resq 1
-mychild: resq 1
+mymessage:
+	resq 1024
+
+extern main
 
 section .text
+global getpid
+getpid:
+	push rbp
+	mov rbp, rsp
+
+	mov rax, 5  ; getpid syscall
+	syscall     ; pid is now already in rax, so just return
+
+	pop rbp
+	ret
+
+global debug
+debug:
+	push rbp
+	mov rbp, rsp
+
+	mov rax, 1  ; debug syscall
+	syscall
+
+	pop rbp
+	ret
+
+global sleep
+sleep:
+	push rbp
+	mov rbp, rsp
+
+	mov rax, 4  ; sleep syscall
+	syscall
+
+	pop rbp
+	ret
+
+
+__localexit:
+	push rbp
+	mov rbp, rsp
+
+	mov rax, 9 ; exit syscall
+	syscall
+	jmp __localexit ; shouldn't get here
+
+
 global _start
 _start:
 	xor rbp, rbp	; Sentinel rbp
+	push rbp
+	push rbp
+	mov rbp, rsp
 
-	mov rax, 5		; GETPID syscall
-	syscall ; int 0xee
-	mov [mypid], rax
+	mov rdi, 0
+	mov rsi, 0
+	call main
 
-	mov rax, 8		; FORK syscall
-	syscall ; int 0xee
-	mov [mychild], rax
-
-	mov r12, [mypid]
-	mov r13, [mychild]
-	mov rax, 1		; DEBUG syscall
-	syscall ; int 0xee
-
-	cmp r13, 0
-	je .doexit
-
-	cmp r12, 1
-	je .dosend
-	jne .doreceive
-
-.preloop:
-	mov r11, 0		; counter
-	mov rbx, 20		; sleep timeout
-
-.loop:
-	mov rax, 1		; MESSAGE syscall
-	;mov rax, 0		; NOOP syscall
-	;syscall
-	syscall ; int 0xee
-
-	inc r11
-	cmp r11, 2
-
-	jle .loop
-
-	mov rax, 4		; SLEEP syscall
-	; syscall
-	syscall ; int 0xee
-
-	add rbx, 20
-
-	mov r11, 0
-	jmp .loop
-
-.dosend:
-	mov rax, 6      ; SEND syscall
-	mov rdi, 2      ; target is pid 2
-	syscall ; int 0xee
-	jmp .preloop
-
-.doreceive:
-	mov rax, 7      ; RECEIVE syscall
-	mov rdi, 1      ; source is pid 2
-	syscall ; int 0xee
-	jmp .preloop
-
-.doexit:
-	mov rax, 9      ; EXIT syscall
-	syscall
+	mov rdi, rax
+	call __localexit

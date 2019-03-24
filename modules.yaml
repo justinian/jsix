@@ -56,9 +56,10 @@ boot:
 
 nulldrv:
     kind: exe
-    target: host
+    target: user
     output: nulldrv
     source:
+        - src/drivers/nulldrv/main.cpp
         - src/drivers/nulldrv/main.s
 
 elf:

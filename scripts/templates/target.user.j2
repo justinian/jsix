@@ -1,0 +1,49 @@
+{% extends "target.default.j2" %}
+
+{% block binaries %}
+cc = ${srcroot}/sysroot/bin/clang
+cxx = ${srcroot}/sysroot/bin/clang++
+ld = ${srcroot}/sysroot/bin/x86_64-elf-ld
+ar = ${srcroot}/sysroot/bin/x86_64-elf-ar
+nasm = ${srcroot}/sysroot/bin/nasm
+objcopy = ${srcroot}/sysroot/bin/x86_64-elf-objcopy
+{% endblock %}
+
+{% block variables %}
+
+ccflags = $ccflags $
+    -nostdlib $
+    -nodefaultlibs $
+    -fno-builtin $
+    -mno-sse $
+    -fno-omit-frame-pointer $
+    -mno-red-zone $
+    -g $
+    -mcmodel=large $
+    -D__ELF__ $
+    -D__POPCORN__ $
+    -isystem${srcroot}/sysroot/include $
+    --sysroot="${srcroot}/sysroot"
+
+cxxflags = $cxxflags $
+    -fno-exceptions $
+    -fno-rtti $
+    -isystem${srcroot}/sysroot/include/c++/v1
+
+ldflags = $ldflags $
+    -g $
+    -nostdlib $
+    -znocombreloc $
+    -Bsymbolic $
+    -nostartfiles $
+    -Bstatic $
+    --sysroot="${srcroot}/sysroot" $
+	-L "${srcroot}/sysroot/lib" $
+
+libs = $libs $
+	-lc
+
+{% endblock %}
+
+# vim: ft=ninja et ts=4 sts=4 sw=4
+

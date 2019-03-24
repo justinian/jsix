@@ -179,7 +179,7 @@ build $builddir/fatroot/efi/boot/bootx64.efi : cp $builddir/boot/boot.efi
 
 build $builddir/fatroot/initrd.img : makerd ${srcroot}/assets/initrd.toml | $
     ${builddir}/native/makerd $
-    ${builddir}/host/nulldrv
+    ${builddir}/user/nulldrv
 
 build $builddir/popcorn.img : makefat | $
     $builddir/fatroot/initrd.img $

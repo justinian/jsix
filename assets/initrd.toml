@@ -14,10 +14,10 @@ source = "../assets/fonts/tamsyn8x16r.psf"
 
 [[files]]
 dest = "nulldrv1"
-source = "host/nulldrv"
+source = "user/nulldrv"
 executable = true
 
 [[files]]
 dest = "nulldrv2"
-source = "host/nulldrv"
+source = "user/nulldrv"
 executable = true

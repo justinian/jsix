@@ -79,10 +79,10 @@ syscall_dispatch(uintptr_t return_rsp, cpu_state &regs)
 		{
 			cons->set_color(11);
 			cons->printf("\nProcess %d: Received SLEEP syscall\n", p->pid);
-			cons->printf("Sleeping until %lu\n", regs.rbx);
+			cons->printf("Sleeping until %lu\n", regs.rdi);
 			cons->set_color();
 
-			p->wait_on_time(regs.rbx);
+			p->wait_on_time(regs.rdi);
 			return_rsp = s.schedule(return_rsp);
 		}
 		break;

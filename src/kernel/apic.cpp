@@ -46,6 +46,7 @@ apic::apic(uint32_t *base) :
 lapic::lapic(uint32_t *base, isr spurious) :
 	apic(base)
 {
+	// TODO: This causes a "reserved" page fault under KVM
 	apic_write(m_base, 0xf0, static_cast<uint32_t>(spurious));
 	log::info(logs::apic, "LAPIC created, base %lx", m_base);
 }
