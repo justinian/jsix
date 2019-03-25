@@ -10,30 +10,72 @@ static wchar_t kernel_name[] = KERNEL_FILENAME;
 static wchar_t initrd_name[] = INITRD_FILENAME;
 
 EFI_STATUS
+loader_alloc_aligned(
+	EFI_BOOT_SERVICES *bootsvc,
+	EFI_MEMORY_TYPE mem_type,
+	size_t *length,
+	void **pages)
+{
+	EFI_STATUS status;
+	EFI_PHYSICAL_ADDRESS addr;
+
+	size_t alignment = PAGE_SIZE;
+	while (alignment < *length)
+		alignment *= 2;
+
+	size_t page_count = alignment / PAGE_SIZE;
+	*length = alignment;
+
+	con_debug(L"Trying to find %d aligned pages for %x\n", page_count, mem_type);
+
+	status = bootsvc->AllocatePages(AllocateAnyPages, mem_type, page_count * 2, &addr);
+	CHECK_EFI_STATUS_OR_RETURN(status, L"Allocating %d pages for alignment", page_count * 2);
+	con_debug(L"    Found %d pages at %lx\n", page_count * 2, addr);
+
+	EFI_PHYSICAL_ADDRESS aligned = addr;
+	aligned = ((aligned - 1) & ~(alignment - 1)) + alignment;
+	con_debug(L"    Aligning %lx to %lx\n", addr, aligned);
+
+	size_t before = 
+		(reinterpret_cast<uint64_t>(aligned) -
+		reinterpret_cast<uint64_t>(addr)) /
+		PAGE_SIZE;
+
+	if (before) {
+		con_debug(L"    Freeing %d initial pages\n", before);
+		bootsvc->FreePages(addr, before);
+	}
+
+	size_t after = page_count - before;
+	if (after) {
+		EFI_PHYSICAL_ADDRESS end = 
+			reinterpret_cast<EFI_PHYSICAL_ADDRESS>(
+				reinterpret_cast<uint64_t>(aligned) +
+				page_count * PAGE_SIZE);
+		con_debug(L"    Freeing %d remaining pages\n", after);
+		bootsvc->FreePages(end, after);
+	}
+
+	*pages = (void *)aligned;
+	return EFI_SUCCESS;
+}
+
+EFI_STATUS
 loader_alloc_pages(
 	EFI_BOOT_SERVICES *bootsvc,
 	EFI_MEMORY_TYPE mem_type,
 	size_t *length,
-	void **pages,
-	bool align)
+	void **pages)
 {
 	EFI_STATUS status;
 
 	size_t page_count = ((*length - 1) / PAGE_SIZE) + 1;
 	EFI_PHYSICAL_ADDRESS addr = (EFI_PHYSICAL_ADDRESS)*pages;
 
-	if (align) {
-		// Align addr to the next multiple of N pages
-		size_t align_size = page_count * PAGE_SIZE;
-		addr = ((addr - 1) & ~(align_size - 1)) + align_size;
-	}
+	con_debug(L"Trying to find %d non-aligned pages for %x at %lx\n",
+			page_count, mem_type, addr);
 
 	status = bootsvc->AllocatePages(AllocateAddress, mem_type, page_count, &addr);
-	if (status == EFI_NOT_FOUND || status == EFI_OUT_OF_RESOURCES) {
-		// couldn't get the address we wanted, try loading the kernel anywhere
-		status =
-			bootsvc->AllocatePages(AllocateAnyPages, mem_type, page_count, &addr);
-	}
 	CHECK_EFI_STATUS_OR_RETURN(status,
 		L"Allocating %d kernel pages type %x",
 		page_count, mem_type);
@@ -69,12 +111,11 @@ loader_load_initrd(
 
 	data->initrd_length = ((EFI_FILE_INFO *)info)->FileSize;
 
-	status = loader_alloc_pages(
+	status = loader_alloc_aligned(
 			bootsvc,
 			memtype_initrd,
 			&data->initrd_length,
-			&data->initrd,
-			true);
+			&data->initrd);
 	CHECK_EFI_STATUS_OR_RETURN(status, L"Allocating pages");
 
 	status = file->Read(file, &data->initrd_length, data->initrd);
@@ -161,7 +202,7 @@ loader_load_elf(
 
 		length = prog_header.mem_size;
 		void *addr = (void *)(prog_header.vaddr - KERNEL_VIRT_ADDRESS);
-		status = loader_alloc_pages(bootsvc, memtype_kernel, &length, &addr, false);
+		status = loader_alloc_pages(bootsvc, memtype_kernel, &length, &addr);
 		CHECK_EFI_STATUS_OR_RETURN(status, L"Allocating kernel pages");
 
 		if (data->kernel == 0)
@@ -236,20 +277,19 @@ loader_load_kernel(
 
 		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_load_elf: %s", kernel_name);
 
-		data->initrd = (void *)((uint64_t)data->kernel + data->kernel_length);
-		status = loader_load_initrd(bootsvc, root, data);
-
-		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_load_file: %s", initrd_name);
-
-		data->data = (void *)((uint64_t)data->initrd + data->initrd_length);
+		data->data = (void *)((uint64_t)data->kernel + data->kernel_length);
 		data->data_length += PAGE_SIZE; // extra page for map growth
-		status = loader_alloc_pages(
+
+		status = loader_alloc_aligned(
 				bootsvc,
 				memtype_data,
 				&data->data_length,
-				&data->data,
-				true);
-		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_alloc_pages: kernel data");
+				&data->data);
+		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_alloc_aligned: kernel data");
+
+		data->initrd = (void *)((uint64_t)data->data + data->data_length);
+		status = loader_load_initrd(bootsvc, root, data);
+		CHECK_EFI_STATUS_OR_RETURN(status, L"loader_load_file: %s", initrd_name);
 
 		return EFI_SUCCESS;
 	}

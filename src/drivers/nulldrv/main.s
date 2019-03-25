@@ -3,6 +3,7 @@ mymessage:
 	resq 1024
 
 extern main
+extern exit
 
 section .text
 global getpid
@@ -38,16 +39,6 @@ sleep:
 	pop rbp
 	ret
 
-
-__localexit:
-	push rbp
-	mov rbp, rsp
-
-	mov rax, 9 ; exit syscall
-	syscall
-	jmp __localexit ; shouldn't get here
-
-
 global _start
 _start:
 	xor rbp, rbp	; Sentinel rbp
@@ -60,4 +51,4 @@ _start:
 	call main
 
 	mov rdi, rax
-	call __localexit
+	call exit

@@ -133,9 +133,9 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	status = loader_load_kernel(bootsvc, &load);
 	CHECK_EFI_STATUS_OR_FAIL(status);
 
-	console::print(L"    %u image bytes at 0x%x\r\n", load.kernel_length, load.kernel);
-	console::print(L"    %u initrd bytes at 0x%x\r\n", load.initrd_length, load.initrd);
-	console::print(L"    %u data bytes at 0x%x\r\n", load.data_length, load.data);
+	console::print(L"    %x image bytes  at 0x%x\r\n", load.kernel_length, load.kernel);
+	console::print(L"    %x data bytes   at 0x%x\r\n", load.data_length, load.data);
+	console::print(L"    %x initrd bytes at 0x%x\r\n", load.initrd_length, load.initrd);
 
 	struct kernel_header *version = (struct kernel_header *)load.kernel;
 	if (version->magic != KERNEL_HEADER_MAGIC) {
@@ -145,7 +145,7 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 
 	console::print(L"    Kernel version %d.%d.%d %x%s\r\n",
 			version->major, version->minor, version->patch, version->gitsha & 0x0fffffff,
-			version->gitsha & 0xf0000000 ? "*" : "");
+			version->gitsha & 0xf0000000 ? L"*" : L"");
 	console::print(L"    Entrypoint 0x%x\r\n", load.kernel_entry);
 
 	kernel_entry kernel_main =
