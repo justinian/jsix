@@ -5,6 +5,7 @@ assets="$(dirname $0)/assets"
 debug=""
 flash_name="ovmf_vars"
 gfx="-nographic"
+kvm=""
 
 for arg in $@; do
 	case "${arg}" in
@@ -15,15 +16,17 @@ for arg in $@; do
 		--gfx)
 			gfx=""
 			;;
+		--kvm)
+			kvm="-enable-kvm"
+			;;
 		*)
 			build="${arg}"
 			;;
 	esac
 done
 
-kvm=""
-if [[ -c /dev/kvm ]]; then
-	kvm="-enable-kvm"
+if [[ ! -c /dev/kvm ]]; then
+	kvm=""
 fi
 
 if ! ninja -C "${build}"; then
@@ -34,11 +37,10 @@ if [[ -n $TMUX ]]; then
 	if [[ -n $debug ]]; then
 		tmux split-window "gdb ${build}/popcorn.elf" &
 	else
-		tmux split-window "sleep 1; telnet localhost 45454" &
+		tmux split-window -l 10 "sleep 1; telnet localhost 45454" &
 	fi
 fi
 
-touch "${build}/popd_table.data"
 exec qemu-system-x86_64 \
 	-drive "if=pflash,format=raw,readonly,file=${assets}/ovmf/x64/ovmf_code.fd" \
 	-drive "if=pflash,format=raw,file=${build}/${flash_name}.fd" \
