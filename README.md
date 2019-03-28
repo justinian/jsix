@@ -27,11 +27,21 @@ The design goals of the project are:
 
 ## Building
 
-Popcorn uses the `ninja` build tool, and generates the build files for it with
-the `generate_build.py` script.  The other requirements are:
+Popcorn uses the [Ninja][] build tool, and generates the build files for it
+with a custom tool called [Bonnibel][]. Bonnibel requires [Python 3][] and can
+be downloaded with `pip`:
 
-* python 3 for generating the build config
-  * The Jinja2 package is also required
+```
+pip3 install bonnibel
+```
+
+[Ninja]:    https://ninja-build.org
+[Bonnibel]: https://github.com/justinian/bonnibel
+[Python 3]: https://python.org
+
+Requrirements:
+
+* python 3 (for installing and running Bonnibel)
 * clang
 * mtools
 * ninja
@@ -45,7 +55,7 @@ Popcorn host binaries.
 
 ### Building and running Popcorn
 
-Once the toolchain has been set up, running `generate_build.py` will set up the
+Once the toolchain has been set up, running Bonnibel's `pb` command will set up the
 build configuration, and `ninja -C build` will actually run the build.  If you
 have `qemu-system-x86_64` installed, the `qemu.sh` script will to run Popcorn
 in QEMU `-nographic` mode.
@@ -54,7 +64,8 @@ I personally run this either from a real debian amd64 testing/buster machine or
 a windows WSL debian testing/buster installation. The following should be
 enough to set up such a system to build the kernel:
 
-    sudo apt install qemu-system-x86 nasm clang-6.0 mtools
-	sudo update-alternatives /usr/bin/clang clang /usr/bin/clang-6.0 1000
-	sudo update-alternatives /usr/bin/clang++ clang++ /usr/bin/clang++-6.0 1000
+    sudo apt install qemu-system-x86 nasm clang-6.0 mtools python3-pip curl
+    sudo update-alternatives /usr/bin/clang clang /usr/bin/clang-6.0 1000
+    sudo update-alternatives /usr/bin/clang++ clang++ /usr/bin/clang++-6.0 1000
+    sudo pip3 install bonnibel
 

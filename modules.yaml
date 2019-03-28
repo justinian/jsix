@@ -1,122 +1,125 @@
-kernel:
-    output: popcorn.elf
-    target: host
-    deps:
-        - elf
-        - initrd
-        - kutil
-    includes:
-        - src/kernel
-    source:
-        - src/kernel/crti.s
-        - src/kernel/apic.cpp
-        - src/kernel/assert.cpp
-        - src/kernel/boot.s
-        - src/kernel/console.cpp
-        - src/kernel/cpprt.cpp
-        - src/kernel/cpu.cpp
-        - src/kernel/debug.cpp
-        - src/kernel/debug.s
-        - src/kernel/device_manager.cpp
-        - src/kernel/font.cpp
-        - src/kernel/fs/gpt.cpp
-        - src/kernel/gdt.cpp
-        - src/kernel/gdt.s
-        - src/kernel/interrupts.cpp
-        - src/kernel/interrupts.s
-        - src/kernel/io.cpp
-        - src/kernel/loader.s
-        - src/kernel/log.cpp
-        - src/kernel/main.cpp
-        - src/kernel/memory_bootstrap.cpp
-        - src/kernel/msr.cpp
-        - src/kernel/page_manager.cpp
-        - src/kernel/pci.cpp
-        - src/kernel/process.cpp
-        - src/kernel/scheduler.cpp
-        - src/kernel/screen.cpp
-        - src/kernel/serial.cpp
-        - src/kernel/syscall.cpp
-        - src/kernel/syscall.s
-        - src/kernel/crtn.s
+name: Popcorn
+templates: scripts/templates
+modules:
+    kernel:
+        output: popcorn.elf
+        target: host
+        deps:
+            - elf
+            - initrd
+            - kutil
+        includes:
+            - src/kernel
+        source:
+            - src/kernel/crti.s
+            - src/kernel/apic.cpp
+            - src/kernel/assert.cpp
+            - src/kernel/boot.s
+            - src/kernel/console.cpp
+            - src/kernel/cpprt.cpp
+            - src/kernel/cpu.cpp
+            - src/kernel/debug.cpp
+            - src/kernel/debug.s
+            - src/kernel/device_manager.cpp
+            - src/kernel/font.cpp
+            - src/kernel/fs/gpt.cpp
+            - src/kernel/gdt.cpp
+            - src/kernel/gdt.s
+            - src/kernel/interrupts.cpp
+            - src/kernel/interrupts.s
+            - src/kernel/io.cpp
+            - src/kernel/loader.s
+            - src/kernel/log.cpp
+            - src/kernel/main.cpp
+            - src/kernel/memory_bootstrap.cpp
+            - src/kernel/msr.cpp
+            - src/kernel/page_manager.cpp
+            - src/kernel/pci.cpp
+            - src/kernel/process.cpp
+            - src/kernel/scheduler.cpp
+            - src/kernel/screen.cpp
+            - src/kernel/serial.cpp
+            - src/kernel/syscall.cpp
+            - src/kernel/syscall.s
+            - src/kernel/crtn.s
 
-boot:
-    kind: exe
-    target: boot
-    output: boot.elf
-    source:
-        - src/boot/crt0.s
-        - src/boot/console.cpp
-        - src/boot/guids.cpp
-        - src/boot/loader.cpp
-        - src/boot/main.cpp
-        - src/boot/memory.cpp
-        - src/boot/reloc.cpp
-        - src/boot/utility.cpp
+    boot:
+        kind: exe
+        target: boot
+        output: boot.elf
+        source:
+            - src/boot/crt0.s
+            - src/boot/console.cpp
+            - src/boot/guids.cpp
+            - src/boot/loader.cpp
+            - src/boot/main.cpp
+            - src/boot/memory.cpp
+            - src/boot/reloc.cpp
+            - src/boot/utility.cpp
 
-nulldrv:
-    kind: exe
-    target: user
-    output: nulldrv
-    source:
-        - src/drivers/nulldrv/main.cpp
-        - src/drivers/nulldrv/main.s
+    nulldrv:
+        kind: exe
+        target: user
+        output: nulldrv
+        source:
+            - src/drivers/nulldrv/main.cpp
+            - src/drivers/nulldrv/main.s
 
-elf:
-    kind: lib
-    output: libelf.a
-    deps:
-        - kutil
-    includes:
-        - src/libraries/elf/include
-    source:
-        - src/libraries/elf/elf.cpp
+    elf:
+        kind: lib
+        output: libelf.a
+        deps:
+            - kutil
+        includes:
+            - src/libraries/elf/include
+        source:
+            - src/libraries/elf/elf.cpp
 
-initrd:
-    kind: lib
-    output: libinitrd.a
-    deps:
-        - kutil
-    includes:
-        - src/libraries/initrd/include
-    source:
-        - src/libraries/initrd/initrd.cpp
+    initrd:
+        kind: lib
+        output: libinitrd.a
+        deps:
+            - kutil
+        includes:
+            - src/libraries/initrd/include
+        source:
+            - src/libraries/initrd/initrd.cpp
 
-kutil:
-    kind: lib
-    output: libkutil.a
-    includes:
-        - src/libraries/kutil/include
-    source:
-        - src/libraries/kutil/assert.cpp
-        - src/libraries/kutil/bip_buffer.cpp
-        - src/libraries/kutil/frame_allocator.cpp
-        - src/libraries/kutil/heap_manager.cpp
-        - src/libraries/kutil/logger.cpp
-        - src/libraries/kutil/memory.cpp
-        - src/libraries/kutil/printf.c
+    kutil:
+        kind: lib
+        output: libkutil.a
+        includes:
+            - src/libraries/kutil/include
+        source:
+            - src/libraries/kutil/assert.cpp
+            - src/libraries/kutil/bip_buffer.cpp
+            - src/libraries/kutil/frame_allocator.cpp
+            - src/libraries/kutil/heap_manager.cpp
+            - src/libraries/kutil/logger.cpp
+            - src/libraries/kutil/memory.cpp
+            - src/libraries/kutil/printf.c
 
-makerd:
-    kind: exe
-    target: native
-    output: makerd
-    deps:
-        - initrd
-    source:
-        - src/tools/makerd/entry.cpp
-        - src/tools/makerd/main.cpp
+    makerd:
+        kind: exe
+        target: native
+        output: makerd
+        deps:
+            - initrd
+        source:
+            - src/tools/makerd/entry.cpp
+            - src/tools/makerd/main.cpp
 
-tests:
-    kind: exe
-    target: native
-    output: tests
-    deps:
-        - kutil
-    source:
-        - src/tests/address_manager.cpp
-        - src/tests/constexpr_hash.cpp
-        - src/tests/frame_allocator.cpp
-        - src/tests/linked_list.cpp
-        - src/tests/logger.cpp
-        - src/tests/heap_manager.cpp
-        - src/tests/main.cpp
+    tests:
+        kind: exe
+        target: native
+        output: tests
+        deps:
+            - kutil
+        source:
+            - src/tests/address_manager.cpp
+            - src/tests/constexpr_hash.cpp
+            - src/tests/frame_allocator.cpp
+            - src/tests/linked_list.cpp
+            - src/tests/logger.cpp
+            - src/tests/heap_manager.cpp
+            - src/tests/main.cpp
