@@ -1,109 +1,14 @@
-ninja_required_version = 1.3
-builddir = {{ buildroot }}
-srcroot = {{ srcroot }}
-modulefile = {{ modulefile }}
+{% extends "build.base.j2" %}
 
-warnflags = $
-    -Wformat=2 $
-    -Winit-self $
-    -Wfloat-equal $
-    -Winline $
-    -Wmissing-format-attribute $
-    -Wmissing-include-dirs $
-    -Wswitch $
-    -Wundef $
-    -Wdisabled-optimization $
-    -Wpointer-arith $
-    -Wno-attributes $
-    -Wno-sign-compare $
-    -Wno-multichar $
-    -Wno-div-by-zero $
-    -Wno-endif-labels $
-    -Wno-pragmas $
-    -Wno-format-extra-args $
-    -Wno-unused-result $
-    -Wno-deprecated-declarations $
-    -Wno-unused-function $
-    -Werror
-
-ccflags = $
+{% block variables %}
+{{ super() }}
+ccflags = $ccflags $
     -I${srcroot}/src/include $
-    -I${srcroot}/src/include/x86_64 $
-    -DVERSION_MAJOR={{ version.major }} $
-    -DVERSION_MINOR={{ version.minor }} $
-    -DVERSION_PATCH={{ version.patch }} $
-    -DVERSION_GITSHA=0x{% if version.dirty %}1{% else %}0{% endif %}{{ version.sha }} $
-    -DGIT_VERSION=\"{{ version.major }}.{{ version.minor }}.{{ version.patch }}-{{ version.sha }}\" $
-    -DGIT_VERSION_WIDE=L\"{{ version.major }}.{{ version.minor }}.{{ version.patch }}-{{ version.sha }}\" $
-    $warnflags
+    -I${srcroot}/src/include/x86_64 
+{% endblock %}
 
-asflags = $
-    -DVERSION_MAJOR={{ version.major }} $
-    -DVERSION_MINOR={{ version.minor }} $
-    -DVERSION_PATCH={{ version.patch }} $
-    -DVERSION_GITSHA=0x{% if version.dirty %}1{% else %}0{% endif %}{{ version.sha }}
-
-cflags = -std=c11
-cxxflags = -std=c++14
-libs =
-
-rule cc
-    deps = gcc
-    depfile = $out.d
-    description = Compiling $name
-    command = $cc -MMD -MF $out.d $ccflags $cflags -o $out -c $in
-
-rule dump_cc_defs
-    description = Dumping CC defines for $target
-    command = echo "" | $cc $ccflags $cflags -dM -E - > $out
-
-rule dump_cc_run
-    description = Dumping CC arguments for $target
-    command = $
-        echo "#!/bin/bash" > $out; $
-        echo '$cc $ccflags $cflags $$*' > $out; $
-        chmod a+x $out
-
-rule cxx
-    deps = gcc
-    depfile = $out.d
-    description = Compiling $name
-    command = $cxx -MMD -MF $out.d $cxxflags $ccflags -o $out -c $in
-
-rule dump_cxx_defs
-    description = Dumping C++ defines for $target
-    command = echo "" | $cxx -x c++ $cxxflags $ccflags -dM -E - > $out
-
-rule dump_cxx_run
-    description = Dumping C++ arguments for $target
-    command = $
-        echo "#!/bin/bash" > $out; $
-        echo '$cc $cxxflags $ccflags $$*' > $out; $
-        chmod a+x $out
-
-rule nasm
-    deps = gcc
-    depfile = $out.d
-    description = Assembling $name
-    command = $nasm -o $out -felf64 -MD $out.d $asflags $in
-
-rule exe
-    description = Linking $name
-    command = $ld $ldflags -o $out $in $libs
-
-rule lib
-    description = Archiving $name
-    command = $ar qcs $out $in
-
-rule regen
-    generator = true
-    description = Regenrating build files
-    command = {{ generator }} $builddir $modulefile
-
-rule cp
-    description = Copying $name
-    command = cp $in $out
-
+{% block baserules %}
+{{ super() }}
 rule makerd
     description = Making init ramdisk
     command = $builddir/native/makerd $in $out
@@ -135,27 +40,9 @@ rule strip
         objcopy --only-keep-debug $out $out.debug; $
         strip -g $out; $
         objcopy --add-gnu-debuglink=$out.debug $out
+{% endblock %}
 
-rule dump
-    description = Dumping decompiled $name
-    command = objdump -DS $in > $out
-
-
-{% for target in targets %}
-subninja {{ target }}/target.ninja
-{% endfor %}
-
-build $
-    {%- for buildfile in buildfiles %}
-    {{ buildfile }} $
-    {%- endfor %}
-    : regen | $
-    {%- for template in templates %}
-    {{ template }} $
-    {%- endfor %}
-    $modulefile $
-    {{ generator }}
-
+{% block extra %}
 build $builddir/ovmf_vars.fd : cp $srcroot/assets/ovmf/x64/ovmf_vars.fd
     name = ovmf_vars.fd
 
@@ -186,6 +73,14 @@ build $builddir/popcorn.img : makefat | $
     $builddir/fatroot/popcorn.elf $
     $builddir/fatroot/efi/boot/bootx64.efi
     name = popcorn.img
+
+default $
+    $builddir/ovmf_vars.fd $
+    $builddir/ovmf_vars_d.fd $
+    $builddir/popcorn.dump $
+    $builddir/popcorn.elf-gdb.py $
+    $builddir/popcorn.img
+{% endblock %}
 
 # vim: ft=ninja et ts=4 sts=4 sw=4
 

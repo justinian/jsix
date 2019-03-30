@@ -1,5 +1,10 @@
 {% extends "target.default.j2" %}
 
+{% block binaries %}
+{{ super() }}
+ld = clang++
+{% endblock %}
+
 {% block variables %}
 
 ccflags = $ccflags -g -ggdb
