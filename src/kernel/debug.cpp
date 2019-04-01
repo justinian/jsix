@@ -12,6 +12,9 @@ print_regs(const cpu_state &regs)
 {
 	console *cons = console::get();
 
+	uint64_t cr2 = 0;
+	__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
+
 	print_regL("rax", regs.rax);
 	print_regM("rbx", regs.rbx);
 	print_regR("rcx", regs.rcx);
@@ -36,7 +39,9 @@ print_regs(const cpu_state &regs)
 
 	print_regL("rip", regs.rip);
 	print_regM("cr3", page_manager::get()->get_pml4());
-	cons->puts("\n\n");
+	print_regR("cr2", cr2);
+
+	cons->puts("\n");
 }
 
 struct frame

@@ -21,5 +21,5 @@ enum class syscall : uint64_t
 };
 
 void syscall_enable();
-uintptr_t syscall_dispatch(uintptr_t, cpu_state &);
+void syscall_dispatch(cpu_state *);
 

@@ -8,6 +8,7 @@
 #include "page_manager.h"
 
 typedef int32_t pid_t;
+struct cpu_state;
 
 
 enum class process_flags : uint32_t
@@ -32,9 +33,19 @@ enum class process_wait : uint8_t
 	receive
 };
 
-/// A process
+/// A process.
+/// 
 struct process
 {
+	static const size_t initial_stack_size = 0x1000;
+
+	// Fields used by assembly routines go first.  If you change any of these,
+	// be sure to change the assembly definitions in 'tasking.inc'
+	uintptr_t rsp;
+	uintptr_t rsp0;
+	page_table *pml4;
+	// End of assembly fields
+
 	pid_t pid;
 	pid_t ppid;
 
@@ -51,9 +62,6 @@ struct process
 
 	uint32_t reserved1;
 
-	uintptr_t rsp;
-	page_table *pml4;
-
 	uintptr_t kernel_stack;
 	size_t kernel_stack_size;
 
@@ -62,10 +70,10 @@ struct process
 	void exit(unsigned code);
 
 	/// Copy this process.
-	/// \arg in_rsp The RSP of the calling process
+	/// \arg regs   The saved state from the fork syscall
 	/// \returns    Returns the child's pid to the parent, and
 	///             0 to the child.
-	pid_t fork(uint64_t in_rsp);
+	pid_t fork(cpu_state *regs);
 
 	/// Unready this process until it gets a signal
 	/// \arg sigmask  A bitfield of signals to wake on
@@ -122,13 +130,10 @@ struct process
 private:
 	friend class scheduler;
 
-	/// Set up a new kernel stack for this process, optionally copying the
-	/// given stack. Sets the kernel stack on the process object, but also
-	/// returns it.
-	/// \arg size  Size of the stack to allocate
-	/// \arg orig  Address of a stack to copy, or 0 for no copying.
-	/// \returns   The address of the new stack as a pointer
-	void * setup_kernel_stack(size_t size, uintptr_t orig);
+	/// Set up a new empty kernel stack for this process. Sets rsp0 on this
+	/// process object, but also returns it.
+	/// \returns   The new rsp0 as a pointer
+	void * setup_kernel_stack();
 };
 
 using process_list = kutil::linked_list<process>;

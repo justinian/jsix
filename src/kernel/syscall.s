@@ -28,7 +28,6 @@ syscall_handler_prelude:
 
 	mov rdi, rsp
 	call syscall_handler
-	mov rsp, rax
 
 	mov rax, [rsp + 0x90]
 	and rax, 0x3

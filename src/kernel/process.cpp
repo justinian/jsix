@@ -1,4 +1,5 @@
 #include "cpu.h"
+#include "debug.h"
 #include "log.h"
 #include "process.h"
 #include "scheduler.h"
@@ -12,7 +13,7 @@ process::exit(uint32_t code)
 }
 
 pid_t
-process::fork(uintptr_t in_rsp)
+process::fork(cpu_state *regs)
 {
 	auto &sched = scheduler::get();
 	auto *child = sched.create_process();
@@ -25,40 +26,49 @@ process::fork(uintptr_t in_rsp)
 
 	sched.m_runlists[child->priority].push_back(child);
 
-	child->rsp = in_rsp;
-
 	child->pml4 = page_manager::get()->copy_table(pml4);
 	kassert(child->pml4, "process::fork() got null pml4");
 
-	child->setup_kernel_stack(kernel_stack_size, kernel_stack);
-	child->rsp = child->kernel_stack + (in_rsp - kernel_stack);
-
 	log::debug(logs::task, "Copied process %d to %d, new PML4 %016lx.",
 			pid, child->pid, child->pml4);
-	log::debug(logs::task, "  copied stack %016lx to %016lx, rsp %016lx to %016lx.",
-			kernel_stack, child->kernel_stack, in_rsp, child->rsp);
+	log::debug(logs::task, "  copied stack %016lx to %016lx, rsp %016lx.",
+			kernel_stack, child->kernel_stack, child->rsp);
 
-	// Add in the faked fork return value
-	cpu_state *regs = reinterpret_cast<cpu_state *>(child->rsp);
-	regs->rax = 0;
+	child->setup_kernel_stack();
+	task_fork(child); // Both parent and child will return from this
+
+	if (bsp_cpu_data.tcb->pid == child->pid) {
+		return 0;
+	}
 
 	return child->pid;
 }
 
 void *
-process::setup_kernel_stack(size_t size, uintptr_t orig)
+process::setup_kernel_stack()
 {
-	void *stack0 = kutil::malloc(size);
+	constexpr unsigned null_frame_entries = 2;
+	constexpr size_t null_frame_size = null_frame_entries * sizeof(uint64_t);
 
-	if (orig)
-		kutil::memcpy(stack0, reinterpret_cast<void*>(orig), size);
-	else
-		kutil::memset(stack0, 0, size);
+	void *stack_bottom = kutil::malloc(initial_stack_size);
+	kutil::memset(stack_bottom, 0, initial_stack_size);
 
-	kernel_stack_size = size;
-	kernel_stack = reinterpret_cast<uintptr_t>(stack0);
+	log::debug(logs::memory, "Created kernel stack at %016lx size 0x%lx",
+			stack_bottom, initial_stack_size);
 
-	return stack0;
+	void *stack_top =
+		kutil::offset_pointer(stack_bottom,
+				initial_stack_size - null_frame_size);
+
+	uint64_t *null_frame = reinterpret_cast<uint64_t*>(stack_top);
+	for (unsigned i = 0; i < null_frame_entries; ++i)
+		null_frame[i] = 0;
+
+	kernel_stack_size = initial_stack_size;
+	kernel_stack = reinterpret_cast<uintptr_t>(stack_bottom);
+	rsp0 = reinterpret_cast<uintptr_t>(stack_top);
+
+	return stack_top;
 }
 
 bool

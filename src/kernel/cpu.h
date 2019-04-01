@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+struct process;
+
 struct cpu_state
 {
 	uint64_t r15, r14, r13, r12, r11, r10, r9,  r8;
@@ -10,10 +12,13 @@ struct cpu_state
 	uint64_t rip, cs, rflags, user_rsp, ss;
 };
 
+/// Per-cpu state data. If you change this, remember to update the assembly
+/// version in 'tasking.inc'
 struct cpu_data
 {
 	uintptr_t rsp0;
 	uintptr_t rsp3;
+	process *tcb;
 };
 
 extern cpu_data bsp_cpu_data;

@@ -18,7 +18,6 @@ using memory::initial_stack;
 
 scheduler scheduler::s_instance(nullptr);
 
-const int stack_size = 0x1000;
 const uint64_t rflags_noint = 0x002;
 const uint64_t rflags_int = 0x202;
 
@@ -32,6 +31,7 @@ scheduler::scheduler(lapic *apic) :
 	m_next_pid(1)
 {
 	auto *idle = m_process_allocator.pop();
+	idle->setup_kernel_stack();
 
 	uint8_t last_pri = num_priorities - 1;
 
@@ -49,6 +49,9 @@ scheduler::scheduler(lapic *apic) :
 
 	m_runlists[last_pri].push_back(idle);
 	m_current = idle;
+
+	bsp_cpu_data.rsp0 = idle->rsp0;
+	bsp_cpu_data.tcb = idle;
 }
 
 void
@@ -120,6 +123,24 @@ scheduler::create_process(pid_t pid)
 	return proc;
 }
 
+static uintptr_t
+add_fake_stack_return(uintptr_t rsp, uintptr_t rbp, uintptr_t rip)
+{
+	// Initialize a new empty stack with a fake return segment
+	// for returning out of task_switch
+	rsp -= sizeof(uintptr_t) * 7;
+	uintptr_t *stack = reinterpret_cast<uintptr_t*>(rsp);
+
+	stack[0] = rbp;        // rbp
+	stack[1] = 0xbbbbbbbb; // rbx
+	stack[2] = 0x12121212; // r12
+	stack[3] = 0x13131313; // r13
+	stack[4] = 0x14141414; // r14
+	stack[5] = 0x15151515; // r15
+	stack[6] = rip;        // return rip
+	return rsp;
+}
+
 void
 scheduler::load_process(const char *name, const void *data, size_t size)
 {
@@ -132,15 +153,10 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	uint16_t ss = (4 << 3) | 3;  // User SS is GDT entry 4, ring 3
 
 	// Set up the page tables - this also allocates an initial user stack
-	page_table *pml4 = page_manager::get()->create_process_map();
+	proc->pml4 = page_manager::get()->create_process_map();
 
-	// Create a one-page kernel stack space
-	void *stack0 = proc->setup_kernel_stack(stack_size, 0);
-
-	// Stack grows down, point to the end, resere space for initial null frame
-	static const size_t null_frame = sizeof(uint64_t);
-	void *sp0 = kutil::offset_pointer(stack0, stack_size - null_frame);
-
+	// Create an initial kernel stack space
+	void *sp0 = proc->setup_kernel_stack();
 	cpu_state *state = reinterpret_cast<cpu_state *>(sp0) - 1;
 
 	// Highest state in the stack is the process' kernel stack for the loader
@@ -151,24 +167,18 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	state->rip = 0; // to be filled by the loader
 	state->user_rsp = initial_stack;
 
-	// Next state in the stack is the loader's kernel stack. The scheduler will
-	// iret to this which will kick off the loading:
-	cpu_state *loader_state = reinterpret_cast<cpu_state *>(sp0) - 2;
+	// Pass args to ramdisk_process_loader on the stack
+	uintptr_t *stack = reinterpret_cast<uintptr_t *>(state) - 4;
+	stack[0] = reinterpret_cast<uintptr_t>(data);
+	stack[1] = reinterpret_cast<uintptr_t>(size);
+	stack[2] = reinterpret_cast<uintptr_t>(proc);
+	stack[3] = reinterpret_cast<uintptr_t>(state);
 
-	loader_state->ss = kss;
-	loader_state->cs = kcs;
-	loader_state->rflags = rflags_noint;
-	loader_state->rip = reinterpret_cast<uint64_t>(ramdisk_process_loader);
-	loader_state->user_rsp = reinterpret_cast<uint64_t>(state);
+	proc->rsp = add_fake_stack_return(
+			reinterpret_cast<uintptr_t>(stack),
+			proc->rsp0,
+			reinterpret_cast<uintptr_t>(ramdisk_process_loader));
 
-	// Set up the registers to have the arguments to the load_process call
-	loader_state->rdi = reinterpret_cast<uint64_t>(data); // arg 1
-	loader_state->rsi = size; // arg 2
-	loader_state->rdx = reinterpret_cast<uint64_t>(proc); // arg 3
-	loader_state->rcx = loader_state->user_rsp; // arg 4
-
-	proc->rsp = reinterpret_cast<uintptr_t>(loader_state);
-	proc->pml4 = pml4;
 	proc->quanta = process_quanta;
 	proc->flags =
 		process_flags::running |
@@ -177,10 +187,9 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 
 	m_runlists[default_priority].push_back(proc);
 
-
 	log::debug(logs::task, "Creating process %s: pid %d  pri %d", name, proc->pid, proc->priority);
 	log::debug(logs::task, "     RSP0 %016lx", state);
-	log::debug(logs::task, "     PML4 %016lx", pml4);
+	log::debug(logs::task, "     PML4 %016lx", proc->pml4);
 }
 
 void
@@ -191,24 +200,12 @@ scheduler::create_kernel_task(pid_t pid, void (*task)())
 	uint16_t kcs = (1 << 3) | 0; // Kernel CS is GDT entry 1, ring 0
 	uint16_t kss = (2 << 3) | 0; // Kernel SS is GDT entry 2, ring 0
 
-	// Create a one-page kernel stack space
-	void *stack0 = proc->setup_kernel_stack(stack_size, 0);
+	// Create an initial kernel stack space
+	proc->setup_kernel_stack();
+	proc->rsp = add_fake_stack_return(
+			proc->rsp0, proc->rsp0,
+			reinterpret_cast<uintptr_t>(task));
 
-	// Stack grows down, point to the end, resere space for initial null frame
-	static const size_t null_frame = sizeof(uint64_t);
-	void *sp0 = kutil::offset_pointer(stack0, stack_size - null_frame);
-
-	cpu_state *state = reinterpret_cast<cpu_state *>(sp0) - 1;
-
-	// Highest state in the stack is the process' kernel stack for the loader
-	// to iret to:
-	state->ss = kss;
-	state->cs = kcs;
-	state->rflags = rflags_int;
-	state->rip = reinterpret_cast<uint64_t>(task);
-	state->user_rsp = reinterpret_cast<uint64_t>(state);
-
-	proc->rsp = reinterpret_cast<uintptr_t>(state);
 	proc->pml4 = page_manager::get()->get_kernel_pml4();
 	proc->quanta = process_quanta;
 	proc->flags =
@@ -218,7 +215,8 @@ scheduler::create_kernel_task(pid_t pid, void (*task)())
 	m_runlists[default_priority].push_back(proc);
 
 	log::debug(logs::task, "Creating kernel task: pid %d  pri %d", proc->pid, proc->priority);
-	log::debug(logs::task, "     RSP0 %016lx", state);
+	log::debug(logs::task, "    RSP0 %016lx", proc->rsp0);
+	log::debug(logs::task, "     RSP %016lx", proc->rsp);
 }
 
 void
@@ -278,17 +276,15 @@ void scheduler::prune(uint64_t now)
 	}
 }
 
-uintptr_t
-scheduler::schedule(uintptr_t rsp0)
+void
+scheduler::schedule()
 {
 	// TODO: lol a real clock
 	static uint64_t now = 0;
 
 	pid_t lastpid = m_current->pid;
 
-	m_current->rsp = rsp0;
 	m_runlists[m_current->priority].remove(m_current);
-
 	if (m_current->flags && process_flags::ready) {
 		m_runlists[m_current->priority].push_back(m_current);
 	} else {
@@ -304,34 +300,25 @@ scheduler::schedule(uintptr_t rsp0)
 	}
 
 	m_current = m_runlists[pri].pop_front();
-	rsp0 = m_current->rsp;
-
-	// Set rsp0 to after the end of the about-to-be-popped cpu state
-	tss_set_stack(0, rsp0 + sizeof(cpu_state));
-	bsp_cpu_data.rsp0 = rsp0;
-
-	// Swap page tables
-	page_table *pml4 = m_current->pml4;
-	page_manager::set_pml4(pml4);
 
 	if (lastpid != m_current->pid) {
-		bool loading = m_current->flags && process_flags::loading;
-		log::debug(logs::task, "Scheduler switched to process %d, priority %d%s.",
-				m_current->pid, m_current->priority, loading ? " (loading)" : "");
-	}
 
-	return rsp0;
+		bool loading = m_current->flags && process_flags::loading;
+		log::debug(logs::task, "Scheduler switching to process %d, priority %d%s.",
+				m_current->pid, m_current->priority, loading ? " (loading)" : "");
+
+		task_switch(m_current);
+	}
 }
 
-uintptr_t
-scheduler::tick(uintptr_t rsp0)
+void
+scheduler::tick()
 {
 	if (--m_current->quanta == 0) {
 		m_current->quanta = process_quanta;
-		rsp0 = schedule(rsp0);
+		schedule();
 	}
 	m_apic->reset_timer(m_tick_count);
-	return rsp0;
 }
 
 process_node *

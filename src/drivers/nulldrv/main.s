@@ -39,6 +39,18 @@ sleep:
 	pop rbp
 	ret
 
+global fork
+fork:
+	push rbp
+	mov rbp, rsp
+
+	mov rax, 8
+	syscall    ; pid left in rax
+
+	pop rbp
+	ret
+	
+
 global _start
 _start:
 	xor rbp, rbp	; Sentinel rbp

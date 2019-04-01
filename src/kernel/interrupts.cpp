@@ -18,9 +18,9 @@ static const uint16_t PIC2 = 0xa0;
 extern "C" {
 	void _halt();
 
-	uintptr_t isr_handler(uintptr_t, cpu_state*);
-	uintptr_t irq_handler(uintptr_t, cpu_state*);
-	uintptr_t syscall_handler(uintptr_t, cpu_state);
+	void isr_handler(cpu_state*);
+	void irq_handler(cpu_state*);
+	void syscall_handler(cpu_state*);
 
 #define ISR(i, name)     extern void name ();
 #define EISR(i, name)    extern void name ();
@@ -104,8 +104,8 @@ interrupts_init()
 	log::info(logs::boot, "Interrupts enabled.");
 }
 
-uintptr_t
-isr_handler(uintptr_t return_rsp, cpu_state *regs)
+void
+isr_handler(cpu_state *regs)
 {
 	console *cons = console::get();
 
@@ -193,21 +193,14 @@ isr_handler(uintptr_t return_rsp, cpu_state *regs)
 			if (regs->errorcode & 0x08) cons->puts(" reserved");
 			if (regs->errorcode & 0x10) cons->puts(" ip");
 			cons->puts("\n");
-
-			uint64_t cr2 = 0;
-			__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
-			print_regL("cr2", cr2);
-			print_regM("rsp", regs->user_rsp);
-			print_regR("rip", regs->rip);
-			//print_stacktrace(2);
+			print_regs(*regs);
+			print_stacktrace(2);
 		}
 		_halt();
 		break;
 
-	case isr::isrTimer: {
-			scheduler &s = scheduler::get();
-			return_rsp = s.tick(return_rsp);
-		}
+	case isr::isrTimer:
+		scheduler::get().tick();
 		break;
 
 	case isr::isrLINT0:
@@ -226,14 +219,13 @@ isr_handler(uintptr_t return_rsp, cpu_state *regs)
 		_halt();
 		break;
 
-	case isr::isrSyscall: {
-			return_rsp = syscall_dispatch(return_rsp, *regs);
-		}
+	case isr::isrSyscall:
+		syscall_dispatch(regs);
 		break;
 
 	case isr::isrSpurious:
 		// No EOI for the spurious interrupt
-		return return_rsp;
+		return;
 
 	case isr::isrIgnore0:
 	case isr::isrIgnore1:
@@ -274,12 +266,10 @@ isr_handler(uintptr_t return_rsp, cpu_state *regs)
 		_halt();
 	}
 	*reinterpret_cast<uint32_t *>(0xffffff80fee000b0) = 0;
-
-	return return_rsp;
 }
 
-uintptr_t
-irq_handler(uintptr_t return_rsp, cpu_state *regs)
+void
+irq_handler(cpu_state *regs)
 {
 	console *cons = console::get();
 	uint8_t irq = get_irq(regs->interrupt);
@@ -293,11 +283,10 @@ irq_handler(uintptr_t return_rsp, cpu_state *regs)
 	}
 
 	*reinterpret_cast<uint32_t *>(0xffffff80fee000b0) = 0;
-	return return_rsp;
 }
 
-uintptr_t
-syscall_handler(uintptr_t return_rsp, cpu_state regs)
+void
+syscall_handler(cpu_state *regs)
 {
-	return syscall_dispatch(return_rsp, regs);
+	syscall_dispatch(regs);
 }

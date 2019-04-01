@@ -10,7 +10,9 @@ class lapic;
 struct page_table;
 struct cpu_state;
 
-extern "C" uintptr_t isr_handler(uintptr_t, cpu_state*);
+extern "C" void isr_handler(cpu_state*);
+extern "C" void task_switch(process *next);
+extern "C" void task_fork(process *child);
 
 
 /// The task scheduler
@@ -46,9 +48,7 @@ public:
 	void start();
 
 	/// Run the scheduler, possibly switching to a new task
-	/// \arg rsp0  The stack pointer of the current interrupt handler
-	/// \returns   The stack pointer to switch to
-	uintptr_t schedule(uintptr_t rsp0);
+	void schedule();
 
 	/// Get the current process.
 	/// \returns  A pointer to the current process' process struct
@@ -65,7 +65,7 @@ public:
 
 private:
 	friend uintptr_t syscall_dispatch(uintptr_t, cpu_state &);
-	friend uintptr_t isr_handler(uintptr_t, cpu_state*);
+	friend void isr_handler(cpu_state*);
 	friend class process;
 
 	/// Create a new process object. This process will have its pid
@@ -75,9 +75,7 @@ private:
 	process_node * create_process(pid_t pid = 0);
 
 	/// Handle a timer tick
-	/// \arg rsp0  The stack pointer of the current interrupt handler
-	/// \returns   The stack pointer to switch to
-	uintptr_t tick(uintptr_t rsp0);
+	void tick();
 
 	void prune(uint64_t now);
 

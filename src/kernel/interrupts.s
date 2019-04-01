@@ -9,7 +9,6 @@ isr_handler_prelude:
 	mov rdi, rsp
 	mov rsi, rsp
 	call isr_handler
-	mov rsp, rax
 	jmp isr_handler_return
 
 extern irq_handler
@@ -21,7 +20,6 @@ irq_handler_prelude:
 	mov rdi, rsp
 	mov rsi, rsp
 	call irq_handler
-	mov rsp, rax
 	; fall through to isr_handler_return
 
 global isr_handler_return

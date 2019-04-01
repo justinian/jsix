@@ -41,6 +41,7 @@ modules:
             - src/kernel/serial.cpp
             - src/kernel/syscall.cpp
             - src/kernel/syscall.s
+            - src/kernel/task.s
             - src/kernel/crtn.s
 
     boot:

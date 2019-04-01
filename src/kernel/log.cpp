@@ -2,6 +2,7 @@
 #include "kutil/memory.h"
 #include "console.h"
 #include "log.h"
+#include "scheduler.h"
 
 namespace logs {
 
@@ -21,7 +22,7 @@ output_log(log::area_t area, log::level severity, const char *message)
 {
 	auto *cons = console::get();
 	cons->set_color(level_colors[static_cast<int>(severity)]);
-	cons->printf("%9s %8s: %s\n",
+	cons->printf("%7s %5s: %s\n",
 			g_logger.area_name(area),
 			g_logger.level_name(severity),
 			message);
@@ -35,21 +36,23 @@ logger_task()
 	auto *ent = reinterpret_cast<log::logger::entry *>(buffer);
 	auto *cons = console::get();
 
-	g_logger.set_immediate(nullptr);
+	//g_logger.set_immediate(nullptr);
 	log::info(logs::task, "Starting kernel logger task");
 
+	scheduler &s = scheduler::get();
+
 	while (true) {
-		__asm__ ("cli");
 		if(g_logger.get_entry(buffer, sizeof(buffer))) {
 			buffer[ent->bytes] = 0;
 			cons->set_color(level_colors[static_cast<int>(ent->severity)]);
-			cons->printf("%9s %8s: %s\n",
+			cons->printf("%7s %5s: %s\n",
 				g_logger.area_name(ent->area),
 				g_logger.level_name(ent->severity),
 				ent->message);
 			cons->set_color();
+		} else {
+			s.schedule();
 		}
-		__asm__ ("sti");
 	}
 }
 
