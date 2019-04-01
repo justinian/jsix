@@ -1,6 +1,7 @@
 #include "kutil/coord.h"
 #include "kutil/guid.h"
 #include "kutil/memory.h"
+#include "kutil/printf.h"
 #include "console.h"
 #include "font.h"
 #include "screen.h"
@@ -278,100 +279,9 @@ console::putc(char c)
 void console::vprintf(const char *fmt, va_list args)
 {
 	static const unsigned buf_size = 256;
-	char buffer[256];
-
-	const char *r = fmt;
-	char *w = buffer;
-	char *wend = buffer + buf_size;
-
-#define flush() do { *w = 0; puts(buffer); w = buffer; } while(0)
-
-	while (r && *r) {
-		if (w == wend) flush();
-
-		if (*r != '%') {
-			*w++ = *r++;
-			continue;
-		}
-
-		r++; // chomp the %
-		flush();
-
-		bool done = false;
-		bool right = true;
-		int width = 0;
-		char pad = ' ';
-
-		while (!done) {
-			char c = *r++;
-			switch (c) {
-				case '%': *w = '%'; done = true; break;
-
-				case '0':
-					if (width == 0) pad = '0';
-					// else fall through
-				case '1':
-				case '2':
-				case '3':
-				case '4':
-				case '5':
-				case '6':
-				case '7':
-				case '8':
-				case '9': width = width * 10 + (c - '0'); break;
-
-				case '-': right = !right; break;
-
-				case 'x': put_hex<uint32_t>(va_arg(args, uint32_t), right ? width : -width, pad); done = true; break;
-
-				case 'd':
-				case 'u': put_dec<uint32_t>(va_arg(args, uint32_t), right ? width : -width, pad); done = true; break;
-
-				case 's': {
-						const char *s = va_arg(args, const char*);
-						if (s) puts(s);
-					}
-					done = true;
-					break;
-
-				case 'G': {
-						// Special: GUID type
-						kutil::guid g = va_arg(args, kutil::guid);
-						put_hex<uint32_t>(g.a, 8, '0');
-						putc('-');
-						put_hex<uint16_t>((g.a >> 32) & 0xffff, 4, '0');
-						putc('-');
-						put_hex<uint16_t>((g.a >> 48) & 0xffff, 4, '0');
-						putc('-');
-						put_hex<uint16_t>((kutil::byteswap(g.b) >> 16) & 0xffff, 4, '0');
-						putc('-');
-						put_hex<uint16_t>(kutil::byteswap(g.b) & 0xffff, 4, '0');
-						put_hex<uint32_t>(kutil::byteswap(g.b >> 32), 8, '0');
-					}
-					done = true;
-					break;
-
-				case 'l':
-					switch (*r++) {
-						case 'x': put_hex<uint64_t>(va_arg(args, uint64_t), right ? width : -width, pad); done = true; break;
-
-						case 'd':
-						case 'u': put_dec<uint32_t>(va_arg(args, uint64_t), right ? width : -width, pad); done = true; break;
-
-						default:
-							done = true;
-							break;
-					}
-					break;
-
-				default:
-					done = true;
-					break;
-			}
-		}
-	}
-
-	flush();
+	char buffer[buf_size];
+	vsnprintf_(buffer, buf_size, fmt, args);
+	puts(buffer);
 }
 
 void
