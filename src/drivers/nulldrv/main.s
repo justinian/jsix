@@ -11,7 +11,7 @@ getpid:
 	push rbp
 	mov rbp, rsp
 
-	mov rax, 5  ; getpid syscall
+	mov rax, 3  ; getpid syscall
 	syscall     ; pid is now already in rax, so just return
 
 	pop rbp
@@ -22,7 +22,7 @@ debug:
 	push rbp
 	mov rbp, rsp
 
-	mov rax, 1  ; debug syscall
+	mov rax, 0  ; debug syscall
 	syscall
 
 	pop rbp
@@ -33,7 +33,7 @@ sleep:
 	push rbp
 	mov rbp, rsp
 
-	mov rax, 4  ; sleep syscall
+	mov rax, 6  ; sleep syscall
 	syscall
 
 	pop rbp
@@ -44,7 +44,8 @@ fork:
 	push rbp
 	mov rbp, rsp
 
-	mov rax, 8
+	mov rax, 0
+
 	syscall    ; pid left in rax
 
 	pop rbp

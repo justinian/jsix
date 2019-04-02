@@ -18,6 +18,10 @@ task_switch:
 	mov rax, [gs:CPU_DATA.tcb]     ; rax: current task TCB
 	mov [rax + TCB.rsp], rsp
 
+	; Copy off saved user rsp
+	mov rcx, [gs:CPU_DATA.rsp3]    ; rcx: curretn task's saved user rsp
+	mov [rax + TCB.rsp3], rcx
+
 	; Install next task's TCB
 	mov [gs:CPU_DATA.tcb], rdi     ; rdi: next TCB (function param)
 	mov rsp, [rdi + TCB.rsp]       ; next task's stack pointer
@@ -27,6 +31,10 @@ task_switch:
 	; Update syscall/interrupt rsp
 	mov rcx, [rdi + TCB.rsp0]      ; rcx: top of next task's kernel stack
 	mov [gs:CPU_DATA.rsp0], rcx
+
+	; Update saved user rsp
+	mov rcx, [rdi + TCB.rsp3]      ; rcx: new task's saved user rsp
+	mov [gs:CPU_DATA.rsp3], rcx
 
 	lea rdx, [rel g_tss]           ; rdx: address of TSS
 	mov [rdx + TSS.rsp0], rcx
@@ -71,6 +79,7 @@ task_fork:
 	mov rdi, [r14 + TCB.rsp0]     ; rdi: child task rsp0
 	sub rdi, rax                  ; rdi: child task rsp
 	mov rsi, rsp                  ; rsi: current rsp
+	mov [r14 + TCB.rsp], rdi
 
 	rep movsq
 

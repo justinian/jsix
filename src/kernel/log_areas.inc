@@ -6,3 +6,4 @@ LOG(memory, debug);
 LOG(fs,     info);
 LOG(task,   debug);
 LOG(boot,   debug);
+LOG(syscall,debug);

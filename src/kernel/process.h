@@ -43,6 +43,7 @@ struct process
 	// be sure to change the assembly definitions in 'tasking.inc'
 	uintptr_t rsp;
 	uintptr_t rsp0;
+	uintptr_t rsp3;
 	page_table *pml4;
 	// End of assembly fields
 

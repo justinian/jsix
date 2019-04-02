@@ -1,6 +1,7 @@
 struc TCB
 .rsp:          resq 1
 .rsp0:		   resq 1
+.rsp3:		   resq 1
 .pml4:         resq 1
 endstruc
 

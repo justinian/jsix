@@ -35,11 +35,7 @@ process::fork(cpu_state *regs)
 			kernel_stack, child->kernel_stack, child->rsp);
 
 	child->setup_kernel_stack();
-	task_fork(child); // Both parent and child will return from this
-
-	if (bsp_cpu_data.tcb->pid == child->pid) {
-		return 0;
-	}
+	task_fork(child);
 
 	return child->pid;
 }

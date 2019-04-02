@@ -20,7 +20,6 @@ extern "C" {
 
 	void isr_handler(cpu_state*);
 	void irq_handler(cpu_state*);
-	void syscall_handler(cpu_state*);
 
 #define ISR(i, name)     extern void name ();
 #define EISR(i, name)    extern void name ();
@@ -219,9 +218,11 @@ isr_handler(cpu_state *regs)
 		_halt();
 		break;
 
+	/*
 	case isr::isrSyscall:
 		syscall_dispatch(regs);
 		break;
+	*/
 
 	case isr::isrSpurious:
 		// No EOI for the spurious interrupt
@@ -283,10 +284,4 @@ irq_handler(cpu_state *regs)
 	}
 
 	*reinterpret_cast<uint32_t *>(0xffffff80fee000b0) = 0;
-}
-
-void
-syscall_handler(cpu_state *regs)
-{
-	syscall_dispatch(regs);
 }

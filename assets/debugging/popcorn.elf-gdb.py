@@ -17,8 +17,9 @@ class PrintStackCommand(gdb.Command):
 
         for i in range(depth-1, -1, -1):
             offset = i * 8
+            base_addr = gdb.parse_and_eval(base)
             value = gdb.parse_and_eval(f"*(uint64_t*)({base} + {offset})")
-            print("{:04x}: {:016x}".format(offset, int(value)))
+            print("{:016x} (+{:04x}): {:016x}".format(int(base_addr) + offset, offset, int(value)))
 
 
 PrintStackCommand()
@@ -27,3 +28,4 @@ import time
 time.sleep(3.5)
 gdb.execute("target remote :1234")
 gdb.execute("set waiting = false")
+gdb.execute("display/i $rip")

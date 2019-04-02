@@ -59,7 +59,7 @@ print_stacktrace(int skip)
 	int fi = -skip;
 	__asm__ __volatile__ ( "mov %%rbp, %0" : "=r" (fp) );
 
-	while (fp) {
+	while (fp && fp->return_addr) {
 		if (fi++ >= 0)
 			cons->printf("  frame %2d: %lx\n", fi-1, fp->return_addr);
 		fp = fp->prev;

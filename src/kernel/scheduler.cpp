@@ -23,7 +23,7 @@ const uint64_t rflags_int = 0x202;
 
 extern "C" {
 	void ramdisk_process_loader();
-	void load_process(const void *image_start, size_t bytes, process *proc, cpu_state *state);
+	uintptr_t load_process_image(const void *image_start, size_t bytes, process *proc);
 };
 
 scheduler::scheduler(lapic *apic) :
@@ -54,8 +54,8 @@ scheduler::scheduler(lapic *apic) :
 	bsp_cpu_data.tcb = idle;
 }
 
-void
-load_process(const void *image_start, size_t bytes, process *proc, cpu_state *state)
+uintptr_t
+load_process_image(const void *image_start, size_t bytes, process *proc)
 {
 	// We're now in the process space for this process, allocate memory for the
 	// process code and load it
@@ -65,7 +65,7 @@ load_process(const void *image_start, size_t bytes, process *proc, cpu_state *st
 
 	// TODO: Handle bad images gracefully
 	elf::elf image(image_start, bytes);
-	kassert(image.valid(), "Invalid ELF passed to load_process");
+	kassert(image.valid(), "Invalid ELF passed to load_process_image");
 
 	const unsigned program_count = image.program_count();
 	for (unsigned i = 0; i < program_count; ++i) {
@@ -106,10 +106,11 @@ load_process(const void *image_start, size_t bytes, process *proc, cpu_state *st
 		kutil::memcpy(dest, src, header->size);
 	}
 
-	state->rip = image.entrypoint();
 	proc->flags &= ~process_flags::loading;
 
-	log::debug(logs::task, "  Loaded! New process rip: %016lx", state->rip);
+	uintptr_t entrypoint = image.entrypoint();
+	log::debug(logs::task, "  Loaded! New process rip: %016lx", entrypoint);
+	return entrypoint;
 }
 
 process_node *
@@ -124,20 +125,20 @@ scheduler::create_process(pid_t pid)
 }
 
 static uintptr_t
-add_fake_stack_return(uintptr_t rsp, uintptr_t rbp, uintptr_t rip)
+add_fake_task_return(uintptr_t rsp, uintptr_t rbp, uintptr_t rip)
 {
 	// Initialize a new empty stack with a fake return segment
 	// for returning out of task_switch
 	rsp -= sizeof(uintptr_t) * 7;
 	uintptr_t *stack = reinterpret_cast<uintptr_t*>(rsp);
 
-	stack[0] = rbp;        // rbp
-	stack[1] = 0xbbbbbbbb; // rbx
-	stack[2] = 0x12121212; // r12
-	stack[3] = 0x13131313; // r13
-	stack[4] = 0x14141414; // r14
-	stack[5] = 0x15151515; // r15
 	stack[6] = rip;        // return rip
+	stack[5] = rbp;        // rbp
+	stack[4] = 0xbbbbbbbb; // rbx
+	stack[3] = 0x12121212; // r12
+	stack[2] = 0x13131313; // r13
+	stack[1] = 0x14141414; // r14
+	stack[0] = 0x15151515; // r15
 	return rsp;
 }
 
@@ -157,28 +158,25 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 
 	// Create an initial kernel stack space
 	void *sp0 = proc->setup_kernel_stack();
-	cpu_state *state = reinterpret_cast<cpu_state *>(sp0) - 1;
-
-	// Highest state in the stack is the process' kernel stack for the loader
-	// to iret to:
-	state->ss = ss;
-	state->cs = cs;
-	state->rflags = rflags_int;
-	state->rip = 0; // to be filled by the loader
-	state->user_rsp = initial_stack;
+	uintptr_t *stack = reinterpret_cast<uintptr_t *>(sp0) - 7;
 
 	// Pass args to ramdisk_process_loader on the stack
-	uintptr_t *stack = reinterpret_cast<uintptr_t *>(state) - 4;
 	stack[0] = reinterpret_cast<uintptr_t>(data);
 	stack[1] = reinterpret_cast<uintptr_t>(size);
 	stack[2] = reinterpret_cast<uintptr_t>(proc);
-	stack[3] = reinterpret_cast<uintptr_t>(state);
 
-	proc->rsp = add_fake_stack_return(
+	proc->rsp = add_fake_task_return(
 			reinterpret_cast<uintptr_t>(stack),
 			proc->rsp0,
 			reinterpret_cast<uintptr_t>(ramdisk_process_loader));
 
+	// Arguments for iret - rip will be pushed on before these
+	stack[3] = cs;
+	stack[4] = rflags_int;
+	stack[5] = initial_stack;
+	stack[6] = ss;
+
+	proc->rsp3 = initial_stack;
 	proc->quanta = process_quanta;
 	proc->flags =
 		process_flags::running |
@@ -188,7 +186,8 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	m_runlists[default_priority].push_back(proc);
 
 	log::debug(logs::task, "Creating process %s: pid %d  pri %d", name, proc->pid, proc->priority);
-	log::debug(logs::task, "     RSP0 %016lx", state);
+	log::debug(logs::task, "     RSP  %016lx", proc->rsp);
+	log::debug(logs::task, "     RSP0 %016lx", proc->rsp0);
 	log::debug(logs::task, "     PML4 %016lx", proc->pml4);
 }
 
@@ -202,7 +201,7 @@ scheduler::create_kernel_task(pid_t pid, void (*task)())
 
 	// Create an initial kernel stack space
 	proc->setup_kernel_stack();
-	proc->rsp = add_fake_stack_return(
+	proc->rsp = add_fake_task_return(
 			proc->rsp0, proc->rsp0,
 			reinterpret_cast<uintptr_t>(task));
 
@@ -302,12 +301,11 @@ scheduler::schedule()
 	m_current = m_runlists[pri].pop_front();
 
 	if (lastpid != m_current->pid) {
+		task_switch(m_current);
 
 		bool loading = m_current->flags && process_flags::loading;
-		log::debug(logs::task, "Scheduler switching to process %d, priority %d%s.",
+		log::debug(logs::task, "Scheduler switched to process %d, priority %d%s.",
 				m_current->pid, m_current->priority, loading ? " (loading)" : "");
-
-		task_switch(m_current);
 	}
 }
 

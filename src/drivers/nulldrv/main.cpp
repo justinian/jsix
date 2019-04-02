@@ -16,7 +16,7 @@ main(int argc, const char **argv)
 {
 	int32_t pid = getpid();
 	//int32_t child = fork();
-	debug();
+	//debug();
 	for (int i = 1; i < 5; ++i)
 		sleep(i*10);
 	debug();
