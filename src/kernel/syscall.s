@@ -12,6 +12,7 @@ extern syscall_registry
 extern syscall_invalid
 
 global syscall_handler_prelude
+global syscall_handler_prelude.return
 syscall_handler_prelude:
 	swapgs
 	mov [gs:CPU_DATA.rsp3], rsp
@@ -20,7 +21,13 @@ syscall_handler_prelude:
 	push rcx
 	push rbp
 	mov rbp, rsp
+
+	push rbx
 	push r11
+	push r12
+	push r13
+	push r14
+	push r15
 
 	inc qword [rel __counter_syscall_enter]
 
@@ -37,7 +44,14 @@ syscall_handler_prelude:
 
 	inc qword [rel __counter_syscall_sysret]
 
+.return:
+	pop r15
+	pop r14
+	pop r13
+	pop r12
 	pop r11
+	pop rbx
+
 	pop rbp
 	pop rcx
 

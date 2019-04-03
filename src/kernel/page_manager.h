@@ -62,7 +62,8 @@ public:
 	/// \arg lvl   Level of the given tables (default is PML4)
 	/// \returns   The new page table
 	page_table * copy_table(page_table *from,
-			page_table::level lvl = page_table::level::pml4);
+			page_table::level lvl = page_table::level::pml4,
+			page_table_indices index = {});
 
 	/// Allocate and map pages into virtual memory.
 	/// \arg address  The virtual address at which to map the pages

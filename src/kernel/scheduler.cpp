@@ -26,20 +26,22 @@ extern "C" {
 	uintptr_t load_process_image(const void *image_start, size_t bytes, process *proc);
 };
 
+extern uint64_t idle_stack_end;
+
 scheduler::scheduler(lapic *apic) :
 	m_apic(apic),
 	m_next_pid(1)
 {
 	auto *idle = m_process_allocator.pop();
-	idle->setup_kernel_stack();
-
 	uint8_t last_pri = num_priorities - 1;
 
 	// The kernel idle task, also the thread we're in now
 	idle->pid = 0;
 	idle->ppid = 0;
 	idle->priority = last_pri;
-	idle->rsp = 0; // This will get set when we switch away
+	idle->rsp = 0;  // This will get set when we switch away
+	idle->rsp3 = 0; // Never used for the idle task
+	idle->rsp0 = reinterpret_cast<uintptr_t>(&idle_stack_end);
 	idle->pml4 = page_manager::get_pml4();
 	idle->quanta = process_quanta;
 	idle->flags =
@@ -124,24 +126,6 @@ scheduler::create_process(pid_t pid)
 	return proc;
 }
 
-static uintptr_t
-add_fake_task_return(uintptr_t rsp, uintptr_t rbp, uintptr_t rip)
-{
-	// Initialize a new empty stack with a fake return segment
-	// for returning out of task_switch
-	rsp -= sizeof(uintptr_t) * 7;
-	uintptr_t *stack = reinterpret_cast<uintptr_t*>(rsp);
-
-	stack[6] = rip;        // return rip
-	stack[5] = rbp;        // rbp
-	stack[4] = 0xbbbbbbbb; // rbx
-	stack[3] = 0x12121212; // r12
-	stack[2] = 0x13131313; // r13
-	stack[1] = 0x14141414; // r14
-	stack[0] = 0x15151515; // r15
-	return rsp;
-}
-
 void
 scheduler::load_process(const char *name, const void *data, size_t size)
 {
@@ -165,9 +149,8 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	stack[1] = reinterpret_cast<uintptr_t>(size);
 	stack[2] = reinterpret_cast<uintptr_t>(proc);
 
-	proc->rsp = add_fake_task_return(
-			reinterpret_cast<uintptr_t>(stack),
-			proc->rsp0,
+	proc->rsp = reinterpret_cast<uintptr_t>(stack);
+	proc->add_fake_task_return(
 			reinterpret_cast<uintptr_t>(ramdisk_process_loader));
 
 	// Arguments for iret - rip will be pushed on before these
@@ -201,8 +184,7 @@ scheduler::create_kernel_task(pid_t pid, void (*task)())
 
 	// Create an initial kernel stack space
 	proc->setup_kernel_stack();
-	proc->rsp = add_fake_task_return(
-			proc->rsp0, proc->rsp0,
+	proc->add_fake_task_return(
 			reinterpret_cast<uintptr_t>(task));
 
 	proc->pml4 = page_manager::get()->get_kernel_pml4();
@@ -216,6 +198,7 @@ scheduler::create_kernel_task(pid_t pid, void (*task)())
 	log::debug(logs::task, "Creating kernel task: pid %d  pri %d", proc->pid, proc->priority);
 	log::debug(logs::task, "    RSP0 %016lx", proc->rsp0);
 	log::debug(logs::task, "     RSP %016lx", proc->rsp);
+	log::debug(logs::task, "    PML4 %016lx", proc->pml4);
 }
 
 void

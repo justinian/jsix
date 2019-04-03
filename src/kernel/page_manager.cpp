@@ -2,12 +2,14 @@
 
 #include "kutil/assert.h"
 #include "console.h"
+#include "io.h"
 #include "log.h"
 #include "page_manager.h"
 
 using memory::frame_size;
 using memory::kernel_offset;
 using memory::page_offset;
+using memory::page_mappable;
 
 extern kutil::frame_allocator g_frame_allocator;
 extern kutil::address_manager g_kernel_address_manager;
@@ -68,28 +70,58 @@ page_manager::create_process_map()
 uintptr_t
 page_manager::copy_page(uintptr_t orig)
 {
-	uintptr_t virt = m_addrs.allocate(2 * frame_size);
-	uintptr_t copy = 0;
+	bool paged_orig = false;
+	bool paged_copy = false;
 
+	uintptr_t orig_virt;
+
+	if (page_mappable(orig)) {
+		orig_virt = orig + page_offset;
+	} else {
+		orig_virt = m_addrs.allocate(frame_size);
+		page_in(get_pml4(), orig, orig_virt, 1);
+		paged_orig = true;
+	}
+
+	uintptr_t copy = 0;
+	uintptr_t copy_virt;
 	size_t n = m_frames.allocate(1, &copy);
 	kassert(n, "copy_page could not allocate page");
 
-	page_in(get_pml4(), orig, virt, 1);
-	page_in(get_pml4(), copy, virt + frame_size, 1);
+	if (page_mappable(copy)) {
+		copy_virt = copy + page_offset;
+	} else {
+		copy_virt = m_addrs.allocate(frame_size);
+		page_in(get_pml4(), copy, copy_virt, 1);
+		paged_copy = true;
+	}
+
+	if (paged_orig || paged_copy) {
+		set_pml4(get_pml4());
+		__sync_synchronize();
+		io_wait();
+	}
 
 	kutil::memcpy(
-			reinterpret_cast<void *>(virt + frame_size),
-			reinterpret_cast<void *>(virt),
+			reinterpret_cast<void *>(copy_virt),
+			reinterpret_cast<void *>(orig_virt),
 			frame_size);
 
-	page_out(get_pml4(), virt, 2);
+	if (paged_orig) {
+		page_out(get_pml4(), orig_virt, 1);
+		m_addrs.free(orig_virt);
+	}
 
-	m_addrs.free(virt);
+	if (paged_copy) {
+		page_out(get_pml4(), copy_virt, 1);
+		m_addrs.free(copy_virt);
+	}
+
 	return copy;
 }
 
 page_table *
-page_manager::copy_table(page_table *from, page_table::level lvl)
+page_manager::copy_table(page_table *from, page_table::level lvl, page_table_indices index)
 {
 	page_table *to = get_table_page();
 	log::debug(logs::paging, "Page manager copying level %d table at %016lx to %016lx.", lvl, from, to);
@@ -105,11 +137,16 @@ page_manager::copy_table(page_table *from, page_table::level lvl)
 			512;
 
 	unsigned pages_copied = 0;
+	uintptr_t from_addr = 0;
+	uintptr_t to_addr = 0;
+
 	for (int i = 0; i < max; ++i) {
 		if (!from->is_present(i)) {
 			to->entries[i] = 0;
 			continue;
 		}
+
+		index[lvl] = i;
 
 		bool is_page =
 			lvl == page_table::level::pt ||
@@ -119,17 +156,20 @@ page_manager::copy_table(page_table *from, page_table::level lvl)
 			uint16_t flags = from->entries[i] &  0xfffull;
 			uintptr_t orig = from->entries[i] & ~0xfffull;
 			to->entries[i] = copy_page(orig) | flags;
-			pages_copied++;
+			if (!pages_copied++)
+				from_addr = index.addr();
+			to_addr = index.addr();
 		} else {
 			uint16_t flags = 0;
 			page_table *next_from = from->get(i, &flags);
-			page_table *next_to = copy_table(next_from, page_table::deeper(lvl));
+			page_table *next_to = copy_table(next_from, page_table::deeper(lvl), index);
 			to->set(i, next_to, flags);
 		}
 	}
 
 	if (pages_copied)
-		log::debug(logs::paging, "   copied %3u pages", pages_copied);
+		log::debug(logs::paging, "   copied %3u pages %016lx - %016lx",
+			pages_copied, from_addr, to_addr + frame_size);
 
 	return to;
 }

@@ -18,11 +18,11 @@ global _start:function (_start.end - _start)
 _start:
 	cli
 
-	mov rsp, stack_end
-	push 0 ; signal end of stack with 0 return address
-	push 0 ; and a few extra entries in case of stack
-	push 0 ; problems
-	push 0
+	mov rsp, idle_stack_end
+	mov qword [rsp + 0x00], 0 ; signal end of stack with 0 return address
+	mov qword [rsp + 0x08], 0 ; and a few extra entries in case of stack
+	mov qword [rsp + 0x10], 0 ; problems
+	mov qword [rsp + 0x18], 0
 
 	mov rbp, rsp
 	extern kernel_main
@@ -47,6 +47,9 @@ interrupts_disable:
 
 section .bss
 align 0x100
-stack_begin:
-	resb 0x4000 ; 16KiB stack space
-stack_end:
+idle_stack_begin:
+	resb 0x1000 ; 4KiB stack space
+
+global idle_stack_end
+idle_stack_end:
+	resq 4

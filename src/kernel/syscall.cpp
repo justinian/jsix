@@ -14,7 +14,6 @@ extern "C" {
 
 namespace syscalls {
 
-pid_t fork() { return 0; }
 
 void send() {}
 void receive() {}

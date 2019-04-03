@@ -1,7 +1,6 @@
 %include "tasking.inc"
 
 extern g_tss
-
 global task_switch
 task_switch:
 	push rbp
@@ -55,40 +54,10 @@ task_switch:
 	pop rbp
 	ret
 
-global task_fork
-task_fork:
-	push rbp
-	mov rbp, rsp
 
-	; Save the rest of the callee-saved regs
-	push rbx
-	push r12
-	push r13
-	push r14
-	push r15
-
-	mov r14, rdi                  ; r14: child task TCB (function argument)
-
-	mov rax, [gs:CPU_DATA.tcb]    ; rax: current task TCB
-	mov rax, [rax + TCB.rsp0]     ; rax: current task rsp0
-	sub rax, rsp                  ; rax: size of kernel stack in bytes
-
-	mov rcx, rax
-	shr rcx, 3                    ; rcx: size of kernel stack in qwords
-
-	mov rdi, [r14 + TCB.rsp0]     ; rdi: child task rsp0
-	sub rdi, rax                  ; rdi: child task rsp
-	mov rsi, rsp                  ; rsi: current rsp
-	mov [r14 + TCB.rsp], rdi
-
-	rep movsq
-
-	pop r15
-	pop r14
-	pop r13
-	pop r12
-	pop rbx
-
-	pop rbp
-	ret
+extern syscall_handler_prelude.return
+global task_fork_return_thunk
+task_fork_return_thunk:
+	mov rax, 0
+	jmp syscall_handler_prelude.return
 

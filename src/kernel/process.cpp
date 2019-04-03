@@ -4,6 +4,8 @@
 #include "process.h"
 #include "scheduler.h"
 
+extern "C" void task_fork_return_thunk();
+
 
 void
 process::exit(uint32_t code)
@@ -13,7 +15,7 @@ process::exit(uint32_t code)
 }
 
 pid_t
-process::fork(cpu_state *regs)
+process::fork()
 {
 	auto &sched = scheduler::get();
 	auto *child = sched.create_process();
@@ -29,13 +31,31 @@ process::fork(cpu_state *regs)
 	child->pml4 = page_manager::get()->copy_table(pml4);
 	kassert(child->pml4, "process::fork() got null pml4");
 
-	log::debug(logs::task, "Copied process %d to %d, new PML4 %016lx.",
-			pid, child->pid, child->pml4);
-	log::debug(logs::task, "  copied stack %016lx to %016lx, rsp %016lx.",
-			kernel_stack, child->kernel_stack, child->rsp);
-
+	child->rsp3 = bsp_cpu_data.rsp3;
 	child->setup_kernel_stack();
-	task_fork(child);
+
+	log::debug(logs::task, "Copied process %d to %d",
+			pid, child->pid);
+
+	log::debug(logs::task, "    PML4 %016lx", child->pml4);
+	log::debug(logs::task, "    RSP3 %016lx", child->rsp3);
+	log::debug(logs::task, "    RSP0 %016lx", child->rsp0);
+
+	// Initialize a new empty stack with a fake saved state
+	// for returning out of syscall_handler_prelude
+	size_t ret_seg_size = sizeof(uintptr_t) * 8;
+	child->rsp -= ret_seg_size;
+
+	void *this_ret_seg =
+		reinterpret_cast<void*>(rsp0 - ret_seg_size);
+	void *child_ret_seg =
+		reinterpret_cast<void*>(child->rsp);
+	kutil::memcpy(child_ret_seg, this_ret_seg, ret_seg_size);
+
+	child->add_fake_task_return(
+		reinterpret_cast<uintptr_t>(task_fork_return_thunk));
+
+	log::debug(logs::task, "    RSP  %016lx", child->rsp);
 
 	return child->pid;
 }
@@ -63,8 +83,24 @@ process::setup_kernel_stack()
 	kernel_stack_size = initial_stack_size;
 	kernel_stack = reinterpret_cast<uintptr_t>(stack_bottom);
 	rsp0 = reinterpret_cast<uintptr_t>(stack_top);
+	rsp = rsp0;
 
 	return stack_top;
+}
+
+void
+process::add_fake_task_return(uintptr_t rip)
+{
+	rsp -= sizeof(uintptr_t) * 7;
+	uintptr_t *stack = reinterpret_cast<uintptr_t*>(rsp);
+
+	stack[6] = rip;        // return rip
+	stack[5] = rsp0;       // rbp
+	stack[4] = 0xbbbbbbbb; // rbx
+	stack[3] = 0x12121212; // r12
+	stack[2] = 0x13131313; // r13
+	stack[1] = 0x14141414; // r14
+	stack[0] = 0x15151515; // r15
 }
 
 bool

@@ -44,7 +44,7 @@ fork:
 	push rbp
 	mov rbp, rsp
 
-	mov rax, 0x00
+	mov rax, 0x03
 	syscall    ; pid left in rax
 
 	pop rbp

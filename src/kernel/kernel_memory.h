@@ -19,4 +19,8 @@ namespace memory {
 	/// Initial process thread's stack size, in pages
 	static const unsigned initial_stack_pages = 1;
 
+	/// Helper to determine if a physical address can be accessed
+	/// through the page_offset area.
+	inline bool page_mappable(uintptr_t a) { return (a & page_offset) == 0; }
+
 } // namespace memory

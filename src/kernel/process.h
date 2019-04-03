@@ -71,10 +71,9 @@ struct process
 	void exit(unsigned code);
 
 	/// Copy this process.
-	/// \arg regs   The saved state from the fork syscall
 	/// \returns    Returns the child's pid to the parent, and
 	///             0 to the child.
-	pid_t fork(cpu_state *regs);
+	pid_t fork();
 
 	/// Unready this process until it gets a signal
 	/// \arg sigmask  A bitfield of signals to wake on
@@ -135,6 +134,11 @@ private:
 	/// process object, but also returns it.
 	/// \returns   The new rsp0 as a pointer
 	void * setup_kernel_stack();
+
+	/// Initialize this process' kenrel stack with a fake return segment for
+	/// returning out of task_switch.
+	/// \arg rip  The rip to return to
+	void add_fake_task_return(uintptr_t rip);
 };
 
 using process_list = kutil::linked_list<process>;
