@@ -8,89 +8,42 @@
 #include "syscall.h"
 
 extern "C" {
-	void _halt();
+	void syscall_invalid(uint64_t call);
 	void syscall_handler_prelude();
 }
 
 namespace syscalls {
 
-void
-noop()
-{
-	auto &s = scheduler::get();
-	auto *p = s.current();
-	log::debug(logs::syscall, "Process %d called noop syscall.", p->pid);
-}
-
-void
-exit(int64_t status)
-{
-	auto &s = scheduler::get();
-	auto *p = s.current();
-	log::debug(logs::syscall, "Process %d exiting with code %d", p->pid, status);
-
-	p->exit(status);
-	s.schedule();
-}
-
-pid_t
-getpid()
-{
-	auto &s = scheduler::get();
-	auto *p = s.current();
-	return p->pid;
-}
-
 pid_t fork() { return 0; }
-
-void
-message(const char *message)
-{
-	auto &s = scheduler::get();
-	auto *p = s.current();
-	log::info(logs::syscall, "Message[%d]: %s", p->pid, message);
-}
-
-void
-pause()
-{
-	auto &s = scheduler::get();
-	auto *p = s.current();
-	p->wait_on_signal(-1ull);
-	s.schedule();
-}
-
-void
-sleep(uint64_t til)
-{
-	auto &s = scheduler::get();
-	auto *p = s.current();
-	log::debug(logs::syscall, "Process %d sleeping until %d", p->pid, til);
-
-	p->wait_on_time(til);
-	s.schedule();
-}
 
 void send() {}
 void receive() {}
 
 } // namespace syscalls
 
-struct syscall_handler_info
-{
-	unsigned nargs;
-	const char *name;
-};
-
-uintptr_t syscall_registry[static_cast<unsigned>(syscall::COUNT)];
-syscall_handler_info syscall_info_registry[static_cast<unsigned>(syscall::COUNT)];
+uintptr_t syscall_registry[static_cast<unsigned>(syscall::MAX)];
+const char * syscall_names[static_cast<unsigned>(syscall::MAX)];
 
 void
 syscall_invalid(uint64_t call)
 {
 	console *cons = console::get();
 	cons->set_color(9);
-	cons->printf("\nReceived unknown syscall: %d\n", call);
+	cons->printf("\nReceived unknown syscall: %02x\n", call);
+
+	const unsigned num_calls =
+		static_cast<unsigned>(syscall::MAX);
+
+	cons->printf("  Known syscalls:\n");
+		cons->printf("          invalid %016lx\n", syscall_invalid);
+
+	for (unsigned i = 0; i < num_calls; ++i) {
+		const char *name = syscall_names[i];
+		uintptr_t handler = syscall_registry[i];
+		if (name)
+			cons->printf("    %02x %10s %016lx\n", i, name, handler);
+	}
+
 	cons->set_color();
 	_halt();
 }
@@ -190,11 +143,18 @@ syscall_enable()
 	// IA32_FMASK - FLAGS mask inside syscall
 	wrmsr(msr::ia32_fmask, 0x200);
 
-#define SYSCALL(name, nargs) \
-	syscall_registry[static_cast<unsigned>(syscall::name)] = \
-		reinterpret_cast<uintptr_t>(syscalls::name); \
-	syscall_info_registry[static_cast<unsigned>(syscall::name)] = { \
-		nargs, #name };
+	static constexpr unsigned num_calls =
+		static_cast<unsigned>(syscall::MAX);
+
+	for (unsigned i = 0; i < num_calls; ++i) {
+		syscall_registry[i] = reinterpret_cast<uintptr_t>(syscall_invalid);
+		syscall_names[i] = nullptr;
+	}
+
+#define SYSCALL(id, name, result, ...) \
+	syscall_registry[id] = reinterpret_cast<uintptr_t>(syscalls::name); \
+	syscall_names[id] = #name; \
+	static_assert( id <= num_calls, "Syscall " #name " has id > syscall::MAX" );
 #include "syscalls.inc"
 #undef SYSCALL
 }

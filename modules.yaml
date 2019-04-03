@@ -41,6 +41,13 @@ modules:
             - src/kernel/serial.cpp
             - src/kernel/syscall.cpp
             - src/kernel/syscall.s
+            - src/kernel/syscalls/exit.cpp
+            - src/kernel/syscalls/fork.cpp
+            - src/kernel/syscalls/getpid.cpp
+            - src/kernel/syscalls/message.cpp
+            - src/kernel/syscalls/noop.cpp
+            - src/kernel/syscalls/pause.cpp
+            - src/kernel/syscalls/sleep.cpp
             - src/kernel/task.s
             - src/kernel/crtn.s
 

@@ -1,13 +1,9 @@
 %include "push_all.inc"
 %include "tasking.inc"
 
-%define SYSCALL(name, nargs)     resb 1
-
-struc SYSCALLS
-%include "syscalls.inc"
-.count:
-endstruc
-
+; Make sure to keep MAX_SYSCALLS in sync with
+; syscall::MAX in syscall.h
+MAX_SYSCALLS equ 64
 
 extern __counter_syscall_enter
 extern __counter_syscall_sysret
@@ -28,8 +24,8 @@ syscall_handler_prelude:
 
 	inc qword [rel __counter_syscall_enter]
 
-	cmp rax, SYSCALLS.count
-	jl .ok_syscall
+	cmp rax, MAX_SYSCALLS
+	jle .ok_syscall
 
 	mov rdi, rax
 	call syscall_invalid

@@ -11,8 +11,8 @@ getpid:
 	push rbp
 	mov rbp, rsp
 
-	mov rax, 3  ; getpid syscall
-	syscall     ; pid is now already in rax, so just return
+	mov rax, 0x02  ; getpid syscall
+	syscall        ; pid is now already in rax, so just return
 
 	pop rbp
 	ret
@@ -22,7 +22,7 @@ debug:
 	push rbp
 	mov rbp, rsp
 
-	mov rax, 0  ; debug syscall
+	mov rax, 0x00  ; debug syscall
 	syscall
 
 	pop rbp
@@ -33,7 +33,7 @@ sleep:
 	push rbp
 	mov rbp, rsp
 
-	mov rax, 6  ; sleep syscall
+	mov rax, 0x21  ; sleep syscall
 	syscall
 
 	pop rbp
@@ -44,13 +44,25 @@ fork:
 	push rbp
 	mov rbp, rsp
 
-	mov rax, 0
-
+	mov rax, 0x00
 	syscall    ; pid left in rax
 
 	pop rbp
 	ret
 	
+
+global message
+message:
+	push rbp
+	mov rbp, rsp
+
+	; message should already be in rdi
+	mov rax, 0x10
+	syscall
+
+	pop rbp
+	ret
+
 
 global _start
 _start:
