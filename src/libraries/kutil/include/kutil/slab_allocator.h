@@ -15,6 +15,7 @@ class slab_allocator :
 {
 public:
 	using item_type = list_node<T>;
+	using alloc_type = Alloc;
 
 	/// Default constructor.
 	/// \arg chunk_size The size of chunk to allocate, in bytes. 0 means default.

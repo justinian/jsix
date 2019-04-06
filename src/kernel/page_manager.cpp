@@ -96,6 +96,8 @@ page_manager::copy_page(uintptr_t orig)
 		paged_copy = true;
 	}
 
+	// TODO: multiple page copies at a time, so that we don't have to keep
+	// paying this mapping penalty
 	if (paged_orig || paged_copy) {
 		set_pml4(get_pml4());
 		__sync_synchronize();
@@ -265,17 +267,15 @@ page_manager::map_pages(uintptr_t address, size_t count, bool user, page_table *
 }
 
 void
-page_manager::unmap_table(page_table *table, page_table::level lvl, bool free)
+page_manager::unmap_table(page_table *table, page_table::level lvl, bool free, page_table_indices index)
 {
-	log::debug(logs::paging, "Unmapping%s lv %d table at %016lx",
-			free ? " (and freeing)" : "", lvl, table);
-
 	const int max =
 		lvl == page_table::level::pml4 ?
 			510 :
 			512;
 
 	uintptr_t free_start = 0;
+	uintptr_t free_start_virt = 0;
 	uintptr_t free_count = 0;
 
 	size_t size =
@@ -287,6 +287,8 @@ page_manager::unmap_table(page_table *table, page_table::level lvl, bool free)
 	for (int i = 0; i < max; ++i) {
 		if (!table->is_present(i)) continue;
 
+		index[lvl] = i;
+
 		bool is_page =
 			lvl == page_table::level::pt ||
 			table->is_large_page(lvl, i);
@@ -295,24 +297,40 @@ page_manager::unmap_table(page_table *table, page_table::level lvl, bool free)
 			uintptr_t frame = table->entries[i] & ~0xfffull;
 			if (!free_count || frame != free_start + free_count * size) {
 				if (free_count && free) {
+					log::debug(logs::paging,
+							"  freeing v:%016lx-%016lx p:%016lx-%016lx",
+							free_start_virt, free_start_virt + free_count * frame_size,
+							free_start, free_start + free_count * frame_size);
+
 					m_frames.free(free_start, (free_count * size) / frame_size);
 					free_count = 0;
 				}
 
-				if (!free_count)
+				if (!free_count) {
 					free_start = frame;
+					free_start_virt = index.addr();
+				}
 			}
 
 			free_count += 1;
 		} else {
 			page_table *next = table->get(i);
-			unmap_table(next, page_table::deeper(lvl), free);
+			unmap_table(next, page_table::deeper(lvl), free, index);
 		}
 	}
 
-	if (free_count && free)
+	if (free_count && free) {
+		log::debug(logs::paging,
+				"  freeing v:%016lx-%016lx p:%016lx-%016lx",
+				free_start_virt, free_start_virt + free_count * frame_size,
+				free_start, free_start + free_count * frame_size);
+
 		m_frames.free(free_start, (free_count * size) / frame_size);
+	}
 	free_table_pages(table, 1);
+
+	log::debug(logs::paging, "Unmapped%s lv %d table at %016lx",
+			free ? " (and freed)" : "", lvl, table);
 }
 
 void

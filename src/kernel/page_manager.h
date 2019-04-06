@@ -162,7 +162,8 @@ private:
 			bool free = false);
 
 	/// Low-level routine for unmapping an entire table of memory at once
-	void unmap_table(page_table *table, page_table::level lvl, bool free);
+	void unmap_table(page_table *table, page_table::level lvl, bool free,
+			page_table_indices index = {});
 
 	page_table *m_kernel_pml4; ///< The PML4 of just kernel pages
 	free_page_header *m_page_cache; ///< Cache of free pages to use for tables

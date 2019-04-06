@@ -116,27 +116,35 @@ public:
 	/// Constructor. Creates an empty list.
 	linked_list() :
 		m_head(nullptr),
-		m_tail(nullptr)
+		m_tail(nullptr),
+		m_count(0)
 	{}
 
 	/// Move constructor. Takes ownership of list elements.
 	linked_list(linked_list<T> &&other) :
 		m_head(other.m_head),
-		m_tail(other.m_tail)
+		m_tail(other.m_tail),
+		m_count(other.m_count)
 	{
 		other.m_head = other.m_tail = nullptr;
+		other.m_count = 0;
 	}
 
 	/// Check if the list is empty.
 	/// \returns  true if the list is empty
 	bool empty() const { return m_head == nullptr; }
 
+	/// Get the cached length of the list.
+	/// \returns  The number of entries in the list.
+	size_t length() const { return m_count; }
+
 	/// Count the items in the list.
 	/// \returns  The number of entries in the list.
-	size_t length() const
+	size_t count_length() const
 	{
 		size_t len = 0;
 		for (item_type *cur = m_head; cur; cur = cur->m_next) ++len;
+		m_count = len;
 		return len;
 	}
 
@@ -164,6 +172,8 @@ public:
 			item->m_prev = nullptr;
 			m_head = item;
 		}
+
+		m_count += 1;
 	}
 
 	/// Append an item to the end of this list.
@@ -182,6 +192,8 @@ public:
 			item->m_next = nullptr;
 			m_tail = item;
 		}
+
+		m_count += 1;
 	}
 
 	/// Remove an item from the front of this list.
@@ -217,6 +229,8 @@ public:
 			m_tail = list.m_tail;
 		}
 
+		m_count += list.m_count;
+		list.m_count = 0;
 		list.m_head = list.m_tail = nullptr;
 	}
 
@@ -235,6 +249,8 @@ public:
 			m_tail = list.m_tail;
 		}
 
+		m_count += list.m_count;
+		list.m_count = 0;
 		list.m_head = list.m_tail = nullptr;
 	}
 
@@ -248,6 +264,7 @@ public:
 		if (item == m_tail)
 			m_tail = item->m_prev;
 		item->remove();
+		m_count -= 1;
 	}
 
 	/// Inserts an item into the list before another given item.
@@ -263,6 +280,8 @@ public:
 			push_front(item);
 		else
 			existing->insert_before(item);
+
+		m_count += 1;
 	}
 
 	/// Inserts an item into the list after another given item.
@@ -278,6 +297,8 @@ public:
 			push_back(item);
 		else
 			existing->insert_after(item);
+
+		m_count += 1;
 	}
 
 	/// Insert an item into the list in a sorted position. Depends on T
@@ -309,6 +330,7 @@ public:
 private:
 	item_type *m_head;
 	item_type *m_tail;
+	size_t m_count;
 };
 
 

@@ -4,23 +4,19 @@
 
 #include <stdint.h>
 
+#include "kernel_memory.h"
 #include "kutil/enum_bitfields.h"
 #include "kutil/linked_list.h"
-#include "kutil/slab_allocator.h"
 
 namespace kutil {
 
 struct frame_block;
-using frame_block_list = kutil::linked_list<frame_block>;
-using frame_block_slab = kutil::slab_allocator<frame_block>;
+using frame_block_list = linked_list<frame_block>;
 
 /// Allocator for physical memory frames
 class frame_allocator
 {
 public:
-	/// Size of a single page frame.
-	static const size_t frame_size = 0x1000;
-
 	/// Default constructor
 	frame_allocator() = default;
 
@@ -53,9 +49,13 @@ public:
 	void consolidate_blocks();
 
 private:
+	using frame_block_node = list_node<frame_block>;
+
 	frame_block_list m_free; ///< Free frames list
 	frame_block_list m_used; ///< In-use frames list
-	frame_block_slab m_block_slab; ///< frame_block slab allocator
+	frame_block_list m_cache; ///< Spare frame-block structs
+
+	frame_block_node *get_block_node();
 
 	frame_allocator(const frame_allocator &) = delete;
 };
@@ -97,7 +97,7 @@ struct frame_block
 	frame_block_flags flags;
 
 	inline bool has_flag(frame_block_flags f) const { return bitfield_has(flags, f); }
-	inline uintptr_t end() const { return address + (count * frame_allocator::frame_size); }
+	inline uintptr_t end() const { return address + (count * memory::frame_size); }
 	inline bool contains(uintptr_t addr) const { return addr >= address && addr < end(); }
 
 	/// Helper to zero out a block and optionally set the next pointer.

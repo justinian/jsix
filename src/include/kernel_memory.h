@@ -2,6 +2,9 @@
 /// \file kernel_memory.h
 /// Constants related to the kernel's memory layout
 
+#include <stddef.h>
+#include <stdint.h>
+
 namespace memory {
 
 	/// Size of a single page frame.

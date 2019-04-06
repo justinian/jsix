@@ -12,6 +12,7 @@ process::exit(uint32_t code)
 {
 	return_code = code;
 	flags -= process_flags::running;
+	page_manager::get()->delete_process_map(pml4);
 }
 
 pid_t
