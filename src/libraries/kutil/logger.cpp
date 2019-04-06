@@ -1,9 +1,18 @@
 #include "kutil/assert.h"
+#include "kutil/constexpr_hash.h"
 #include "kutil/logger.h"
 #include "kutil/memory.h"
 #include "kutil/printf.h"
 
 namespace kutil {
+namespace logs {
+#define LOG(name, lvl) \
+	log::area_t name = #name ## _h; \
+	const char * name ## _name = #name;
+#include "log_areas.inc"
+#undef LOG
+}
+
 namespace log {
 
 using kutil::memset;
@@ -30,6 +39,11 @@ logger::logger(uint8_t *buffer, size_t size) :
 	memset(&m_levels, 0, sizeof(m_levels));
 	memset(&m_names, 0, sizeof(m_names));
 	s_log = this;
+
+#define LOG(name, lvl) \
+	register_area(logs::name, logs::name ## _name, log::level::lvl);
+#include "log_areas.inc"
+#undef LOG
 }
 
 void

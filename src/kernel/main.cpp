@@ -37,7 +37,7 @@ init_console()
 	cons->set_color(0x08, 0x00);
 	cons->puts(GIT_VERSION " booting...\n");
 
-	logs::init();
+	logger_init();
 }
 
 void
@@ -132,7 +132,7 @@ kernel_main(kernel_args *header)
 	syscall_enable();
 	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic());
 
-	sched->create_kernel_task(-1, logs::logger_task);
+	sched->create_kernel_task(-1, logger_task);
 
 	for (auto &f : ird.files()) {
 		if (f.executable())

@@ -1,6 +1,6 @@
 LOG(apic,   info);
 LOG(device, info);
-LOG(paging, debug);
+LOG(paging, info);
 LOG(driver, info);
 LOG(memory, debug);
 LOG(fs,     info);
