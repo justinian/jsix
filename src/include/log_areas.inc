@@ -1,9 +1,9 @@
 LOG(apic,   info);
 LOG(device, info);
-LOG(paging, info);
+LOG(paging, warn);
 LOG(driver, info);
-LOG(memory, debug);
+LOG(memory, info);
 LOG(fs,     info);
-LOG(task,   debug);
-LOG(boot,   debug);
-LOG(syscall,debug);
+LOG(task,   info);
+LOG(boot,   info);
+LOG(syscall,info);

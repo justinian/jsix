@@ -167,7 +167,13 @@ device_manager::load_apic(const acpi_apic *apic)
 		const uint8_t length = p[1];
 
 		switch (type) {
-		case 0: // Local APIC
+		case 0: { // Local APIC
+				uint8_t uid = kutil::read_from<uint8_t>(p+2);
+				uint8_t id = kutil::read_from<uint8_t>(p+3);
+				log::debug(logs::device, "    Local APIC uid %x id %x", id);
+			}
+			break;
+
 		case 1: // I/O APIC
 			break;
 

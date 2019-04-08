@@ -46,7 +46,7 @@ exec qemu-system-x86_64 \
 	-drive "if=pflash,format=raw,file=${build}/${flash_name}.fd" \
 	-drive "format=raw,file=${build}/popcorn.img" \
 	-monitor telnet:localhost:45454,server,nowait \
-	-smp 1 \
+	-smp 4 \
 	-m 512 \
 	-d mmu,int,guest_errors \
 	-D popcorn.log \
