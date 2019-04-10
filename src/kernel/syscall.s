@@ -3,7 +3,7 @@
 
 ; Make sure to keep MAX_SYSCALLS in sync with
 ; syscall::MAX in syscall.h
-MAX_SYSCALLS equ 64
+MAX_SYSCALLS equ 0x40
 
 extern __counter_syscall_enter
 extern __counter_syscall_sysret

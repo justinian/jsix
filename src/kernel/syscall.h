@@ -12,7 +12,7 @@ enum class syscall : uint64_t
 
 	// Maximum syscall id. If you change this, also change
 	// MAX_SYSCALLS in syscall.s
-	MAX = 64
+	MAX = 0x40
 };
 
 void syscall_enable();
