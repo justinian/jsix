@@ -66,7 +66,8 @@ public:
 			page_table_indices index = {});
 
 	/// Allocate and map pages into virtual memory.
-	/// \arg address  The virtual address at which to map the pages
+	/// \arg address  The virtual address at which to map the pages, or zero
+	///               for any free kernel space.
 	/// \arg count    The number of pages to map
 	/// \arg user     True is this memory is user-accessible
 	/// \arg pml4     The pml4 to map into - null for the current one

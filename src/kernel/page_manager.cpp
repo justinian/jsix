@@ -247,6 +247,11 @@ page_manager::free_table_pages(void *pages, size_t count)
 void *
 page_manager::map_pages(uintptr_t address, size_t count, bool user, page_table *pml4)
 {
+	if (!address) {
+		kassert(!user, "Cannot call map_pages with 0 address for user mapping");
+		address = m_addrs.allocate(count * frame_size);
+	}
+
 	void *ret = reinterpret_cast<void *>(address);
 	if (!pml4) pml4 = get_pml4();
 
@@ -338,6 +343,9 @@ page_manager::unmap_pages(void* address, size_t count, page_table *pml4)
 {
 	if (!pml4) pml4 = get_pml4();
 	page_out(pml4, reinterpret_cast<uintptr_t>(address), count, true);
+	if (address >= kernel_offset) {
+		m_addrs.free(address, count);
+	}
 }
 
 void
