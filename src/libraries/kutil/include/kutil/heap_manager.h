@@ -36,7 +36,7 @@ public:
 	static const unsigned min_size = 6;
 
 	/// Maximum block size is (2^max_size). Must be less than 64.
-	static const unsigned max_size = 16;
+	static const unsigned max_size = 22;
 
 protected:
 	class mem_header;
