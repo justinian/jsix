@@ -14,7 +14,7 @@
 
 static const char expected_signature[] = "RSD PTR ";
 
-device_manager device_manager::s_instance(nullptr);
+device_manager device_manager::s_instance(nullptr, kutil::allocator::invalid);
 
 struct acpi1_rsdp
 {
@@ -59,8 +59,13 @@ void irq4_callback(void *)
 }
 
 
-device_manager::device_manager(const void *root_table) :
-	m_lapic(nullptr)
+device_manager::device_manager(const void *root_table, kutil::allocator &alloc) :
+	m_lapic(nullptr),
+	m_ioapics(alloc),
+	m_pci(alloc),
+	m_devices(alloc),
+	m_irqs(alloc),
+	m_blockdevs(alloc)
 {
 	kassert(root_table != 0, "ACPI root table pointer is null.");
 
@@ -93,7 +98,7 @@ device_manager::device_manager(const void *root_table) :
 ioapic *
 device_manager::get_ioapic(int i)
 {
-	return (i < m_ioapics.count()) ? m_ioapics[i] : nullptr;
+	return (i < m_ioapics.count()) ? &m_ioapics[i] : nullptr;
 }
 
 static void
@@ -148,19 +153,31 @@ device_manager::load_apic(const acpi_apic *apic)
 	uint8_t const *p = apic->controller_data;
 	uint8_t const *end = p + count;
 
-	// Pass one: set up IOAPIC objcts
+	// Pass one: count IOAPIC objcts
+	int num_ioapics = 0;
+	while (p < end) {
+		const uint8_t type = p[0];
+		const uint8_t length = p[1];
+		if (type == 1) num_ioapics++;
+		p += length;
+	}
+
+	m_ioapics.set_capacity(num_ioapics);
+
+	// Pass two: set up IOAPIC objcts
+	p = apic->controller_data;
 	while (p < end) {
 		const uint8_t type = p[0];
 		const uint8_t length = p[1];
 		if (type == 1) {
 			uint32_t *base = reinterpret_cast<uint32_t *>(kutil::read_from<uint32_t>(p+4));
 			uint32_t base_gsr = kutil::read_from<uint32_t>(p+8);
-			m_ioapics.append(new ioapic(base, base_gsr));
+			m_ioapics.emplace(base, base_gsr);
 		}
 		p += length;
 	}
 
-	// Pass two: configure APIC objects
+	// Pass three: configure APIC objects
 	p = apic->controller_data;
 	while (p < end) {
 		const uint8_t type = p[0];
@@ -186,7 +203,7 @@ device_manager::load_apic(const acpi_apic *apic)
 						source, gsi, (flags & 0x3), ((flags >> 2) & 0x3));
 
 				// TODO: in a multiple-IOAPIC system this might be elsewhere
-				m_ioapics[0]->redirect(source, static_cast<isr>(gsi), flags, true);
+				m_ioapics[0].redirect(source, static_cast<isr>(gsi), flags, true);
 			}
 			break;
 
@@ -212,10 +229,10 @@ device_manager::load_apic(const acpi_apic *apic)
 		p += length;
 	}
 
-	for (uint8_t i = 0; i < m_ioapics[0]->get_num_gsi(); ++i) {
+	for (uint8_t i = 0; i < m_ioapics[0].get_num_gsi(); ++i) {
 		switch (i) {
 			case 2: break;
-			default: m_ioapics[0]->mask(i, false);
+			default: m_ioapics[0].mask(i, false);
 		}
 	}
 

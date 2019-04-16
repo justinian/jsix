@@ -2,14 +2,13 @@
 /// \file device_manager.h
 /// The device manager definition
 #include "kutil/vector.h"
+#include "apic.h"
 #include "pci.h"
 
 struct acpi_xsdt;
 struct acpi_apic;
 struct acpi_mcfg;
 class block_device;
-class lapic;
-class ioapic;
 
 using irq_callback = void (*)(void *);
 
@@ -19,8 +18,9 @@ class device_manager
 {
 public:
 	/// Constructor.
-	/// \arg root_table   Pointer to the ACPI RSDP
-	device_manager(const void *root_table);
+	/// \arg root_table  Pointer to the ACPI RSDP
+	/// \arg alloc       Allocator for device arrays
+	device_manager(const void *root_table, kutil::allocator &alloc);
 
 	/// Get the system global device manager.
 	/// \returns  A reference to the system device manager
@@ -105,7 +105,7 @@ private:
 	void bad_irq(uint8_t irq);
 
 	lapic *m_lapic;
-	kutil::vector<ioapic *> m_ioapics;
+	kutil::vector<ioapic> m_ioapics;
 
 	kutil::vector<pci_group> m_pci;
 	kutil::vector<pci_device> m_devices;

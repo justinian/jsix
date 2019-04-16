@@ -181,21 +181,26 @@ isr_handler(cpu_state *regs)
 		break;
 
 	case isr::isrPageFault: {
-			cons->set_color(11);
-			cons->puts("\nPage Fault:\n");
-			cons->set_color();
+			uintptr_t cr2 = 0;
+			__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
 
-			cons->puts("       flags:");
-			if (regs->errorcode & 0x01) cons->puts(" present");
-			if (regs->errorcode & 0x02) cons->puts(" write");
-			if (regs->errorcode & 0x04) cons->puts(" user");
-			if (regs->errorcode & 0x08) cons->puts(" reserved");
-			if (regs->errorcode & 0x10) cons->puts(" ip");
-			cons->puts("\n");
-			print_regs(*regs);
-			print_stacktrace(2);
+			if (!page_manager::get()->fault_handler(cr2)) {
+				cons->set_color(11);
+				cons->puts("\nPage Fault:\n");
+				cons->set_color();
+
+				cons->puts("       flags:");
+				if (regs->errorcode & 0x01) cons->puts(" present");
+				if (regs->errorcode & 0x02) cons->puts(" write");
+				if (regs->errorcode & 0x04) cons->puts(" user");
+				if (regs->errorcode & 0x08) cons->puts(" reserved");
+				if (regs->errorcode & 0x10) cons->puts(" ip");
+				cons->puts("\n");
+				print_regs(*regs);
+				print_stacktrace(2);
+				_halt();
+			}
 		}
-		_halt();
 		break;
 
 	case isr::isrTimer:

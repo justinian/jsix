@@ -1,45 +1,10 @@
 #include "kutil/memory.h"
-#include "kutil/heap_manager.h"
 
 namespace std {
 	enum class __attribute__ ((__type_visibility("default"))) align_val_t : size_t { };
 }
 
-#ifdef __POPCORN__
-void * operator new(size_t n, std::align_val_t) { return kutil::malloc(n); }
-void * operator new (size_t n)					{ return kutil::malloc(n); }
-void * operator new[] (size_t n)				{ return kutil::malloc(n); }
-void operator delete (void *p) noexcept			{ return kutil::free(p); }
-void operator delete[] (void *p) noexcept		{ return kutil::free(p); }
-#endif
-
 namespace kutil {
-
-namespace setup {
-
-static heap_manager *heap_memory_manager;
-
-void
-set_heap(heap_manager *mm)
-{
-	setup::heap_memory_manager = mm;
-}
-
-} // namespace kutil::setup
-
-
-void *
-malloc(size_t n)
-{
-	return setup::heap_memory_manager->allocate(n);
-}
-
-void
-free(void *p)
-{
-	setup::heap_memory_manager->free(p);
-}
-
 
 void *
 memset(void *s, uint8_t v, size_t n)

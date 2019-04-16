@@ -49,7 +49,7 @@ class disk
 public:
 	/// Constructor.
 	/// \arg start  The start of the initrd in memory
-	disk(const void *start);
+	disk(const void *start, kutil::allocator &alloc);
 
 	/// Get the vector of files on the disk
 	const kutil::vector<file> & files() const { return m_files; }

@@ -3,6 +3,7 @@
 /// The task scheduler and related definitions
 
 #include <stdint.h>
+#include "kutil/allocator.h"
 #include "kutil/slab_allocator.h"
 #include "process.h"
 
@@ -30,7 +31,8 @@ public:
 
 	/// Constructor.
 	/// \arg apic  Pointer to the local APIC object
-	scheduler(lapic *apic);
+	/// \arg alloc Allocator to use for TCBs
+	scheduler(lapic *apic, kutil::allocator &alloc);
 
 	/// Create a new process from a program image in memory.
 	/// \arg name  Name of the program image

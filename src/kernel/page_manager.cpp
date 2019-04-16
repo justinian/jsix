@@ -11,7 +11,6 @@ using memory::kernel_offset;
 using memory::page_offset;
 using memory::page_mappable;
 
-extern kutil::frame_allocator g_frame_allocator;
 extern kutil::address_manager g_kernel_address_manager;
 page_manager g_page_manager(
 	g_frame_allocator,
@@ -40,7 +39,7 @@ struct free_page_header
 
 
 page_manager::page_manager(
-		kutil::frame_allocator &frames,
+		frame_allocator &frames,
 		kutil::address_manager &addrs) :
 	m_page_cache(nullptr),
 	m_frames(frames),
@@ -341,11 +340,29 @@ page_manager::unmap_table(page_table *table, page_table::level lvl, bool free, p
 void
 page_manager::unmap_pages(void* address, size_t count, page_table *pml4)
 {
-	if (!pml4) pml4 = get_pml4();
-	page_out(pml4, reinterpret_cast<uintptr_t>(address), count, true);
-	if (address >= kernel_offset) {
-		m_addrs.free(address, count);
+	if (!pml4)
+		pml4 = get_pml4();
+
+	uintptr_t iaddr = reinterpret_cast<uintptr_t>(address);
+
+	page_out(pml4, iaddr, count, true);
+	if (iaddr >= kernel_offset) {
+		// TODO
+		// m_addrs.free(address, count);
 	}
+}
+
+bool
+page_manager::fault_handler(uintptr_t addr)
+{
+	if (!m_addrs.contains(addr))
+		return false;
+
+	uintptr_t page = addr & ~0xfffull;
+	bool user = addr < kernel_offset;
+	map_pages(page, 1, user);
+
+	return true;
 }
 
 void

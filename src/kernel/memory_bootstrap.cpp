@@ -2,72 +2,26 @@
 #include <utility>
 #include "kutil/address_manager.h"
 #include "kutil/assert.h"
-#include "kutil/frame_allocator.h"
-#include "kutil/heap_manager.h"
+#include "kutil/heap_allocator.h"
+#include "frame_allocator.h"
 #include "io.h"
 #include "log.h"
 #include "page_manager.h"
 
-using kutil::frame_block;
-using kutil::frame_block_flags;
-using kutil::frame_block_list;
 using memory::frame_size;
+using memory::kernel_max_heap;
 using memory::kernel_offset;
 using memory::page_offset;
 
 static const unsigned ident_page_flags = 0xb;
 
-kutil::frame_allocator g_frame_allocator;
 kutil::address_manager g_kernel_address_manager;
-kutil::heap_manager g_kernel_heap_manager;
+kutil::heap_allocator g_kernel_heap;
 
-void * mm_grow_callback(size_t length)
-{
-	kassert(length % frame_size == 0,
-			"Heap manager requested a fractional page.");
-
-	size_t pages = length / frame_size;
-	log::info(logs::memory, "Heap manager growing heap by %d pages.", pages);
-
-	uintptr_t addr = g_kernel_address_manager.allocate(length);
-	g_page_manager.map_pages(addr, pages);
-
-	return reinterpret_cast<void *>(addr);
-}
-
-
-namespace {
-	// Page-by-page initial allocator for the initial frame_block allocator
-	struct page_consumer
-	{
-		page_consumer(uintptr_t start, unsigned count, unsigned used = 0) :
-			current(start + used * frame_size),
-			used(used),
-			max(count) {}
-
-		void * get_page() {
-			kassert(used++ < max, "page_consumer ran out of pages");
-			void *retval = reinterpret_cast<void *>(current);
-			current += frame_size;
-			return retval;
-		}
-
-		void * operator()(size_t size) {
-			kassert(size == frame_size, "page_consumer used with non-page size!");
-			return get_page();
-		}
-
-		unsigned left() const { return max - used; }
-
-		uintptr_t current;
-		unsigned used, max;
-	};
-
-	using block_allocator =
-		kutil::slab_allocator<kutil::frame_block, page_consumer &>;
-	using region_allocator =
-		kutil::slab_allocator<kutil::buddy_region, page_consumer &>;
-}
+void * operator new(size_t size)           { return g_kernel_heap.allocate(size); }
+void * operator new [] (size_t size)       { return g_kernel_heap.allocate(size); }
+void operator delete (void *p) noexcept    { return g_kernel_heap.free(p); }
+void operator delete [] (void *p) noexcept { return g_kernel_heap.free(p); }
 
 enum class efi_memory_type : uint32_t
 {
@@ -107,92 +61,103 @@ struct efi_memory_descriptor
 	uint64_t flags;
 };
 
-static const efi_memory_descriptor *
-desc_incr(const efi_memory_descriptor *d, size_t desc_length)
+struct memory_map
 {
-	return reinterpret_cast<const efi_memory_descriptor *>(
-			reinterpret_cast<const uint8_t *>(d) + desc_length);
-}
+	memory_map(const void *efi_map, size_t map_length, size_t desc_length) :
+		efi_map(efi_map), map_length(map_length), desc_length(desc_length) {}
 
-void
-gather_block_lists(
-		block_allocator &allocator,
-		frame_block_list &used,
-		frame_block_list &free,
-		const void *memory_map,
-		size_t map_length,
-		size_t desc_length)
-{
-	efi_memory_descriptor const *desc = reinterpret_cast<efi_memory_descriptor const *>(memory_map);
-	efi_memory_descriptor const *end = desc_incr(desc, map_length);
+	class iterator
+	{
+	public:
+		iterator(const memory_map &map, efi_memory_descriptor const *item) :
+			map(map), item(item) {}
 
-	while (desc < end) {
-		auto *block = allocator.pop();
-		block->address = desc->physical_start;
-		block->count = desc->pages;
-		bool block_used;
-
-		switch (desc->type) {
-		case efi_memory_type::loader_code:
-		case efi_memory_type::loader_data:
-			block_used = true;
-			block->flags = frame_block_flags::pending_free;
-			break;
-
-		case efi_memory_type::boot_services_code:
-		case efi_memory_type::boot_services_data:
-		case efi_memory_type::available:
-			block_used = false;
-			break;
-
-		case efi_memory_type::acpi_reclaim:
-			block_used = true;
-			block->flags =
-				frame_block_flags::acpi_wait |
-				frame_block_flags::map_ident;
-			break;
-
-		case efi_memory_type::persistent:
-			block_used = false;
-			block->flags = frame_block_flags::nonvolatile;
-			break;
-
-		case efi_memory_type::popcorn_kernel:
-			block_used = true;
-			block->flags =
-				frame_block_flags::permanent |
-				frame_block_flags::map_kernel;
-			break;
-
-		case efi_memory_type::popcorn_data:
-		case efi_memory_type::popcorn_initrd:
-			block_used = true;
-			block->flags =
-				frame_block_flags::pending_free |
-				frame_block_flags::map_kernel;
-			break;
-
-		case efi_memory_type::popcorn_scratch:
-			block_used = true;
-			block->flags = frame_block_flags::map_offset;
-			break;
-
-		default:
-			block_used = true;
-			block->flags = frame_block_flags::permanent;
-			break;
+		inline efi_memory_descriptor const * operator*() const { return item; }
+		inline bool operator!=(const iterator &other) { return item != other.item; }
+		inline iterator & operator++() {
+			item = kutil::offset_pointer(item, map.desc_length);
+			return *this;
 		}
 
-		if (block_used) 
-			used.push_back(block);
-		else
-			free.push_back(block);
+	private:
+		const memory_map &map;
+		efi_memory_descriptor const *item;
+	};
 
-		desc = desc_incr(desc, desc_length);
+	iterator begin() const {
+		return iterator(*this, reinterpret_cast<efi_memory_descriptor const *>(efi_map));
 	}
-}
 
-void
+	iterator end() const {
+		const void *end = kutil::offset_pointer(efi_map, map_length);
+		return iterator(*this, reinterpret_cast<efi_memory_descriptor const *>(end));
+	}
+
+	const void *efi_map;
+	size_t map_length;
+	size_t desc_length;
+};
+
+class memory_bootstrap
+{
+public:
+	memory_bootstrap(const void *memory_map, size_t map_length, size_t desc_length) :
+		map(memory_map, map_length, desc_length) {}
+
+	void add_free_frames(frame_allocator &fa) {
+		for (auto *desc : map) {
+			if (desc->type == efi_memory_type::loader_code ||
+				desc->type == efi_memory_type::loader_data ||
+				desc->type == efi_memory_type::boot_services_code ||
+				desc->type == efi_memory_type::boot_services_data ||
+				desc->type == efi_memory_type::available)
+			{
+				fa.free(desc->physical_start, desc->pages);
+			}
+		}
+	}
+
+	void add_used_frames(kutil::address_manager &am) {
+		for (auto *desc : map) {
+			if (desc->type == efi_memory_type::popcorn_data ||
+				desc->type == efi_memory_type::popcorn_initrd)
+			{
+				uintptr_t virt_addr = desc->physical_start + kernel_offset;
+				am.mark(virt_addr, desc->pages * frame_size);
+			}
+			else if (desc->type == efi_memory_type::popcorn_kernel)
+			{
+				uintptr_t virt_addr = desc->physical_start + kernel_offset;
+				am.mark_permanent(virt_addr, desc->pages * frame_size);
+			}
+		}
+	}
+
+	void page_in_kernel(page_manager &pm, page_table *pml4) {
+		for (auto *desc : map) {
+			if (desc->type == efi_memory_type::popcorn_kernel ||
+				desc->type == efi_memory_type::popcorn_data ||
+				desc->type == efi_memory_type::popcorn_initrd)
+			{
+				uintptr_t virt_addr = desc->physical_start + kernel_offset;
+				pm.page_in(pml4, desc->physical_start, virt_addr, desc->pages);
+			}
+
+			if (desc->type == efi_memory_type::acpi_reclaim) {
+				pm.page_in(pml4, desc->physical_start, desc->physical_start, desc->pages);
+			}
+		}
+
+		// Put our new PML4 into CR3 to start using it
+		page_manager::set_pml4(pml4);
+		pm.m_kernel_pml4 = pml4;
+	}
+
+private:
+	const memory_map map;
+};
+
+kutil::allocator &
 memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_length, size_t desc_length)
 {
 	// make sure the options we want in CR4 are set
@@ -227,81 +192,51 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 	__sync_synchronize();
 	io_wait();
 
-	// We now have pages starting at "scratch_virt" to bootstrap ourselves. Start by
-	// taking inventory of free pages.
 	uintptr_t scratch_virt = scratch_phys + page_offset;
-	uint64_t used_pages = 2; // starts with PML4 + offset PDP
-	page_consumer allocator(scratch_virt, scratch_pages, used_pages);
+	memory_bootstrap bootstrap {memory_map, map_length, desc_length};
 
-	block_allocator block_slab(frame_size, allocator);
-	frame_block_list used;
-	frame_block_list free;
+	// Now tell the frame allocator what's free
+	frame_allocator *fa = new (&g_frame_allocator) frame_allocator;
+	bootstrap.add_free_frames(*fa);
 
-	gather_block_lists(block_slab, used, free, memory_map, map_length, desc_length);
-	block_slab.allocate(); // Make sure we have extra
+	// Build an initial address manager that we'll copy into the real
+	// address manager later (so that we can use a raw allocator now)
+	kutil::allocator &alloc = fa->raw_allocator();
+	kutil::address_manager init_am(alloc);
+	init_am.add_regions(kernel_offset, page_offset - kernel_offset);
+	bootstrap.add_used_frames(init_am);
 
-	// Now go back through these lists and consolidate
-	block_slab.append(frame_block::consolidate(free));
+	// Add the heap into the address manager
+	uintptr_t heap_start = page_offset - kernel_max_heap;
+	init_am.mark(heap_start, kernel_max_heap);
 
-	region_allocator region_slab(frame_size, allocator);
-	region_slab.allocate(); // Allocate some buddy regions for the address_manager
+	kutil::allocator *heap_alloc =
+		new (&g_kernel_heap) kutil::heap_allocator(heap_start, kernel_max_heap);
 
+	// Copy everything into the real address manager
 	kutil::address_manager *am =
-		new (&g_kernel_address_manager) kutil::address_manager(std::move(region_slab));
+		new (&g_kernel_address_manager) kutil::address_manager(
+				std::move(init_am), *heap_alloc);
 
-	am->add_regions(kernel_offset, page_offset - kernel_offset);
+	// Create the page manager
+	page_manager *pm = new (&g_page_manager) page_manager(*fa, *am);
 
-	// Finally, build an acutal set of kernel page tables that just contains
+	// Give the frame_allocator back the rest of the scratch pages
+	fa->free(scratch_phys + (3 * frame_size), scratch_pages - 3);
+
+	// Finally, build an acutal set of kernel page tables where we'll only add
 	// what the kernel actually has mapped, but making everything writable
 	// (especially the page tables themselves)
-	page_table *pml4 = reinterpret_cast<page_table *>(allocator.get_page());
+	page_table *pml4 = &tables[2];
+	pml4 = kutil::offset_pointer(pml4, page_offset);
+
 	kutil::memset(pml4, 0, sizeof(page_table));
 	pml4->entries[511] = reinterpret_cast<uintptr_t>(id_pdp) | 0x10b;
 
-	kutil::frame_allocator *fa =
-		new (&g_frame_allocator) kutil::frame_allocator(std::move(block_slab));
-	page_manager *pm = new (&g_page_manager) page_manager(*fa, *am);
+	bootstrap.page_in_kernel(*pm, pml4);
 
-	// Give the rest to the page_manager's cache for use in page_in
-	pm->free_table_pages(
-			reinterpret_cast<void *>(allocator.current),
-			allocator.left());
+	// Reclaim the old PML4
+	fa->free(scratch_phys, 1);
 
-	for (auto *block : used) {
-		uintptr_t virt_addr = 0;
-
-		switch (block->flags & frame_block_flags::map_mask) {
-			case frame_block_flags::map_ident:
-				virt_addr = block->address;
-				break;
-
-			case frame_block_flags::map_kernel:
-				virt_addr = block->address + kernel_offset;
-				if (block->flags && frame_block_flags::permanent)
-					am->mark_permanent(virt_addr, block->count * frame_size);
-				else
-					am->mark(virt_addr, block->count * frame_size);
-				break;
-
-			default:
-				break;
-		}
-
-		block->flags -= frame_block_flags::map_mask;
-		if (virt_addr)
-			pm->page_in(pml4, block->address, virt_addr, block->count);
-	}
-
-	fa->init(std::move(free), std::move(used));
-
-	// Put our new PML4 into CR3 to start using it
-	page_manager::set_pml4(pml4);
-	pm->m_kernel_pml4 = pml4;
-
-	// Give the old pml4 back to the page_manager to recycle
-	pm->free_table_pages(reinterpret_cast<void *>(scratch_virt), 1);
-
-	// Set the heap manager
-	new (&g_kernel_heap_manager) kutil::heap_manager(mm_grow_callback);
-	kutil::setup::set_heap(&g_kernel_heap_manager);
+	return *heap_alloc;
 }

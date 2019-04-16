@@ -152,6 +152,7 @@ TEST_CASE( "Sorted list tests", "[containers list]" )
 	std::uniform_int_distribution<int> gen(1, 1000);
 
 	linked_list<sortableT> slist;
+	CHECK( slist.length() == 0 );
 
 	std::vector<list_node<sortableT>> sortables(test_list_size);
 	for (auto &i : sortables) {

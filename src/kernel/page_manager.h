@@ -7,9 +7,9 @@
 
 #include "kutil/address_manager.h"
 #include "kutil/enum_bitfields.h"
-#include "kutil/frame_allocator.h"
 #include "kutil/linked_list.h"
 #include "kutil/slab_allocator.h"
+#include "frame_allocator.h"
 #include "kernel_memory.h"
 #include "page_table.h"
 
@@ -20,7 +20,7 @@ class page_manager
 {
 public:
 	page_manager(
-		kutil::frame_allocator &frames,
+		frame_allocator &frames,
 		kutil::address_manager &addrs);
 
 	/// Helper to get the number of pages needed for a given number of bytes.
@@ -44,8 +44,9 @@ public:
 	/// \arg pml4  A pointer to the PML4 table to install.
 	static inline void set_pml4(page_table *pml4)
 	{
-		uintptr_t p = reinterpret_cast<uintptr_t>(pml4) - memory::page_offset;
-		__asm__ __volatile__ ( "mov %0, %%cr3" :: "r" (p & ~0xfffull) );
+		constexpr uint64_t phys_mask = ~memory::page_offset & ~0xfffull;
+		uintptr_t p = reinterpret_cast<uintptr_t>(pml4) & phys_mask;
+		__asm__ __volatile__ ( "mov %0, %%cr3" :: "r" (p) );
 	}
 
 	/// Allocate but don't switch to a new PML4 table. This table
@@ -113,6 +114,11 @@ public:
 	/// Get a pointer to the kernel's PML4
 	inline page_table * get_kernel_pml4() { return m_kernel_pml4; }
 
+	/// Attempt to handle a page fault.
+	/// \arg addr  Address that triggered the fault
+	/// \returns   True if the fault was handled
+	bool fault_handler(uintptr_t addr);
+
 private:
 	/// Copy a physical page
 	/// \arg orig  Physical address of the page to copy
@@ -169,10 +175,10 @@ private:
 	page_table *m_kernel_pml4; ///< The PML4 of just kernel pages
 	free_page_header *m_page_cache; ///< Cache of free pages to use for tables
 
-	kutil::frame_allocator &m_frames;
+	frame_allocator &m_frames;
 	kutil::address_manager &m_addrs;
 
-	friend void memory_initialize(uint16_t, const void *, size_t, size_t);
+	friend class memory_bootstrap;
 	page_manager(const page_manager &) = delete;
 };
 
@@ -205,4 +211,8 @@ page_table_align(T p)
 
 
 /// Bootstrap the memory managers.
-void memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_length, size_t desc_length);
+kutil::allocator & memory_initialize(
+		uint16_t scratch_pages,
+		const void *memory_map,
+		size_t map_length,
+		size_t desc_length);

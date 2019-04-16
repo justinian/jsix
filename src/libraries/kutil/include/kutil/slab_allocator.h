@@ -1,6 +1,7 @@
 #pragma once
 /// \file slab_allocator.h
 /// A slab allocator and related definitions
+#include "kutil/allocator.h"
 #include "kutil/assert.h"
 #include "kutil/linked_list.h"
 #include "kutil/memory.h"
@@ -9,19 +10,17 @@ namespace kutil {
 
 
 /// A slab allocator for small structures kept in a linked list
-template <typename T, typename Alloc = void * (*)(size_t)>
+template <typename T, size_t N = memory::frame_size>
 class slab_allocator :
 	public linked_list<T>
 {
 public:
 	using item_type = list_node<T>;
-	using alloc_type = Alloc;
 
 	/// Default constructor.
 	/// \arg chunk_size The size of chunk to allocate, in bytes. 0 means default.
 	/// \arg alloc      The allocator to use to allocate chunks. Defaults to malloc().
-	slab_allocator(size_t chunk_size = 0, Alloc alloc = malloc) :
-		m_chunk_size(chunk_size),
+	slab_allocator(allocator &alloc) :
 		m_alloc(alloc)
 	{
 	}
@@ -46,18 +45,16 @@ public:
 
 	void allocate()
 	{
-		size_t size = m_chunk_size ? m_chunk_size : 10 * sizeof(item_type);
-		void *memory = m_alloc(size);
-		size_t count = size / sizeof(item_type);
+		constexpr unsigned count = N / sizeof(item_type);
 
+		void *memory = m_alloc.allocate(N);
 		item_type *items = reinterpret_cast<item_type *>(memory); 
 		for (size_t i = 0; i < count; ++i)
 			this->push_back(&items[i]);
 	}
 
 private:
-	size_t m_chunk_size;
-	Alloc m_alloc;
+	allocator& m_alloc;
 };
 
 } // namespace kutil

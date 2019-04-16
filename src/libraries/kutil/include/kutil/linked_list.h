@@ -130,6 +130,18 @@ public:
 		other.m_count = 0;
 	}
 
+	/// Assignment operator. Takes ownership of list elements.
+	/// Destructive towards current data!
+	linked_list & operator=(linked_list &&other)
+	{
+		m_head = other.m_head;
+		m_tail = other.m_tail;
+		m_count = other.m_count;
+		other.m_head = other.m_tail = nullptr;
+		other.m_count = 0;
+		return *this;
+	}
+
 	/// Check if the list is empty.
 	/// \returns  true if the list is empty
 	bool empty() const { return m_head == nullptr; }
@@ -140,7 +152,7 @@ public:
 
 	/// Count the items in the list.
 	/// \returns  The number of entries in the list.
-	size_t count_length() const
+	size_t count_length()
 	{
 		size_t len = 0;
 		for (item_type *cur = m_head; cur; cur = cur->m_next) ++len;
@@ -274,14 +286,14 @@ public:
 	{
 		if (!item) return;
 
-		if (!existing)
+		if (!existing) {
 			push_back(item);
-		else if (existing == m_head)
+		} else if (existing == m_head) {
 			push_front(item);
-		else
+		} else {
 			existing->insert_before(item);
-
-		m_count += 1;
+			m_count += 1;
+		}
 	}
 
 	/// Inserts an item into the list after another given item.
@@ -291,14 +303,14 @@ public:
 	{
 		if (!item) return;
 
-		if (!existing)
+		if (!existing) {
 			push_front(item);
-		else if (existing == m_tail)
+		} else if (existing == m_tail) {
 			push_back(item);
-		else
+		} else {
 			existing->insert_after(item);
-
-		m_count += 1;
+			m_count += 1;
+		}
 	}
 
 	/// Insert an item into the list in a sorted position. Depends on T

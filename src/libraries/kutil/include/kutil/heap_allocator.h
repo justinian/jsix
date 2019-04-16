@@ -1,36 +1,35 @@
 #pragma once
-/// \file heap_manager.h
-/// A buddy allocator and related definitions.
+/// \file heap_allocator.h
+/// A buddy allocator for a memory heap
 
 #include <stddef.h>
+#include "kutil/allocator.h"
 
 namespace kutil {
 
 
-/// Manager for allocation of heap memory.
-class heap_manager
+/// Allocator for a given heap range
+class heap_allocator :
+	public allocator
 {
 public:
-	/// Callback signature for growth function. Memory returned does not need
-	/// to be contiguous, but needs to be alined to the length requested.
-	using grow_callback = void * (*)(size_t length);
+	/// Default constructor creates a valid but empty heap.
+	heap_allocator();
 
-	/// Default constructor. Creates an invalid manager.
-	heap_manager();
-
-	/// Constructor.
-	/// \arg grow_cb  Function pointer to grow the heap size
-	heap_manager(grow_callback grow_cb);
+	/// Constructor. The given memory area must already have been reserved.
+	/// \arg start  Starting address of the heap
+	/// \arg size   Size of the heap in bytes
+	heap_allocator(uintptr_t start, size_t size);
 
 	/// Allocate memory from the area managed.
 	/// \arg length  The amount of memory to allocate, in bytes
 	/// \returns     A pointer to the allocated memory, or nullptr if
 	///              allocation failed.
-	void * allocate(size_t length);
+	virtual void * allocate(size_t length) override;
 
 	/// Free a previous allocation.
 	/// \arg p  A pointer previously retuned by allocate()
-	void free(void *p);
+	virtual void free(void *p) override;
 
 	/// Minimum block size is (2^min_size). Must be at least 6.
 	static const unsigned min_size = 6;
@@ -40,9 +39,6 @@ public:
 
 protected:
 	class mem_header;
-
-	/// Expand the size of memory
-	void grow_memory();
 
 	/// Ensure there is a block of a given size, recursively splitting
 	/// \arg size   Size category of the block we want
@@ -58,11 +54,11 @@ protected:
 	/// \returns    A detached block of the given size
 	mem_header * pop_free(unsigned size);
 
+	uintptr_t m_next;
+	size_t m_size;
 	mem_header *m_free[max_size - min_size + 1];
 
-	grow_callback m_grow;
-
-	heap_manager(const heap_manager &) = delete;
+	heap_allocator(const heap_allocator &) = delete;
 };
 
 } // namespace kutil

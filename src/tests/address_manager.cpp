@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "kutil/address_manager.h"
+#include "kutil/allocator.h"
 #include "catch.hpp"
 
 using namespace kutil;
@@ -14,9 +15,18 @@ static const size_t max_block = 1ull << 36;
 static const size_t start = max_block;
 static const size_t GB = 1ull << 30;
 
+class malloc_allocator :
+	public kutil::allocator
+{
+public:
+	virtual void * allocate(size_t n) override { return malloc(n); }
+	virtual void free(void *p) override { free(p); }
+};
+
 TEST_CASE( "Buddy addresses tests", "[address buddy]" )
 {
-	address_manager am;
+	malloc_allocator alloc;
+	address_manager am(alloc);
 	am.add_regions(start, max_block * 2);
 
 	// Blocks should be:

@@ -1,3 +1,4 @@
+#include "kutil/heap_allocator.h"
 #include "cpu.h"
 #include "debug.h"
 #include "log.h"
@@ -5,7 +6,7 @@
 #include "scheduler.h"
 
 extern "C" void task_fork_return_thunk();
-
+extern kutil::heap_allocator g_kernel_heap; // TODO: this is a bad hack to get access to the heap
 
 void
 process::exit(uint32_t code)
@@ -67,7 +68,7 @@ process::setup_kernel_stack()
 	constexpr unsigned null_frame_entries = 2;
 	constexpr size_t null_frame_size = null_frame_entries * sizeof(uint64_t);
 
-	void *stack_bottom = kutil::malloc(initial_stack_size);
+	void *stack_bottom = g_kernel_heap.allocate(initial_stack_size);
 	kutil::memset(stack_bottom, 0, initial_stack_size);
 
 	log::debug(logs::memory, "Created kernel stack at %016lx size 0x%lx",

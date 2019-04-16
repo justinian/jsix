@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <utility>
+#include "kutil/allocator.h"
 #include "kutil/memory.h"
 
 namespace kutil {
@@ -14,18 +15,20 @@ class vector
 {
 public:
 	/// Default constructor. Creates an empty vector with no capacity.
-	vector() :
+	vector(kutil::allocator &alloc = allocator::invalid) :
 		m_size(0),
 		m_capacity(0),
-		m_elements(nullptr)
+		m_elements(nullptr),
+		m_alloc(alloc)
 	{}
 
 	/// Constructor. Creates an empty array with capacity.
 	/// \arg capacity  Initial capacity to allocate
-	vector(size_t capacity) :
+	vector(size_t capacity, allocator &alloc) :
 		m_size(0),
 		m_capacity(0),
-		m_elements(nullptr)
+		m_elements(nullptr),
+		m_alloc(alloc)
 	{
 		set_capacity(capacity);
 	}
@@ -34,7 +37,8 @@ public:
 	vector(const vector& other) :
 		m_size(0),
 		m_capacity(0),
-		m_elements(nullptr)
+		m_elements(nullptr),
+		m_alloc(other.m_alloc)
 	{
 		set_capacity(other.m_capacity);
 		kutil::memcpy(m_elements, other.m_elements, other.m_size * sizeof(T));
@@ -45,7 +49,8 @@ public:
 	vector(vector&& other) :
 		m_size(other.m_size),
 		m_capacity(other.m_capacity),
-		m_elements(other.m_elements)
+		m_elements(other.m_elements),
+		m_alloc(other.m_alloc)
 	{
 		other.m_size = 0;
 		other.m_capacity = 0;
@@ -142,7 +147,7 @@ public:
 	/// \arg capacity  Number of elements to allocate
 	void set_capacity(size_t capacity)
 	{
-		T *new_array = reinterpret_cast<T *>(malloc(capacity * sizeof(T)));
+		T *new_array = m_alloc.allocate<T>(capacity);
 		size_t size = std::min(capacity, m_size);
 
 		kutil::memcpy(new_array, m_elements, size * sizeof(T));
@@ -151,7 +156,7 @@ public:
 		m_size = size;
 		m_capacity = capacity;
 
-		delete [] m_elements;
+		m_alloc.free(m_elements);
 		m_elements = new_array;
 	}
 
@@ -159,6 +164,7 @@ private:
 	size_t m_size;
 	size_t m_capacity;
 	T *m_elements;
+	allocator &m_alloc;
 };
 
 } // namespace kutil

@@ -16,7 +16,7 @@
 
 using memory::initial_stack;
 
-scheduler scheduler::s_instance(nullptr);
+scheduler scheduler::s_instance(nullptr, kutil::allocator::invalid);
 
 const uint64_t rflags_noint = 0x002;
 const uint64_t rflags_int = 0x202;
@@ -28,9 +28,10 @@ extern "C" {
 
 extern uint64_t idle_stack_end;
 
-scheduler::scheduler(lapic *apic) :
+scheduler::scheduler(lapic *apic, kutil::allocator &alloc) :
 	m_apic(apic),
-	m_next_pid(1)
+	m_next_pid(1),
+	m_process_allocator(alloc)
 {
 	auto *idle = m_process_allocator.pop();
 	uint8_t last_pri = num_priorities - 1;

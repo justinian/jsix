@@ -9,15 +9,6 @@ void * operator new (size_t, void *p) noexcept;
 
 namespace kutil {
 
-/// Allocate memory.
-/// \arg n   The number of bytes to allocate
-/// \returns The allocated memory
-void * malloc(size_t n);
-
-/// Free memory allocated by malloc().
-/// \arg p   A pointer previously returned by malloc()
-void free(void *p);
-
 /// Fill memory with the given value.
 /// \arg p   The beginning of the memory area to fill
 /// \arg v   The byte value to fill memory with
@@ -67,14 +58,4 @@ inline T* mask_pointer(T *p, uintptr_t mask)
 /// \arg off  An optional offset into the region
 uint8_t checksum(const void *p, size_t len, size_t off = 0);
 
-
-class heap_manager;
-
-namespace setup {
-
-/// Set the heap that malloc() / free() will use.
-/// \arg mm  The heap manager for the heap to use.
-void set_heap(heap_manager *mm);
-
-} // namespace kutil::setup
 } // namespace kutil

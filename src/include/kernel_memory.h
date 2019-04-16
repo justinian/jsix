@@ -22,6 +22,9 @@ namespace memory {
 	/// Initial process thread's stack size, in pages
 	static const unsigned initial_stack_pages = 1;
 
+	/// Max size of the kernel heap
+	static const size_t kernel_max_heap = 0x800000000; // 32GiB
+
 	/// Helper to determine if a physical address can be accessed
 	/// through the page_offset area.
 	inline bool page_mappable(uintptr_t a) { return (a & page_offset) == 0; }

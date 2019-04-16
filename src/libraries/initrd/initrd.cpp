@@ -23,7 +23,8 @@ file::executable() const {
 }
 
 
-disk::disk(const void *start)
+disk::disk(const void *start, kutil::allocator &alloc) :
+	m_files(alloc)
 {
 	auto *header = reinterpret_cast<const disk_header *>(start);
 	size_t length = header->length;

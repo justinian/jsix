@@ -3,6 +3,7 @@
 /// Helper base class for buddy allocators with external node storage.
 
 #include <stdint.h>
+#include <utility>
 #include "kutil/assert.h"
 #include "kutil/linked_list.h"
 #include "kutil/slab_allocator.h"
@@ -25,15 +26,21 @@ public:
 	static const size_t min_alloc = (1 << size_min);
 	static const size_t max_alloc = (1 << size_max);
 
-	/// Constructor.
-	buddy_allocator() {}
+	/// Default constructor creates an invalid object.
+	buddy_allocator() : m_alloc(allocator::invalid) {}
 
-	/// Constructor with an initial cache of region structs from bootstrapped
-	/// memory.
-	/// \arg cache  List of pre-allocated ununused region_type structures
-	buddy_allocator(region_list cache)
+	/// Constructor.
+	/// \arg alloc  Allocator to use for region nodes
+	buddy_allocator(allocator &alloc) : m_alloc(alloc) {}
+
+	/// Move-like constructor. Takes ownership of existing regions.
+	buddy_allocator(buddy_allocator &&other, allocator &alloc) :
+		m_alloc(alloc)
 	{
-		m_alloc.append(cache);
+		for (unsigned i = 0; i < buckets; ++i) {
+			m_free[i] = std::move(other.m_free[i]);
+			m_used[i] = std::move(other.m_used[i]);
+		}
 	}
 
 	/// Add address space to be managed.
@@ -173,6 +180,23 @@ public:
 		}
 	}
 
+	/// Check if an allocation exists
+	/// \arg addr  Address within the managed space
+	/// \returns   True if the address is in a region currently allocated
+	bool contains(uintptr_t addr)
+	{
+		for (unsigned i = size_max; i >= size_min; --i) {
+			for (auto *r : used_bucket(i)) {
+				if (r->contains(addr))
+					return true;
+				else if (r->address < addr)
+					break;
+			}
+		}
+
+		return false;
+	}
+
 protected:
 	/// Split a region of the given size into two smaller regions, returning
 	/// the new latter half
@@ -266,6 +290,8 @@ struct buddy_region
 
 	inline uintptr_t end() const { return address + (1ull << size); }
 	inline uintptr_t half() const { return address + (1ull << (size - 1)); }
+	inline bool contains(uintptr_t p) const { return p >= address && p < end(); }
+
 	inline uintptr_t buddy() const { return address ^ (1ull << size); }
 	inline bool elder() const { return address < buddy(); }
 

@@ -15,7 +15,6 @@
 #include "log.h"
 #include "page_manager.h"
 #include "scheduler.h"
-#include "screen.h"
 #include "serial.h"
 #include "syscall.h"
 
@@ -51,7 +50,7 @@ kernel_main(kernel_args *header)
 	gdt_init();
 	interrupts_init();
 
-	memory_initialize(
+	kutil::allocator &heap = memory_initialize(
 			header->scratch_pages,
 			header->memory_map,
 			header->memory_map_length,
@@ -72,7 +71,7 @@ kernel_main(kernel_args *header)
 	log::debug(logs::boot, "ACPI root table is at: %016lx", header->acpi_table);
 	log::debug(logs::boot, "Runtime service is at: %016lx", header->runtime);
 
-	initrd::disk ird(header->initrd);
+	initrd::disk ird(header->initrd, heap);
 	log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());
 	for (auto &f : ird.files())
 		log::info(logs::boot, "  %s%s (%d bytes).", f.executable() ? "*" : "", f.name(), f.size());
@@ -83,7 +82,7 @@ kernel_main(kernel_args *header)
 	*/
 
 	device_manager *devices =
-		new (&device_manager::get()) device_manager(header->acpi_table);
+		new (&device_manager::get()) device_manager(header->acpi_table, heap);
 
 	interrupts_enable();
 
@@ -130,7 +129,7 @@ kernel_main(kernel_args *header)
 	devices->get_lapic()->calibrate_timer();
 
 	syscall_enable();
-	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic());
+	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic(), heap);
 
 	sched->create_kernel_task(-1, logger_task);
 
