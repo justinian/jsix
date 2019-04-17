@@ -110,7 +110,7 @@ void fatal(area_t area, const char *fmt, ...);
 } // namespace log
 
 namespace logs {
-#define LOG(name, lvl) extern log::area_t name;
+#define LOG(name, lvl) extern const log::area_t name;
 #include "log_areas.inc"
 #undef LOG
 } // namespace logs

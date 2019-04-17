@@ -29,7 +29,7 @@ public:
 	/// \returns  An allocated element
 	inline item_type * pop()
 	{
-		if (this->empty()) allocate();
+		if (this->empty()) this->allocate();
 		kassert(!this->empty(), "Slab allocator is empty after allocate()");
 		item_type *item = this->pop_front();
 		kutil::memset(item, 0, sizeof(item_type));

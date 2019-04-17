@@ -7,7 +7,7 @@
 namespace kutil {
 namespace logs {
 #define LOG(name, lvl) \
-	log::area_t name = #name ## _h; \
+	const log::area_t name = #name ## _h; \
 	const char * name ## _name = #name;
 #include "log_areas.inc"
 #undef LOG
@@ -19,7 +19,7 @@ using kutil::memset;
 using kutil::memcpy;
 
 logger *logger::s_log = nullptr;
-const char *logger::s_level_names[] = {"", "debug", " info", " warn", "error", "fatal"};
+const char *logger::s_level_names[] = {"", "debug", "info", "warn", "error", "fatal"};
 
 logger::logger() :
 	m_buffer(nullptr, 0),

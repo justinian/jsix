@@ -48,7 +48,7 @@ interrupts_disable:
 section .bss
 align 0x100
 idle_stack_begin:
-	resb 0x1000 ; 4KiB stack space
+	resb 0x4000 ; 16KiB stack space
 
 global idle_stack_end
 idle_stack_end:
