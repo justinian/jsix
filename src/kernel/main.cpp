@@ -78,6 +78,7 @@ kernel_main(kernel_args *header)
 			memory::page_offset - memory::kernel_offset,
 			heap);
 	k_space.reserve(0xffffff0000100000, 0x100000);
+	k_space.reserve(0xffffff0000200000, 0x100000);
 
 	initrd::disk ird(header->initrd, heap);
 	log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());

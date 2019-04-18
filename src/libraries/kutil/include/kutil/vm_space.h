@@ -66,8 +66,10 @@ private:
 	using tree_type = kutil::avl_tree<vm_range>;
 
 	node_type * split_out(node_type* node, uintptr_t start, size_t size, vm_state state);
+	node_type * consolidate(node_type* needle);
 
-	slab_allocator<node_type> m_alloc;
+	slab_allocator<node_type> m_slab;
+	allocator &m_alloc;
 	tree_type m_ranges;
 };
 

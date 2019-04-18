@@ -150,6 +150,64 @@ private:
 		return existing;
 	}
 
+	static node_type * remove(node_type *existing, node_type *subtrahend, allocator &alloc)
+	{
+		if (existing == nullptr)
+			return existing;
+
+		if (existing == subtrahend) {
+			if (!existing->m_left || !existing->m_right) {
+				// At least one child is null
+				node_type *temp = existing->m_left ?
+					existing->m_left : existing->m_right;
+
+				if (temp == nullptr) {
+					// Both were null
+					temp = existing;
+					existing = nullptr;
+				} else {
+					*existing = *temp;
+				}
+
+				alloc.free(temp);
+			} else {
+				// Both children exist, find next node
+				node_type *temp = existing->m_right;
+				while (temp->m_left)
+					temp = temp->m_left;
+
+				*existing = *temp;
+				existing->m_right = remove(existing->m_right, temp, alloc);
+			}
+		} else if (existing->compare(subtrahend) < 0) {
+			existing->m_left = remove(existing->m_left, subtrahend, alloc);
+		} else {
+			existing->m_right = remove(existing->m_right, subtrahend, alloc);
+		}
+
+		if (!existing)
+			return nullptr;
+
+		int balance = existing->update_height();
+		if (balance > 1) {
+			int left_balance = existing->m_left->update_height();
+
+			if (left_balance < 0)
+				existing->m_left = rotate_left(existing->m_left);
+
+			return rotate_right(existing);
+		} else if (balance < -1) {
+			int right_balance = existing->m_right->update_height();
+
+			if (right_balance > 0)
+				existing->m_right = rotate_right(existing->m_right);
+
+			return rotate_left(existing);
+		}
+
+		return existing;
+	}
+
 	int m_height;
 	node_type *m_left;
 	node_type *m_right;
@@ -162,10 +220,21 @@ public:
 	using item_type = T;
 	using node_type = avl_node<T>;
 
-	inline void insert(node_type *addend) { m_root = node_type::insert(m_root, addend); }
 	inline node_type * root() { return m_root; }
+	inline unsigned count() const { return m_count; }
+
+	inline void remove(node_type *subtrahend, allocator &alloc) {
+		m_root = node_type::remove(m_root, subtrahend, alloc);
+		m_count--;
+	}
+
+	inline void insert(node_type *addend) {
+		m_root = node_type::insert(m_root, addend);
+		m_count++;
+	}
 
 private:
+	unsigned m_count {0};
 	node_type *m_root;
 };
 
