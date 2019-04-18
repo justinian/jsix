@@ -3,6 +3,7 @@
 
 #include "initrd/initrd.h"
 #include "kutil/assert.h"
+#include "kutil/vm_space.h"
 #include "apic.h"
 #include "block_device.h"
 #include "console.h"
@@ -12,6 +13,7 @@
 #include "interrupts.h"
 #include "io.h"
 #include "kernel_args.h"
+#include "kernel_memory.h"
 #include "log.h"
 #include "page_manager.h"
 #include "scheduler.h"
@@ -70,6 +72,12 @@ kernel_main(kernel_args *header)
 	log::debug(logs::boot, "     Memory map is at: %016lx", header->memory_map);
 	log::debug(logs::boot, "ACPI root table is at: %016lx", header->acpi_table);
 	log::debug(logs::boot, "Runtime service is at: %016lx", header->runtime);
+
+	kutil::vm_space k_space(
+			memory::kernel_offset,
+			memory::page_offset - memory::kernel_offset,
+			heap);
+	k_space.reserve(0xffffff0000100000, 0x100000);
 
 	initrd::disk ird(header->initrd, heap);
 	log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());

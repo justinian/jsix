@@ -106,6 +106,7 @@ modules:
             - src/libraries/kutil/logger.cpp
             - src/libraries/kutil/memory.cpp
             - src/libraries/kutil/printf.c
+            - src/libraries/kutil/vm_space.cpp
 
     makerd:
         kind: exe
