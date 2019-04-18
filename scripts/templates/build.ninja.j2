@@ -4,7 +4,8 @@
 {{ super() }}
 ccflags = $ccflags $
     -I${srcroot}/src/include $
-    -I${srcroot}/src/include/x86_64 
+    -I${srcroot}/src/include/x86_64 $
+    -fcolor-diagnostics
 {% endblock %}
 
 {% block baserules %}
