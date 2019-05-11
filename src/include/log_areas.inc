@@ -5,5 +5,6 @@ LOG(driver, info);
 LOG(memory, info);
 LOG(fs,     info);
 LOG(task,   info);
-LOG(boot,   info);
-LOG(syscall,info);
+LOG(boot,   debug);
+LOG(syscall,debug);
+LOG(vmem,   debug);
