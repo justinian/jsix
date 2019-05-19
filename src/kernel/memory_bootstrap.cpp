@@ -1,22 +1,26 @@
 #include <algorithm>
 #include <utility>
-#include "kutil/address_manager.h"
+
 #include "kutil/assert.h"
 #include "kutil/heap_allocator.h"
+#include "kutil/vm_space.h"
+
 #include "frame_allocator.h"
 #include "io.h"
 #include "log.h"
 #include "page_manager.h"
 
 using memory::frame_size;
+using memory::heap_start;
 using memory::kernel_max_heap;
 using memory::kernel_offset;
 using memory::page_offset;
 
 static const unsigned ident_page_flags = 0xb;
 
-kutil::address_manager g_kernel_address_manager;
+kutil::vm_space g_kspace;
 kutil::heap_allocator g_kernel_heap;
+bool g_memory_initialized = false;
 
 void * operator new(size_t size)           { return g_kernel_heap.allocate(size); }
 void * operator new [] (size_t size)       { return g_kernel_heap.allocate(size); }
@@ -117,18 +121,14 @@ public:
 		}
 	}
 
-	void add_used_frames(kutil::address_manager &am) {
+	void add_used_frames(kutil::vm_space &vm) {
 		for (auto *desc : map) {
 			if (desc->type == efi_memory_type::popcorn_data ||
-				desc->type == efi_memory_type::popcorn_initrd)
+				desc->type == efi_memory_type::popcorn_initrd ||
+				desc->type == efi_memory_type::popcorn_kernel)
 			{
 				uintptr_t virt_addr = desc->physical_start + kernel_offset;
-				am.mark(virt_addr, desc->pages * frame_size);
-			}
-			else if (desc->type == efi_memory_type::popcorn_kernel)
-			{
-				uintptr_t virt_addr = desc->physical_start + kernel_offset;
-				am.mark_permanent(virt_addr, desc->pages * frame_size);
+				vm.commit(virt_addr, desc->pages * frame_size);
 			}
 		}
 	}
@@ -157,9 +157,11 @@ private:
 	const memory_map map;
 };
 
-kutil::allocator &
+void
 memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_length, size_t desc_length)
 {
+	g_memory_initialized = false;
+
 	// make sure the options we want in CR4 are set
 	uint64_t cr4;
 	__asm__ __volatile__ ( "mov %%cr4, %0" : "=r" (cr4) );
@@ -199,27 +201,12 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 	frame_allocator *fa = new (&g_frame_allocator) frame_allocator;
 	bootstrap.add_free_frames(*fa);
 
-	// Build an initial address manager that we'll copy into the real
-	// address manager later (so that we can use a raw allocator now)
-	kutil::allocator &alloc = fa->raw_allocator();
-	kutil::address_manager init_am(alloc);
-	init_am.add_regions(kernel_offset, page_offset - kernel_offset);
-	bootstrap.add_used_frames(init_am);
-
-	// Add the heap into the address manager
-	uintptr_t heap_start = page_offset - kernel_max_heap;
-	init_am.mark(heap_start, kernel_max_heap);
-
-	kutil::allocator *heap_alloc =
-		new (&g_kernel_heap) kutil::heap_allocator(heap_start, kernel_max_heap);
-
-	// Copy everything into the real address manager
-	kutil::address_manager *am =
-		new (&g_kernel_address_manager) kutil::address_manager(
-				std::move(init_am), *heap_alloc);
+	new (&g_kernel_heap) kutil::heap_allocator(heap_start, kernel_max_heap);
+	new (&g_kspace) kutil::vm_space(kernel_offset, (page_offset-kernel_offset), g_kernel_heap);
+	bootstrap.add_used_frames(g_kspace);
 
 	// Create the page manager
-	page_manager *pm = new (&g_page_manager) page_manager(*fa, *am);
+	page_manager *pm = new (&g_page_manager) page_manager(*fa);
 
 	// Give the frame_allocator back the rest of the scratch pages
 	fa->free(scratch_phys + (3 * frame_size), scratch_pages - 3);
@@ -237,6 +224,4 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 
 	// Reclaim the old PML4
 	fa->free(scratch_phys, 1);
-
-	return *heap_alloc;
 }

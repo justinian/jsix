@@ -1,21 +1,21 @@
 #include <algorithm>
 
 #include "kutil/assert.h"
+#include "kutil/vm_space.h"
 #include "console.h"
 #include "io.h"
 #include "log.h"
 #include "page_manager.h"
 
 using memory::frame_size;
+using memory::heap_start;
+using memory::kernel_max_heap;
 using memory::kernel_offset;
 using memory::page_offset;
 using memory::page_mappable;
 
-extern kutil::address_manager g_kernel_address_manager;
-page_manager g_page_manager(
-	g_frame_allocator,
-	g_kernel_address_manager);
-
+page_manager g_page_manager(g_frame_allocator);
+extern kutil::vm_space g_kspace;
 
 static uintptr_t
 pt_to_phys(page_table *pt)
@@ -38,12 +38,10 @@ struct free_page_header
 };
 
 
-page_manager::page_manager(
-		frame_allocator &frames,
-		kutil::address_manager &addrs) :
+page_manager::page_manager(frame_allocator &frames) :
 	m_page_cache(nullptr),
 	m_frames(frames),
-	m_addrs(addrs)
+	m_memory_initialized(false)
 {
 }
 
@@ -72,51 +70,17 @@ page_manager::copy_page(uintptr_t orig)
 	bool paged_orig = false;
 	bool paged_copy = false;
 
-	uintptr_t orig_virt;
-
-	if (page_mappable(orig)) {
-		orig_virt = orig + page_offset;
-	} else {
-		orig_virt = m_addrs.allocate(frame_size);
-		page_in(get_pml4(), orig, orig_virt, 1);
-		paged_orig = true;
-	}
-
 	uintptr_t copy = 0;
-	uintptr_t copy_virt;
 	size_t n = m_frames.allocate(1, &copy);
 	kassert(n, "copy_page could not allocate page");
 
-	if (page_mappable(copy)) {
-		copy_virt = copy + page_offset;
-	} else {
-		copy_virt = m_addrs.allocate(frame_size);
-		page_in(get_pml4(), copy, copy_virt, 1);
-		paged_copy = true;
-	}
-
-	// TODO: multiple page copies at a time, so that we don't have to keep
-	// paying this mapping penalty
-	if (paged_orig || paged_copy) {
-		set_pml4(get_pml4());
-		__sync_synchronize();
-		io_wait();
-	}
+	uintptr_t orig_virt = orig + page_offset;
+	uintptr_t copy_virt = copy + page_offset;
 
 	kutil::memcpy(
 			reinterpret_cast<void *>(copy_virt),
 			reinterpret_cast<void *>(orig_virt),
 			frame_size);
-
-	if (paged_orig) {
-		page_out(get_pml4(), orig_virt, 1);
-		m_addrs.free(orig_virt);
-	}
-
-	if (paged_copy) {
-		page_out(get_pml4(), copy_virt, 1);
-		m_addrs.free(copy_virt);
-	}
 
 	return copy;
 }
@@ -246,10 +210,7 @@ page_manager::free_table_pages(void *pages, size_t count)
 void *
 page_manager::map_pages(uintptr_t address, size_t count, bool user, page_table *pml4)
 {
-	if (!address) {
-		kassert(!user, "Cannot call map_pages with 0 address for user mapping");
-		address = m_addrs.allocate(count * frame_size);
-	}
+	kassert(address, "Cannot call map_pages with 0 address");
 
 	void *ret = reinterpret_cast<void *>(address);
 	if (!pml4) pml4 = get_pml4();
@@ -346,19 +307,21 @@ page_manager::unmap_pages(void* address, size_t count, page_table *pml4)
 	uintptr_t iaddr = reinterpret_cast<uintptr_t>(address);
 
 	page_out(pml4, iaddr, count, true);
-	if (iaddr >= kernel_offset) {
-		// TODO
-		// m_addrs.free(address, count);
-	}
 }
 
 bool
 page_manager::fault_handler(uintptr_t addr)
 {
-	if (!m_addrs.contains(addr))
+	if (!addr)
+		return false;
+
+	if (m_memory_initialized &&
+		g_kspace.get(addr) != kutil::vm_state::committed)
 		return false;
 
 	uintptr_t page = addr & ~0xfffull;
+	log::debug(logs::memory, "PF: attempting to page in %016lx for %016lx", page, addr);
+
 	bool user = addr < kernel_offset;
 	map_pages(page, 1, user);
 

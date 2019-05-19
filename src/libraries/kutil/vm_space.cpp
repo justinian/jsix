@@ -22,6 +22,12 @@ vm_space::vm_space(uintptr_t start, size_t size, allocator &alloc) :
 			start, start+size);
 }
 
+vm_space::vm_space() :
+	m_slab(allocator::invalid),
+	m_alloc(allocator::invalid)
+{
+}
+
 inline static bool
 overlaps(node_type *node, uintptr_t start, size_t size)
 {

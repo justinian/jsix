@@ -3,6 +3,7 @@
 
 #include "initrd/initrd.h"
 #include "kutil/assert.h"
+#include "kutil/heap_allocator.h"
 #include "kutil/vm_space.h"
 #include "apic.h"
 #include "block_device.h"
@@ -26,6 +27,8 @@ extern "C" {
 }
 
 extern void __kernel_assert(const char *, unsigned, const char *);
+
+extern kutil::heap_allocator g_kernel_heap;
 
 void
 init_console()
@@ -52,11 +55,13 @@ kernel_main(kernel_args *header)
 	gdt_init();
 	interrupts_init();
 
-	kutil::allocator &heap = memory_initialize(
+	memory_initialize(
 			header->scratch_pages,
 			header->memory_map,
 			header->memory_map_length,
 			header->memory_map_desc_size);
+
+	kutil::allocator &heap = g_kernel_heap;
 
 	if (header->frame_buffer && header->frame_buffer_length) {
 		page_manager::get()->map_offset_pointer(
@@ -72,13 +77,6 @@ kernel_main(kernel_args *header)
 	log::debug(logs::boot, "     Memory map is at: %016lx", header->memory_map);
 	log::debug(logs::boot, "ACPI root table is at: %016lx", header->acpi_table);
 	log::debug(logs::boot, "Runtime service is at: %016lx", header->runtime);
-
-	kutil::vm_space k_space(
-			memory::kernel_offset,
-			memory::page_offset - memory::kernel_offset,
-			heap);
-	k_space.reserve(0xffffff0000100000, 0x100000);
-	k_space.reserve(0xffffff0000200000, 0x100000);
 
 	initrd::disk ird(header->initrd, heap);
 	log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());

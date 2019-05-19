@@ -29,9 +29,17 @@ struct vm_range
 	}
 };
 
+/// Tracks a region of virtual memory address space
 class vm_space
 {
 public:
+	/// Default constructor. Define an empty range.
+	vm_space();
+
+	/// Constructor. Define a range of managed VM space.
+	/// \arg start       Starting address of the managed space
+	/// \arg size        Size of the managed space, in bytes
+	/// \arg alloc       Allocator to use for tracking objects
 	vm_space(uintptr_t start, size_t size, kutil::allocator &alloc);
 
 	/// Reserve a section of address space.

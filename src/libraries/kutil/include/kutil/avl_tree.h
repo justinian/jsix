@@ -2,6 +2,7 @@
 /// \file avl_tree.h
 /// Templated container class for an AVL tree
 
+#include <algorithm>
 #include <stdint.h>
 #include "kutil/assert.h"
 
@@ -220,6 +221,14 @@ public:
 	using item_type = T;
 	using node_type = avl_node<T>;
 
+	avl_tree() = default;
+	avl_tree(avl_tree &&other) :
+		m_count(other.m_count), m_root(other.m_root)
+	{
+		other.m_root = nullptr;
+		other.m_count = 0;
+	}
+
 	inline node_type * root() { return m_root; }
 	inline unsigned count() const { return m_count; }
 
@@ -235,7 +244,7 @@ public:
 
 private:
 	unsigned m_count {0};
-	node_type *m_root;
+	node_type *m_root {nullptr};
 };
 
 } // namespace kutil

@@ -5,10 +5,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "kutil/address_manager.h"
 #include "kutil/enum_bitfields.h"
 #include "kutil/linked_list.h"
-#include "kutil/slab_allocator.h"
+#include "kutil/memory.h"
 #include "frame_allocator.h"
 #include "kernel_memory.h"
 #include "page_table.h"
@@ -19,9 +18,9 @@ struct free_page_header;
 class page_manager
 {
 public:
-	page_manager(
-		frame_allocator &frames,
-		kutil::address_manager &addrs);
+	/// Constructor.
+	/// \arg frames  The frame allocator to get physical frames from
+	page_manager(frame_allocator &frames);
 
 	/// Helper to get the number of pages needed for a given number of bytes.
 	/// \arg bytes  The number of bytes desired
@@ -67,8 +66,7 @@ public:
 			page_table_indices index = {});
 
 	/// Allocate and map pages into virtual memory.
-	/// \arg address  The virtual address at which to map the pages, or zero
-	///               for any free kernel space.
+	/// \arg address  The virtual address at which to map the pages
 	/// \arg count    The number of pages to map
 	/// \arg user     True is this memory is user-accessible
 	/// \arg pml4     The pml4 to map into - null for the current one
@@ -176,7 +174,8 @@ private:
 	free_page_header *m_page_cache; ///< Cache of free pages to use for tables
 
 	frame_allocator &m_frames;
-	kutil::address_manager &m_addrs;
+
+	bool m_memory_initialized;
 
 	friend class memory_bootstrap;
 	page_manager(const page_manager &) = delete;
@@ -211,7 +210,7 @@ page_table_align(T p)
 
 
 /// Bootstrap the memory managers.
-kutil::allocator & memory_initialize(
+void memory_initialize(
 		uint16_t scratch_pages,
 		const void *memory_map,
 		size_t map_length,
