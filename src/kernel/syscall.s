@@ -34,12 +34,16 @@ syscall_handler_prelude:
 	cmp rax, MAX_SYSCALLS
 	jle .ok_syscall
 
+.bad_syscall:
 	mov rdi, rax
 	call syscall_invalid
 
 .ok_syscall:
 	lea r11, [rel syscall_registry]
 	mov r11, [r11 + rax * 8]
+	cmp r11, 0
+	je .bad_syscall
+
 	call r11
 
 	inc qword [rel __counter_syscall_sysret]

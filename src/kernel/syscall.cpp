@@ -145,15 +145,14 @@ syscall_enable()
 	static constexpr unsigned num_calls =
 		static_cast<unsigned>(syscall::MAX);
 
-	for (unsigned i = 0; i < num_calls; ++i) {
-		syscall_registry[i] = reinterpret_cast<uintptr_t>(syscall_invalid);
-		syscall_names[i] = nullptr;
-	}
+	kutil::memset(&syscall_registry, 0, sizeof(syscall_registry));
+	kutil::memset(&syscall_names, 0, sizeof(syscall_names));
 
 #define SYSCALL(id, name, result, ...) \
 	syscall_registry[id] = reinterpret_cast<uintptr_t>(syscalls::name); \
 	syscall_names[id] = #name; \
-	static_assert( id <= num_calls, "Syscall " #name " has id > syscall::MAX" );
+	static_assert( id <= num_calls, "Syscall " #name " has id > syscall::MAX" ); \
+	log::debug(logs::syscall, "Enabling syscall 0x%02x as " #name , id);
 #include "syscalls.inc"
 #undef SYSCALL
 }
