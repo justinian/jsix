@@ -39,6 +39,12 @@ if [[ -n $TMUX ]]; then
 	else
 		tmux split-window -l 10 "sleep 1; telnet localhost 45454" &
 	fi
+elif [[ $DESKTOP_SESSION = "i3" ]]; then
+	if [[ -n $debug ]]; then
+		i3-msg exec i3-sensible-terminal -- -e "gdb ${PWD}/${build}/popcorn.elf" &
+	else
+		i3-msg exec i3-sensible-terminal -- -e 'telnet localhost 45454' &
+	fi
 fi
 
 exec qemu-system-x86_64 \
