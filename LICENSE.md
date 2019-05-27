@@ -1,8 +1,8 @@
-# Popcorn
+# jsix
 
-Popcorn itself is released under the terms of the MIT license:
+jsix itself is released under the terms of the MIT license:
 
-> Copyright © 2018 Justin C. Miller, https://devjustinian.com
+> Copyright (c) 2018 Justin C. Miller, https://devjustinian.com
 > <justin@devjustinian.com>
 > 
 > Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,11 +25,11 @@ Popcorn itself is released under the terms of the MIT license:
 
 # Included works
 
-Popcorn includes and/or is derived from a number of other works, listed here.
+jsix includes and/or is derived from a number of other works, listed here.
 
 ## Catch2
 
-Popcorn uses [Catch2](https://github.com/catchorg/Catch2) for testing. Catch2 is
+jsix uses [Catch2](https://github.com/catchorg/Catch2) for testing. Catch2 is
 released under the terms of the Boost Software license:
 
 > Boost Software License - Version 1.0 - August 17th, 2003
@@ -58,7 +58,7 @@ released under the terms of the Boost Software license:
 
 ## cpptoml
 
-Popcorn uses the [cpptoml](https://github.com/skystrife/cpptoml) library for
+jsix uses the [cpptoml](https://github.com/skystrife/cpptoml) library for
 parsing TOML configuration files. cpptoml is released under the terms of the
 MIT license:
 
@@ -83,8 +83,9 @@ MIT license:
 
 ## printf
 
-Popcorn uses 's tiny [printf](https://github.com/mpaland/printf) library for its
-`*printf()` functions, which is also released under the terms of the MIT license:
+jsix uses Marco Paland's tiny [printf](https://github.com/mpaland/printf)
+library for its `*printf()` functions, which is also released under the terms
+of the MIT license:
 
 > The MIT License (MIT)
 >
@@ -110,14 +111,14 @@ Popcorn uses 's tiny [printf](https://github.com/mpaland/printf) library for its
 
 ## GNU-EFI
 
-Popcorn's UEFI bootloader initially used
+jsix's UEFI bootloader initially used
 [GNU-EFI](https://gnu-efi.sourceforge.net), and still uses one file (the linker
 script for the bootloader) from that project. GNU-EFI claims to be released
 under the BSD license. Again, I could not find its specific license file, so I
 am reproducing a generic 3-clause BSD license (the most restrictive, so as not
 to assume any extra rights that may not actually be granted) for it here:
 
-> Copyright © Nigel Croxon
+> Copyright (c) Nigel Croxon
 > 
 > Redistribution and use in source and binary forms, with or without
 > modification, are permitted provided that the following conditions are met:
@@ -146,5 +147,5 @@ to assume any extra rights that may not actually be granted) for it here:
 
 ## Intel EFI Application Toolkit
 
-Popcorn's UEFI loader uses code from Intel's EFI Application toolkit. Relevant
+jsix's UEFI loader uses code from Intel's EFI Application toolkit. Relevant
 code includes license statements at the top of each file.

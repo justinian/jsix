@@ -1,4 +1,4 @@
-MAGIC	equ  0x600db007			; Popcorn OS header magic number
+MAGIC	equ  0x600db007			; jsix OS header magic number
 
 section .header
 align 4

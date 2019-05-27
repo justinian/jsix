@@ -1,8 +1,8 @@
-name: Popcorn
+name: jsix
 templates: scripts/templates
 modules:
     kernel:
-        output: popcorn.elf
+        output: jsix.elf
         target: host
         deps:
             - elf

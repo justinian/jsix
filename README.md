@@ -1,6 +1,6 @@
-# popcorn: A toy OS kernel
+# jsix: A toy OS kernel
 
-**popcorn** is the kernel for the hobby OS that I am currently building. It's
+**jsix** is the kernel for the hobby OS that I am currently building. It's
 far from finished, or even being usable. Instead, it's a sandbox for me to play
 with kernel-level code and explore architectures.
 
@@ -25,9 +25,15 @@ The design goals of the project are:
   temporarily) in some places to allow me to play around with the related
   hardware.
 
+A note on the name: This kernel was originally named Popcorn, but I have since
+discovered that the Popcorn Linux project is also developing a kernel with that
+name, started around the same time as this project. So I've renamed this kernel
+jsix (Always styled _jsix_ or `j6`, never capitalized) as an homage to L4, xv6,
+and my wonderful wife.
+
 ## Building
 
-Popcorn uses the [Ninja][] build tool, and generates the build files for it
+jsix uses the [Ninja][] build tool, and generates the build files for it
 with a custom tool called [Bonnibel][]. Bonnibel requires [Python 3][] and can
 be downloaded with `pip`:
 
@@ -51,13 +57,13 @@ Requrirements:
 
 If you have `clang` and `curl` installed, runing the `scripts/build_sysroot_clang.sh`
 script will download and build a nasm/binutils/LLVM toolchain configured for building
-Popcorn host binaries.
+jsix host binaries.
 
-### Building and running Popcorn
+### Building and running jsix
 
 Once the toolchain has been set up, running Bonnibel's `pb` command will set up the
 build configuration, and `ninja -C build` will actually run the build.  If you
-have `qemu-system-x86_64` installed, the `qemu.sh` script will to run Popcorn
+have `qemu-system-x86_64` installed, the `qemu.sh` script will to run jsix
 in QEMU `-nographic` mode.
 
 I personally run this either from a real debian amd64 testing/buster machine or

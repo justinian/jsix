@@ -1,7 +1,7 @@
 #pragma once
 /// \file initrd.h
 /// Definitions defining the simple inital ramdisk file format used by the
-/// popcorn kernel.
+/// jsix kernel.
 
 #include <stdint.h>
 #include "kutil/vector.h"

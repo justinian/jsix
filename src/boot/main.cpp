@@ -51,15 +51,15 @@ detect_debug_mode(EFI_RUNTIME_SERVICES *run, kernel_args *header) {
 	uint8_t debug = 0;
 	UINTN var_size = sizeof(debug);
 
-#ifdef __POPCORN_SET_DEBUG_UEFI_VAR__
-	debug = __POPCORN_SET_DEBUG_UEFI_VAR__;
+#ifdef __JSIX_SET_DEBUG_UEFI_VAR__
+	debug = __JSIX_SET_DEBUG_UEFI_VAR__;
 	uint32_t attrs =
 		EFI_VARIABLE_NON_VOLATILE |
 		EFI_VARIABLE_BOOTSERVICE_ACCESS |
 		EFI_VARIABLE_RUNTIME_ACCESS;
 	status = run->SetVariable(
 			var_name,
-			&guid_popcorn_vendor,
+			&guid_jsix_vendor,
 			attrs,
 			var_size,
 			&debug);
@@ -68,14 +68,14 @@ detect_debug_mode(EFI_RUNTIME_SERVICES *run, kernel_args *header) {
 
 	status = run->GetVariable(
 			var_name,
-			&guid_popcorn_vendor,
+			&guid_jsix_vendor,
 			nullptr,
 			&var_size,
 			&debug);
 	CHECK_EFI_STATUS_OR_RETURN(status, "detect_debug_mode::GetVariable");
 
 	if (debug)
-		header->flags |= POPCORN_FLAG_DEBUG;
+		header->flags |= JSIX_FLAG_DEBUG;
 
 	return EFI_SUCCESS;
 }

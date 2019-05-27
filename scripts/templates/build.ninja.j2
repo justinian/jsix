@@ -50,16 +50,16 @@ build $builddir/ovmf_vars.fd : cp $srcroot/assets/ovmf/x64/ovmf_vars.fd
 build $builddir/ovmf_vars_d.fd : cp $srcroot/assets/ovmf/x64/ovmf_vars_d.fd
     name = ovmf_vars_d.fd
 
-build $builddir/popcorn.elf | $builddir/popcorn.elf.debug : strip $builddir/host/popcorn.elf
+build $builddir/jsix.elf | $builddir/jsix.elf.debug : strip $builddir/host/jsix.elf
     name = kernel
 
-build $builddir/popcorn.dump : dump $builddir/host/popcorn.elf
+build $builddir/jsix.dump : dump $builddir/host/jsix.elf
     name = kernel
 
-build $builddir/popcorn.elf-gdb.py : cp ${srcroot}/assets/debugging/popcorn.elf-gdb.py
+build $builddir/jsix.elf-gdb.py : cp ${srcroot}/assets/debugging/jsix.elf-gdb.py
     name = kernel debug python scripts
 
-build $builddir/fatroot/popcorn.elf : cp $builddir/popcorn.elf
+build $builddir/fatroot/jsix.elf : cp $builddir/jsix.elf
     name = kernel to FAT image
 
 build $builddir/fatroot/efi/boot/bootx64.efi : cp $builddir/boot/boot.efi
@@ -69,18 +69,18 @@ build $builddir/fatroot/initrd.img : makerd ${srcroot}/assets/initrd.toml | $
     ${builddir}/native/makerd $
     ${builddir}/user/nulldrv
 
-build $builddir/popcorn.img : makefat | $
+build $builddir/jsix.img : makefat | $
     $builddir/fatroot/initrd.img $
-    $builddir/fatroot/popcorn.elf $
+    $builddir/fatroot/jsix.elf $
     $builddir/fatroot/efi/boot/bootx64.efi
-    name = popcorn.img
+    name = jsix.img
 
 default $
     $builddir/ovmf_vars.fd $
     $builddir/ovmf_vars_d.fd $
-    $builddir/popcorn.dump $
-    $builddir/popcorn.elf-gdb.py $
-    $builddir/popcorn.img
+    $builddir/jsix.dump $
+    $builddir/jsix.elf-gdb.py $
+    $builddir/jsix.img
 {% endblock %}
 
 # vim: ft=ninja et ts=4 sts=4 sw=4

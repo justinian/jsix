@@ -47,12 +47,12 @@ enum class efi_memory_type : uint32_t
 
 	efi_max,
 
-	popcorn_kernel = 0x80000000,
-	popcorn_data,
-	popcorn_initrd,
-	popcorn_scratch,
+	jsix_kernel = 0x80000000,
+	jsix_data,
+	jsix_initrd,
+	jsix_scratch,
 
-	popcorn_max
+	jsix_max
 };
 
 struct efi_memory_descriptor
@@ -123,9 +123,9 @@ public:
 
 	void add_used_frames(kutil::vm_space &vm) {
 		for (auto *desc : map) {
-			if (desc->type == efi_memory_type::popcorn_data ||
-				desc->type == efi_memory_type::popcorn_initrd ||
-				desc->type == efi_memory_type::popcorn_kernel)
+			if (desc->type == efi_memory_type::jsix_data ||
+				desc->type == efi_memory_type::jsix_initrd ||
+				desc->type == efi_memory_type::jsix_kernel)
 			{
 				uintptr_t virt_addr = desc->physical_start + kernel_offset;
 				vm.commit(virt_addr, desc->pages * frame_size);
@@ -135,9 +135,9 @@ public:
 
 	void page_in_kernel(page_manager &pm, page_table *pml4) {
 		for (auto *desc : map) {
-			if (desc->type == efi_memory_type::popcorn_kernel ||
-				desc->type == efi_memory_type::popcorn_data ||
-				desc->type == efi_memory_type::popcorn_initrd)
+			if (desc->type == efi_memory_type::jsix_kernel ||
+				desc->type == efi_memory_type::jsix_data ||
+				desc->type == efi_memory_type::jsix_initrd)
 			{
 				uintptr_t virt_addr = desc->physical_start + kernel_offset;
 				pm.page_in(pml4, desc->physical_start, virt_addr, desc->pages);

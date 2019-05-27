@@ -40,7 +40,7 @@ console::initialize(const wchar_t *version)
 	CHECK_EFI_STATUS_OR_RETURN(status, "ClearScreen");
 
 	m_out->SetAttribute(m_out, EFI_LIGHTCYAN);
-	m_out->OutputString(m_out, (wchar_t *)L"Popcorn loader ");
+	m_out->OutputString(m_out, (wchar_t *)L"jsix loader ");
 
 	m_out->SetAttribute(m_out, EFI_LIGHTMAGENTA);
 	m_out->OutputString(m_out, (wchar_t *)version);

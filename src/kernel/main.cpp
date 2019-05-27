@@ -37,7 +37,7 @@ init_console()
 	console *cons = new (&g_console) console(com1);
 
 	cons->set_color(0x21, 0x00);
-	cons->puts("Popcorn OS ");
+	cons->puts("jsix OS ");
 	cons->set_color(0x08, 0x00);
 	cons->puts(GIT_VERSION " booting...\n");
 
@@ -47,7 +47,7 @@ init_console()
 void
 kernel_main(kernel_args *header)
 {
-	bool waiting = header && (header->flags && POPCORN_FLAG_DEBUG);
+	bool waiting = header && (header->flags && JSIX_FLAG_DEBUG);
 	while (waiting);
 
 	kutil::assert_set_callback(__kernel_assert);
@@ -71,7 +71,7 @@ kernel_main(kernel_args *header)
 
 	init_console();
 
-	log::debug(logs::boot, " Popcorn header is at: %016lx", header);
+	log::debug(logs::boot, " jsix header is at: %016lx", header);
 	log::debug(logs::boot, "    Framebuffer is at: %016lx", header->frame_buffer);
 	log::debug(logs::boot, "    Kernel data is at: %016lx", header->data);
 	log::debug(logs::boot, "     Memory map is at: %016lx", header->memory_map);
