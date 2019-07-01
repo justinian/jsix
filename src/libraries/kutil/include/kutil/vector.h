@@ -117,12 +117,14 @@ public:
 		m_elements[m_size].~T();
 	}
 
-	/// Set the size of the array. Any new items are default
-	/// constructed. The array is realloced if needed.
+	/// Set the size of the array. Any new items are default constructed.
+	/// Any items past the end are deleted. The array is realloced if needed.
 	/// \arg size  The new size
 	void set_size(size_t size)
 	{
 		ensure_capacity(size);
+		for (size_t i = size; i < m_size; ++i)
+			m_elements[i].~T();
 		for (size_t i = m_size; i < size; ++i)
 			new (&m_elements[i]) T;
 		m_size = size;

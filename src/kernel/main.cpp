@@ -1,6 +1,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "j6/signals.h"
+
 #include "initrd/initrd.h"
 #include "kutil/assert.h"
 #include "kutil/heap_allocator.h"
@@ -16,6 +18,8 @@
 #include "kernel_args.h"
 #include "kernel_memory.h"
 #include "log.h"
+#include "objects/event.h"
+#include "objects/handle.h"
 #include "page_manager.h"
 #include "scheduler.h"
 #include "serial.h"
@@ -29,6 +33,26 @@ extern "C" {
 extern void __kernel_assert(const char *, unsigned, const char *);
 
 extern kutil::heap_allocator g_kernel_heap;
+
+class test_observer :
+	public kobject::observer
+{
+public:
+	test_observer(const char *name) : m_name(name) {}
+
+	virtual bool on_signals_changed(
+			kobject *obj,
+			j6_signal_t s,
+			j6_signal_t ds,
+			j6_status_t result)
+	{
+		log::info(logs::objs, "  %s: Signals %016lx changed, object %p, result %016lx",
+				m_name, ds, obj, result);
+		return false;
+	}
+
+	const char *m_name;
+};
 
 void
 init_console()
@@ -141,6 +165,21 @@ kernel_main(kernel_args *header)
 	for (auto &f : ird.files()) {
 		if (f.executable())
 			sched->load_process(f.name(), f.data(), f.size());
+	}
+
+	log::info(logs::objs, "Testing object system:");
+
+	test_observer obs1("event");
+	test_observer obs2("no handles");
+	{
+		event e;
+
+		e.register_signal_observer(&obs1, j6_signal_user0);
+		e.register_signal_observer(&obs2, j6_signal_no_handles);
+
+		e.assert_signal(j6_signal_user0);
+
+		handle h(1, 0, &e);
 	}
 
 	sched->start();

@@ -34,6 +34,8 @@ modules:
             - src/kernel/main.cpp
             - src/kernel/memory_bootstrap.cpp
             - src/kernel/msr.cpp
+            - src/kernel/objects/handle.cpp
+            - src/kernel/objects/kobject.cpp
             - src/kernel/page_manager.cpp
             - src/kernel/pci.cpp
             - src/kernel/process.cpp
