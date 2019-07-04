@@ -2,7 +2,7 @@
 /build*
 *.bak
 tags
-popcorn.log
+jsix.log
 *.o
 *.a
 sysroot
