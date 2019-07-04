@@ -6,6 +6,7 @@ debug=""
 flash_name="ovmf_vars"
 gfx="-nographic"
 kvm=""
+cpu="Broadwell,+pdpe1gb"
 
 for arg in $@; do
 	case "${arg}" in
@@ -18,6 +19,7 @@ for arg in $@; do
 			;;
 		--kvm)
 			kvm="-enable-kvm"
+			cpu="host"
 			;;
 		*)
 			build="${arg}"
@@ -56,7 +58,7 @@ exec qemu-system-x86_64 \
 	-m 512 \
 	-d mmu,int,guest_errors \
 	-D jsix.log \
-	-cpu Broadwell \
+	-cpu "${cpu}" \
 	-M q35 \
 	-no-reboot \
 	$gfx $kvm $debug
