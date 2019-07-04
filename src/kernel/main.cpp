@@ -78,6 +78,9 @@ kernel_main(kernel_args *header)
 	log::debug(logs::boot, "ACPI root table is at: %016lx", header->acpi_table);
 	log::debug(logs::boot, "Runtime service is at: %016lx", header->runtime);
 
+	cpu_id cpu;
+	cpu.validate();
+
 	initrd::disk ird(header->initrd, heap);
 	log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());
 	for (auto &f : ird.files())
@@ -94,11 +97,6 @@ kernel_main(kernel_args *header)
 	interrupts_enable();
 
 	/*
-	cpu_id cpu;
-	log::info(logs::boot, "CPU Vendor: %s", cpu.vendor_id());
-	log::info(logs::boot, "CPU Family %x Model %x Stepping %x",
-			cpu.family(), cpu.model(), cpu.stepping());
-
 	auto r = cpu.get(0x15);
 	log::info(logs::boot, "CPU Crystal: %dHz", r.ecx);
 
