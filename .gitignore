@@ -6,3 +6,4 @@ jsix.log
 *.o
 *.a
 sysroot
+.gdb_history
