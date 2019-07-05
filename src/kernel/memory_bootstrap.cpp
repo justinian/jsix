@@ -186,9 +186,31 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 
 	page_table *id_pml4 = &tables[0];
 	page_table *id_pdp = &tables[1];
+
+	// Flags: 0  0 0 0 1  1 0 0 0  0 0 1 1 = 0x0183
+	//        |   IGN  |  | | | |  | | | +- Present
+	//        |        |  | | | |  | | +--- Writeable
+	//        |        |  | | | |  | +----- Supervisor only
+	//        |        |  | | | |  +------- PWT (determining memory type for page)
+	//        |        |  | | | +---------- PCD (determining memory type for page)
+	//        |        |  | | +------------ Accessed flag (not accessed yet)
+	//        |        |  | +-------------- Dirty (not dirtied yet)
+	//        |        |  +---------------- Page size (1GiB page)
+	//        |        +------------------- Global
+	//        +---------------------------- PAT (determining memory type for page)
 	for (int i=0; i<512; ++i)
-		id_pdp->entries[i] = (static_cast<uintptr_t>(i) << 30) | 0x18b;
-	id_pml4->entries[511] = reinterpret_cast<uintptr_t>(id_pdp) | 0x10b;
+		id_pdp->entries[i] = (static_cast<uintptr_t>(i) << 30) | 0x0183;
+
+	// Flags: 0 0 0 0  0 0 0 0  0 0 1 1 = 0x0003
+	//        IGNORED  | | | |  | | | +- Present
+	//                 | | | |  | | +--- Writeable
+	//                 | | | |  | +----- Supervisor only
+	//                 | | | |  +------- PWT (determining memory type for pdpt)
+	//                 | | | +---------- PCD (determining memory type for pdpt)
+	//                 | | +------------ Accessed flag (not accessed yet)
+	//                 | +-------------- Ignored
+	//                 +---------------- Reserved 0
+	id_pml4->entries[511] = reinterpret_cast<uintptr_t>(id_pdp) | 0x003;
 
 	// Make sure the page table is finished updating before we write to memory
 	__sync_synchronize();
@@ -218,7 +240,7 @@ memory_initialize(uint16_t scratch_pages, const void *memory_map, size_t map_len
 	pml4 = kutil::offset_pointer(pml4, page_offset);
 
 	kutil::memset(pml4, 0, sizeof(page_table));
-	pml4->entries[511] = reinterpret_cast<uintptr_t>(id_pdp) | 0x10b;
+	pml4->entries[511] = reinterpret_cast<uintptr_t>(id_pdp) | 0x003;
 
 	bootstrap.page_in_kernel(*pm, pml4);
 

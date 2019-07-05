@@ -17,6 +17,13 @@ using memory::page_mappable;
 page_manager g_page_manager(g_frame_allocator);
 extern kutil::vm_space g_kspace;
 
+// NB: in 4KiB page table entries, bit 7 isn't pagesize but PAT. Currently this
+// doesn't matter, becasue in the default PAT table, both 000 and 100 are WB.
+constexpr uint64_t sys_page_flags   = 0x183; // global, pagesize, write, present
+constexpr uint64_t sys_table_flags  = 0x003; // write, present
+constexpr uint64_t user_page_flags  = 0x087; // pagesize, user, write, present
+constexpr uint64_t user_table_flags = 0x007; // user, write, present
+
 static uintptr_t
 pt_to_phys(page_table *pt)
 {
@@ -335,7 +342,7 @@ page_manager::check_needs_page(page_table *table, unsigned index, bool user)
 
 	page_table *new_table = get_table_page();
 	for (int i=0; i<512; ++i) new_table->entries[i] = 0;
-	table->entries[index] = pt_to_phys(new_table) | (user ? 0xf : 0xb);
+	table->entries[index] = pt_to_phys(new_table) | (user ? user_table_flags : sys_table_flags);
 }
 
 void
@@ -349,9 +356,7 @@ page_manager::page_in(page_table *pml4, uintptr_t phys_addr, uintptr_t virt_addr
 	page_table_indices idx{virt_addr};
 	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
 
-	uint64_t flags = user ?
-		0x00f:	// writethru, user, write, present
-		0x10b;	// global, writethru, write, present
+	uint64_t flags = user ? user_table_flags : sys_table_flags;
 
 	for (; idx[0] < 512; idx[0] += 1) {
 		check_needs_page(tables[0], idx[0], user);
