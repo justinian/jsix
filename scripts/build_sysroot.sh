@@ -2,15 +2,15 @@
 
 TARGET="x86_64-elf"
 NASM_VERSION="2.13.03"
-BINUTILS_VERSION="2.31.1"
 LLVM_BRANCH="release_80"
 
-TOOLS="clang" # lld libunwind libcxxabi libcxx"
+TOOLS="clang lld" # lld libunwind libcxxabi libcxx"
 PROJECTS="compiler-rt libcxxabi libcxx libunwind"
 #RUNTIMES="compiler-rt libcxxabi libcxx libunwind"
 
 set -e
 
+README=$(realpath "$(dirname $0)/readme_for_prebuilt_sysroots.md")
 SYSROOT=$(realpath "$(dirname $0)/../sysroot")
 WORK=$(realpath "$(dirname $0)/sysroot")
 mkdir -p "${SYSROOT}"
@@ -42,35 +42,6 @@ function build_nasm() {
 
 	echo "Building NASM..."
 	(make -j && make install) > "${WORK}/build/nasm_build.log"
-	popd
-}
-
-function build_binutils() {
-	if [[ ! -d "${WORK}/binutils-${BINUTILS_VERSION}" ]]; then
-		echo "Downloading binutils..."
-		tarball="binutils-${BINUTILS_VERSION}.tar.gz"
-		curl -sSOL "https://ftp.gnu.org/gnu/binutils/${tarball}"
-		tar xzf "${tarball}" -C "${WORK}" && rm "${tarball}"
-	fi
-
-	mkdir -p "${WORK}/build/binutils"
-	pushd "${WORK}/build/binutils"
-
-	if [[ ! -f "${WORK}/build/binutils/config.cache" ]]; then
-		echo "Configuring binutils..."
-		"${WORK}/binutils-${BINUTILS_VERSION}/configure" \
-			--quiet \
-			--config-cache \
-			--target="${TARGET}" \
-			--prefix="${SYSROOT}" \
-			--with-sysroot="${SYSROOT}" \
-			--with-lib-path="${SYSROOT}/lib" \
-			--disable-nls \
-			--disable-werror
-	fi
-
-	echo "Building binutils..."
-	(make -j && make install) > "${WORK}/build/binutils_build.log"
 	popd
 }
 
@@ -160,6 +131,7 @@ function build_llvm() {
 		-DLLVM_CONFIG_PATH="${SYSROOT}/bin/llvm-config" \
 		-DLLVM_DEFAULT_TARGET_TRIPLE="x86_64-unknown-elf" \
 		-DLLVM_ENABLE_LIBCXX=ON \
+		-DLLVM_ENABLE_LLD=ON \
 		-DLLVM_ENABLE_PIC=OFF \
 		-DLLVM_ENABLE_THREADS=OFF \
 		-DLLVM_INSTALL_BINUTILS_SYMLINKS=ON \
@@ -173,7 +145,6 @@ function build_llvm() {
 	#  -DLIBCXX_ENABLE_STATIC_UNWINDER=ON \
 	#  -DLIBCXXABI_ENABLE_LLD=ON \
 	#  -DLIBUNWIND_ENABLE_LLD=ON \
-	#  -DLLVM_ENABLE_LLD=ON \
 	#  -DLLVM_ENABLE_PROJECTS="libcxx;libcxxabi;libunwind;compiler-rt" \
 	#  -DCOMPILER_RT_BAREMETAL_BUILD=ON \
 	#  -DLIBCXXABI_BAREMETAL=ON \
@@ -198,7 +169,7 @@ function build_libc() {
 
 	pushd "${WORK}/poplibc"
 	echo "Building poplibc..."
-	make install PREFIX="${SYSROOT}"
+	pb prefix="${SYSROOT}" && ninja -C build install
 	popd
 }
 
@@ -210,7 +181,6 @@ function update_links() {
 }
 
 build_nasm
-build_binutils
 build_libc
 build_llvm
 update_links
@@ -219,3 +189,5 @@ export CC="${SYSROOT}/bin/clang"
 export CXX="${SYSROOT}/bin/clang++"
 export LD="${SYSROOT}/bin/ld"
 build_libc
+
+cp "${README}" "${SYSROOT}/README.md"

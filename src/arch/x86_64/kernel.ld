@@ -10,27 +10,24 @@ SECTIONS
 		__header_end = .;
 	}
 
-	.text : {
+	.text ALIGN(4096) : {
 		*(.text)
+		*(.isrs)
 	}
 
-	.data : {
+	.data ALIGN(4096) : {
 		 *(.data)
 		 *(.rodata)
 	}
 
-	.isrs : {
-		*(.isrs)
+	.bss ALIGN(4096) : {
+		__bss_start = .;
+		*(.bss)
+		__bss_end = .;
 	}
 
 	.note : {
 		*(.note.*)
-	}
-
-	.bss ALIGN(16) : {
-		__bss_start = .;
-		*(.bss)
-		__bss_end = .;
 	}
 
 	.eh_frame : {

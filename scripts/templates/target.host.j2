@@ -3,8 +3,8 @@
 {% block binaries %}
 cc = ${srcroot}/sysroot/bin/clang
 cxx = ${srcroot}/sysroot/bin/clang++
-ld = ${srcroot}/sysroot/bin/x86_64-elf-ld
-ar = ${srcroot}/sysroot/bin/x86_64-elf-ar
+ld = ${srcroot}/sysroot/bin/ld.lld
+ar = ${srcroot}/sysroot/bin/ar
 nasm = ${srcroot}/sysroot/bin/nasm
 objcopy = ${srcroot}/sysroot/bin/x86_64-elf-objcopy
 {% endblock %}
@@ -36,7 +36,6 @@ ldflags = $ldflags $
     -nostdlib $
     -znocombreloc $
     -Bsymbolic $
-    -nostartfiles $
     -Bstatic
 
 {% endblock %}
