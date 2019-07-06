@@ -16,8 +16,6 @@ using memory::kernel_max_heap;
 using memory::kernel_offset;
 using memory::page_offset;
 
-static const unsigned ident_page_flags = 0xb;
-
 kutil::vm_space g_kspace;
 kutil::heap_allocator g_kernel_heap;
 bool g_memory_initialized = false;
