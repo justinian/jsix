@@ -11,8 +11,9 @@ getpid:
 	push rbp
 	mov rbp, rsp
 
-	mov rax, 0x02  ; getpid syscall
-	syscall        ; pid is now already in rax, so just return
+	; address of out var should already be in rdi
+	mov rax, 0x13  ; getpid syscall
+	syscall        ; result is now already in rax, so just return
 
 	pop rbp
 	ret
@@ -33,7 +34,7 @@ sleep:
 	push rbp
 	mov rbp, rsp
 
-	mov rax, 0x21  ; sleep syscall
+	mov rax, 0x16  ; sleep syscall
 	syscall
 
 	pop rbp
@@ -44,8 +45,9 @@ fork:
 	push rbp
 	mov rbp, rsp
 
-	mov rax, 0x03
-	syscall    ; pid left in rax
+	; address of out var should already be in rdi
+	mov rax, 0x12
+	syscall    ; result left in rax
 
 	pop rbp
 	ret
@@ -57,7 +59,7 @@ message:
 	mov rbp, rsp
 
 	; message should already be in rdi
-	mov rax, 0x10
+	mov rax, 0x14
 	syscall
 
 	pop rbp

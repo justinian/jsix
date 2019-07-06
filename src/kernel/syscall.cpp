@@ -14,10 +14,6 @@ extern "C" {
 
 namespace syscalls {
 
-
-void send() {}
-void receive() {}
-
 } // namespace syscalls
 
 uintptr_t syscall_registry[static_cast<unsigned>(syscall::MAX)];

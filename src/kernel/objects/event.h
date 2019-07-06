@@ -8,8 +8,6 @@ class event :
 	public kobject
 {
 public:
-	static constexpr type type_id = type::event;
-
 	event() :
-		kobject(type_id) {}
+		kobject(type::event) {}
 };

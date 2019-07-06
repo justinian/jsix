@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "j6/types.h"
 
 struct cpu_state;
 
@@ -19,7 +20,7 @@ void syscall_enable();
 
 namespace syscalls
 {
-#define SYSCALL(id, name, result, ...) result name (__VA_ARGS__);
+#define SYSCALL(id, name, ...) j6_status_t name (__VA_ARGS__);
 #include "syscalls.inc"
 #undef SYSCALL
 }

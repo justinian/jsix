@@ -8,7 +8,7 @@
 typedef uint64_t j6_koid_t;
 
 /// Syscalls return status as this type
-typedef uint32_t j6_status_t;
+typedef uint64_t j6_status_t;
 
 /// Handles are references and capabilities to other objects
 typedef uint32_t j6_handle_t;
