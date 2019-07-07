@@ -1,7 +1,13 @@
 imports:
     sysroot: ./sysroot
+    j6libc:  ./sysroot
 
 curl module sysroot:
-    url: https://f000.backblazeb2.com/file/jsix-os/sysroot-llvm8-20190705.tar.bz2
+    url: https://f000.backblazeb2.com/file/jsix-os/sysroot-llvm8-20190706.tar.bz2
+    unpack: tar
+    export: sysroot/
+
+curl module j6libc:
+    url: https://f000.backblazeb2.com/file/jsix-os/sysroot-j6libc-0377948.tar.bz2
     unpack: tar
     export: sysroot/
