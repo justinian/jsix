@@ -8,6 +8,6 @@ curl module sysroot:
     export: sysroot/
 
 curl module j6libc:
-    url: https://f000.backblazeb2.com/file/jsix-os/sysroot-j6libc-0377948.tar.bz2
+    url: https://f000.backblazeb2.com/file/jsix-os/sysroot-j6libc-8cb8ce7.tar.bz2
     unpack: tar
     export: sysroot/
