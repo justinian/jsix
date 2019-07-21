@@ -1,0 +1,26 @@
+builddir = $builddir/{{ target }}
+target = {{ target }}
+
+{% block variables %}
+{% endblock %}
+
+{% block binaries %}
+cc = clang
+cxx = clang++
+ld = ld
+ar = ar
+nasm = nasm
+objcopy = objcopy
+{% endblock %}
+
+{% for module in modules %}
+subninja {{ module }}.ninja
+{% endfor %}
+
+build ${builddir}/c.defs : dump_c_defs | {{ buildfile }}
+build ${builddir}/cpp.defs : dump_cpp_defs | {{ buildfile }}
+build ${builddir}/c.run : dump_c_run | {{ buildfile }}
+build ${builddir}/cpp.run : dump_cpp_run | {{ buildfile }}
+
+# vim: ft=ninja et ts=4 sts=4 sw=4
+

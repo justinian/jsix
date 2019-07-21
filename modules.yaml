@@ -1,9 +1,13 @@
 name: jsix
 templates: scripts/templates
+vars:
+    foo: bar
+    bat: baz
 modules:
     kernel:
         output: jsix.elf
         target: host
+        kind: exe
         deps:
             - elf
             - initrd

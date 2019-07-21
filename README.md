@@ -33,24 +33,20 @@ and my wonderful wife.
 
 ## Building
 
-jsix uses the [Ninja][] build tool, and generates the build files for it
-with a custom tool called [Bonnibel][]. Bonnibel requires [Python 3][] and can
-be downloaded with `pip`:
-
-```
-pip3 install bonnibel
-```
+jsix uses the [Ninja][] build tool, and generates the build files for it with a
+custom tool called [Bonnibel][]. Bonnibel can be installed with [Cargo][], or
+downloaded as a prebuilt binary from its Github repository.
 
 [Ninja]:    https://ninja-build.org
 [Bonnibel]: https://github.com/justinian/bonnibel
-[Python 3]: https://python.org
+[Cargo]:    https://crates.io/crates/bonnibel
 
 Requrirements:
 
-* python 3 (for installing and running Bonnibel)
+* bonnibel
+* ninja
 * clang
 * mtools
-* ninja
 * curl for downloading the toolchain
 
 ### Setting up the cross toolchain
@@ -61,17 +57,17 @@ jsix host binaries.
 
 ### Building and running jsix
 
-Once the toolchain has been set up, running Bonnibel's `pb` command will set up the
-build configuration, and `ninja -C build` will actually run the build.  If you
-have `qemu-system-x86_64` installed, the `qemu.sh` script will to run jsix
+Once the toolchain has been set up, running Bonnibel's `pb init` command will
+set up the build configuration, and `pb build` will actually run the build.  If
+you have `qemu-system-x86_64` installed, the `qemu.sh` script will to run jsix
 in QEMU `-nographic` mode.
 
 I personally run this either from a real debian amd64 testing/buster machine or
 a windows WSL debian testing/buster installation. The following should be
 enough to set up such a system to build the kernel:
 
-    sudo apt install qemu-system-x86 nasm clang-6.0 mtools python3-pip curl
+    sudo apt install qemu-system-x86 nasm clang-6.0 mtools curl
     sudo update-alternatives /usr/bin/clang clang /usr/bin/clang-6.0 1000
     sudo update-alternatives /usr/bin/clang++ clang++ /usr/bin/clang++-6.0 1000
-    sudo pip3 install bonnibel
+	curl -L -o pb https://github.com/justinian/bonnibel/releases/download/2.0.0/pb_linux_amd64 && chmod a+x pb
 
