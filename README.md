@@ -46,14 +46,19 @@ Requrirements:
 * bonnibel
 * ninja
 * clang
+* nasm
 * mtools
 * curl for downloading the toolchain
 
 ### Setting up the cross toolchain
 
-If you have `clang` and `curl` installed, runing the `scripts/build_sysroot_clang.sh`
-script will download and build a nasm/binutils/LLVM toolchain configured for building
-jsix host binaries.
+Running `pb sync` will download and unpack the toolchain into `sysroot`. 
+
+#### Compiling the toolchain yourself
+
+If you have `clang` and `curl` installed, runing the `scripts/build_sysroot.sh`
+script will download and build a LLVM toolchain configured for building jsix
+host binaries.
 
 ### Building and running jsix
 

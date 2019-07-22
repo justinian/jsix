@@ -1,13 +1,10 @@
 name: jsix
 templates: scripts/templates
-vars:
-    foo: bar
-    bat: baz
 modules:
     kernel:
+        kind: exe
         output: jsix.elf
         target: host
-        kind: exe
         deps:
             - elf
             - initrd
@@ -132,3 +129,8 @@ modules:
             - src/tests/logger.cpp
             - src/tests/heap_allocator.cpp
             - src/tests/main.cpp
+overlays:
+    - url: https://f000.backblazeb2.com/file/jsix-os/sysroot-llvm8-20190706.tar.bz2
+      path: sysroot
+    - url: https://f000.backblazeb2.com/file/jsix-os/sysroot-j6libc-8cb8ce7.tar.bz2
+      path: sysroot
