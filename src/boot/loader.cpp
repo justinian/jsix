@@ -26,15 +26,15 @@ loader_alloc_aligned(
 	size_t page_count = alignment / PAGE_SIZE;
 	*length = alignment;
 
-	con_debug(L"Trying to find %d aligned pages for %x\n", page_count, mem_type);
+	con_debug(L"Trying to find %d aligned pages for %x", page_count, mem_type);
 
 	status = bootsvc->AllocatePages(AllocateAnyPages, mem_type, page_count * 2, &addr);
 	CHECK_EFI_STATUS_OR_RETURN(status, L"Allocating %d pages for alignment", page_count * 2);
-	con_debug(L"    Found %d pages at %lx\n", page_count * 2, addr);
+	con_debug(L"    Found %d pages at %lx", page_count * 2, addr);
 
 	EFI_PHYSICAL_ADDRESS aligned = addr;
 	aligned = ((aligned - 1) & ~(alignment - 1)) + alignment;
-	con_debug(L"    Aligning %lx to %lx\n", addr, aligned);
+	con_debug(L"    Aligning %lx to %lx", addr, aligned);
 
 	size_t before = 
 		(reinterpret_cast<uint64_t>(aligned) -
@@ -42,7 +42,7 @@ loader_alloc_aligned(
 		PAGE_SIZE;
 
 	if (before) {
-		con_debug(L"    Freeing %d initial pages\n", before);
+		con_debug(L"    Freeing %d initial pages", before);
 		bootsvc->FreePages(addr, before);
 	}
 
@@ -52,7 +52,7 @@ loader_alloc_aligned(
 			reinterpret_cast<EFI_PHYSICAL_ADDRESS>(
 				reinterpret_cast<uint64_t>(aligned) +
 				page_count * PAGE_SIZE);
-		con_debug(L"    Freeing %d remaining pages\n", after);
+		con_debug(L"    Freeing %d remaining pages", after);
 		bootsvc->FreePages(end, after);
 	}
 
@@ -72,7 +72,7 @@ loader_alloc_pages(
 	size_t page_count = ((*length - 1) / PAGE_SIZE) + 1;
 	EFI_PHYSICAL_ADDRESS addr = (EFI_PHYSICAL_ADDRESS)*pages;
 
-	con_debug(L"Trying to find %d non-aligned pages for %x at %lx\n",
+	con_debug(L"Trying to find %d non-aligned pages for %x at %lx",
 			page_count, mem_type, addr);
 
 	status = bootsvc->AllocatePages(AllocateAddress, mem_type, page_count, &addr);
@@ -136,7 +136,7 @@ loader_load_elf(
 {
 	EFI_STATUS status;
 
-	con_debug(L"Opening kernel file %s\r\n", (wchar_t *)kernel_name);
+	con_debug(L"Opening kernel file %s", (wchar_t *)kernel_name);
 
 	EFI_FILE_PROTOCOL *file = NULL;
 	status = root->Open(root, &file, (wchar_t *)kernel_name, EFI_FILE_MODE_READ,
@@ -158,7 +158,7 @@ loader_load_elf(
 	status = file->Read(file, &length, &header);
 	CHECK_EFI_STATUS_OR_RETURN(status, L"Reading ELF header");
 
-	con_debug(L"Read %u bytes of ELF header\r\n", length);
+	con_debug(L"Read %u bytes of ELF header", length);
 
 	if (length < sizeof(struct elf_header))
 		CHECK_EFI_STATUS_OR_RETURN(EFI_LOAD_ERROR, L"Incomplete read of ELF header");
@@ -184,7 +184,7 @@ loader_load_elf(
 		header.machine != 0x3e)
 		CHECK_EFI_STATUS_OR_RETURN(EFI_LOAD_ERROR, L"ELF load error: wrong machine architecture");
 
-	con_debug(L"ELF is valid, entrypoint %lx\r\n", header.entrypoint);
+	con_debug(L"ELF is valid, entrypoint %lx", header.entrypoint);
 
 	data->kernel_entry = (void *)header.entrypoint;
 
@@ -209,7 +209,7 @@ loader_load_elf(
 			data->kernel = addr;
 		data->kernel_length = (uint64_t)addr + length - (uint64_t)data->kernel;
 	}
-	con_debug(L"Read %d ELF program headers\r\n", header.ph_num);
+	con_debug(L"Read %d ELF program headers", header.ph_num);
 
 	struct elf_section_header sec_header;
 	for (int i = 0; i < header.sh_num; ++i) {
@@ -237,7 +237,7 @@ loader_load_elf(
 			bootsvc->SetMem(addr, sec_header.size, 0);
 		}
 	}
-	con_debug(L"Read %d ELF section headers\r\n", header.ph_num);
+	con_debug(L"Read %d ELF section headers", header.ph_num);
 
 	status = file->Close(file);
 	CHECK_EFI_STATUS_OR_RETURN(status, L"Closing file handle");

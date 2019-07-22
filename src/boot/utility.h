@@ -34,7 +34,7 @@ const wchar_t *util_error_message(EFI_STATUS status);
 	}
 
 #ifdef BOOTLOADER_DEBUG
-#define con_debug(...) console::print(L"DEBUG: " __VA_ARGS__)
+#define con_debug(msg, ...) console::print(L"DEBUG: " msg L"\r\n", __VA_ARGS__)
 #else
-#define con_debug(...)
+#define con_debug(msg, ...)
 #endif
