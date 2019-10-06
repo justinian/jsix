@@ -2,7 +2,7 @@
 {% block variables %}
 {{ super() }}
 
-ccflags = $ccflags -ggdb
+ccflags = $ccflags -ggdb -I${srcroot}/external/catch
 
 {% endblock %}
 
