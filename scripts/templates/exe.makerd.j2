@@ -1,0 +1,10 @@
+{% extends "exe.default.j2" %}
+{% block variables %}
+{{ super() }}
+
+ccflags = $ccflags -I${srcroot}/external/cpptoml
+
+{% endblock %}
+
+# vim: ft=ninja et ts=4 sts=4 sw=4
+
