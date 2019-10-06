@@ -53,6 +53,7 @@ exec qemu-system-x86_64 \
 	-drive "if=pflash,format=raw,readonly,file=${assets}/ovmf/x64/ovmf_code.fd" \
 	-drive "if=pflash,format=raw,file=${build}/${flash_name}.fd" \
 	-drive "format=raw,file=${build}/jsix.img" \
+	-device "isa-debug-exit,iobase=0xf4,iosize=0x04" \
 	-monitor telnet:localhost:45454,server,nowait \
 	-smp 4 \
 	-m 512 \
