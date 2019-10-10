@@ -43,6 +43,7 @@ ccflags = $
     $warnflags
 
 asflags = $
+    -I${srcroot}/src/include $
     -DVERSION_MAJOR={{ version_major }} $
     -DVERSION_MINOR={{ version_minor }} $
     -DVERSION_PATCH={{ version_patch }} $

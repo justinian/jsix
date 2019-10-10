@@ -9,6 +9,7 @@ modules:
             - elf
             - initrd
             - kutil
+            - vdso
         includes:
             - src/kernel
         source:
@@ -63,6 +64,16 @@ modules:
             - src/boot/memory.cpp
             - src/boot/reloc.cpp
             - src/boot/utility.cpp
+
+    vdso:
+        kind: exe
+        target: host
+        output: libvdso.so
+        extra:
+            - src/arch/x86_64/vdso.ld
+        source:
+            - src/vdso/syscalls.cpp
+            - src/vdso/overrides.cpp
 
     nulldrv:
         kind: exe

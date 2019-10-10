@@ -1,0 +1,9 @@
+{% extends "exe.default.j2" %}
+{% block variables %}
+{{ super() }}
+ccflags = $ccflags -fPIC -mcmodel=large
+ldflags = $ldflags -shared -znotext -T ${srcroot}/src/arch/x86_64/vdso.ld
+{% endblock %}
+
+# vim: ft=ninja et ts=4 sts=4 sw=4
+
