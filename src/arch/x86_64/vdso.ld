@@ -1,5 +1,6 @@
 PHDRS {
-	rodata PT_LOAD FLAGS(4) FILEHDR PHDRS ;
+	headers PT_PHDR FLAGS(4) FILEHDR PHDRS ;
+	rodata PT_LOAD FLAGS(4) ;
 	text PT_LOAD FLAGS(5) ;
 	dynamic PT_DYNAMIC FLAGS(4) ;
 	note PT_NOTE ;
@@ -14,6 +15,7 @@ SECTIONS {
 		*(.plt*)
 		*(.note.*)
 		*(.hash*)
+		*(.debug*)
 	}
 
 	.illegal.relocations : {
@@ -52,6 +54,10 @@ SECTIONS {
 
 		KEEP(*(.eh_frame_hdr))
 	} :eh_frame
+
+	.shstrtab : {
+		*(.shstrtab)
+	}
 
 	.text ALIGN(0x1000) : {
 		*(.text*)

@@ -187,6 +187,7 @@ build $builddir/fatroot/efi/boot/bootx64.efi : cp $builddir/boot/boot.efi
     name = bootloader to FAT image
 
 build $builddir/fatroot/initrd.img : makerd ${srcroot}/assets/initrd.toml | $
+    ${builddir}/host/libvdso.so $
     ${builddir}/native/makerd $
     ${builddir}/user/nulldrv
 

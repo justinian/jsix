@@ -9,6 +9,10 @@
 #                               # on startup
 
 [[files]]
+dest = "vdso.so"
+source = "host/libvdso.so"
+
+[[files]]
 dest = "screenfont.psf"
 source = "../assets/fonts/tamsyn8x16r.psf"
 
