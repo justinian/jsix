@@ -108,7 +108,11 @@ kernel_main(kernel_args *header)
 	initrd::disk ird(header->initrd, heap);
 	log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());
 	for (auto &f : ird.files())
-		log::info(logs::boot, "  %s%s (%d bytes).", f.executable() ? "*" : "", f.name(), f.size());
+		log::info(logs::boot, "  %s%s (%d bytes).",
+				f.type() == initrd::file_type::executable ? "*" :
+					f.type() == initrd::file_type::vdso ? "^" : "",
+				f.name(),
+				f.size());
 
 	/*
 	   page_manager::get()->dump_pml4(nullptr, 0);
@@ -163,7 +167,7 @@ kernel_main(kernel_args *header)
 	sched->create_kernel_task(-1, logger_task);
 
 	for (auto &f : ird.files()) {
-		if (f.executable())
+		if (f.type() == initrd::file_type::executable)
 			sched->load_process(f.name(), f.data(), f.size());
 	}
 

@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include "kutil/vector.h"
+#include "initrd/file_type.h"
 
 // File format:
 // 1x disk_header
@@ -33,8 +34,8 @@ public:
 	/// Get a pointer to the file data
 	const void * data() const;
 
-	/// Whether this file is an executable
-	bool executable() const;
+	/// Type of file
+	file_type type() const;
 
 private:
 	const file_header *m_header;

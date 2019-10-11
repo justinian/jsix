@@ -43,9 +43,15 @@ int main(int argc, char **argv)
 			return 1;
 		}
 
-		auto exec = file->get_as<bool>("executable").value_or(false);
+		auto type_name = file->get_as<std::string>("type").value_or("unknown");
+		initrd::file_type type = initrd::file_type::unknown;
+		if (type_name == "executable") {
+			type = initrd::file_type::executable;
+		} else if (type_name == "vdso") {
+			type = initrd::file_type::vdso;
+		}
 
-		entries.emplace_back(*source, *dest, exec);
+		entries.emplace_back(*source, *dest, type);
 		const entry &e = entries.back();
 
 		if (!e.good()) {
@@ -92,9 +98,7 @@ int main(int argc, char **argv)
 		fheader.offset = file_offset;
 		fheader.length = e.size();
 		fheader.name_offset = name_offset;
-
-		if (e.executable())
-			fheader.flags |= initrd::file_flags::executable;
+		fheader.type = e.type();
 
 		out.write(
 			reinterpret_cast<const char *>(&fheader),

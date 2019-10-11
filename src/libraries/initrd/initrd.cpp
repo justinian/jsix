@@ -16,11 +16,7 @@ file::file(const file_header *header, const void *start) :
 const char * file::name() const { return m_name; }
 const size_t file::size() const { return m_header->length; }
 const void * file::data() const { return m_data; }
-
-bool
-file::executable() const {
-	return bitfield_has(m_header->flags, file_flags::executable);
-}
+file_type file::type() const { return m_header->type; }
 
 
 disk::disk(const void *start, kutil::allocator &alloc) :

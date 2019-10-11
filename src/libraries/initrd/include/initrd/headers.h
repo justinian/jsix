@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include "kutil/enum_bitfields.h"
+#include "initrd/file_type.h"
 
 namespace initrd {
 
@@ -18,10 +19,8 @@ struct disk_header
 	uint8_t reserved[3];
 } __attribute__ ((packed));
 
-
-enum class file_flags : uint16_t
+enum class file_flags : uint8_t
 {
-	executable = 0x01
 };
 
 struct file_header
@@ -29,10 +28,10 @@ struct file_header
 	uint32_t offset;
 	uint32_t length;
 	uint16_t name_offset;
+	file_type type;
 	file_flags flags;
 } __attribute__ ((packed));
 
 } // namepsace initrd
 
 IS_BITFIELD(initrd::disk_flags);
-IS_BITFIELD(initrd::file_flags);
