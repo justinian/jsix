@@ -265,7 +265,7 @@ efi_main(uefi::handle image_handle, uefi::system_table *st)
 	using namespace boot;
 
 	error::cpu_assert_handler handler;
-	console con(st);
+	console con(st->boot_services, st->con_out);
 
 	return bootloader_main_uefi(st, con);
 }

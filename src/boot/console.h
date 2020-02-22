@@ -1,14 +1,15 @@
 #pragma once
 #include <stdarg.h>
 #include <stddef.h>
-#include <uefi/tables.h>
+#include <uefi/boot_services.h>
+#include <uefi/protos/simple_text_output.h>
 
 namespace boot {
 
 class console
 {
 public:
-	console(uefi::system_table *system_table);
+	console(uefi::boot_services *bs, uefi::protos::simple_text_output *out);
 
 	void status_begin(const wchar_t *message);
 	void status_fail(const wchar_t *message, const wchar_t *error=nullptr) const;
@@ -25,12 +26,11 @@ public:
 	static size_t print(const wchar_t *fmt, ...);
 
 private:
-	void pick_mode();
+	void pick_mode(uefi::boot_services *bs);
 	size_t vprintf(const wchar_t *fmt, va_list args) const;
 
 	size_t m_rows, m_cols;
 	int m_current_status_line;
-	uefi::boot_services *m_boot;
 	uefi::protos::simple_text_output *m_out;
 
 	static console *s_console;

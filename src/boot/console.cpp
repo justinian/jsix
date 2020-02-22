@@ -2,10 +2,8 @@
 #include <stdint.h>
 
 #include <uefi/types.h>
-#include <uefi/boot_services.h>
 #include <uefi/graphics.h>
 #include <uefi/protos/graphics_output.h>
-#include <uefi/protos/simple_text_output.h>
 
 #include "console.h"
 #include "error.h"
@@ -25,18 +23,13 @@ console *console::s_console = nullptr;
 static const wchar_t digits[] = {u'0', u'1', u'2', u'3', u'4', u'5',
 	u'6', u'7', u'8', u'9', u'a', u'b', u'c', u'd', u'e', u'f'};
 
-console::console(uefi::system_table *system_table) :
+console::console(uefi::boot_services *bs, uefi::protos::simple_text_output *out) :
 	m_rows(0),
 	m_cols(0),
-	m_current_status_line(0)
+	m_current_status_line(0),
+	m_out(out)
 {
-	uefi::status status;
-
-	s_console = this;
-	m_boot = system_table->boot_services;
-	m_out = system_table->con_out;
-
-	pick_mode();
+	pick_mode(bs);
 
 	try_or_raise(
 		m_out->query_mode(m_out->mode->mode, &m_cols, &m_rows),
@@ -54,17 +47,19 @@ console::console(uefi::system_table *system_table) :
 
 	m_out->set_attribute(uefi::attribute::light_gray);
 	m_out->output_string(L" booting...\r\n\n");
+
+	s_console = this;
 }
 
 void
-console::pick_mode()
+console::pick_mode(uefi::boot_services *bs)
 {
 	uefi::status status;
 	uefi::protos::graphics_output *gfx_out_proto;
 	uefi::guid guid = uefi::protos::graphics_output::guid;
 
 	try_or_raise(
-		m_boot->locate_protocol(&guid, nullptr, (void **)&gfx_out_proto),
+		bs->locate_protocol(&guid, nullptr, (void **)&gfx_out_proto),
 		L"Failed to find a Graphics Output Protocol handle");
 
 	const uint32_t modes = gfx_out_proto->mode->max_mode;
