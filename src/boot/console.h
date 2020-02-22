@@ -10,11 +10,9 @@ class console
 public:
 	console(uefi::system_table *system_table);
 
-	uefi::status initialize(const wchar_t *version);
-
 	void status_begin(const wchar_t *message);
-	void status_fail(const wchar_t *error) const;
-	void status_warn(const wchar_t *error) const;
+	void status_fail(const wchar_t *message, const wchar_t *error=nullptr) const;
+	void status_warn(const wchar_t *message, const wchar_t *error=nullptr) const;
 	void status_ok() const;
 
 	size_t print_hex(uint32_t n) const;
@@ -27,7 +25,7 @@ public:
 	static size_t print(const wchar_t *fmt, ...);
 
 private:
-	uefi::status pick_mode();
+	void pick_mode();
 	size_t vprintf(const wchar_t *fmt, va_list args) const;
 
 	size_t m_rows, m_cols;

@@ -51,3 +51,10 @@ public:
 
 } // namespace error
 } // namespace boot
+
+#define try_or_raise(s, m) \
+	do { \
+		uefi::status _s = (s); \
+		if (uefi::is_error(_s)) ::boot::error::raise(_s, (m)); \
+	} while(0)
+

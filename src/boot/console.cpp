@@ -8,8 +8,12 @@
 #include <uefi/protos/simple_text_output.h>
 
 #include "console.h"
-//#include "guids.h"
+#include "error.h"
 #include "utility.h"
+
+#ifndef GIT_VERSION_WIDE
+#define GIT_VERSION_WIDE L"no version"
+#endif
 
 namespace boot {
 
@@ -24,50 +28,44 @@ static const wchar_t digits[] = {u'0', u'1', u'2', u'3', u'4', u'5',
 console::console(uefi::system_table *system_table) :
 	m_rows(0),
 	m_cols(0),
-	m_current_status_line(0),
-	m_out(nullptr)
-{
-	s_console = this;
-	m_boot = system_table->boot_services;
-	m_out = system_table->con_out;
-}
-
-uefi::status
-console::initialize(const wchar_t *version)
+	m_current_status_line(0)
 {
 	uefi::status status;
 
-	// Might not find a video device at all, so ignore not found errors
-	status = pick_mode();
-	if (status != uefi::status::not_found)
-		CHECK_EFI_STATUS_OR_FAIL(status);
+	s_console = this;
+	m_boot = system_table->boot_services;
+	m_out = system_table->con_out;
 
-	status = m_out->query_mode(m_out->mode->mode, &m_cols, &m_rows);
-	CHECK_EFI_STATUS_OR_RETURN(status, "QueryMode");
+	pick_mode();
 
-	status = m_out->clear_screen();
-	CHECK_EFI_STATUS_OR_RETURN(status, "ClearScreen");
+	try_or_raise(
+		m_out->query_mode(m_out->mode->mode, &m_cols, &m_rows),
+		L"Failed to get text output mode.");
+
+	try_or_raise(
+		m_out->clear_screen(),
+		L"Failed to clear screen");
 
 	m_out->set_attribute(uefi::attribute::light_cyan);
-	m_out->output_string((wchar_t *)L"jsix loader ");
+	m_out->output_string(L"jsix loader ");
 
 	m_out->set_attribute(uefi::attribute::light_magenta);
-	m_out->output_string((wchar_t *)version);
+	m_out->output_string(GIT_VERSION_WIDE);
 
 	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string((wchar_t *)L" booting...\r\n\n");
-
-	return status;
+	m_out->output_string(L" booting...\r\n\n");
 }
 
-uefi::status
+void
 console::pick_mode()
 {
 	uefi::status status;
 	uefi::protos::graphics_output *gfx_out_proto;
 	uefi::guid guid = uefi::protos::graphics_output::guid;
-	status = m_boot->locate_protocol(&guid, nullptr, (void **)&gfx_out_proto);
-	CHECK_EFI_STATUS_OR_RETURN(status, "LocateProtocol gfx");
+
+	try_or_raise(
+		m_boot->locate_protocol(&guid, nullptr, (void **)&gfx_out_proto),
+		L"Failed to find a Graphics Output Protocol handle");
 
 	const uint32_t modes = gfx_out_proto->mode->max_mode;
 	uint32_t best = gfx_out_proto->mode->mode;
@@ -80,8 +78,10 @@ console::pick_mode()
 
 	for (uint32_t i = 0; i < modes; ++i) {
 		size_t size = 0;
-		status = gfx_out_proto->query_mode(i, &size, &info);
-		CHECK_EFI_STATUS_OR_RETURN(status, "QueryMode");
+
+		try_or_raise(
+			gfx_out_proto->query_mode(i, &size, &info),
+			L"Failed to find a graphics mode the driver claimed to support");
 
 #ifdef MAX_HRES
 		if (info->horizontal_resolution > MAX_HRES) continue;
@@ -96,9 +96,9 @@ console::pick_mode()
 		}
 	}
 
-	status = gfx_out_proto->set_mode(best);
-	CHECK_EFI_STATUS_OR_RETURN(status, "SetMode %d/%d", best, modes);
-	return uefi::status::success;
+	try_or_raise(
+		gfx_out_proto->set_mode(best),
+		L"Failed to set graphics mode");
 }
 
 size_t
@@ -259,8 +259,8 @@ console::status_begin(const wchar_t *message)
 	m_current_status_line = m_out->mode->cursor_row;
 	m_out->set_cursor_position(0, m_current_status_line);
 	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string((wchar_t *)message);
-	m_out->output_string((wchar_t *)L"\r\n");
+	m_out->output_string(message);
+	m_out->output_string(L"\r\n");
 }
 
 void
@@ -272,55 +272,67 @@ console::status_ok() const
 	m_out->set_cursor_position(50, m_current_status_line);
 
 	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string((wchar_t *)L"[");
+	m_out->output_string(L"[");
 	m_out->set_attribute(uefi::attribute::green);
-	m_out->output_string((wchar_t *)L"  ok  ");
+	m_out->output_string(L"  ok  ");
 	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string((wchar_t *)L"]\r\n");
+	m_out->output_string(L"]\r\n");
 
 	m_out->set_cursor_position(col, row);
 }
 
 void
-console::status_fail(const wchar_t *error) const
+console::status_fail(const wchar_t *message, const wchar_t *error) const
 {
 	int row = m_out->mode->cursor_row;
 	m_out->set_cursor_position(50, m_current_status_line);
 
 	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string((wchar_t *)L"[");
+	m_out->output_string(L"[");
 	m_out->set_attribute(uefi::attribute::light_red);
-	m_out->output_string((wchar_t *)L"failed");
+	m_out->output_string(L"failed");
 	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string((wchar_t *)L"]");
+	m_out->output_string(L"]");
 
 	m_out->set_cursor_position(4, row);
 
 	m_out->set_attribute(uefi::attribute::red);
-	m_out->output_string((wchar_t *)error);
+	m_out->output_string(message);
+
+	if (error) {
+		m_out->output_string(L": ");
+		m_out->output_string(error);
+	}
+
 	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string((wchar_t *)L"\r\n");
+	m_out->output_string(L"\r\n");
 }
 
 void
-console::status_warn(const wchar_t *error) const
+console::status_warn(const wchar_t *message, const wchar_t *error) const
 {
 	int row = m_out->mode->cursor_row;
 	m_out->set_cursor_position(50, m_current_status_line);
 
 	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string((wchar_t *)L"[");
+	m_out->output_string(L"[");
 	m_out->set_attribute(uefi::attribute::brown);
-	m_out->output_string((wchar_t *)L" warn ");
+	m_out->output_string(L" warn ");
 	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string((wchar_t *)L"]");
+	m_out->output_string(L"]");
 
 	m_out->set_cursor_position(4, row);
 
 	m_out->set_attribute(uefi::attribute::yellow);
-	m_out->output_string((wchar_t *)error);
+	m_out->output_string(message);
+
+	if (error) {
+		m_out->output_string(L": ");
+		m_out->output_string(error);
+	}
+
 	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string((wchar_t *)L"\r\n");
+	m_out->output_string(L"\r\n");
 }
 
 /*

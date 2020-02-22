@@ -1,20 +1,27 @@
 #include <stddef.h>
+#include <uefi/types.h>
 
-#include "loader.h"
+#include "error.h"
 #include "memory.h"
 #include "utility.h"
 
-const EFI_MEMORY_TYPE memtype_kernel  = static_cast<EFI_MEMORY_TYPE>(0x80000000);
-const EFI_MEMORY_TYPE memtype_data    = static_cast<EFI_MEMORY_TYPE>(0x80000001);
-const EFI_MEMORY_TYPE memtype_initrd  = static_cast<EFI_MEMORY_TYPE>(0x80000002);
-const EFI_MEMORY_TYPE memtype_scratch = static_cast<EFI_MEMORY_TYPE>(0x80000003);
+namespace boot {
+namespace memory {
+
+/*
+const EFI_MEMORY_TYPE memtype_kernel  = static_cast<EFI_MEMORY_TYPE>(0x80000000ul);
+const EFI_MEMORY_TYPE memtype_data    = static_cast<EFI_MEMORY_TYPE>(0x80000001ul);
+const EFI_MEMORY_TYPE memtype_initrd  = static_cast<EFI_MEMORY_TYPE>(0x80000002ul);
+const EFI_MEMORY_TYPE memtype_scratch = static_cast<EFI_MEMORY_TYPE>(0x80000003ul);
 
 #define INCREMENT_DESC(p, b)  (EFI_MEMORY_DESCRIPTOR*)(((uint8_t*)(p))+(b))
+*/
 
 size_t fixup_pointer_index = 0;
 void **fixup_pointers[64];
 uint64_t *new_pml4 = 0;
 
+/*
 const wchar_t *memory_type_names[] = {
 	L"EfiReservedMemoryType",
 	L"EfiLoaderCode",
@@ -47,44 +54,52 @@ memory_type_name(UINT32 value)
 	}
 	return memory_type_names[value];
 }
+*/
 
-void EFIAPI
-memory_update_marked_addresses(EFI_EVENT UNUSED *event, void *context)
+void
+update_marked_addresses(uefi::event, void *context)
 {
-	EFI_RUNTIME_SERVICES *runsvc = (EFI_RUNTIME_SERVICES*)context;
+	uefi::runtime_services *rs =
+		reinterpret_cast<uefi::runtime_services*>(context);
+
 	for (size_t i = 0; i < fixup_pointer_index; ++i) {
 		if (fixup_pointers[i])
-			runsvc->ConvertPointer(0, fixup_pointers[i]);
+			rs->convert_pointer(0, fixup_pointers[i]);
 	}
 }
 
-EFI_STATUS
-memory_init_pointer_fixup(EFI_BOOT_SERVICES *bootsvc, EFI_RUNTIME_SERVICES *runsvc, unsigned scratch_pages)
+void
+init_pointer_fixup(uefi::boot_services *bs, uefi::runtime_services *rs)
 {
-	EFI_STATUS status;
-	EFI_EVENT event;
+	uefi::event event;
 
-	status = bootsvc->CreateEvent(
-			EVT_SIGNAL_VIRTUAL_ADDRESS_CHANGE,
-			TPL_CALLBACK,
-			(EFI_EVENT_NOTIFY)&memory_update_marked_addresses,
-			runsvc,
-			&event);
+	try_or_raise(
+		bs->create_event(
+			uefi::evt::signal_virtual_address_change,
+			uefi::tpl::callback,
+			(uefi::event_notify)&update_marked_addresses,
+			rs,
+			&event),
+		L"Error creating memory virtualization event");
 
-	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to initialize pointer update event.");
+	uefi::memory_type memtype = static_cast<uefi::memory_type>(0x80000003ul);
 
 	// Reserve a page for our replacement PML4, plus some pages for the kernel to use
 	// as page tables while it gets started.
-	EFI_PHYSICAL_ADDRESS addr = 0;
-	status = bootsvc->AllocatePages(AllocateAnyPages, memtype_scratch, scratch_pages, &addr);
-	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to allocate page table pages.");
+	uintptr_t addr = 0;
+	try_or_raise(
+		bs->allocate_pages(
+			uefi::allocate_type::any_pages,
+			memtype,
+			64,
+			&addr),
+		L"Error allocating page table pages.");
 
 	new_pml4 = (uint64_t *)addr;
-	return EFI_SUCCESS;
 }
 
 void
-memory_mark_pointer_fixup(void **p)
+mark_pointer_fixup(void **p)
 {
 	if (fixup_pointer_index == 0) {
 		const size_t count = sizeof(fixup_pointers) / sizeof(void*);
@@ -93,6 +108,7 @@ memory_mark_pointer_fixup(void **p)
 	fixup_pointers[fixup_pointer_index++] = p;
 }
 
+/*
 void
 copy_desc(EFI_MEMORY_DESCRIPTOR *src, EFI_MEMORY_DESCRIPTOR *dst, size_t len)
 {
@@ -213,3 +229,7 @@ memory_virtualize(EFI_RUNTIME_SERVICES *runsvc, struct memory_map *map)
 
 	runsvc->SetVirtualAddressMap(map->length, map->size, map->version, map->entries);
 }
+*/
+
+} // namespace boot
+} // namespace memory

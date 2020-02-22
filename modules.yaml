@@ -58,6 +58,7 @@ modules:
             - src/boot/main.cpp
             - src/boot/console.cpp
             - src/boot/error.cpp
+            - src/boot/memory.cpp
             - src/boot/utility.cpp
 
     nulldrv:

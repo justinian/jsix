@@ -9,25 +9,17 @@
 
 #include "console.h"
 #include "error.h"
+#include "memory.h"
 /*
 #include "guids.h"
 #include "kernel_args.h"
 #include "loader.h"
-#include "memory.h"
 #include "utility.h"
 
 #ifndef SCRATCH_PAGES
 #define SCRATCH_PAGES 64
 #endif
-*/
 
-#ifndef GIT_VERSION_WIDE
-#define GIT_VERSION_WIDE L"no version"
-#endif
-
-using namespace boot;
-
-/*
 #define KERNEL_HEADER_MAGIC   0x600db007
 #define KERNEL_HEADER_VERSION 1
 
@@ -43,9 +35,13 @@ struct kernel_header {
 	uint32_t gitsha;
 };
 #pragma pack(pop)
-
 using kernel_entry = void (*)(kernel_args *);
+*/
 
+namespace boot {
+
+
+/*
 static void
 type_to_wchar(wchar_t *into, uint32_t type)
 {
@@ -91,58 +87,60 @@ detect_debug_mode(EFI_RUNTIME_SERVICES *run, kernel_args *header) {
 }
 */
 
-extern "C" uefi::status
-efi_main(uefi::handle image_handle, uefi::system_table *st)
+uefi::status
+bootloader_main_uefi(uefi::system_table *st, console &con)
 {
-	error::cpu_assert_handler handler;
+	error::uefi_handler handler(con);
 
 	uefi::boot_services *bs = st->boot_services;
 	uefi::runtime_services *rs = st->runtime_services;
 
-	console con(st);
-	con.initialize(GIT_VERSION_WIDE);
+	/*
+	con.status_begin(L"Trying to do a harder thing...");
+	con.status_warn(L"First warning");
+	con.status_warn(L"Second warning");
 
-	{
-		error::uefi_handler handler(con);
-		con.status_begin(L"Trying to do an easy thing...");
+	con.status_begin(L"Trying to do the impossible...");
+	con.status_warn(L"we're not going to make it");
+
+	error::raise(uefi::status::unsupported, L"OH NO");
+	*/
+
+	con.status_begin(L"Initializing pointer fixup for virtualization");
+	memory::init_pointer_fixup(bs, rs);
+	con.status_ok();
+
+	// Find ACPI tables. Ignore ACPI 1.0 if a 2.0 table is found.
+	//
+	con.status_begin(L"Searching for ACPI table");
+	uintptr_t acpi_table = 0;
+	for (size_t i = 0; i < st->number_of_table_entries; ++i) {
+		uefi::configuration_table *table = &st->configuration_table[i];
+
+		if (table->vendor_guid == uefi::vendor_guids::acpi2) {
+			acpi_table = reinterpret_cast<uintptr_t>(table->vendor_table);
+			break;
+		}
+		
+		if (table->vendor_guid == uefi::vendor_guids::acpi1) {
+			// Mark a v1 table with the LSB high
+			acpi_table = reinterpret_cast<uintptr_t>(table->vendor_table);
+			acpi_table |= 1;
+		}
+	}
+
+	if (!acpi_table) {
+		error::raise(uefi::status::not_found, L"Could not find ACPI table");
+	} else if (acpi_table & 1) {
+		con.status_warn(L"Only found ACPI 1.0 table");
+	} else {
 		con.status_ok();
-
-		con.status_begin(L"Trying to do a harder thing...");
-		con.status_warn(L"First warning");
-		con.status_warn(L"Second warning");
-
-		con.status_begin(L"Trying to do the impossible...");
-		con.status_warn(L"we're not going to make it");
-
-		error::raise(uefi::status::unsupported, L"OH NO");
 	}
 
 	while(1);
 	return uefi::status::success;
 }
 	/*
-
-	// When checking console initialization, use CHECK_EFI_STATUS_OR_RETURN
-	// because we can't be sure if the console was fully set up
-	status = con.initialize(GIT_VERSION_WIDE);
-	CHECK_EFI_STATUS_OR_RETURN(status, "console::initialize");
-	// From here on out, we can use CHECK_EFI_STATUS_OR_FAIL instead
-
-	memory_init_pointer_fixup(bootsvc, runsvc, SCRATCH_PAGES);
-
-	// Find ACPI tables. Ignore ACPI 1.0 if a 2.0 table is found.
-	//
-	void *acpi_table = NULL;
-	for (size_t i=0; i<system_table->NumberOfTableEntries; ++i) {
-		EFI_CONFIGURATION_TABLE *efi_table = &system_table->ConfigurationTable[i];
-		if (is_guid(&efi_table->VendorGuid, &guid_acpi2)) {
-			acpi_table = efi_table->VendorTable;
-			break;
-		} else if (is_guid(&efi_table->VendorGuid, &guid_acpi1)) {
-			// Mark a v1 table with the LSB high
-			acpi_table = (void *)((intptr_t)efi_table->VendorTable | 0x1);
-		}
-	}
 
 	// Compute necessary number of data pages
 	//
@@ -259,3 +257,16 @@ efi_main(uefi::handle image_handle, uefi::system_table *st)
 	return EFI_LOAD_ERROR;
 }
 */
+} // namespace boot
+
+extern "C" uefi::status
+efi_main(uefi::handle image_handle, uefi::system_table *st)
+{
+	using namespace boot;
+
+	error::cpu_assert_handler handler;
+	console con(st);
+
+	return bootloader_main_uefi(st, con);
+}
+
