@@ -1,27 +1,27 @@
-#include <stddef.h>
-#include <efi/efi.h>
+#include <stdint.h>
+#include <uefi/types.h>
 
 #include "console.h"
 
 #define UNUSED __attribute__((unused))
 
 size_t wstrlen(const wchar_t *s);
-const wchar_t *util_error_message(EFI_STATUS status);
+const wchar_t *util_error_message(uefi::status status);
 
 #define CHECK_EFI_STATUS_OR_RETURN(s, msg, ...) \
-	if (EFI_ERROR((s))) { \
+	if (uefi::is_error((s))) { \
 		console::print(L"ERROR: " msg L": %s\r\n", ##__VA_ARGS__, util_error_message(s)); \
 		return (s); \
 	}
 
 #define CHECK_EFI_STATUS_OR_FAIL(s) \
-	if (EFI_ERROR((s))) { \
+	if (uefi::is_error((s))) { \
 		console::get().status_fail(util_error_message(s)); \
 		while (1) __asm__("hlt"); \
 	}
 
 #define CHECK_EFI_STATUS_OR_ASSERT(s, d) \
-	if (EFI_ERROR((s))) { \
+	if (uefi::is_error((s))) { \
 		__asm__ __volatile__( \
 			"movq %0, %%r8;" \
 			"movq %1, %%r9;" \

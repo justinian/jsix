@@ -1,9 +1,15 @@
+#include <uefi/types.h>
+#include <uefi/guid.h>
+#include <uefi/tables.h>
+#include <uefi/protos/simple_text_output.h>
+
 #include <stdalign.h>
 #include <stddef.h>
-
-#include <efi/efi.h>
+#include <stdint.h>
 
 #include "console.h"
+#include "error.h"
+/*
 #include "guids.h"
 #include "kernel_args.h"
 #include "loader.h"
@@ -13,11 +19,15 @@
 #ifndef SCRATCH_PAGES
 #define SCRATCH_PAGES 64
 #endif
+*/
 
 #ifndef GIT_VERSION_WIDE
 #define GIT_VERSION_WIDE L"no version"
 #endif
 
+using namespace boot;
+
+/*
 #define KERNEL_HEADER_MAGIC   0x600db007
 #define KERNEL_HEADER_VERSION 1
 
@@ -45,7 +55,7 @@ type_to_wchar(wchar_t *into, uint32_t type)
 
 EFI_STATUS
 detect_debug_mode(EFI_RUNTIME_SERVICES *run, kernel_args *header) {
-	wchar_t var_name[] = L"debug";
+	CHAR16 var_name[] = L"debug";
 
 	EFI_STATUS status;
 	uint8_t debug = 0;
@@ -79,15 +89,38 @@ detect_debug_mode(EFI_RUNTIME_SERVICES *run, kernel_args *header) {
 
 	return EFI_SUCCESS;
 }
+*/
 
-extern "C" EFI_STATUS
-efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
+extern "C" uefi::status
+efi_main(uefi::handle image_handle, uefi::system_table *st)
 {
-	EFI_STATUS status;
-	EFI_BOOT_SERVICES *bootsvc = system_table->BootServices;
-	EFI_RUNTIME_SERVICES *runsvc = system_table->RuntimeServices;
+	error::cpu_assert_handler handler;
 
-	console con(system_table);
+	uefi::boot_services *bs = st->boot_services;
+	uefi::runtime_services *rs = st->runtime_services;
+
+	console con(st);
+	con.initialize(GIT_VERSION_WIDE);
+
+	{
+		error::uefi_handler handler(con);
+		con.status_begin(L"Trying to do an easy thing...");
+		con.status_ok();
+
+		con.status_begin(L"Trying to do a harder thing...");
+		con.status_warn(L"First warning");
+		con.status_warn(L"Second warning");
+
+		con.status_begin(L"Trying to do the impossible...");
+		con.status_warn(L"we're not going to make it");
+
+		error::raise(uefi::status::unsupported, L"OH NO");
+	}
+
+	while(1);
+	return uefi::status::success;
+}
+	/*
 
 	// When checking console initialization, use CHECK_EFI_STATUS_OR_RETURN
 	// because we can't be sure if the console was fully set up
@@ -225,3 +258,4 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	kernel_main(data_header);
 	return EFI_LOAD_ERROR;
 }
+*/

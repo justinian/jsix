@@ -3,7 +3,7 @@
 {% block binaries %}
 cc = clang
 cxx = clang++
-ld = ld
+ld = clang++
 ar = ar
 nasm = nasm
 objcopy = objcopy
@@ -12,27 +12,24 @@ objcopy = objcopy
 {% block variables %}
 
 ccflags = $ccflags $
-	-ggdb $
-	-nostdlib $
+    --target=x86_64-unknown-windows $
 	-ffreestanding $
-	-nodefaultlibs $
-	-fno-builtin $
-	-mno-sse $
-	-fno-omit-frame-pointer $
 	-mno-red-zone $
 	-fshort-wchar $
-	-D__ELF__ $
-	-fPIC
+	-fno-omit-frame-pointer $
+	-ggdb
 
 cxxflags = $cxxflags $
-	-fno-exceptions $
-	-fno-rtti $
+    -fno-rtti $
+    -fno-exceptions
 
 ldflags = $ldflags $
-	-g $
+    --target=x86_64-unknown-windows $
 	-nostdlib $
-	-Bsymbolic $
-	-nostartfiles
+    -Wl,-entry:efi_main $
+    -Wl,-subsystem:efi_application $
+    -fuse-ld=lld-link $
+	-g
 
 {% endblock %}
 

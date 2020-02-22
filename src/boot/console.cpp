@@ -1,84 +1,94 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <uefi/types.h>
+#include <uefi/boot_services.h>
+#include <uefi/graphics.h>
+#include <uefi/protos/graphics_output.h>
+#include <uefi/protos/simple_text_output.h>
+
 #include "console.h"
-#include "guids.h"
+//#include "guids.h"
 #include "utility.h"
+
+namespace boot {
 
 size_t ROWS = 0;
 size_t COLS = 0;
 
-static EFI_SIMPLE_TEXT_OUT_PROTOCOL *m_out = 0;
+console *console::s_console = nullptr;
 
 static const wchar_t digits[] = {u'0', u'1', u'2', u'3', u'4', u'5',
 	u'6', u'7', u'8', u'9', u'a', u'b', u'c', u'd', u'e', u'f'};
 
-console::console(EFI_SYSTEM_TABLE *system_table) :
+console::console(uefi::system_table *system_table) :
 	m_rows(0),
 	m_cols(0),
+	m_current_status_line(0),
 	m_out(nullptr)
 {
 	s_console = this;
-	m_boot = system_table->BootServices;
-	m_out = system_table->ConOut;
+	m_boot = system_table->boot_services;
+	m_out = system_table->con_out;
 }
 
-EFI_STATUS
+uefi::status
 console::initialize(const wchar_t *version)
 {
-	EFI_STATUS status;
+	uefi::status status;
 
 	// Might not find a video device at all, so ignore not found errors
 	status = pick_mode();
-	if (status != EFI_NOT_FOUND)
+	if (status != uefi::status::not_found)
 		CHECK_EFI_STATUS_OR_FAIL(status);
 
-	status = m_out->QueryMode(m_out, m_out->Mode->Mode, &m_cols, &m_rows);
+	status = m_out->query_mode(m_out->mode->mode, &m_cols, &m_rows);
 	CHECK_EFI_STATUS_OR_RETURN(status, "QueryMode");
 
-	status = m_out->ClearScreen(m_out);
+	status = m_out->clear_screen();
 	CHECK_EFI_STATUS_OR_RETURN(status, "ClearScreen");
 
-	m_out->SetAttribute(m_out, EFI_LIGHTCYAN);
-	m_out->OutputString(m_out, (wchar_t *)L"jsix loader ");
+	m_out->set_attribute(uefi::attribute::light_cyan);
+	m_out->output_string((wchar_t *)L"jsix loader ");
 
-	m_out->SetAttribute(m_out, EFI_LIGHTMAGENTA);
-	m_out->OutputString(m_out, (wchar_t *)version);
+	m_out->set_attribute(uefi::attribute::light_magenta);
+	m_out->output_string((wchar_t *)version);
 
-	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
-	m_out->OutputString(m_out, (wchar_t *)L" booting...\r\n\n");
+	m_out->set_attribute(uefi::attribute::light_gray);
+	m_out->output_string((wchar_t *)L" booting...\r\n\n");
 
 	return status;
 }
 
-EFI_STATUS
+uefi::status
 console::pick_mode()
 {
-	EFI_STATUS status;
-	EFI_GRAPHICS_OUTPUT_PROTOCOL *gfx_out_proto;
-	status = m_boot->LocateProtocol(&guid_gfx_out, NULL, (void **)&gfx_out_proto);
+	uefi::status status;
+	uefi::protos::graphics_output *gfx_out_proto;
+	uefi::guid guid = uefi::protos::graphics_output::guid;
+	status = m_boot->locate_protocol(&guid, nullptr, (void **)&gfx_out_proto);
 	CHECK_EFI_STATUS_OR_RETURN(status, "LocateProtocol gfx");
 
-	const uint32_t modes = gfx_out_proto->Mode->MaxMode;
-	uint32_t best = gfx_out_proto->Mode->Mode;
+	const uint32_t modes = gfx_out_proto->mode->max_mode;
+	uint32_t best = gfx_out_proto->mode->mode;
 
-	EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info =
-		(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *)gfx_out_proto->Mode;
+	uefi::graphics_output_mode_info *info =
+		(uefi::graphics_output_mode_info *)gfx_out_proto->mode;
 
-	uint32_t res = info->HorizontalResolution * info->VerticalResolution;
-	int is_fb = info->PixelFormat != PixelBltOnly;
+	uint32_t res = info->horizontal_resolution * info->vertical_resolution;
+	int is_fb = info->pixel_format != uefi::pixel_format::blt_only;
 
 	for (uint32_t i = 0; i < modes; ++i) {
 		size_t size = 0;
-		status = gfx_out_proto->QueryMode(gfx_out_proto, i, &size, &info);
+		status = gfx_out_proto->query_mode(i, &size, &info);
 		CHECK_EFI_STATUS_OR_RETURN(status, "QueryMode");
 
 #ifdef MAX_HRES
-		if (info->HorizontalResolution > MAX_HRES) continue;
+		if (info->horizontal_resolution > MAX_HRES) continue;
 #endif
 
-		const uint32_t new_res = info->HorizontalResolution * info->VerticalResolution;
-		const int new_is_fb = info->PixelFormat == PixelBltOnly;
+		const uint32_t new_res = info->horizontal_resolution * info->vertical_resolution;
+		const int new_is_fb = info->pixel_format != uefi::pixel_format::blt_only;
 
 		if (new_is_fb > is_fb && new_res >= res) {
 			best = i;
@@ -86,9 +96,9 @@ console::pick_mode()
 		}
 	}
 
-	status = gfx_out_proto->SetMode(gfx_out_proto, best);
+	status = gfx_out_proto->set_mode(best);
 	CHECK_EFI_STATUS_OR_RETURN(status, "SetMode %d/%d", best, modes);
-	return EFI_SUCCESS;
+	return uefi::status::success;
 }
 
 size_t
@@ -101,7 +111,7 @@ console::print_hex(uint32_t n) const
 		*p++ = digits[nibble];
 	}
 	*p = 0;
-	m_out->OutputString(m_out, buffer);
+	m_out->output_string(buffer);
 	return 8;
 }
 
@@ -115,7 +125,7 @@ console::print_long_hex(uint64_t n) const
 		*p++ = digits[nibble];
 	}
 	*p = 0;
-	m_out->OutputString(m_out, buffer);
+	m_out->output_string(buffer);
 	return 16;
 }
 
@@ -130,7 +140,7 @@ console::print_dec(uint32_t n) const
 		n /= 10;
 	} while (n != 0);
 
-	m_out->OutputString(m_out, ++p);
+	m_out->output_string(++p);
 	return 10 - (p - buffer);
 }
 
@@ -145,7 +155,7 @@ console::print_long_dec(uint64_t n) const
 		n /= 10;
 	} while (n != 0);
 
-	m_out->OutputString(m_out, ++p);
+	m_out->output_string(++p);
 	return 20 - (p - buffer);
 }
 
@@ -165,14 +175,14 @@ console::vprintf(const wchar_t *fmt, va_list args) const
 		}
 
 		*w = 0;
-		m_out->OutputString(m_out, buffer);
+		m_out->output_string(buffer);
 		w = buffer;
 
 		r++; // chomp the %
 
 		switch (*r++) {
 			case L'%':
-				m_out->OutputString(m_out, const_cast<wchar_t*>(L"%"));
+				m_out->output_string(const_cast<wchar_t*>(L"%"));
 				count++;
 				break;
 
@@ -189,7 +199,7 @@ console::vprintf(const wchar_t *fmt, va_list args) const
 				{
 					wchar_t *s = va_arg(args, wchar_t*);
 					count += wstrlen(s);
-					m_out->OutputString(m_out, s);
+					m_out->output_string(s);
 				}
 				break;
 
@@ -215,7 +225,7 @@ console::vprintf(const wchar_t *fmt, va_list args) const
 	}
 
 	*w = 0;
-	m_out->OutputString(m_out, buffer);
+	m_out->output_string(buffer);
 	return count;
 }
 
@@ -244,40 +254,77 @@ console::print(const wchar_t *fmt, ...)
 }
 
 void
-console::status_begin(const wchar_t *message) const
+console::status_begin(const wchar_t *message)
 {
-	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
-	m_out->OutputString(m_out, (wchar_t *)message);
+	m_current_status_line = m_out->mode->cursor_row;
+	m_out->set_cursor_position(0, m_current_status_line);
+	m_out->set_attribute(uefi::attribute::light_gray);
+	m_out->output_string((wchar_t *)message);
+	m_out->output_string((wchar_t *)L"\r\n");
 }
 
 void
 console::status_ok() const
 {
-	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
-	m_out->OutputString(m_out, (wchar_t *)L"[");
-	m_out->SetAttribute(m_out, EFI_GREEN);
-	m_out->OutputString(m_out, (wchar_t *)L"  ok  ");
-	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
-	m_out->OutputString(m_out, (wchar_t *)L"]\r\n");
+	int row = m_out->mode->cursor_row;
+	int col = m_out->mode->cursor_column;
+
+	m_out->set_cursor_position(50, m_current_status_line);
+
+	m_out->set_attribute(uefi::attribute::light_gray);
+	m_out->output_string((wchar_t *)L"[");
+	m_out->set_attribute(uefi::attribute::green);
+	m_out->output_string((wchar_t *)L"  ok  ");
+	m_out->set_attribute(uefi::attribute::light_gray);
+	m_out->output_string((wchar_t *)L"]\r\n");
+
+	m_out->set_cursor_position(col, row);
 }
 
 void
 console::status_fail(const wchar_t *error) const
 {
-	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
-	m_out->OutputString(m_out, (wchar_t *)L"[");
-	m_out->SetAttribute(m_out, EFI_LIGHTRED);
-	m_out->OutputString(m_out, (wchar_t *)L"failed");
-	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
-	m_out->OutputString(m_out, (wchar_t *)L"]\r\n");
+	int row = m_out->mode->cursor_row;
+	m_out->set_cursor_position(50, m_current_status_line);
 
-	m_out->SetAttribute(m_out, EFI_RED);
-	m_out->OutputString(m_out, (wchar_t *)error);
-	m_out->SetAttribute(m_out, EFI_LIGHTGRAY);
-	m_out->OutputString(m_out, (wchar_t *)L"\r\n");
+	m_out->set_attribute(uefi::attribute::light_gray);
+	m_out->output_string((wchar_t *)L"[");
+	m_out->set_attribute(uefi::attribute::light_red);
+	m_out->output_string((wchar_t *)L"failed");
+	m_out->set_attribute(uefi::attribute::light_gray);
+	m_out->output_string((wchar_t *)L"]");
+
+	m_out->set_cursor_position(4, row);
+
+	m_out->set_attribute(uefi::attribute::red);
+	m_out->output_string((wchar_t *)error);
+	m_out->set_attribute(uefi::attribute::light_gray);
+	m_out->output_string((wchar_t *)L"\r\n");
 }
 
-EFI_STATUS
+void
+console::status_warn(const wchar_t *error) const
+{
+	int row = m_out->mode->cursor_row;
+	m_out->set_cursor_position(50, m_current_status_line);
+
+	m_out->set_attribute(uefi::attribute::light_gray);
+	m_out->output_string((wchar_t *)L"[");
+	m_out->set_attribute(uefi::attribute::brown);
+	m_out->output_string((wchar_t *)L" warn ");
+	m_out->set_attribute(uefi::attribute::light_gray);
+	m_out->output_string((wchar_t *)L"]");
+
+	m_out->set_cursor_position(4, row);
+
+	m_out->set_attribute(uefi::attribute::yellow);
+	m_out->output_string((wchar_t *)error);
+	m_out->set_attribute(uefi::attribute::light_gray);
+	m_out->output_string((wchar_t *)L"\r\n");
+}
+
+/*
+uefi::status
 con_get_framebuffer(
 	EFI_BOOT_SERVICES *bootsvc,
 	void **buffer,
@@ -288,17 +335,17 @@ con_get_framebuffer(
 	uint32_t *gmask,
 	uint32_t *bmask)
 {
-	EFI_STATUS status;
+	uefi::status status;
 
-	EFI_GRAPHICS_OUTPUT_PROTOCOL *gop;
+	uefi::protos::graphics_output *gop;
 	status = bootsvc->LocateProtocol(&guid_gfx_out, NULL, (void **)&gop);
 	if (status != EFI_NOT_FOUND) {
 		CHECK_EFI_STATUS_OR_RETURN(status, "LocateProtocol gfx");
 
 		*buffer = (void *)gop->Mode->FrameBufferBase;
 		*buffer_size = gop->Mode->FrameBufferSize;
-		*hres = gop->Mode->Info->HorizontalResolution;
-		*vres = gop->Mode->Info->VerticalResolution;
+		*hres = gop->Mode->Info->horizontal_resolution;
+		*vres = gop->Mode->Info->vertical_resolution;
 
 		switch (gop->Mode->Info->PixelFormat) {
 			case PixelRedGreenBlueReserved8BitPerColor:
@@ -331,3 +378,6 @@ con_get_framebuffer(
 	*rmask = *gmask = *bmask = 0;
 	return EFI_SUCCESS;
 }
+*/
+
+} // namespace boot

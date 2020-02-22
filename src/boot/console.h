@@ -1,17 +1,20 @@
 #pragma once
 #include <stdarg.h>
 #include <stddef.h>
-#include <efi/efi.h>
+#include <uefi/tables.h>
+
+namespace boot {
 
 class console
 {
 public:
-	console(EFI_SYSTEM_TABLE *system_table);
+	console(uefi::system_table *system_table);
 
-	EFI_STATUS initialize(const wchar_t *version);
+	uefi::status initialize(const wchar_t *version);
 
-	void status_begin(const wchar_t *message) const;
+	void status_begin(const wchar_t *message);
 	void status_fail(const wchar_t *error) const;
+	void status_warn(const wchar_t *error) const;
 	void status_ok() const;
 
 	size_t print_hex(uint32_t n) const;
@@ -24,19 +27,20 @@ public:
 	static size_t print(const wchar_t *fmt, ...);
 
 private:
-	EFI_STATUS pick_mode();
+	uefi::status pick_mode();
 	size_t vprintf(const wchar_t *fmt, va_list args) const;
 
 	size_t m_rows, m_cols;
-	EFI_BOOT_SERVICES *m_boot;
-	EFI_SIMPLE_TEXT_OUT_PROTOCOL *m_out;
+	int m_current_status_line;
+	uefi::boot_services *m_boot;
+	uefi::protos::simple_text_output *m_out;
 
 	static console *s_console;
 };
 
-EFI_STATUS
+uefi::status
 con_get_framebuffer(
-	EFI_BOOT_SERVICES *bootsvc,
+	uefi::boot_services *bs,
 	void **buffer,
 	size_t *buffer_size,
 	uint32_t *hres,
@@ -44,3 +48,5 @@ con_get_framebuffer(
 	uint32_t *rmask,
 	uint32_t *gmask,
 	uint32_t *bmask);
+
+} // namespace boot
