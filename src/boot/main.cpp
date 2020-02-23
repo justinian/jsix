@@ -10,9 +10,10 @@
 #include "console.h"
 #include "error.h"
 #include "memory.h"
+
+#include "kernel_args.h"
 /*
 #include "guids.h"
-#include "kernel_args.h"
 #include "loader.h"
 #include "utility.h"
 
@@ -40,14 +41,9 @@ using kernel_entry = void (*)(kernel_args *);
 
 namespace boot {
 
+constexpr int max_modules = 10; // Max modules to allocate room for
 
 /*
-static void
-type_to_wchar(wchar_t *into, uint32_t type)
-{
-	for (int j=0; j<4; ++j)
-		into[j] = static_cast<wchar_t>(reinterpret_cast<char *>(&type)[j]);
-}
 
 EFI_STATUS
 detect_debug_mode(EFI_RUNTIME_SERVICES *run, kernel_args *header) {
@@ -87,6 +83,29 @@ detect_debug_mode(EFI_RUNTIME_SERVICES *run, kernel_args *header) {
 }
 */
 
+uintptr_t
+find_acpi_table(uefi::system_table *st)
+{
+	// Find ACPI tables. Ignore ACPI 1.0 if a 2.0 table is found.
+	uintptr_t acpi1_table = 0;
+
+	for (size_t i = 0; i < st->number_of_table_entries; ++i) {
+		uefi::configuration_table *table = &st->configuration_table[i];
+
+		// If we find an ACPI 2.0 table, return it immediately
+		if (table->vendor_guid == uefi::vendor_guids::acpi2)
+			return reinterpret_cast<uintptr_t>(table->vendor_table);
+
+		if (table->vendor_guid == uefi::vendor_guids::acpi1) {
+			// Mark a v1 table with the LSB high
+			acpi1_table = reinterpret_cast<uintptr_t>(table->vendor_table);
+			acpi1_table |= 1;
+		}
+	}
+
+	return acpi1_table;
+}
+
 uefi::status
 bootloader_main_uefi(uefi::system_table *st, console &con)
 {
@@ -95,40 +114,12 @@ bootloader_main_uefi(uefi::system_table *st, console &con)
 	uefi::boot_services *bs = st->boot_services;
 	uefi::runtime_services *rs = st->runtime_services;
 
-	/*
-	con.status_begin(L"Trying to do a harder thing...");
-	con.status_warn(L"First warning");
-	con.status_warn(L"Second warning");
-
-	con.status_begin(L"Trying to do the impossible...");
-	con.status_warn(L"we're not going to make it");
-
-	error::raise(uefi::status::unsupported, L"OH NO");
-	*/
-
 	con.status_begin(L"Initializing pointer fixup for virtualization");
 	memory::init_pointer_fixup(bs, rs);
 	con.status_end();
 
-	// Find ACPI tables. Ignore ACPI 1.0 if a 2.0 table is found.
-	//
 	con.status_begin(L"Searching for ACPI table");
-	uintptr_t acpi_table = 0;
-	for (size_t i = 0; i < st->number_of_table_entries; ++i) {
-		uefi::configuration_table *table = &st->configuration_table[i];
-
-		if (table->vendor_guid == uefi::vendor_guids::acpi2) {
-			acpi_table = reinterpret_cast<uintptr_t>(table->vendor_table);
-			break;
-		}
-		
-		if (table->vendor_guid == uefi::vendor_guids::acpi1) {
-			// Mark a v1 table with the LSB high
-			acpi_table = reinterpret_cast<uintptr_t>(table->vendor_table);
-			acpi_table |= 1;
-		}
-	}
-
+	uintptr_t acpi_table = find_acpi_table(st);
 	if (!acpi_table) {
 		error::raise(uefi::status::not_found, L"Could not find ACPI table");
 	} else if (acpi_table & 1) {
@@ -136,11 +127,44 @@ bootloader_main_uefi(uefi::system_table *st, console &con)
 	}
 	con.status_end();
 
+	con.status_begin(L"Setting up kernel args memory");
+	kernel::args::header *args = nullptr;
+
+	size_t args_size =
+		sizeof(kernel::args::header) + // The header itself
+		max_modules * sizeof(kernel::args::module); // The module structures
+
+	try_or_raise(
+		bs->allocate_pool(
+			uefi::memory_type::loader_data,
+			args_size,
+			reinterpret_cast<void**>(&args)),
+		L"Could not allocate argument memory");
+
+	kernel::args::module *modules =
+		reinterpret_cast<kernel::args::module*>(args + 1);
+
+	args->magic = kernel::args::magic;
+	args->version = kernel::args::version;
+	args->runtime_services = rs;
+	args->acpi_table = reinterpret_cast<void*>(acpi_table);
+	args->modules = modules;
+	args->num_modules = 0;
+
+	con.status_end();
+
+	con.status_begin(L"Loading initrd into memory");
+	kernel::args::module &initrd = modules[args->num_modules++];
+	initrd.type = kernel::args::type::initrd;
+	con.status_end();
+
+
+
 	while(1);
 	return uefi::status::success;
 }
-	/*
 
+	/*
 	// Compute necessary number of data pages
 	//
 	size_t data_length = 0;

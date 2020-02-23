@@ -26,7 +26,7 @@
 #include "syscall.h"
 
 extern "C" {
-	void kernel_main(kernel_args *header);
+	void kernel_main(kernel::args::header *header);
 	void *__bss_start, *__bss_end;
 }
 
@@ -69,9 +69,9 @@ init_console()
 }
 
 void
-kernel_main(kernel_args *header)
+kernel_main(kernel::args::header *header)
 {
-	bool waiting = header && (header->flags && JSIX_FLAG_DEBUG);
+	bool waiting = header && (header->mode == kernel::args::mode::debug);
 	while (waiting);
 
 	kutil::assert_set_callback(__kernel_assert);
@@ -79,6 +79,7 @@ kernel_main(kernel_args *header)
 	gdt_init();
 	interrupts_init();
 
+	/*
 	memory_initialize(
 			header->scratch_pages,
 			header->memory_map,
@@ -110,16 +111,19 @@ kernel_main(kernel_args *header)
 	for (auto &f : ird.files())
 		log::info(logs::boot, "  %s%s (%d bytes).", f.executable() ? "*" : "", f.name(), f.size());
 
+	*/
 	/*
 	   page_manager::get()->dump_pml4(nullptr, 0);
 	   page_manager::get()->dump_blocks(true);
 	*/
+	/*
 
 	device_manager *devices =
 		new (&device_manager::get()) device_manager(header->acpi_table, heap);
 
 	interrupts_enable();
 
+	*/
 	/*
 	auto r = cpu.get(0x15);
 	log::info(logs::boot, "CPU Crystal: %dHz", r.ecx);
@@ -128,9 +132,11 @@ kernel_main(kernel_args *header)
 	__asm__ __volatile__ ( "mov %%cr4, %0" : "=r" (cr4) );
 	log::info(logs::boot, "cr4: %016x", cr4);
 	*/
+	/*
 
 	devices->init_drivers();
 
+	*/
 	/*
 	block_device *disk = devices->get_block_device(0);
 	if (disk) {
@@ -154,6 +160,7 @@ kernel_main(kernel_args *header)
 		log::warn(logs::boot, "No block devices present.");
 	}
 	*/
+	/*
 
 	devices->get_lapic()->calibrate_timer();
 
@@ -183,4 +190,5 @@ kernel_main(kernel_args *header)
 	}
 
 	sched->start();
+	*/
 }
