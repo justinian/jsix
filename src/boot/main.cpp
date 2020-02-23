@@ -108,7 +108,7 @@ bootloader_main_uefi(uefi::system_table *st, console &con)
 
 	con.status_begin(L"Initializing pointer fixup for virtualization");
 	memory::init_pointer_fixup(bs, rs);
-	con.status_ok();
+	con.status_end();
 
 	// Find ACPI tables. Ignore ACPI 1.0 if a 2.0 table is found.
 	//
@@ -133,9 +133,8 @@ bootloader_main_uefi(uefi::system_table *st, console &con)
 		error::raise(uefi::status::not_found, L"Could not find ACPI table");
 	} else if (acpi_table & 1) {
 		con.status_warn(L"Only found ACPI 1.0 table");
-	} else {
-		con.status_ok();
 	}
+	con.status_end();
 
 	while(1);
 	return uefi::status::success;

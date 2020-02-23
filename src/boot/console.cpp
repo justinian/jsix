@@ -18,6 +18,10 @@ namespace boot {
 size_t ROWS = 0;
 size_t COLS = 0;
 
+static constexpr int level_ok = 0;
+static constexpr int level_warn = 1;
+static constexpr int level_fail = 2;
+
 console *console::s_console = nullptr;
 
 static const wchar_t digits[] = {u'0', u'1', u'2', u'3', u'4', u'5',
@@ -26,7 +30,8 @@ static const wchar_t digits[] = {u'0', u'1', u'2', u'3', u'4', u'5',
 console::console(uefi::boot_services *bs, uefi::protos::simple_text_output *out) :
 	m_rows(0),
 	m_cols(0),
-	m_current_status_line(0),
+	m_status_level(0),
+	m_status_line(0),
 	m_out(out)
 {
 	pick_mode(bs);
@@ -251,20 +256,25 @@ console::print(const wchar_t *fmt, ...)
 void
 console::status_begin(const wchar_t *message)
 {
-	m_current_status_line = m_out->mode->cursor_row;
-	m_out->set_cursor_position(0, m_current_status_line);
+	m_status_line = m_out->mode->cursor_row;
+	m_status_level = level_ok;
+
+	m_out->set_cursor_position(0, m_status_line);
 	m_out->set_attribute(uefi::attribute::light_gray);
 	m_out->output_string(message);
 	m_out->output_string(L"\r\n");
 }
 
 void
-console::status_ok() const
+console::status_end()
 {
+	if (m_status_level > level_ok)
+		return;
+
 	int row = m_out->mode->cursor_row;
 	int col = m_out->mode->cursor_column;
 
-	m_out->set_cursor_position(50, m_current_status_line);
+	m_out->set_cursor_position(50, m_status_line);
 
 	m_out->set_attribute(uefi::attribute::light_gray);
 	m_out->output_string(L"[");
@@ -277,21 +287,26 @@ console::status_ok() const
 }
 
 void
-console::status_fail(const wchar_t *message, const wchar_t *error) const
+console::status_warn(const wchar_t *message, const wchar_t *error)
 {
 	int row = m_out->mode->cursor_row;
-	m_out->set_cursor_position(50, m_current_status_line);
 
-	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string(L"[");
-	m_out->set_attribute(uefi::attribute::light_red);
-	m_out->output_string(L"failed");
-	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string(L"]");
+	if (m_status_level <= level_warn) {
+		m_status_level = level_warn;
+
+		m_out->set_cursor_position(50, m_status_line);
+
+		m_out->set_attribute(uefi::attribute::light_gray);
+		m_out->output_string(L"[");
+		m_out->set_attribute(uefi::attribute::brown);
+		m_out->output_string(L" warn ");
+		m_out->set_attribute(uefi::attribute::light_gray);
+		m_out->output_string(L"]");
+	}
 
 	m_out->set_cursor_position(4, row);
 
-	m_out->set_attribute(uefi::attribute::red);
+	m_out->set_attribute(uefi::attribute::yellow);
 	m_out->output_string(message);
 
 	if (error) {
@@ -304,21 +319,23 @@ console::status_fail(const wchar_t *message, const wchar_t *error) const
 }
 
 void
-console::status_warn(const wchar_t *message, const wchar_t *error) const
+console::status_fail(const wchar_t *message, const wchar_t *error)
 {
+	m_status_level = level_fail;
+
 	int row = m_out->mode->cursor_row;
-	m_out->set_cursor_position(50, m_current_status_line);
+	m_out->set_cursor_position(50, m_status_line);
 
 	m_out->set_attribute(uefi::attribute::light_gray);
 	m_out->output_string(L"[");
-	m_out->set_attribute(uefi::attribute::brown);
-	m_out->output_string(L" warn ");
+	m_out->set_attribute(uefi::attribute::light_red);
+	m_out->output_string(L"failed");
 	m_out->set_attribute(uefi::attribute::light_gray);
 	m_out->output_string(L"]");
 
 	m_out->set_cursor_position(4, row);
 
-	m_out->set_attribute(uefi::attribute::yellow);
+	m_out->set_attribute(uefi::attribute::red);
 	m_out->output_string(message);
 
 	if (error) {
