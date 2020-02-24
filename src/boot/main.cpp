@@ -9,6 +9,7 @@
 
 #include "console.h"
 #include "error.h"
+#include "fs.h"
 #include "hardware.h"
 #include "memory.h"
 
@@ -85,7 +86,7 @@ detect_debug_mode(EFI_RUNTIME_SERVICES *run, kernel_args *header) {
 */
 
 uefi::status
-bootloader_main_uefi(uefi::system_table *st, console &con)
+bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con)
 {
 	error::uefi_handler handler(con);
 
@@ -102,6 +103,8 @@ bootloader_main_uefi(uefi::system_table *st, console &con)
 	args->runtime_services = rs;
 	args->acpi_table = hw::find_acpi_table(st);
 
+	fs::file disk = fs::get_boot_volume(image, bs);
+	fs::file kernel = disk.open(L"jsix.elf");
 
 	{
 		status_line status(L"Loading modules");
@@ -246,7 +249,7 @@ efi_main(uefi::handle image_handle, uefi::system_table *st)
 	error::cpu_assert_handler handler;
 	console con(st->boot_services, st->con_out);
 
-	/*return*/ bootloader_main_uefi(st, con);
+	/*return*/ bootloader_main_uefi(image_handle, st, con);
 
 	while(1);
 	return uefi::status::success;
