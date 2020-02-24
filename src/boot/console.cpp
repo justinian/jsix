@@ -7,7 +7,6 @@
 
 #include "console.h"
 #include "error.h"
-#include "utility.h"
 
 #ifndef GIT_VERSION_WIDE
 #define GIT_VERSION_WIDE L"no version"
@@ -38,6 +37,16 @@ status_line *status_line::s_current = nullptr;
 
 static const wchar_t digits[] = {u'0', u'1', u'2', u'3', u'4', u'5',
 	u'6', u'7', u'8', u'9', u'a', u'b', u'c', u'd', u'e', u'f'};
+
+
+static size_t
+wstrlen(const wchar_t *s)
+{
+	size_t count = 0;
+	while (s && *s++) count++;
+	return count;
+}
+
 
 console::console(uefi::boot_services *bs, uefi::protos::simple_text_output *out) :
 	m_rows(0),

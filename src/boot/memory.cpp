@@ -4,7 +4,6 @@
 #include "error.h"
 #include "console.h"
 #include "memory.h"
-#include "utility.h"
 
 namespace boot {
 namespace memory {

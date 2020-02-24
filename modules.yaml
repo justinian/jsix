@@ -60,7 +60,6 @@ modules:
             - src/boot/error.cpp
             - src/boot/hardware.cpp
             - src/boot/memory.cpp
-            - src/boot/utility.cpp
 
     nulldrv:
         kind: exe
