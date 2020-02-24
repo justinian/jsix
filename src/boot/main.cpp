@@ -83,9 +83,11 @@ detect_debug_mode(EFI_RUNTIME_SERVICES *run, kernel_args *header) {
 }
 */
 
-uintptr_t
+void *
 find_acpi_table(uefi::system_table *st)
 {
+	status_line status(L"Searching for ACPI table");
+
 	// Find ACPI tables. Ignore ACPI 1.0 if a 2.0 table is found.
 	uintptr_t acpi1_table = 0;
 
@@ -94,7 +96,7 @@ find_acpi_table(uefi::system_table *st)
 
 		// If we find an ACPI 2.0 table, return it immediately
 		if (table->vendor_guid == uefi::vendor_guids::acpi2)
-			return reinterpret_cast<uintptr_t>(table->vendor_table);
+			return table->vendor_table;
 
 		if (table->vendor_guid == uefi::vendor_guids::acpi1) {
 			// Mark a v1 table with the LSB high
@@ -103,7 +105,13 @@ find_acpi_table(uefi::system_table *st)
 		}
 	}
 
-	return acpi1_table;
+	if (!acpi1_table) {
+		error::raise(uefi::status::not_found, L"Could not find ACPI table");
+	} else if (acpi1_table & 1) {
+		status_line::warn(L"Only found ACPI 1.0 table");
+	}
+
+	return reinterpret_cast<void*>(acpi1_table);
 }
 
 uefi::status
@@ -114,53 +122,51 @@ bootloader_main_uefi(uefi::system_table *st, console &con)
 	uefi::boot_services *bs = st->boot_services;
 	uefi::runtime_services *rs = st->runtime_services;
 
-	con.status_begin(L"Initializing pointer fixup for virtualization");
 	memory::init_pointer_fixup(bs, rs);
-	con.status_end();
 
-	con.status_begin(L"Searching for ACPI table");
-	uintptr_t acpi_table = find_acpi_table(st);
-	if (!acpi_table) {
-		error::raise(uefi::status::not_found, L"Could not find ACPI table");
-	} else if (acpi_table & 1) {
-		con.status_warn(L"Only found ACPI 1.0 table");
-	}
-	con.status_end();
+	void *acpi_table = find_acpi_table(st);
 
-	con.status_begin(L"Setting up kernel args memory");
 	kernel::args::header *args = nullptr;
+	kernel::args::module *modules = nullptr;
 
-	size_t args_size =
-		sizeof(kernel::args::header) + // The header itself
-		max_modules * sizeof(kernel::args::module); // The module structures
+	{
+		status_line status(L"Setting up kernel args memory");
 
-	try_or_raise(
-		bs->allocate_pool(
-			uefi::memory_type::loader_data,
-			args_size,
-			reinterpret_cast<void**>(&args)),
-		L"Could not allocate argument memory");
+		size_t args_size =
+			sizeof(kernel::args::header) + // The header itself
+			max_modules * sizeof(kernel::args::module); // The module structures
 
-	kernel::args::module *modules =
-		reinterpret_cast<kernel::args::module*>(args + 1);
+		try_or_raise(
+			bs->allocate_pool(
+				uefi::memory_type::loader_data,
+				args_size,
+				reinterpret_cast<void**>(&args)),
+			L"Could not allocate argument memory");
 
-	args->magic = kernel::args::magic;
-	args->version = kernel::args::version;
-	args->runtime_services = rs;
-	args->acpi_table = reinterpret_cast<void*>(acpi_table);
-	args->modules = modules;
-	args->num_modules = 0;
+		modules = reinterpret_cast<kernel::args::module*>(args + 1);
 
-	con.status_end();
+		args->magic = kernel::args::magic;
+		args->version = kernel::args::version;
+		args->runtime_services = rs;
+		args->acpi_table = reinterpret_cast<void*>(acpi_table);
+		args->modules = modules;
+		args->num_modules = 0;
+	}
 
-	con.status_begin(L"Loading initrd into memory");
-	kernel::args::module &initrd = modules[args->num_modules++];
-	initrd.type = kernel::args::type::initrd;
-	con.status_end();
+	{
+		status_line status(L"Loading modules");
+		{
+			status_line status(L"Finding boot device");
+		}
+		{
+			status_line status(L"Loading initrd into memory");
+			status_line::warn(L"I can't even");
 
+			kernel::args::module &initrd = modules[args->num_modules++];
+			initrd.type = kernel::args::type::initrd;
+		}
+	}
 
-
-	while(1);
 	return uefi::status::success;
 }
 
@@ -290,6 +296,9 @@ efi_main(uefi::handle image_handle, uefi::system_table *st)
 	error::cpu_assert_handler handler;
 	console con(st->boot_services, st->con_out);
 
-	return bootloader_main_uefi(st, con);
+	/*return*/ bootloader_main_uefi(st, con);
+
+	while(1);
+	return uefi::status::success;
 }
 

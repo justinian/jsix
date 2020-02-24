@@ -22,7 +22,19 @@ static constexpr int level_ok = 0;
 static constexpr int level_warn = 1;
 static constexpr int level_fail = 2;
 
+static const wchar_t *level_tags[] = {
+	L"  ok  ",
+	L" warn ",
+	L"failed"
+};
+static const uefi::attribute level_colors[] = {
+	uefi::attribute::green,
+	uefi::attribute::brown,
+	uefi::attribute::light_red
+};
+
 console *console::s_console = nullptr;
+status_line *status_line::s_current = nullptr;
 
 static const wchar_t digits[] = {u'0', u'1', u'2', u'3', u'4', u'5',
 	u'6', u'7', u'8', u'9', u'a', u'b', u'c', u'd', u'e', u'f'};
@@ -30,8 +42,6 @@ static const wchar_t digits[] = {u'0', u'1', u'2', u'3', u'4', u'5',
 console::console(uefi::boot_services *bs, uefi::protos::simple_text_output *out) :
 	m_rows(0),
 	m_cols(0),
-	m_status_level(0),
-	m_status_line(0),
 	m_out(out)
 {
 	pick_mode(bs);
@@ -253,98 +263,113 @@ console::print(const wchar_t *fmt, ...)
 	return result;
 }
 
-void
-console::status_begin(const wchar_t *message)
+status_line::status_line(const wchar_t *message) :
+	m_level(level_ok)
 {
-	m_status_line = m_out->mode->cursor_row;
-	m_status_level = level_ok;
+	auto out = console::get().m_out;
+	m_line = out->mode->cursor_row;
+	m_depth = (s_current ? 1 + s_current->m_depth : 0);
 
-	m_out->set_cursor_position(0, m_status_line);
-	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string(message);
-	m_out->output_string(L"\r\n");
+	int indent = 2 * m_depth;
+	out->set_cursor_position(indent, m_line);
+	out->set_attribute(uefi::attribute::light_gray);
+	out->output_string(message);
+	out->output_string(L"\r\n");
+
+	m_next = s_current;
+	s_current = this;
+}
+
+status_line::~status_line()
+{
+	if (s_current != this)
+		error::raise(uefi::status::unsupported, L"Destroying non-current status_line");
+
+	finish();
+	if (m_next && m_level > m_next->m_level) {
+		m_next->m_level = m_level;
+		m_next->print_status_tag();
+	}
+	s_current = m_next;
 }
 
 void
-console::status_end()
+status_line::print_status_tag()
 {
-	if (m_status_level > level_ok)
-		return;
+	auto out = console::get().m_out;
+	int row = out->mode->cursor_row;
+	int col = out->mode->cursor_column;
 
-	int row = m_out->mode->cursor_row;
-	int col = m_out->mode->cursor_column;
+	uefi::attribute color = level_colors[m_level];
+	const wchar_t *tag = level_tags[m_level];
 
-	m_out->set_cursor_position(50, m_status_line);
+	out->set_cursor_position(50, m_line);
 
-	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string(L"[");
-	m_out->set_attribute(uefi::attribute::green);
-	m_out->output_string(L"  ok  ");
-	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string(L"]\r\n");
+	out->set_attribute(uefi::attribute::light_gray);
+	out->output_string(L"[");
+	out->set_attribute(color);
+	out->output_string(tag);
+	out->set_attribute(uefi::attribute::light_gray);
+	out->output_string(L"]\r\n");
 
-	m_out->set_cursor_position(col, row);
+	out->set_cursor_position(col, row);
 }
 
 void
-console::status_warn(const wchar_t *message, const wchar_t *error)
+status_line::do_warn(const wchar_t *message, const wchar_t *error)
 {
-	int row = m_out->mode->cursor_row;
+	auto out = console::get().m_out;
+	int row = out->mode->cursor_row;
 
-	if (m_status_level <= level_warn) {
-		m_status_level = level_warn;
-
-		m_out->set_cursor_position(50, m_status_line);
-
-		m_out->set_attribute(uefi::attribute::light_gray);
-		m_out->output_string(L"[");
-		m_out->set_attribute(uefi::attribute::brown);
-		m_out->output_string(L" warn ");
-		m_out->set_attribute(uefi::attribute::light_gray);
-		m_out->output_string(L"]");
+	if (m_level < level_warn) {
+		m_level = level_warn;
+		print_status_tag();
 	}
 
-	m_out->set_cursor_position(4, row);
-
-	m_out->set_attribute(uefi::attribute::yellow);
-	m_out->output_string(message);
+	int indent = 2 + 2 * m_depth;
+	out->set_cursor_position(indent, row);
+	out->set_attribute(uefi::attribute::yellow);
+	out->output_string(message);
 
 	if (error) {
-		m_out->output_string(L": ");
-		m_out->output_string(error);
+		out->output_string(L": ");
+		out->output_string(error);
 	}
 
-	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string(L"\r\n");
+	out->set_attribute(uefi::attribute::light_gray);
+	out->output_string(L"\r\n");
 }
 
 void
-console::status_fail(const wchar_t *message, const wchar_t *error)
+status_line::do_fail(const wchar_t *message, const wchar_t *error)
 {
-	m_status_level = level_fail;
+	auto out = console::get().m_out;
+	int row = out->mode->cursor_row;
 
-	int row = m_out->mode->cursor_row;
-	m_out->set_cursor_position(50, m_status_line);
-
-	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string(L"[");
-	m_out->set_attribute(uefi::attribute::light_red);
-	m_out->output_string(L"failed");
-	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string(L"]");
-
-	m_out->set_cursor_position(4, row);
-
-	m_out->set_attribute(uefi::attribute::red);
-	m_out->output_string(message);
-
-	if (error) {
-		m_out->output_string(L": ");
-		m_out->output_string(error);
+	if (s_current->m_level < level_fail) {
+		m_level = level_fail;
+		print_status_tag();
 	}
 
-	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string(L"\r\n");
+	int indent = 2 + 2 * m_depth;
+	out->set_cursor_position(indent, row);
+	out->set_attribute(uefi::attribute::red);
+	out->output_string(message);
+
+	if (error) {
+		out->output_string(L": ");
+		out->output_string(error);
+	}
+
+	out->set_attribute(uefi::attribute::light_gray);
+	out->output_string(L"\r\n");
+}
+
+void
+status_line::finish()
+{
+	if (m_level <= level_ok)
+		print_status_tag();
 }
 
 /*

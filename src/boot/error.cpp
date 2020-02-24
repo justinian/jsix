@@ -66,7 +66,7 @@ uefi_handler::uefi_handler(console &con) :
 [[ noreturn ]] void
 uefi_handler::handle(uefi::status s, const wchar_t *message)
 {
-	m_con.status_fail(message, error_message(s));
+	status_line::fail(message, error_message(s));
 	while (1) asm("hlt");
 }
 

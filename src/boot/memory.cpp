@@ -2,6 +2,7 @@
 #include <uefi/types.h>
 
 #include "error.h"
+#include "console.h"
 #include "memory.h"
 #include "utility.h"
 
@@ -71,6 +72,8 @@ update_marked_addresses(uefi::event, void *context)
 void
 init_pointer_fixup(uefi::boot_services *bs, uefi::runtime_services *rs)
 {
+	status_line status(L"Initializing pointer virtualization event");
+
 	uefi::event event;
 
 	try_or_raise(
