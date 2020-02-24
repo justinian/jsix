@@ -233,5 +233,33 @@ memory_virtualize(EFI_RUNTIME_SERVICES *runsvc, struct memory_map *map)
 }
 */
 
+kernel::args::header *
+allocate_args_structure(uefi::boot_services *bs, size_t max_modules)
+{
+	status_line status(L"Setting up kernel args memory");
+
+	kernel::args::header *args = nullptr;
+
+	size_t args_size =
+		sizeof(kernel::args::header) + // The header itself
+		max_modules * sizeof(kernel::args::module); // The module structures
+
+	try_or_raise(
+		bs->allocate_pool(
+			uefi::memory_type::loader_data,
+			args_size,
+			reinterpret_cast<void**>(&args)),
+		L"Could not allocate argument memory");
+
+	bs->set_mem(args, args_size, 0);
+
+	args->modules =
+		reinterpret_cast<kernel::args::module*>(args + 1);
+	args->num_modules = 0;
+
+	return args;
+}
+
+
 } // namespace boot
 } // namespace memory

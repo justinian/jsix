@@ -2,12 +2,15 @@
 #include <uefi/boot_services.h>
 #include <uefi/runtime_services.h>
 #include <stdint.h>
+#include "kernel_args.h"
 
 namespace boot {
 namespace memory {
 
 void init_pointer_fixup(uefi::boot_services *bs, uefi::runtime_services *rs);
 void mark_pointer_fixup(void **p);
+
+kernel::args::header * allocate_args_structure(uefi::boot_services *bs, size_t max_modules);
 
 /*
 extern const EFI_MEMORY_TYPE memtype_kernel;

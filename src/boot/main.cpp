@@ -94,34 +94,14 @@ bootloader_main_uefi(uefi::system_table *st, console &con)
 
 	memory::init_pointer_fixup(bs, rs);
 
-	void *acpi_table = hw::find_acpi_table(st);
+	kernel::args::header *args =
+		memory::allocate_args_structure(bs, max_modules);
 
-	kernel::args::header *args = nullptr;
-	kernel::args::module *modules = nullptr;
+	args->magic = kernel::args::magic;
+	args->version = kernel::args::version;
+	args->runtime_services = rs;
+	args->acpi_table = hw::find_acpi_table(st);
 
-	{
-		status_line status(L"Setting up kernel args memory");
-
-		size_t args_size =
-			sizeof(kernel::args::header) + // The header itself
-			max_modules * sizeof(kernel::args::module); // The module structures
-
-		try_or_raise(
-			bs->allocate_pool(
-				uefi::memory_type::loader_data,
-				args_size,
-				reinterpret_cast<void**>(&args)),
-			L"Could not allocate argument memory");
-
-		modules = reinterpret_cast<kernel::args::module*>(args + 1);
-
-		args->magic = kernel::args::magic;
-		args->version = kernel::args::version;
-		args->runtime_services = rs;
-		args->acpi_table = reinterpret_cast<void*>(acpi_table);
-		args->modules = modules;
-		args->num_modules = 0;
-	}
 
 	{
 		status_line status(L"Loading modules");
@@ -132,7 +112,7 @@ bootloader_main_uefi(uefi::system_table *st, console &con)
 			status_line status(L"Loading initrd into memory");
 			status_line::warn(L"I can't even");
 
-			kernel::args::module &initrd = modules[args->num_modules++];
+			kernel::args::module &initrd = args->modules[args->num_modules++];
 			initrd.type = kernel::args::type::initrd;
 		}
 	}
