@@ -272,7 +272,7 @@ console::print(const wchar_t *fmt, ...)
 	return result;
 }
 
-status_line::status_line(const wchar_t *message) :
+status_line::status_line(const wchar_t *message, const wchar_t *context) :
 	m_level(level_ok)
 {
 	auto out = console::get().m_out;
@@ -283,6 +283,12 @@ status_line::status_line(const wchar_t *message) :
 	out->set_cursor_position(indent, m_line);
 	out->set_attribute(uefi::attribute::light_gray);
 	out->output_string(message);
+
+	if (context) {
+		out->output_string(L": ");
+		out->output_string(context);
+	}
+
 	out->output_string(L"\r\n");
 
 	m_next = s_current;

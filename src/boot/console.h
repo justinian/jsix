@@ -35,14 +35,14 @@ private:
 class status_line
 {
 public:
-	status_line(const wchar_t *message);
+	status_line(const wchar_t *message, const wchar_t *context = nullptr);
 	~status_line();
 
-	inline static void warn(const wchar_t *message, const wchar_t *error=nullptr) {
+	inline static void warn(const wchar_t *message, const wchar_t *error = nullptr) {
 		if (s_current) s_current->do_warn(message, error);
 	}
 
-	inline static void fail(const wchar_t *message, const wchar_t *error=nullptr) {
+	inline static void fail(const wchar_t *message, const wchar_t *error = nullptr) {
 		if (s_current) s_current->do_fail(message, error);
 	}
 
