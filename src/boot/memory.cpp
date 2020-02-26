@@ -88,7 +88,7 @@ init_pointer_fixup(uefi::boot_services *bs, uefi::runtime_services *rs)
 
 	// Reserve a page for our replacement PML4, plus some pages for the kernel to use
 	// as page tables while it gets started.
-	uintptr_t addr = 0;
+	void *addr = nullptr;
 	try_or_raise(
 		bs->allocate_pages(
 			uefi::allocate_type::any_pages,
@@ -97,7 +97,7 @@ init_pointer_fixup(uefi::boot_services *bs, uefi::runtime_services *rs)
 			&addr),
 		L"Error allocating page table pages.");
 
-	new_pml4 = (uint64_t *)addr;
+	new_pml4 = reinterpret_cast<uint64_t*>(addr);
 }
 
 void

@@ -104,19 +104,24 @@ bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con)
 	args->acpi_table = hw::find_acpi_table(st);
 
 	fs::file disk = fs::get_boot_volume(image, bs);
-	fs::file kernel = disk.open(L"jsix.elf");
 
 	{
 		status_line status(L"Loading modules");
 		{
-			status_line status(L"Finding boot device");
+			status_line status(L"initrd");
+
+			fs::file file = disk.open(L"initrd.img");
+			kernel::args::module &module = args->modules[args->num_modules++];
+			module.type = kernel::args::type::initrd;
+			module.location = file.load(&module.size);
 		}
 		{
-			status_line status(L"Loading initrd into memory");
-			status_line::warn(L"I can't even");
+			status_line status(L"kernel");
 
-			kernel::args::module &initrd = args->modules[args->num_modules++];
-			initrd.type = kernel::args::type::initrd;
+			fs::file file = disk.open(L"jsix.elf");
+			kernel::args::module &module = args->modules[args->num_modules++];
+			module.type = kernel::args::type::kernel;
+			module.location = file.load(&module.size);
 		}
 	}
 

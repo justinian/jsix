@@ -7,6 +7,12 @@
 namespace boot {
 namespace memory {
 
+constexpr size_t page_size = 0x1000;
+
+inline constexpr size_t bytes_to_pages(size_t bytes) {
+	return ((bytes - 1) / page_size) + 1;
+}
+
 void init_pointer_fixup(uefi::boot_services *bs, uefi::runtime_services *rs);
 void mark_pointer_fixup(void **p);
 
