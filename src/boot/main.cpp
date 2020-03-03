@@ -84,6 +84,23 @@ detect_debug_mode(EFI_RUNTIME_SERVICES *run, kernel_args *header) {
 	return EFI_SUCCESS;
 }
 */
+void
+load_module(
+	fs::file &disk,
+	kernel::args::header *args,
+	const wchar_t *name,
+	const wchar_t *path,
+	kernel::args::type type)
+{
+	status_line status(L"Loading module", name);
+
+	fs::file file = disk.open(path);
+	kernel::args::module &module = args->modules[args->num_modules++];
+	module.type = type;
+	module.location = file.load(&module.size);
+
+	console::print(L"    Loaded at: 0x%lx, %d bytes\r\n", module.location, module.size);
+}
 
 uefi::status
 bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con)
@@ -104,26 +121,8 @@ bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con)
 	args->acpi_table = hw::find_acpi_table(st);
 
 	fs::file disk = fs::get_boot_volume(image, bs);
-
-	{
-		status_line status(L"Loading modules");
-		{
-			status_line status(L"initrd");
-
-			fs::file file = disk.open(L"initrd.img");
-			kernel::args::module &module = args->modules[args->num_modules++];
-			module.type = kernel::args::type::initrd;
-			module.location = file.load(&module.size);
-		}
-		{
-			status_line status(L"kernel");
-
-			fs::file file = disk.open(L"jsix.elf");
-			kernel::args::module &module = args->modules[args->num_modules++];
-			module.type = kernel::args::type::kernel;
-			module.location = file.load(&module.size);
-		}
-	}
+	load_module(disk, args, L"initrd", L"initrd.img", kernel::args::type::initrd);
+	load_module(disk, args, L"kernel", L"jsix.elf", kernel::args::type::kernel);
 
 	return uefi::status::success;
 }
