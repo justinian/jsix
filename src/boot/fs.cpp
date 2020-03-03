@@ -73,6 +73,7 @@ file::load(size_t *out_size)
 			pages, &data),
 		L"Could not allocate pages to load file");
 
+	size = info->file_size;
 	try_or_raise(
 		m_file->read(&size, data),
 		L"Could not read from file");
