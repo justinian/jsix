@@ -1,46 +1,30 @@
 #pragma once
 #include <stdint.h>
 
-#ifndef ELF_VERSION
-#define ELF_VERSION 1
-#endif
+namespace boot {
+namespace elf {
 
-#ifndef ELF_WORDSIZE
-#define ELF_WORDSIZE 2
-#endif
-
-#ifndef ELF_ENDIAN
-#define ELF_ENDIAN 1
-#endif
-
-#ifndef ELF_OSABI
-#define ELF_OSABI 0
-#endif
-
-#ifndef ELF_MACHINE
-#define ELF_MACHINE 0x3e
-#endif
+constexpr uint8_t version = 1;
+constexpr uint8_t word_size = 2;
+constexpr uint8_t endianness = 1;
+constexpr uint8_t os_abi = 1;
+constexpr uint16_t machine = 0x3e;
 
 const unsigned ELF_PT_LOAD = 1;
 const unsigned ELF_ST_PROGBITS = 1;
 const unsigned ELF_ST_NOBITS = 8;
 const unsigned long ELF_SHF_ALLOC = 0x2;
 
-struct elf_ident
+struct header
 {
 	char magic[4];
 
 	uint8_t word_size;
 	uint8_t endianness;
-	uint8_t version;
+	uint8_t header_version;
 	uint8_t os_abi;
 
 	uint64_t reserved;
-} __attribute__ ((packed));
-
-struct elf_header
-{
-	struct elf_ident ident;
 
 	uint16_t type;
 	uint16_t machine;
@@ -64,7 +48,7 @@ struct elf_header
 	uint16_t sh_str_idx;
 } __attribute__ ((packed));
 
-struct elf_program_header
+struct program_header
 {
 	uint32_t type;
 	uint32_t flags;
@@ -79,7 +63,7 @@ struct elf_program_header
 	uint64_t align;
 } __attribute__ ((packed));
 
-struct elf_section_header
+struct section_header
 {
 	uint32_t name;
 	uint32_t type;
@@ -92,3 +76,6 @@ struct elf_section_header
 	uint64_t align;
 	uint64_t entry_size;
 } __attribute__ ((packed));
+
+} // namespace elf
+} // namespace boot

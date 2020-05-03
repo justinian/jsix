@@ -11,6 +11,7 @@
 #include "error.h"
 #include "fs.h"
 #include "hardware.h"
+#include "loader.h"
 #include "memory.h"
 
 #include "kernel_args.h"
@@ -38,7 +39,6 @@ struct kernel_header {
 	uint32_t gitsha;
 };
 #pragma pack(pop)
-using kernel_entry = void (*)(kernel_args *);
 */
 
 namespace boot {
@@ -84,7 +84,8 @@ detect_debug_mode(EFI_RUNTIME_SERVICES *run, kernel_args *header) {
 	return EFI_SUCCESS;
 }
 */
-void
+
+kernel::args::module *
 load_module(
 	fs::file &disk,
 	kernel::args::header *args,
@@ -100,9 +101,10 @@ load_module(
 	module.location = file.load(&module.size);
 
 	console::print(L"    Loaded at: 0x%lx, %d bytes\r\n", module.location, module.size);
+	return &module;
 }
 
-uefi::status
+kernel::entrypoint
 bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con)
 {
 	error::uefi_handler handler(con);
@@ -122,28 +124,15 @@ bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con)
 
 	fs::file disk = fs::get_boot_volume(image, bs);
 	load_module(disk, args, L"initrd", L"initrd.img", kernel::args::type::initrd);
-	load_module(disk, args, L"kernel", L"jsix.elf", kernel::args::type::kernel);
 
-	return uefi::status::success;
+	kernel::args::module *kernel =
+		load_module(disk, args, L"kernel", L"jsix.elf", kernel::args::type::kernel);
+
+	kernel::entrypoint entry = loader::load_elf(kernel->location, kernel->size, bs);
+	return entry;
 }
 
 	/*
-	// Compute necessary number of data pages
-	//
-	size_t data_length = 0;
-	status = memory_get_map_length(bootsvc, &data_length);
-	CHECK_EFI_STATUS_OR_FAIL(status);
-
-	size_t header_size = sizeof(kernel_args);
-	const size_t header_align = alignof(kernel_args);
-	if (header_size % header_align)
-		header_size += header_align - (header_size % header_align);
-
-	data_length += header_size;
-
-	// Load the kernel image from disk and check it
-	//
-	console::print(L"Loading kernel into memory...\r\n");
 
 	struct loader_data load;
 	load.data_length = data_length;
@@ -253,9 +242,10 @@ efi_main(uefi::handle image_handle, uefi::system_table *st)
 	error::cpu_assert_handler handler;
 	console con(st->boot_services, st->con_out);
 
-	/*return*/ bootloader_main_uefi(image_handle, st, con);
+	kernel::entrypoint kernel_main =
+		bootloader_main_uefi(image_handle, st, con);
 
 	while(1);
-	return uefi::status::success;
+	return uefi::status::unsupported;
 }
 

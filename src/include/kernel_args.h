@@ -59,4 +59,7 @@ __attribute__((aligned(alignof(max_align_t))));
 #pragma pack(pop)
 
 } // namespace args
+
+using entrypoint = void (*)(args::header *);
+
 } // namespace kernel

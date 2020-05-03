@@ -60,6 +60,7 @@ modules:
             - src/boot/error.cpp
             - src/boot/fs.cpp
             - src/boot/hardware.cpp
+            - src/boot/loader.cpp
             - src/boot/memory.cpp
 
     nulldrv:

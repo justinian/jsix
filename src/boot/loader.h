@@ -1,35 +1,11 @@
 #pragma once
-#include <efi/efi.h>
-#include <stddef.h>
 
-#define PAGE_SIZE 0x1000
+#include "kernel_args.h"
 
-#ifndef KERNEL_PHYS_ADDRESS
-#define KERNEL_PHYS_ADDRESS 0x100000
-#endif
+namespace boot {
+namespace loader {
 
-#ifndef KERNEL_VIRT_ADDRESS
-#define KERNEL_VIRT_ADDRESS 0xFFFFFF0000000000
-#endif
+kernel::entrypoint load_elf(const void *data, size_t size, uefi::boot_services *bs);
 
-#ifndef KERNEL_FILENAME
-#define KERNEL_FILENAME L"kernel.elf"
-#endif
-
-#ifndef INITRD_FILENAME
-#define INITRD_FILENAME L"initrd.img"
-#endif
-
-struct loader_data {
-	void *kernel;
-	void *kernel_entry;
-	size_t kernel_length;
-
-	void *initrd;
-	size_t initrd_length;
-
-	void *data;
-	size_t data_length;
-};
-
-EFI_STATUS loader_load_kernel(EFI_BOOT_SERVICES *bootsvc, struct loader_data *data);
+} // namespace loader
+} // namespace boot
