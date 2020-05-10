@@ -51,7 +51,7 @@ file::open(const wchar_t *path)
 }
 
 void *
-file::load(size_t *out_size)
+file::load(size_t *out_size, uefi::memory_type mem_type)
 {
 	uint8_t buffer[sizeof(uefi::protos::file_info) + 100];
 	size_t size = sizeof(buffer);
@@ -69,8 +69,7 @@ file::load(size_t *out_size)
 	try_or_raise(
 		m_bs->allocate_pages(
 			uefi::allocate_type::any_pages,
-			uefi::memory_type::loader_data,
-			pages, &data),
+			mem_type, pages, &data),
 		L"Could not allocate pages to load file");
 
 	size = info->file_size;

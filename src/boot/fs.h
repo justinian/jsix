@@ -15,7 +15,9 @@ public:
 	~file();
 
 	file open(const wchar_t *path);
-	void * load(size_t *out_size);
+	void * load(
+		size_t *out_size,
+		uefi::memory_type mem_type = uefi::memory_type::loader_data);
 
 private:
 	friend file get_boot_volume(uefi::handle, uefi::boot_services*);

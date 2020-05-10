@@ -91,20 +91,20 @@ load_module(
 	kernel::args::header *args,
 	const wchar_t *name,
 	const wchar_t *path,
-	kernel::args::type type)
+	kernel::args::mod_type type)
 {
 	status_line status(L"Loading module", name);
 
 	fs::file file = disk.open(path);
 	kernel::args::module &module = args->modules[args->num_modules++];
 	module.type = type;
-	module.location = file.load(&module.size);
+	module.location = file.load(&module.size, memory::module_type);
 
 	console::print(L"    Loaded at: 0x%lx, %d bytes\r\n", module.location, module.size);
 	return &module;
 }
 
-kernel::entrypoint
+loader::loaded_elf
 bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con)
 {
 	error::uefi_handler handler(con);
@@ -123,13 +123,17 @@ bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con)
 	args->acpi_table = hw::find_acpi_table(st);
 
 	fs::file disk = fs::get_boot_volume(image, bs);
-	load_module(disk, args, L"initrd", L"initrd.img", kernel::args::type::initrd);
+	load_module(disk, args, L"initrd", L"initrd.img", kernel::args::mod_type::initrd);
 
 	kernel::args::module *kernel =
-		load_module(disk, args, L"kernel", L"jsix.elf", kernel::args::type::kernel);
+		load_module(disk, args, L"kernel", L"jsix.elf", kernel::args::mod_type::kernel);
 
-	kernel::entrypoint entry = loader::load_elf(kernel->location, kernel->size, bs);
-	return entry;
+
+	loader::loaded_elf kernel_elf =
+		loader::load(kernel->location, kernel->size, bs);
+
+	memory::get_mappings(bs);
+	return kernel_elf;
 }
 
 	/*
@@ -242,7 +246,7 @@ efi_main(uefi::handle image_handle, uefi::system_table *st)
 	error::cpu_assert_handler handler;
 	console con(st->boot_services, st->con_out);
 
-	kernel::entrypoint kernel_main =
+	loader::loaded_elf kernel =
 		bootloader_main_uefi(image_handle, st, con);
 
 	while(1);

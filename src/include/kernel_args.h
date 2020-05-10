@@ -10,12 +10,12 @@ namespace args {
 constexpr uint32_t magic = 0x600dda7a;
 constexpr uint16_t version = 1;
 
-enum class flags : uint32_t
+enum class mod_flags : uint32_t
 {
 	debug = 0x00000001
 };
 
-enum class type : uint32_t {
+enum class mod_type : uint32_t {
 	unknown,
 
 	kernel,
@@ -36,8 +36,8 @@ enum class mode : uint8_t {
 struct module {
 	void *location;
 	size_t size;
-	type type;
-	flags flags;
+	mod_type type;
+	mod_flags flags;
 };
 
 struct header {

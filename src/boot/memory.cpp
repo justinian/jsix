@@ -8,53 +8,43 @@
 namespace boot {
 namespace memory {
 
-/*
-const EFI_MEMORY_TYPE memtype_kernel  = static_cast<EFI_MEMORY_TYPE>(0x80000000ul);
-const EFI_MEMORY_TYPE memtype_data    = static_cast<EFI_MEMORY_TYPE>(0x80000001ul);
-const EFI_MEMORY_TYPE memtype_initrd  = static_cast<EFI_MEMORY_TYPE>(0x80000002ul);
-const EFI_MEMORY_TYPE memtype_scratch = static_cast<EFI_MEMORY_TYPE>(0x80000003ul);
-
-#define INCREMENT_DESC(p, b)  (EFI_MEMORY_DESCRIPTOR*)(((uint8_t*)(p))+(b))
-*/
-
 size_t fixup_pointer_index = 0;
 void **fixup_pointers[64];
 uint64_t *new_pml4 = 0;
 
-/*
-const wchar_t *memory_type_names[] = {
-	L"EfiReservedMemoryType",
-	L"EfiLoaderCode",
-	L"EfiLoaderData",
-	L"EfiBootServicesCode",
-	L"EfiBootServicesData",
-	L"EfiRuntimeServicesCode",
-	L"EfiRuntimeServicesData",
-	L"EfiConventionalMemory",
-	L"EfiUnusableMemory",
-	L"EfiACPIReclaimMemory",
-	L"EfiACPIMemoryNVS",
-	L"EfiMemoryMappedIO",
-	L"EfiMemoryMappedIOPortSpace",
-	L"EfiPalCode",
-	L"EfiPersistentMemory",
+static const wchar_t *memory_type_names[] = {
+	L"reserved memory type",
+	L"loader code",
+	L"loader data",
+	L"boot services code",
+	L"boot services data",
+	L"runtime services code",
+	L"runtime services data",
+	L"conventional memory",
+	L"unusable memory",
+	L"acpi reclaim memory",
+	L"acpi memory nvs",
+	L"memory mapped io",
+	L"memory mapped io port space",
+	L"pal code",
+	L"persistent memory"
 };
 
 static const wchar_t *
-memory_type_name(UINT32 value)
+memory_type_name(uefi::memory_type t)
 {
-	if (value >= (sizeof(memory_type_names) / sizeof(wchar_t *))) {
-		switch (value) {
-			case memtype_kernel:  return L"Kernel Data";
-			case memtype_data:    return L"Kernel Data";
-			case memtype_initrd:  return L"Initial Ramdisk";
-			case memtype_scratch: return L"Kernel Scratch Space";
-			default: return L"Bad Type Value";
-		}
+	if (t < uefi::memory_type::max_memory_type) {
+		return memory_type_names[static_cast<uint32_t>(t)];
 	}
-	return memory_type_names[value];
+
+	switch(t) {
+		case args_type:		return L"jsix kernel args";
+		case module_type:	return L"jsix bootloader module";
+		case kernel_type:	return L"jsix kernel code";
+		case table_type:	return L"jsix page tables";
+		default: return L"Bad Type Value";
+	}
 }
-*/
 
 void
 update_marked_addresses(uefi::event, void *context)
@@ -84,15 +74,13 @@ init_pointer_fixup(uefi::boot_services *bs, uefi::runtime_services *rs)
 			&event),
 		L"Error creating memory virtualization event");
 
-	uefi::memory_type memtype = static_cast<uefi::memory_type>(0x80000003ul);
-
 	// Reserve a page for our replacement PML4, plus some pages for the kernel to use
 	// as page tables while it gets started.
 	void *addr = nullptr;
 	try_or_raise(
 		bs->allocate_pages(
 			uefi::allocate_type::any_pages,
-			memtype,
+			table_type,
 			64,
 			&addr),
 		L"Error allocating page table pages.");
@@ -111,81 +99,6 @@ mark_pointer_fixup(void **p)
 }
 
 /*
-void
-copy_desc(EFI_MEMORY_DESCRIPTOR *src, EFI_MEMORY_DESCRIPTOR *dst, size_t len)
-{
-	uint8_t *srcb = (uint8_t *)src;
-	uint8_t *dstb = (uint8_t *)dst;
-	uint8_t *endb = srcb + len;
-	while (srcb < endb)
-		*dstb++ = *srcb++;
-}
-
-EFI_STATUS
-memory_get_map_length(EFI_BOOT_SERVICES *bootsvc, size_t *size)
-{
-	if (size == NULL)
-		return EFI_INVALID_PARAMETER;
-
-	EFI_STATUS status;
-	size_t key, desc_size;
-	uint32_t desc_version;
-	*size = 0;
-	status = bootsvc->GetMemoryMap(size, 0, &key, &desc_size, &desc_version);
-	if (status != EFI_BUFFER_TOO_SMALL) {
-		CHECK_EFI_STATUS_OR_RETURN(status, "Failed to get memory map size");
-	}
-	return EFI_SUCCESS;
-}
-
-EFI_STATUS
-memory_get_map(EFI_BOOT_SERVICES *bootsvc, struct memory_map *map)
-{
-	EFI_STATUS status;
-
-	if (map == NULL)
-		return EFI_INVALID_PARAMETER;
-
-	size_t needs_size = 0;
-	status = memory_get_map_length(bootsvc, &needs_size);
-	if (EFI_ERROR(status)) return status;
-
-	if (map->length < needs_size)
-		return EFI_BUFFER_TOO_SMALL;
-
-	status = bootsvc->GetMemoryMap(&map->length, map->entries, &map->key, &map->size, &map->version);
-	CHECK_EFI_STATUS_OR_RETURN(status, "Failed to load memory map");
-	return EFI_SUCCESS;
-}
-
-EFI_STATUS
-memory_dump_map(struct memory_map *map)
-{
-	if (map == NULL)
-		return EFI_INVALID_PARAMETER;
-
-	const size_t count = map->length / map->size;
-
-	console::print(L"Memory map:\n");
-	console::print(L"\t	Descriptor Count: %d (%d bytes)\n", count, map->length);
-	console::print(L"\t  Descriptor Size: %d bytes\n", map->size);
-	console::print(L"\t      Type offset: %d\n\n", offsetof(EFI_MEMORY_DESCRIPTOR, Type));
-
-	EFI_MEMORY_DESCRIPTOR *end = INCREMENT_DESC(map->entries, map->length);
-	EFI_MEMORY_DESCRIPTOR *d = map->entries;
-	while (d < end) {
-		int runtime = (d->Attribute & EFI_MEMORY_RUNTIME) == EFI_MEMORY_RUNTIME;
-		console::print(L"%s%s ", memory_type_name(d->Type), runtime ? L"*" : L" ");
-		console::print(L"%lx ", d->PhysicalStart);
-		console::print(L"%lx ", d->VirtualStart);
-		console::print(L"[%4d]\n", d->NumberOfPages);
-
-		d = INCREMENT_DESC(d, map->size);
-	}
-
-	return EFI_SUCCESS;
-}
-
 void
 memory_virtualize(EFI_RUNTIME_SERVICES *runsvc, struct memory_map *map)
 {
@@ -245,9 +158,7 @@ allocate_args_structure(uefi::boot_services *bs, size_t max_modules)
 		max_modules * sizeof(kernel::args::module); // The module structures
 
 	try_or_raise(
-		bs->allocate_pool(
-			uefi::memory_type::loader_data,
-			args_size,
+		bs->allocate_pool(args_type, args_size,
 			reinterpret_cast<void**>(&args)),
 		L"Could not allocate argument memory");
 
@@ -258,6 +169,51 @@ allocate_args_structure(uefi::boot_services *bs, size_t max_modules)
 	args->num_modules = 0;
 
 	return args;
+}
+
+efi_mem_map
+get_mappings(uefi::boot_services *bs)
+{
+	size_t needs_size = 0;
+	size_t map_key = 0;
+	size_t desc_size = 0;
+	uint32_t desc_version = 0;
+
+	uefi::status status = bs->get_memory_map(
+		&needs_size, nullptr, &map_key, &desc_size, &desc_version);
+
+	if (status != uefi::status::buffer_too_small)
+		error::raise(status, L"Error getting memory map size");
+
+	console::print(L"memory map needs %lu bytes\r\n", needs_size);
+
+	size_t buffer_size = needs_size + 10*desc_size;
+	uefi::memory_descriptor *buffer = nullptr;
+	try_or_raise(
+		bs->allocate_pool(
+			uefi::memory_type::loader_data, buffer_size,
+			reinterpret_cast<void**>(&buffer)),
+		L"Allocating space for memory map");
+
+	try_or_raise(
+		bs->get_memory_map(&buffer_size, buffer, &map_key, &desc_size, &desc_version),
+		L"Getting UEFI memory map");
+
+	efi_mem_map map;
+	map.length = buffer_size;
+	map.size = desc_size;
+	map.key = map_key;
+	map.version = desc_version;
+	map.entries = buffer;
+
+	for (auto desc : map) {
+	//for(size_t i = 0; i < map.num_entries(); ++i) {
+		//uefi::memory_descriptor *desc = map[i];
+		console::print(L"   Range %lx (%lx) %x(%s) [%lu]\r\n",
+			desc->physical_start, desc->attribute, desc->type, memory_type_name(desc->type), desc->number_of_pages);
+	}
+
+	return map;
 }
 
 

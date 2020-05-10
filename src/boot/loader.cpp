@@ -5,87 +5,86 @@
 #include "console.h"
 #include "elf.h"
 #include "error.h"
+#include "memory.h"
 
 namespace boot {
 namespace loader {
 
+using memory::offset_ptr;
+
 static bool
 is_elfheader_valid(const elf::header *header)
 {
-	return false;
+	return
+		header->magic[0] == 0x7f &&
+		header->magic[1] == 'E' &&
+		header->magic[2] == 'L' &&
+		header->magic[3] == 'F' &&
+		header->word_size == elf::word_size &&
+		header->endianness == elf::endianness &&
+		header->os_abi == elf::os_abi &&
+		header->machine == elf::machine &&
+		header->header_version == elf::version;
 }
 
-kernel::entrypoint
-load_elf(
+loaded_elf
+load(
 	const void *data,
 	size_t size,
 	uefi::boot_services *bs)
 {
 	status_line status(L"Loading kernel ELF binary");
+	const elf::header *header = reinterpret_cast<const elf::header*>(data);
 
-	if (size < sizeof(elf::header) ||
-		!is_elfheader_valid(reinterpret_cast<const elf::header*>(data)))
+	if (size < sizeof(elf::header) || !is_elfheader_valid(header))
 		error::raise(uefi::status::load_error, L"Kernel ELF not valid");
 
-	/*
-	struct elf_program_header prog_header;
-	for (int i = 0; i < header.ph_num; ++i) {
+	uintptr_t kernel_start = 0;
+	uintptr_t kernel_end = 0;
+	for (int i = 0; i < header->ph_num; ++i) {
+		ptrdiff_t offset = header->ph_offset + i * header->ph_entsize;
+		const elf::program_header *pheader =
+			offset_ptr<elf::program_header>(data, offset);
 
-		status = file->SetPosition(file, header.ph_offset + i * header.ph_entsize);
-		CHECK_EFI_STATUS_OR_RETURN(status, L"Setting ELF file position");
-
-		length = header.ph_entsize;
-		status = file->Read(file, &length, &prog_header);
-		CHECK_EFI_STATUS_OR_RETURN(status, L"Reading ELF program header");
-
-		if (prog_header.type != ELF_PT_LOAD) continue;
-
-		length = prog_header.mem_size;
-		void *addr = (void *)(prog_header.vaddr - KERNEL_VIRT_ADDRESS);
-		status = loader_alloc_pages(bootsvc, memtype_kernel, &length, &addr);
-		CHECK_EFI_STATUS_OR_RETURN(status, L"Allocating kernel pages");
-
-		if (data->kernel == 0)
-			data->kernel = addr;
-		data->kernel_length = (uint64_t)addr + length - (uint64_t)data->kernel;
-	}
-	con_debug(L"Read %d ELF program headers", header.ph_num);
-
-	struct elf_section_header sec_header;
-	for (int i = 0; i < header.sh_num; ++i) {
-		status = file->SetPosition(file, header.sh_offset + i * header.sh_entsize);
-		CHECK_EFI_STATUS_OR_RETURN(status, L"Setting ELF file position");
-
-		length = header.sh_entsize;
-		status = file->Read(file, &length, &sec_header);
-		CHECK_EFI_STATUS_OR_RETURN(status, L"Reading ELF section header");
-
-		if ((sec_header.flags & ELF_SHF_ALLOC) == 0) {
+		if (pheader->type != elf::PT_LOAD)
 			continue;
-		}
 
-		void *addr = (void *)(sec_header.addr - KERNEL_VIRT_ADDRESS);
+		if (kernel_start == 0 || pheader->vaddr < kernel_start)
+			kernel_start = pheader->vaddr;
 
-		if (sec_header.type == ELF_ST_PROGBITS) {
-			status = file->SetPosition(file, sec_header.offset);
-			CHECK_EFI_STATUS_OR_RETURN(status, L"Setting ELF file position");
-
-			length = sec_header.size;
-			status = file->Read(file, &length, addr);
-			CHECK_EFI_STATUS_OR_RETURN(status, L"Reading file");
-		} else if (sec_header.type == ELF_ST_NOBITS) {
-			bootsvc->SetMem(addr, sec_header.size, 0);
-		}
+		if (pheader->vaddr + pheader->mem_size > kernel_end)
+			kernel_end = pheader->vaddr + pheader->mem_size;
 	}
-	con_debug(L"Read %d ELF section headers", header.ph_num);
 
-	status = file->Close(file);
-	CHECK_EFI_STATUS_OR_RETURN(status, L"Closing file handle");
+	void *pages = nullptr;
+	size_t num_pages = memory::bytes_to_pages(kernel_end - kernel_start);
+	try_or_raise(
+		bs->allocate_pages(uefi::allocate_type::any_pages,
+			memory::kernel_type, num_pages, &pages),
+		L"Failed allocating space for kernel code");
 
-	return reinterpret_cast<kernel::entrypoint>(kernel.entrypoint());
-	*/
+	for (int i = 0; i < header->ph_num; ++i) {
+		ptrdiff_t offset = header->ph_offset + i * header->ph_entsize;
+		const elf::program_header *pheader =
+			offset_ptr<elf::program_header>(data, offset);
 
-	return nullptr;
+		if (pheader->type != elf::PT_LOAD)
+			continue;
+
+		void *data_start = offset_ptr<void>(data, pheader->offset);
+		void *program_start = offset_ptr<void>(pages, pheader->vaddr - kernel_start);
+		bs->copy_mem(program_start, data_start, pheader->mem_size);
+	}
+
+	loaded_elf result;
+	result.data = pages;
+	result.vaddr = kernel_start;
+	result.entrypoint = header->entrypoint;
+	console::print(L"          Kernel loaded at: 0x%lx\r\n", result.data);
+	console::print(L"    Kernel virtual address: 0x%lx\r\n", result.vaddr);
+	console::print(L"         Kernel entrypoint: 0x%lx\r\n", result.entrypoint);
+
+	return result;
 }
 
 } // namespace loader

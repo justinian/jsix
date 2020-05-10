@@ -7,13 +7,13 @@ namespace elf {
 constexpr uint8_t version = 1;
 constexpr uint8_t word_size = 2;
 constexpr uint8_t endianness = 1;
-constexpr uint8_t os_abi = 1;
+constexpr uint8_t os_abi = 0;
 constexpr uint16_t machine = 0x3e;
 
-const unsigned ELF_PT_LOAD = 1;
-const unsigned ELF_ST_PROGBITS = 1;
-const unsigned ELF_ST_NOBITS = 8;
-const unsigned long ELF_SHF_ALLOC = 0x2;
+const unsigned PT_LOAD = 1;
+const unsigned ST_PROGBITS = 1;
+const unsigned ST_NOBITS = 8;
+const unsigned long SHF_ALLOC = 0x2;
 
 struct header
 {
