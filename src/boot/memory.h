@@ -4,6 +4,7 @@
 #include <uefi/boot_services.h>
 #include <uefi/runtime_services.h>
 #include <stdint.h>
+#include "kernel_args.h"
 #include "pointer_manipulation.h"
 
 namespace boot {
@@ -78,7 +79,13 @@ struct efi_mem_map
 };
 
 /// Get the memory map from UEFI.
-efi_mem_map get_mappings(uefi::boot_services *bs);
+efi_mem_map get_uefi_mappings(uefi::boot_services *bs);
+
+/// Add the kernel's memory map as a module to the kernel args.
+void build_kernel_mem_map(
+	efi_mem_map &efi_map,
+	kernel::args::header *args,
+	uefi::boot_services *bs);
 
 } // namespace boot
 } // namespace memory

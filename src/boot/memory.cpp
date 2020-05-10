@@ -1,6 +1,5 @@
 #include <stddef.h>
 #include <uefi/types.h>
-#include "kernel_args.h"
 
 #include "console.h"
 #include "error.h"
@@ -160,8 +159,10 @@ can_merge(mem_entry &prev, mem_type type, uefi::memory_descriptor *next)
 }
 
 efi_mem_map
-get_mappings(uefi::boot_services *bs)
+get_uefi_mappings(uefi::boot_services *bs)
 {
+	status_line(L"Getting UEFI memory map");
+
 	size_t needs_size = 0;
 	size_t map_key = 0;
 	size_t desc_size = 0;
@@ -172,8 +173,6 @@ get_mappings(uefi::boot_services *bs)
 
 	if (status != uefi::status::buffer_too_small)
 		error::raise(status, L"Error getting memory map size");
-
-	console::print(L"memory map needs %lu bytes\r\n", needs_size);
 
 	size_t buffer_size = needs_size + 10*desc_size;
 	uefi::memory_descriptor *buffer = nullptr;
@@ -193,9 +192,15 @@ get_mappings(uefi::boot_services *bs)
 	map.key = map_key;
 	map.version = desc_version;
 	map.entries = buffer;
+	return map;
+}
 
+void
+build_kernel_mem_map(efi_mem_map &efi_map, kernel::args::header *args, uefi::boot_services *bs)
+{
+	status_line(L"Creating kernel memory map");
 
-	size_t map_size = map.num_entries() * sizeof(mem_entry);
+	size_t map_size = efi_map.num_entries() * sizeof(mem_entry);
 	kernel::args::mem_entry *kernel_map = nullptr;
 	try_or_raise(
 		bs->allocate_pages(
@@ -209,7 +214,7 @@ get_mappings(uefi::boot_services *bs)
 
 	size_t i = 0;
 	bool first = true;
-	for (auto desc : map) {
+	for (auto desc : efi_map) {
 		/*
 		console::print(L"   Range %lx (%lx) %x(%s) [%lu]\r\n",
 			desc->physical_start, desc->attribute, desc->type, memory_type_name(desc->type), desc->number_of_pages);
@@ -293,6 +298,11 @@ get_mappings(uefi::boot_services *bs)
 		}
 	}
 
+	kernel::args::module &module = args->modules[args->num_modules++];
+	module.location = reinterpret_cast<void*>(kernel_map);
+	module.size = map_size;
+	module.type = kernel::args::mod_type::memory_map;
+
 	/*
 	for (size_t i = 0; i<map.num_entries(); ++i) {
 		mem_entry &ent = kernel_map[i];
@@ -300,8 +310,6 @@ get_mappings(uefi::boot_services *bs)
 			ent.start, ent.attr, ent.type, ent.pages);
 	}
 	*/
-
-	return map;
 }
 
 

@@ -171,7 +171,9 @@ bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con)
 	loader::loaded_elf kernel_elf =
 		loader::load(kernel->location, kernel->size, bs);
 
-	memory::get_mappings(bs);
+	memory::efi_mem_map efi_map = memory::get_uefi_mappings(bs);
+	memory::build_kernel_mem_map(efi_map, args, bs);
+
 	return kernel_elf;
 }
 
