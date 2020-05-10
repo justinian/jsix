@@ -56,7 +56,8 @@ void mark_pointer_fixup(void **p);
 
 /// Struct that represents UEFI's memory map. Contains a pointer to the map data
 /// as well as the data on how to read it.
-struct efi_mem_map {
+struct efi_mem_map
+{
 	using desc = uefi::memory_descriptor;
 	using iterator = offset_iterator<desc>;
 

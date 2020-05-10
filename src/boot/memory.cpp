@@ -9,6 +9,9 @@
 namespace boot {
 namespace memory {
 
+using mem_entry = kernel::args::mem_entry;
+using mem_type = kernel::args::mem_type;
+
 size_t fixup_pointer_index = 0;
 void **fixup_pointers[64];
 uint64_t *new_pml4 = 0;
@@ -147,6 +150,15 @@ memory_virtualize(EFI_RUNTIME_SERVICES *runsvc, struct memory_map *map)
 }
 */
 
+bool
+can_merge(mem_entry &prev, mem_type type, uefi::memory_descriptor *next)
+{
+	return
+		prev.type == type &&
+		prev.start + (page_size * prev.pages) == next->physical_start &&
+		prev.attr == (next->attribute & 0xffffffff);
+}
+
 efi_mem_map
 get_mappings(uefi::boot_services *bs)
 {
@@ -182,12 +194,112 @@ get_mappings(uefi::boot_services *bs)
 	map.version = desc_version;
 	map.entries = buffer;
 
+
+	size_t map_size = map.num_entries() * sizeof(mem_entry);
+	kernel::args::mem_entry *kernel_map = nullptr;
+	try_or_raise(
+		bs->allocate_pages(
+			uefi::allocate_type::any_pages,
+			module_type,
+			bytes_to_pages(map_size),
+			reinterpret_cast<void**>(&kernel_map)),
+		L"Error allocating kernel memory map module space.");
+
+	bs->set_mem(kernel_map, map_size, 0);
+
+	size_t i = 0;
+	bool first = true;
 	for (auto desc : map) {
-	//for(size_t i = 0; i < map.num_entries(); ++i) {
-		//uefi::memory_descriptor *desc = map[i];
+		/*
 		console::print(L"   Range %lx (%lx) %x(%s) [%lu]\r\n",
 			desc->physical_start, desc->attribute, desc->type, memory_type_name(desc->type), desc->number_of_pages);
+		*/
+
+		mem_type type;
+		switch (desc->type) {
+			case uefi::memory_type::reserved:
+			case uefi::memory_type::unusable_memory:
+			case uefi::memory_type::acpi_memory_nvs:
+			case uefi::memory_type::pal_code:
+				continue;
+
+			case uefi::memory_type::loader_code:
+			case uefi::memory_type::loader_data:
+			case uefi::memory_type::boot_services_code:
+			case uefi::memory_type::boot_services_data:
+			case uefi::memory_type::conventional_memory:
+				type = mem_type::free;
+				break;
+
+			case uefi::memory_type::runtime_services_code:
+			case uefi::memory_type::runtime_services_data:
+				type = mem_type::uefi_runtime;
+				break;
+
+			case uefi::memory_type::acpi_reclaim_memory:
+				type = mem_type::acpi;
+				break;
+
+			case uefi::memory_type::memory_mapped_io:
+			case uefi::memory_type::memory_mapped_io_port_space:
+				type = mem_type::mmio;
+				break;
+
+			case uefi::memory_type::persistent_memory:
+				type = mem_type::persistent;
+				break;
+
+			case args_type:
+				type = mem_type::args;
+				break;
+
+			case module_type:
+				type = mem_type::module;
+				break;
+
+			case kernel_type:
+				type = mem_type::kernel;
+				break;
+
+			case table_type:
+				type = mem_type::table;
+				break;
+
+			default:
+				error::raise(
+					uefi::status::invalid_parameter,
+					L"Got an unexpected memory type from UEFI memory map");
+		}
+
+		// TODO: validate uefi's map is sorted
+		if (first) {
+			first = false;
+			kernel_map[i].start = desc->physical_start;
+			kernel_map[i].pages = desc->number_of_pages;
+			kernel_map[i].type = type;
+			kernel_map[i].attr = (desc->attribute & 0xffffffff);
+			continue;
+		}
+
+		mem_entry &prev = kernel_map[i];
+		if (can_merge(prev, type, desc)) {
+			prev.pages += desc->number_of_pages;
+		} else {
+			mem_entry &next = kernel_map[++i];
+			next.start = desc->physical_start;
+			next.pages = desc->number_of_pages;
+			next.type = type;
+			next.attr = (desc->attribute & 0xffffffff);
+		}
 	}
+
+	/*
+	for (size_t i = 0; i<map.num_entries(); ++i) {
+		mem_entry &ent = kernel_map[i];
+		console::print(L"   Range %lx (%x) %d [%lu]\r\n",
+			ent.start, ent.attr, ent.type, ent.pages);
+	}
+	*/
 
 	return map;
 }

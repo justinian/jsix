@@ -32,13 +32,37 @@ enum class mode : uint8_t {
 	debug
 };
 
-#pragma pack(push, 1)
 struct module {
 	void *location;
 	size_t size;
 	mod_type type;
 	mod_flags flags;
+}
+__attribute__((packed));
+
+
+enum class mem_type : uint32_t {
+	free,
+	args,
+	kernel,
+	module,
+	table,
+	acpi,
+	uefi_runtime,
+	mmio,
+	persistent
 };
+
+/// Structure to hold an entry in the memory map.
+struct mem_entry
+{
+	uintptr_t start;
+	size_t pages;
+	mem_type type;
+	uint32_t attr;
+}
+__attribute__((packed));
+
 
 struct header {
 	uint32_t magic;
