@@ -1,88 +1,83 @@
+/// \file memory.h
+/// Memory-related constants and functions.
 #pragma once
 #include <uefi/boot_services.h>
 #include <uefi/runtime_services.h>
 #include <stdint.h>
-#include "kernel_args.h"
+#include "pointer_manipulation.h"
 
 namespace boot {
 namespace memory {
 
+/// UEFI specifies that pages are always 4 KiB.
 constexpr size_t page_size = 0x1000;
 
-constexpr uefi::memory_type args_type   = static_cast<uefi::memory_type>(0x80000000);
-constexpr uefi::memory_type module_type = static_cast<uefi::memory_type>(0x80000001);
-constexpr uefi::memory_type kernel_type = static_cast<uefi::memory_type>(0x80000002);
-constexpr uefi::memory_type table_type  = static_cast<uefi::memory_type>(0x80000003);
-
-template <typename T, typename S>
-static T* offset_ptr(S* input, ptrdiff_t offset) {
-	return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(input) + offset);
-}
-
+/// Get the number of pages needed to hold `bytes` bytes
 inline constexpr size_t bytes_to_pages(size_t bytes) {
 	return ((bytes - 1) / page_size) + 1;
 }
 
-void init_pointer_fixup(
-	uefi::boot_services *bs,
-	uefi::runtime_services *rs);
+/// \defgroup memory_types
+/// Custom UEFI memory type values used for data being passed to the kernel
+/// @{
 
+/// Memory containing the kernel args structure
+constexpr uefi::memory_type args_type =
+	static_cast<uefi::memory_type>(0x80000000);
+
+/// Memory containing any loaded modules to be passed to the kernel
+constexpr uefi::memory_type module_type =
+	static_cast<uefi::memory_type>(0x80000001);
+
+/// Memory containing loaded kernel code and data sections
+constexpr uefi::memory_type kernel_type =
+	static_cast<uefi::memory_type>(0x80000002);
+
+/// Memory containing page tables set up by the loader
+constexpr uefi::memory_type table_type =
+	static_cast<uefi::memory_type>(0x80000003);
+
+/// @}
+
+/// \defgroup pointer_fixup
+/// Memory virtualization pointer fixup functions. Handles changing affected pointers
+/// when calling UEFI's `set_virtual_address_map` function to change the location of
+/// runtime services in virtual memory.
+/// @{
+
+/// Set up the pointer fixup UEFI events. This registers the necessary callbacks for
+/// runtime services to call when `set_virtual_address_map` is called.
+void init_pointer_fixup(uefi::boot_services *bs, uefi::runtime_services *rs);
+
+/// Mark a given pointer as needing to be updated when doing pointer fixup.
 void mark_pointer_fixup(void **p);
 
-kernel::args::header * allocate_args_structure(uefi::boot_services *bs, size_t max_modules);
+/// @}
 
-template <typename T>
-class offset_iterator
-{
-	T* m_t;
-	size_t m_off;
-public:
-	offset_iterator(T* t, size_t offset=0) : m_t(t), m_off(offset) {}
-
-	T* operator++() { m_t = offset_ptr<T>(m_t, m_off); return m_t; }
-	T* operator++(int) { T* tmp = m_t; operator++(); return tmp; }
-	bool operator==(T* p) { return p == m_t; }
-
-	T* operator*() const { return m_t; }
-	operator T*() const { return m_t; }
-	T* operator->() const { return m_t; }
-};
-
+/// Struct that represents UEFI's memory map. Contains a pointer to the map data
+/// as well as the data on how to read it.
 struct efi_mem_map {
-	size_t length;
-	size_t size;
-	size_t key;
-	uint32_t version;
-	uefi::memory_descriptor *entries;
+	using desc = uefi::memory_descriptor;
+	using iterator = offset_iterator<desc>;
 
+	size_t length;     ///< Total length of the map data
+	size_t size;       ///< Size of an entry in the array
+	size_t key;        ///< Key for detecting changes
+	uint32_t version;  ///< Version of the `memory_descriptor` struct
+	desc *entries;     ///< The array of UEFI descriptors
+
+	/// Get the count of entries in the array
 	inline size_t num_entries() const { return length / size; }
 
-	inline uefi::memory_descriptor * operator[](size_t i) {
-		size_t offset = i * size;
-		if (offset > length) return nullptr;
-		return offset_ptr<uefi::memory_descriptor>(entries, offset);
-	}
+	/// Return an iterator to the beginning of the array
+	iterator begin() { return iterator(entries, size); }
 
-	offset_iterator<uefi::memory_descriptor> begin() { return offset_iterator<uefi::memory_descriptor>(entries, size); }
-	offset_iterator<uefi::memory_descriptor> end() { return offset_ptr<uefi::memory_descriptor>(entries, length); }
+	/// Return an iterator to the end of the array
+	iterator end() { return offset_ptr<desc>(entries, length); }
 };
 
+/// Get the memory map from UEFI.
 efi_mem_map get_mappings(uefi::boot_services *bs);
-
-enum class memory_type
-{
-	free,
-	loader_used,
-	system_used
-};
-
-/*
-EFI_STATUS memory_get_map_length(EFI_BOOT_SERVICES *bootsvc, size_t *size);
-EFI_STATUS memory_get_map(EFI_BOOT_SERVICES *bootsvc, struct memory_map *map);
-EFI_STATUS memory_dump_map(struct memory_map *map);
-
-void memory_virtualize(EFI_RUNTIME_SERVICES *runsvc, struct memory_map *map);
-*/
 
 } // namespace boot
 } // namespace memory

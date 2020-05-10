@@ -1,3 +1,5 @@
+/// \file elf.h
+/// Definitions and related constants for ELF64 structures
 #pragma once
 #include <stdint.h>
 

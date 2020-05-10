@@ -1,3 +1,5 @@
+/// \file hardware.h
+/// Functions and definitions for detecting and dealing with hardware
 #pragma once
 
 #include <uefi/tables.h>

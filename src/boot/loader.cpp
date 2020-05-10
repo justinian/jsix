@@ -10,8 +10,6 @@
 namespace boot {
 namespace loader {
 
-using memory::offset_ptr;
-
 static bool
 is_elfheader_valid(const elf::header *header)
 {
