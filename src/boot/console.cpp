@@ -126,7 +126,7 @@ console::print_hex(uint32_t n) const
 	wchar_t buffer[9];
 	wchar_t *p = buffer;
 	for (int i = 7; i >= 0; --i) {
-		uint8_t nibble = (n & (0xf << (i*4))) >> (i*4);
+		uint8_t nibble = (n >> (i*4)) & 0xf;
 		*p++ = digits[nibble];
 	}
 	*p = 0;
@@ -140,7 +140,7 @@ console::print_long_hex(uint64_t n) const
 	wchar_t buffer[17];
 	wchar_t *p = buffer;
 	for (int i = 15; i >= 0; --i) {
-		uint8_t nibble = (n & (0xf << (i*4))) >> (i*4);
+		uint8_t nibble = (n >> (i*4)) & 0xf;
 		*p++ = digits[nibble];
 	}
 	*p = 0;
