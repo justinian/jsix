@@ -58,6 +58,9 @@ public:
 } // namespace error
 } // namespace boot
 
+/// Debugging psuedo-breakpoint.
+void debug_break();
+
 /// Helper macro to raise an error if an operation fails.
 /// \arg s  An expression evaluating to a UEFI status
 /// \arg m  The error message to use on failure

@@ -67,6 +67,8 @@ init_pointer_fixup(uefi::boot_services *bs, uefi::runtime_services *rs)
 	status_line status(L"Initializing pointer virtualization event");
 
 	uefi::event event;
+	bs->set_mem(&fixup_pointers, sizeof(fixup_pointers), 0);
+	fixup_pointer_index = 0;
 
 	try_or_raise(
 		bs->create_event(

@@ -144,7 +144,7 @@ load_module(
 /// UEFI is still in control of the machine. (ie, while the loader still
 /// has access to boot services.
 loader::loaded_elf
-bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con)
+bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con, size_t *map_key)
 {
 	error::uefi_handler handler(con);
 
@@ -173,6 +173,9 @@ bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con)
 
 	memory::efi_mem_map efi_map = memory::get_uefi_mappings(bs);
 	memory::build_kernel_mem_map(efi_map, args, bs);
+
+	efi_map = memory::get_uefi_mappings(bs);
+	*map_key = efi_map.key;
 
 	return kernel_elf;
 }
@@ -288,10 +291,15 @@ efi_main(uefi::handle image_handle, uefi::system_table *st)
 	error::cpu_assert_handler handler;
 	console con(st->boot_services, st->con_out);
 
+	size_t map_key;
 	loader::loaded_elf kernel =
-		bootloader_main_uefi(image_handle, st, con);
+		bootloader_main_uefi(image_handle, st, con, &map_key);
 
-	while(1);
+	try_or_raise(
+		st->boot_services->exit_boot_services(image_handle, map_key),
+		L"Failed to exit boot services");
+
+	debug_break();
 	return uefi::status::unsupported;
 }
 

@@ -89,6 +89,8 @@ cpu_assert_handler::handle(uefi::status s, const wchar_t *message)
 } // namespace error
 } // namespace boot
 
-extern "C" int _purecall() { ::boot::error::raise(uefi::status::unsupported, L"Pure virtual call"); }
-void operator delete (void *) {}
-
+void debug_break()
+{
+	volatile int go = 0;
+	while (!go);
+}
