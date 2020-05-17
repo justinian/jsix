@@ -84,6 +84,6 @@ __attribute__((aligned(alignof(max_align_t))));
 
 } // namespace args
 
-using entrypoint = void (*)(args::header *);
+using entrypoint = __attribute__((sysv_abi)) void (*)(args::header *);
 
 } // namespace kernel
