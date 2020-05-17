@@ -15,15 +15,8 @@
 #include "memory.h"
 
 #include "kernel_args.h"
+
 /*
-#include "guids.h"
-#include "loader.h"
-#include "utility.h"
-
-#ifndef SCRATCH_PAGES
-#define SCRATCH_PAGES 64
-#endif
-
 #define KERNEL_HEADER_MAGIC   0x600db007
 #define KERNEL_HEADER_VERSION 1
 
@@ -171,115 +164,10 @@ bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con, s
 	loader::loaded_elf kernel_elf =
 		loader::load(kernel->location, kernel->size, bs);
 
-	memory::efi_mem_map efi_map = memory::get_uefi_mappings(bs);
-	memory::build_kernel_mem_map(efi_map, args, bs);
-
-	efi_map = memory::get_uefi_mappings(bs);
-	*map_key = efi_map.key;
-
+	*map_key = memory::build_kernel_mem_map(args, bs);
 	return kernel_elf;
 }
 
-	/*
-
-	struct loader_data load;
-	load.data_length = data_length;
-	status = loader_load_kernel(bootsvc, &load);
-	CHECK_EFI_STATUS_OR_FAIL(status);
-
-	console::print(L"    %x image bytes  at 0x%x\r\n", load.kernel_length, load.kernel);
-	console::print(L"    %x data bytes   at 0x%x\r\n", load.data_length, load.data);
-	console::print(L"    %x initrd bytes at 0x%x\r\n", load.initrd_length, load.initrd);
-
-	struct kernel_header *version = (struct kernel_header *)load.kernel;
-	if (version->magic != KERNEL_HEADER_MAGIC) {
-		console::print(L"    bad magic %x\r\n", version->magic);
-		CHECK_EFI_STATUS_OR_FAIL(EFI_CRC_ERROR);
-	}
-
-	console::print(L"    Kernel version %d.%d.%d %x%s\r\n",
-			version->major, version->minor, version->patch, version->gitsha & 0x0fffffff,
-			version->gitsha & 0xf0000000 ? L"*" : L"");
-	console::print(L"    Entrypoint 0x%x\r\n", load.kernel_entry);
-
-	kernel_entry kernel_main =
-		reinterpret_cast<kernel_entry>(load.kernel_entry);
-	memory_mark_pointer_fixup((void **)&kernel_main);
-
-	// Set up the kernel data pages to pass to the kernel
-	//
-	struct kernel_args *data_header = (struct kernel_args *)load.data;
-	memory_mark_pointer_fixup((void **)&data_header);
-
-	data_header->magic = DATA_HEADER_MAGIC;
-	data_header->version = DATA_HEADER_VERSION;
-	data_header->length = sizeof(struct kernel_args);
-
-	data_header->scratch_pages = SCRATCH_PAGES;
-	data_header->flags = 0;
-
-	data_header->initrd = load.initrd;
-	data_header->initrd_length = load.initrd_length;
-	memory_mark_pointer_fixup((void **)&data_header->initrd);
-
-	data_header->data = load.data;
-	data_header->data_length = load.data_length;
-	memory_mark_pointer_fixup((void **)&data_header->data);
-
-	data_header->memory_map = (EFI_MEMORY_DESCRIPTOR *)(data_header + 1);
-	memory_mark_pointer_fixup((void **)&data_header->memory_map);
-
-	data_header->runtime = runsvc;
-	memory_mark_pointer_fixup((void **)&data_header->runtime);
-
-	data_header->acpi_table = acpi_table;
-	memory_mark_pointer_fixup((void **)&data_header->acpi_table);
-
-	data_header->_reserved0 = 0;
-	data_header->_reserved1 = 0;
-
-	// Figure out the framebuffer (if any) and add that to the data header
-	//
-	status = con_get_framebuffer(
-			bootsvc, 
-			&data_header->frame_buffer,
-			&data_header->frame_buffer_length,
-			&data_header->hres,
-			&data_header->vres,
-			&data_header->rmask,
-			&data_header->gmask,
-			&data_header->bmask);
-	CHECK_EFI_STATUS_OR_FAIL(status);
-	memory_mark_pointer_fixup((void **)&data_header->frame_buffer);
-
-	// Save the memory map and tell the firmware we're taking control.
-	//
-	struct memory_map map;
-	map.length = (load.data_length - header_size);
-	map.entries =
-		reinterpret_cast<EFI_MEMORY_DESCRIPTOR *>(data_header->memory_map);
-
-	status = memory_get_map(bootsvc, &map);
-	CHECK_EFI_STATUS_OR_FAIL(status);
-
-	data_header->memory_map_length = map.length;
-	data_header->memory_map_desc_size = map.size;
-
-	detect_debug_mode(runsvc, data_header);
-
-	// bootsvc->Stall(5000000);
-
-	status = bootsvc->ExitBootServices(image_handle, map.key);
-	CHECK_EFI_STATUS_OR_ASSERT(status, 0);
-
-	memory_virtualize(runsvc, &map);
-
-	// Hand control to the kernel
-	//
-	kernel_main(data_header);
-	return EFI_LOAD_ERROR;
-}
-*/
 } // namespace boot
 
 /// The UEFI entrypoint for the loader.

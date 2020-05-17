@@ -68,6 +68,8 @@ struct efi_mem_map
 	uint32_t version;  ///< Version of the `memory_descriptor` struct
 	desc *entries;     ///< The array of UEFI descriptors
 
+	efi_mem_map() : length(0), size(0), key(0), version(0), entries(nullptr) {}
+
 	/// Get the count of entries in the array
 	inline size_t num_entries() const { return length / size; }
 
@@ -79,13 +81,14 @@ struct efi_mem_map
 };
 
 /// Get the memory map from UEFI.
-efi_mem_map get_uefi_mappings(uefi::boot_services *bs);
+/// \arg allocate  If false, don't actually fetch the mappings, just
+///                return a structure describing them.
+efi_mem_map get_uefi_mappings(bool allocate, uefi::boot_services *bs);
 
 /// Add the kernel's memory map as a module to the kernel args.
-void build_kernel_mem_map(
-	efi_mem_map &efi_map,
-	kernel::args::header *args,
-	uefi::boot_services *bs);
+/// \returns  The uefi memory map key for the version used to build
+///           this map
+size_t build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs);
 
 } // namespace boot
 } // namespace memory

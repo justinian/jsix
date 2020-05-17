@@ -161,46 +161,42 @@ can_merge(mem_entry &prev, mem_type type, uefi::memory_descriptor *next)
 }
 
 efi_mem_map
-get_uefi_mappings(uefi::boot_services *bs)
+get_uefi_mappings(bool allocate, uefi::boot_services *bs)
 {
 	status_line(L"Getting UEFI memory map");
 
+	efi_mem_map map;
 	size_t needs_size = 0;
-	size_t map_key = 0;
-	size_t desc_size = 0;
-	uint32_t desc_version = 0;
 
 	uefi::status status = bs->get_memory_map(
-		&needs_size, nullptr, &map_key, &desc_size, &desc_version);
+		&needs_size, nullptr, &map.key, &map.size, &map.version);
 
 	if (status != uefi::status::buffer_too_small)
 		error::raise(status, L"Error getting memory map size");
 
-	size_t buffer_size = needs_size + 10*desc_size;
-	uefi::memory_descriptor *buffer = nullptr;
-	try_or_raise(
-		bs->allocate_pool(
-			uefi::memory_type::loader_data, buffer_size,
-			reinterpret_cast<void**>(&buffer)),
-		L"Allocating space for memory map");
+	if (allocate) {
+		map.length = needs_size + 10*map.size;
 
-	try_or_raise(
-		bs->get_memory_map(&buffer_size, buffer, &map_key, &desc_size, &desc_version),
-		L"Getting UEFI memory map");
+		try_or_raise(
+			bs->allocate_pool(
+				uefi::memory_type::loader_data, map.length,
+				reinterpret_cast<void**>(&map.entries)),
+			L"Allocating space for memory map");
 
-	efi_mem_map map;
-	map.length = buffer_size;
-	map.size = desc_size;
-	map.key = map_key;
-	map.version = desc_version;
-	map.entries = buffer;
+		try_or_raise(
+			bs->get_memory_map(&map.length, map.entries, &map.key, &map.size, &map.version),
+			L"Getting UEFI memory map");
+	}
+
 	return map;
 }
 
-void
-build_kernel_mem_map(efi_mem_map &efi_map, kernel::args::header *args, uefi::boot_services *bs)
+size_t
+build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 {
 	status_line(L"Creating kernel memory map");
+
+	efi_mem_map efi_map = get_uefi_mappings(false, bs);
 
 	size_t map_size = efi_map.num_entries() * sizeof(mem_entry);
 	kernel::args::mem_entry *kernel_map = nullptr;
@@ -213,6 +209,7 @@ build_kernel_mem_map(efi_mem_map &efi_map, kernel::args::header *args, uefi::boo
 		L"Error allocating kernel memory map module space.");
 
 	bs->set_mem(kernel_map, map_size, 0);
+	efi_map = get_uefi_mappings(true, bs);
 
 	size_t i = 0;
 	bool first = true;
@@ -312,6 +309,8 @@ build_kernel_mem_map(efi_mem_map &efi_map, kernel::args::header *args, uefi::boo
 			ent.start, ent.attr, ent.type, ent.pages);
 	}
 	*/
+
+	return efi_map.key;
 }
 
 
