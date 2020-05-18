@@ -6,6 +6,7 @@
 #include "elf.h"
 #include "error.h"
 #include "memory.h"
+#include "paging.h"
 
 namespace boot {
 namespace loader {
@@ -25,10 +26,19 @@ is_elfheader_valid(const elf::header *header)
 		header->header_version == elf::version;
 }
 
-loaded_elf
+static void
+map_pages(
+	paging::page_table *pml4,
+	kernel::args::header *args,
+	uintptr_t phys, uintptr_t virt,
+	size_t bytes)
+{
+}
+
+kernel::entrypoint
 load(
-	const void *data,
-	size_t size,
+	const void *data, size_t size,
+	kernel::args::header *args,
 	uefi::boot_services *bs)
 {
 	status_line status(L"Loading kernel ELF binary");
@@ -37,29 +47,7 @@ load(
 	if (size < sizeof(elf::header) || !is_elfheader_valid(header))
 		error::raise(uefi::status::load_error, L"Kernel ELF not valid");
 
-	uintptr_t kernel_start = 0;
-	uintptr_t kernel_end = 0;
-	for (int i = 0; i < header->ph_num; ++i) {
-		ptrdiff_t offset = header->ph_offset + i * header->ph_entsize;
-		const elf::program_header *pheader =
-			offset_ptr<elf::program_header>(data, offset);
-
-		if (pheader->type != elf::PT_LOAD)
-			continue;
-
-		if (kernel_start == 0 || pheader->vaddr < kernel_start)
-			kernel_start = pheader->vaddr;
-
-		if (pheader->vaddr + pheader->mem_size > kernel_end)
-			kernel_end = pheader->vaddr + pheader->mem_size;
-	}
-
-	void *pages = nullptr;
-	size_t num_pages = memory::bytes_to_pages(kernel_end - kernel_start);
-	try_or_raise(
-		bs->allocate_pages(uefi::allocate_type::any_pages,
-			memory::kernel_type, num_pages, &pages),
-		L"Failed allocating space for kernel code");
+	paging::page_table *pml4 = reinterpret_cast<paging::page_table*>(args->pml4);
 
 	for (int i = 0; i < header->ph_num; ++i) {
 		ptrdiff_t offset = header->ph_offset + i * header->ph_entsize;
@@ -68,21 +56,27 @@ load(
 
 		if (pheader->type != elf::PT_LOAD)
 			continue;
+
+		size_t num_pages = memory::bytes_to_pages(pheader->mem_size);
+		void *pages = nullptr;
+
+		try_or_raise(
+			bs->allocate_pages(uefi::allocate_type::any_pages,
+				memory::kernel_type, num_pages, &pages),
+			L"Failed allocating space for kernel code");
 
 		void *data_start = offset_ptr<void>(data, pheader->offset);
-		void *program_start = offset_ptr<void>(pages, pheader->vaddr - kernel_start);
-		bs->copy_mem(program_start, data_start, pheader->mem_size);
+		bs->copy_mem(pages, data_start, pheader->mem_size);
+
+		console::print(L"          Kernel section %d physical addr: 0x%lx\r\n", i, pages);
+		console::print(L"          Kernel section %d virtual addr:  0x%lx\r\n", i, pheader->vaddr);
+
+		// TODO: map these pages into kernel args' page tables
+		// remember to set appropriate RWX permissions
+		map_pages(pml4, args, reinterpret_cast<uintptr_t>(pages), pheader->vaddr, pheader->mem_size);
 	}
 
-	loaded_elf result;
-	result.data = pages;
-	result.vaddr = kernel_start;
-	result.entrypoint = header->entrypoint;
-	console::print(L"          Kernel loaded at: 0x%lx\r\n", result.data);
-	console::print(L"    Kernel virtual address: 0x%lx\r\n", result.vaddr);
-	console::print(L"         Kernel entrypoint: 0x%lx\r\n", result.entrypoint);
-
-	return result;
+	return reinterpret_cast<kernel::entrypoint>(header->entrypoint);
 }
 
 } // namespace loader

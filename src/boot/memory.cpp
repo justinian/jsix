@@ -13,7 +13,6 @@ using mem_type = kernel::args::mem_type;
 
 size_t fixup_pointer_index = 0;
 void **fixup_pointers[64];
-uint64_t *new_pml4 = 0;
 
 static const wchar_t *memory_type_names[] = {
 	L"reserved memory type",
@@ -78,19 +77,6 @@ init_pointer_fixup(uefi::boot_services *bs, uefi::runtime_services *rs)
 			rs,
 			&event),
 		L"Error creating memory virtualization event");
-
-	// Reserve a page for our replacement PML4, plus some pages for the kernel to use
-	// as page tables while it gets started.
-	void *addr = nullptr;
-	try_or_raise(
-		bs->allocate_pages(
-			uefi::allocate_type::any_pages,
-			table_type,
-			64,
-			&addr),
-		L"Error allocating page table pages.");
-
-	new_pml4 = reinterpret_cast<uint64_t*>(addr);
 }
 
 void

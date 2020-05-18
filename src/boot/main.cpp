@@ -13,6 +13,7 @@
 #include "hardware.h"
 #include "loader.h"
 #include "memory.h"
+#include "paging.h"
 
 #include "kernel_args.h"
 
@@ -136,7 +137,7 @@ load_module(
 /// The main procedure for the portion of the loader that runs while
 /// UEFI is still in control of the machine. (ie, while the loader still
 /// has access to boot services.
-loader::loaded_elf
+kernel::entrypoint
 bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con, size_t *map_key)
 {
 	error::uefi_handler handler(con);
@@ -160,12 +161,14 @@ bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con, s
 	kernel::args::module *kernel =
 		load_module(disk, args, L"kernel", L"jsix.elf", kernel::args::mod_type::kernel);
 
+	paging::allocate_tables(args, bs);
 
-	loader::loaded_elf kernel_elf =
-		loader::load(kernel->location, kernel->size, bs);
+	kernel::entrypoint kentry =
+		loader::load(kernel->location, kernel->size, args, bs);
 
 	*map_key = memory::build_kernel_mem_map(args, bs);
-	return kernel_elf;
+
+	return kentry;
 }
 
 } // namespace boot
@@ -180,7 +183,7 @@ efi_main(uefi::handle image_handle, uefi::system_table *st)
 	console con(st->boot_services, st->con_out);
 
 	size_t map_key;
-	loader::loaded_elf kernel =
+	kernel::entrypoint kentry =
 		bootloader_main_uefi(image_handle, st, con, &map_key);
 
 	try_or_raise(

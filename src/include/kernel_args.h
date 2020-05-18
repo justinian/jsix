@@ -22,6 +22,7 @@ enum class mod_type : uint32_t {
 	initrd,
 
 	memory_map,
+	page_tables,
 	framebuffer,
 
 	max
@@ -72,7 +73,10 @@ struct header {
 
 	uint8_t _reserved0;
 
-	uint32_t _reserved1;
+	void *pml4;
+	void *page_table_cache;
+	uint32_t num_free_tables;
+
 	uint32_t num_modules;
 	module *modules;
 
