@@ -26,15 +26,6 @@ is_elfheader_valid(const elf::header *header)
 		header->header_version == elf::version;
 }
 
-static void
-map_pages(
-	paging::page_table *pml4,
-	kernel::args::header *args,
-	uintptr_t phys, uintptr_t virt,
-	size_t bytes)
-{
-}
-
 kernel::entrypoint
 load(
 	const void *data, size_t size,
@@ -68,12 +59,12 @@ load(
 		void *data_start = offset_ptr<void>(data, pheader->offset);
 		bs->copy_mem(pages, data_start, pheader->mem_size);
 
-		console::print(L"          Kernel section %d physical addr: 0x%lx\r\n", i, pages);
-		console::print(L"          Kernel section %d virtual addr:  0x%lx\r\n", i, pheader->vaddr);
+		console::print(L"    Kernel section %d physical: 0x%lx\r\n", i, pages);
+		console::print(L"    Kernel section %d virtual:  0x%lx\r\n", i, pheader->vaddr);
 
 		// TODO: map these pages into kernel args' page tables
 		// remember to set appropriate RWX permissions
-		map_pages(pml4, args, reinterpret_cast<uintptr_t>(pages), pheader->vaddr, pheader->mem_size);
+		paging::map_pages(pml4, args, reinterpret_cast<uintptr_t>(pages), pheader->vaddr, pheader->mem_size);
 	}
 
 	return reinterpret_cast<kernel::entrypoint>(header->entrypoint);

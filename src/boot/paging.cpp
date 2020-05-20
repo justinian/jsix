@@ -10,6 +10,119 @@ namespace paging {
 
 using memory::page_size;
 
+// Flags: 0 0 0 1  0 0 0 0  0 0 1 1 = 0x0103
+//         IGN  |  | | | |  | | | +- Present
+//              |  | | | |  | | +--- Writeable
+//              |  | | | |  | +----- Usermode access (supervisor only)
+//              |  | | | |  +------- PWT (determining memory type for page)
+//              |  | | | +---------- PCD (determining memory type for page)
+//              |  | | +------------ Accessed flag (not accessed yet)
+//              |  | +-------------- Dirty (not dirtied yet)
+//              |  +---------------- PAT (determining memory type for page)
+//              +------------------- Global
+/// Page table entry flags for entries pointing at a page
+constexpr uint16_t page_flags = 0x103;
+
+// Flags: 0  0 0 0 1  1 0 0 0  0 0 1 1 = 0x0183
+//        |   IGN  |  | | | |  | | | +- Present
+//        |        |  | | | |  | | +--- Writeable
+//        |        |  | | | |  | +----- Supervisor only
+//        |        |  | | | |  +------- PWT (determining memory type for page)
+//        |        |  | | | +---------- PCD (determining memory type for page)
+//        |        |  | | +------------ Accessed flag (not accessed yet)
+//        |        |  | +-------------- Dirty (not dirtied yet)
+//        |        |  +---------------- Page size (1GiB page)
+//        |        +------------------- Global
+//        +---------------------------- PAT (determining memory type for page)
+/// Page table entry flags for entries pointing at a huge page
+constexpr uint16_t huge_page_flags = 0x183;
+
+// Flags: 0 0 0 0  0 0 0 0  0 0 1 1 = 0x0003
+//        IGNORED  | | | |  | | | +- Present
+//                 | | | |  | | +--- Writeable
+//                 | | | |  | +----- Usermode access (Supervisor only)
+//                 | | | |  +------- PWT (determining memory type for pdpt)
+//                 | | | +---------- PCD (determining memory type for pdpt)
+//                 | | +------------ Accessed flag (not accessed yet)
+//                 | +-------------- Ignored
+//                 +---------------- Reserved 0 (Table pointer, not page)
+/// Page table entry flags for entries pointing at another table
+constexpr uint16_t table_flags = 0x003;
+
+/// Iterator over page table entries.
+template <unsigned D = 4>
+class page_entry_iterator
+{
+public:
+	/// Constructor.
+	/// \arg virt       Virtual address this iterator is starting at
+	/// \arg pml4       Root of the page tables to iterate
+	/// \arg page_cache Pointer to pages that can be used for page tables
+	/// \arg page_count Number of pages pointed to by `page_cache`
+	page_entry_iterator(
+			uintptr_t virt,
+			page_table *pml4,
+			void *&page_cache,
+			uint32_t &cache_count) :
+		m_page_cache(page_cache),
+		m_cache_count(cache_count)
+	{
+		m_table[0] = pml4;
+		for (unsigned i = 0; i < D; ++i) {
+			m_index[i] = static_cast<uint16_t>((virt >> (12 + 9*i)) & 0x1ff);
+			ensure_table(i);
+		}
+	}
+
+	void increment()
+	{
+		for (unsigned i = D - 1; i >= 0; --i) {
+			if (++m_index[i] <= 511) {
+				for (unsigned j = i + 1; j < D; ++j)
+					ensure_table(j);
+				return;
+			}
+
+			m_index[i] = 0;
+		}
+	}
+
+	uint64_t & operator*() { return entry(D-1); }
+
+private:
+	inline uint64_t & entry(unsigned level) { return m_table[level]->entries[m_index[level]]; }
+
+	void ensure_table(unsigned level)
+	{
+		// We're only dealing with D levels of paging, and
+		// there must always be a PML4.
+		if (level < 1 || level >= D)
+			return;
+
+		// Entry in the parent that points to the table we want
+		uint64_t & parent_ent = entry(level - 1);
+
+		if (!(parent_ent & 1)) {
+			if (!m_cache_count--)
+				error::raise(uefi::status::out_of_resources, L"Page table cache empty");
+
+			page_table *table = reinterpret_cast<page_table*>(m_page_cache);
+			m_page_cache = offset_ptr<void>(m_page_cache, page_size);
+
+			parent_ent = (reinterpret_cast<uintptr_t>(table) & ~0xfffull) | table_flags;
+			m_table[level] = table;
+		} else {
+			m_table[level] = reinterpret_cast<page_table*>(parent_ent & ~0xfffull);
+		}
+	}
+
+	void *&m_page_cache;
+	uint32_t &m_cache_count;
+	page_table *m_table[D];
+	uint16_t m_index[D];
+};
+
+
 void allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 {
 	status_line status(L"Allocating initial page tables");
@@ -34,94 +147,56 @@ void allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 	mod.size = tables_needed*page_size;
 
 	args->pml4 = addr;
-	args->num_free_tables = tables_needed - offset_map_tables;
-	args->page_table_cache = offset_ptr<void>(addr, offset_map_tables*page_size);
+	args->num_free_tables = tables_needed - 1;
+	args->page_table_cache = offset_ptr<void>(addr, page_size);
 
-	page_table *tables = reinterpret_cast<page_table*>(addr);
+	page_table *pml4 = reinterpret_cast<page_table*>(addr);
 
-	// Create the PML4 pointing to the following tables
-	for (int i = 0; i < offset_map_tables - 1; ++i) {
-		tables[0].set(384 + i, &tables[i+1], 0x0003);
+	uintptr_t phys = 0;
+	uintptr_t virt = 0xffffc00000000000ull; // Start of offset-mapped area
+	size_t pages = 64 * 1024; // 64 TiB of 1 GiB pages
+	constexpr size_t GiB = 0x40000000ull;
 
-		uint64_t start = i * 0x8000000000;
-		for (int j = 0; j < 512; ++j)
-		{
-			void *p = reinterpret_cast<void*>(start + (j * 0x40000000ull));
-			tables[i+1].set(j, p, 0x0183);
-		}
+	page_entry_iterator<2> iterator{
+		virt, pml4,
+		args->page_table_cache,
+		args->num_free_tables};
+
+	while (true) {
+		*iterator = phys | huge_page_flags;
+		if (--pages == 0)
+			break;
+
+		iterator.increment();
+		phys += GiB;
 	}
+
+	console::print(L"    Set up initial mappings, %d spare tables.\r\n", args->num_free_tables);
 }
 
 void
-check_needs_page(page_table *table, int idx, kernel::args::header *args)
-{
-	if (table->entries[idx] & 0x1)
-		return;
-
-	uintptr_t new_table =
-		reinterpret_cast<uintptr_t>(args->page_table_cache);
-	table->entries[idx] = new_table | 0x0003;
-
-	args->page_table_cache = offset_ptr<void>(args->page_table_cache, page_size);
-	args->num_free_tables--;
-}
-
-void
-map_in(
+map_pages(
 	page_table *pml4,
 	kernel::args::header *args,
 	uintptr_t phys, uintptr_t virt,
 	size_t size)
 {
-	page_table_indices idx{virt};
-	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
-
 	size_t pages = memory::bytes_to_pages(size);
+	page_entry_iterator<4> iterator{
+		virt, pml4,
+		args->page_table_cache,
+		args->num_free_tables};
 
-	for (; idx[0] < 512; idx[0] += 1, idx[1] = 0, idx[2] = 0, idx[3] = 0) {
-		check_needs_page(tables[0], idx[0], args);
-		tables[1] = tables[0]->get(idx[0]);
+	while (true) {
+		*iterator = phys | page_flags;
+		if (--pages == 0)
+			break;
 
-		for (; idx[1] < 512; idx[1] += 1, idx[2] = 0, idx[3] = 0) {
-			check_needs_page(tables[1], idx[1], args);
-			tables[2] = tables[1]->get(idx[1]);
-
-			for (; idx[2] < 512; idx[2] += 1, idx[3] = 0) {
-				check_needs_page(tables[2], idx[2], args);
-				tables[3] = tables[2]->get(idx[2]);
-
-				for (; idx[3] < 512; idx[3] += 1) {
-					tables[3]->entries[idx[3]] = phys | 0x003;
-					phys += page_size;
-					if (--pages == 0) return;
-				}
-			}
-		}
+		iterator.increment();
+		phys += page_size;
 	}
 }
 
 
-page_table_indices::page_table_indices(uint64_t v) :
-	index{
-		(v >> 39) & 0x1ff,
-		(v >> 30) & 0x1ff,
-		(v >> 21) & 0x1ff,
-		(v >> 12) & 0x1ff }
-{}
-
-uintptr_t
-page_table_indices::addr() const
-{
-	return
-		(index[0] << 39) |
-		(index[1] << 30) |
-		(index[2] << 21) |
-		(index[3] << 12);
-}
-
-bool operator==(const page_table_indices &l, const page_table_indices &r)
-{
-	return l[0] == r[0] && l[1] == r[1] && l[2] == r[2] && l[3] == r[3];
-}
 } // namespace paging
 } // namespace boot
