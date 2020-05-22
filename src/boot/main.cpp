@@ -189,11 +189,14 @@ efi_main(uefi::handle image_handle, uefi::system_table *st)
 	kernel::args::header *args =
 		bootloader_main_uefi(image_handle, st, con, &kentry);
 
-	size_t map_key = memory::build_kernel_mem_map(args, st->boot_services);
+	memory::efi_mem_map map =
+		memory::build_kernel_mem_map(args, st->boot_services);
 
 	try_or_raise(
-		st->boot_services->exit_boot_services(image_handle, map_key),
+		st->boot_services->exit_boot_services(image_handle, map.key),
 		L"Failed to exit boot services");
+
+	memory::virtualize(args->pml4, map, st->runtime_services);
 
 	kentry(args);
 	debug_break();

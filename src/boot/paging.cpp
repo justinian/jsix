@@ -1,3 +1,5 @@
+#include "kernel_memory.h"
+
 #include "console.h"
 #include "error.h"
 #include "loader.h"
@@ -123,7 +125,46 @@ private:
 };
 
 
-void allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
+static void
+add_offset_mappings(page_table *pml4, void *&page_cache, uint32_t &num_pages)
+{
+	uintptr_t phys = 0;
+	uintptr_t virt = ::memory::page_offset; // Start of offset-mapped area
+	size_t pages = 64 * 1024; // 64 TiB of 1 GiB pages
+	constexpr size_t GiB = 0x40000000ull;
+
+	page_entry_iterator<2> iterator{
+		virt, pml4,
+		page_cache,
+		num_pages};
+
+	while (true) {
+		*iterator = phys | huge_page_flags;
+		if (--pages == 0)
+			break;
+
+		iterator.increment();
+		phys += GiB;
+	}
+}
+
+void
+add_current_mappings(page_table *new_pml4)
+{
+	// Get the pointer to the current PML4
+	page_table *old_pml4 = 0;
+	asm volatile ( "mov %%cr3, %0" : "=r" (old_pml4) );
+
+	// Only copy mappings in the lower half
+	for (int i = 0; i < 256; ++i) {
+		uint64_t entry = old_pml4->entries[i];
+		if (entry & 1)
+			new_pml4->entries[i] = entry;
+	}
+}
+
+void
+allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 {
 	status_line status(L"Allocating initial page tables");
 
@@ -151,25 +192,7 @@ void allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 	args->page_table_cache = offset_ptr<void>(addr, page_size);
 
 	page_table *pml4 = reinterpret_cast<page_table*>(addr);
-
-	uintptr_t phys = 0;
-	uintptr_t virt = 0xffffc00000000000ull; // Start of offset-mapped area
-	size_t pages = 64 * 1024; // 64 TiB of 1 GiB pages
-	constexpr size_t GiB = 0x40000000ull;
-
-	page_entry_iterator<2> iterator{
-		virt, pml4,
-		args->page_table_cache,
-		args->num_free_tables};
-
-	while (true) {
-		*iterator = phys | huge_page_flags;
-		if (--pages == 0)
-			break;
-
-		iterator.increment();
-		phys += GiB;
-	}
+	add_offset_mappings(pml4, args->page_table_cache, args->num_free_tables);
 
 	console::print(L"    Set up initial mappings, %d spare tables.\r\n", args->num_free_tables);
 }

@@ -33,6 +33,11 @@ void allocate_tables(
 	kernel::args::header *args,
 	uefi::boot_services *bs);
 
+/// Copy existing page table entries to a new page table. Does not do a deep
+/// copy - the new PML4 is updated to point to the existing next-level page
+/// tables in the current PML4.
+void add_current_mappings(page_table *new_pml4);
+
 /// Map a physical address to a virtual address in the given page tables.
 /// \arg pml4  The root of the set of page tables to be updated
 /// \arg args  The kernel args header, used for the page table cache

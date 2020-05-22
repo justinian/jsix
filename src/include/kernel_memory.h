@@ -11,10 +11,10 @@ namespace memory {
 	static const size_t frame_size = 0x1000;
 
 	/// Start of kernel memory.
-	static const uintptr_t kernel_offset = 0xffffff0000000000;
+	static const uintptr_t kernel_offset = 0xffff800000000000;
 
 	/// Offset from physical where page tables are mapped.
-	static const uintptr_t page_offset = 0xffffff8000000000;
+	static const uintptr_t page_offset = 0xffffc00000000000;
 
 	/// Initial process thread's stack address
 	static const uintptr_t initial_stack = 0x0000800000000000;

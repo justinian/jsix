@@ -81,9 +81,17 @@ struct efi_mem_map
 };
 
 /// Add the kernel's memory map as a module to the kernel args.
-/// \returns  The uefi memory map key for the version used to build
-///           this map
-size_t build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs);
+/// \returns  The uefi memory map used to build the kernel map
+efi_mem_map build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs);
+
+/// Activate the given memory mappings. Sets the given page tables live as well
+/// as informs UEFI runtime services of the new mappings.
+/// \arg pml4  The root page table for the new mappings
+/// \arg map   The UEFI memory map, used to update runtime services
+void virtualize(
+	void *pml4,
+	efi_mem_map &map,
+	uefi::runtime_services *rs);
 
 } // namespace boot
 } // namespace memory

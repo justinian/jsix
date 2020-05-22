@@ -1,9 +1,12 @@
 #include <stddef.h>
 #include <uefi/types.h>
 
+#include "kernel_memory.h"
+
 #include "console.h"
 #include "error.h"
 #include "memory.h"
+#include "paging.h"
 
 namespace boot {
 namespace memory {
@@ -85,51 +88,6 @@ mark_pointer_fixup(void **p)
 	fixup_pointers[fixup_pointer_index++] = p;
 }
 
-/*
-void
-virtualize(paging::page_table *pml4, uefi::runtime_services *rs, efi_mem_map *map)
-{
-	// Get the pointer to the start of PML4
-	uint64_t* cr3 = 0;
-	__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (cr3) );
-
-	// PML4 is indexed with bits 39:47 of the virtual address
-	uint64_t offset = (KERNEL_VIRT_ADDRESS >> 39) & 0x1ff;
-
-	// Double map the lower half pages that are present into the higher half
-	for (unsigned i = 0; i < offset; ++i) {
-		if (cr3[i] & 0x1)
-			new_pml4[i] = new_pml4[offset+i] = cr3[i];
-		else
-			new_pml4[i] = new_pml4[offset+i] = 0;
-	}
-
-	// Write our new PML4 pointer back to CR3
-	__asm__ __volatile__ ( "mov %0, %%cr3" :: "r" (new_pml4) );
-
-	EFI_MEMORY_DESCRIPTOR *end = INCREMENT_DESC(map->entries, map->length);
-	EFI_MEMORY_DESCRIPTOR *d = map->entries;
-	while (d < end) {
-		switch (d->Type) {
-		case memtype_kernel:
-		case memtype_data:
-		case memtype_initrd:
-		case memtype_scratch:
-			d->Attribute |= EFI_MEMORY_RUNTIME;
-			d->VirtualStart = d->PhysicalStart + KERNEL_VIRT_ADDRESS;
-
-		default:
-			if (d->Attribute & EFI_MEMORY_RUNTIME) {
-				d->VirtualStart = d->PhysicalStart + KERNEL_VIRT_ADDRESS;
-			}
-		}
-		d = INCREMENT_DESC(d, map->size);
-	}
-
-	runsvc->SetVirtualAddressMap(map->length, map->size, map->version, map->entries);
-}
-*/
-
 bool
 can_merge(mem_entry &prev, mem_type type, uefi::memory_descriptor *next)
 {
@@ -165,7 +123,7 @@ get_uefi_mappings(efi_mem_map *map, bool allocate, uefi::boot_services *bs)
 	}
 }
 
-size_t
+efi_mem_map
 build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 {
 	status_line(L"Creating kernel memory map");
@@ -286,7 +244,25 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 	}
 	*/
 
-	return efi_map.key;
+	return efi_map;
+}
+
+void
+virtualize(void *pml4, efi_mem_map &map, uefi::runtime_services *rs)
+{
+	paging::add_current_mappings(reinterpret_cast<paging::page_table*>(pml4));
+
+	for (auto desc : map)
+		desc->virtual_start = desc->physical_start + ::memory::page_offset;
+
+	// Write our new PML4 pointer to CR3
+	asm volatile ( "mov %0, %%cr3" :: "r" (pml4) );
+	__sync_synchronize();
+
+	try_or_raise(
+		rs->set_virtual_address_map(
+			map.length, map.size, map.version, map.entries),
+		L"Error setting virtual address map");
 }
 
 
