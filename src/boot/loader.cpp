@@ -59,14 +59,14 @@ load(
 		void *data_start = offset_ptr<void>(data, pheader->offset);
 		bs->copy_mem(pages, data_start, pheader->mem_size);
 
-		console::print(L"    Kernel section %d physical: 0x%lx\r\n", i, pages);
-		console::print(L"    Kernel section %d virtual:  0x%lx\r\n", i, pheader->vaddr);
+		console::print(L"    section %d phys: 0x%lx\r\n", i, pages);
+		console::print(L"    section %d virt: 0x%lx\r\n", i, pheader->vaddr);
 
 		// TODO: set appropriate RWX permissions
 		paging::map_pages(pml4, args, reinterpret_cast<uintptr_t>(pages), pheader->vaddr, pheader->mem_size);
 	}
 
-	console::print(L"    Kernel entrypoint:         0x%lx\r\n", header->entrypoint);
+	console::print(L"    entrypoint:     0x%lx\r\n", header->entrypoint);
 	return reinterpret_cast<kernel::entrypoint>(header->entrypoint);
 }
 

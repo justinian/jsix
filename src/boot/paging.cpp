@@ -71,9 +71,18 @@ public:
 	{
 		m_table[0] = pml4;
 		for (unsigned i = 0; i < D; ++i) {
-			m_index[i] = static_cast<uint16_t>((virt >> (12 + 9*i)) & 0x1ff);
+			m_index[i] = static_cast<uint16_t>((virt >> (12 + 9*(3-i))) & 0x1ff);
 			ensure_table(i);
 		}
+	}
+
+	uintptr_t vaddress() const {
+		uintptr_t address = 0;
+		for (unsigned i = 0; i < D; ++i)
+			address |= static_cast<uintptr_t>(m_index[i]) << (12 + 9*(3-i));
+		if (address & (1ull<<47)) // canonicalize the address
+			address |= (0xffffull<<48);
+		return address;
 	}
 
 	void increment()
