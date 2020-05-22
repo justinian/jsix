@@ -63,16 +63,15 @@ uefi_handler::uefi_handler(console &con) :
 {
 }
 
-[[ noreturn ]] void
+void
 uefi_handler::handle(uefi::status s, const wchar_t *message)
 {
 	status_line::fail(message, error_message(s));
-	while (1) asm("hlt");
 }
 
 cpu_assert_handler::cpu_assert_handler() : handler() {}
 
-[[ noreturn ]] void
+void
 cpu_assert_handler::handle(uefi::status s, const wchar_t *message)
 {
 	asm volatile (
@@ -83,7 +82,6 @@ cpu_assert_handler::handle(uefi::status s, const wchar_t *message)
 		:
 		: "r"((uint64_t)s)
 		: "rax", "rdx", "r8", "r9");
-	while (1) asm("hlt");
 }
 
 } // namespace error

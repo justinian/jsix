@@ -39,7 +39,8 @@ class uefi_handler :
 {
 public:
 	uefi_handler(console &con);
-	[[ noreturn ]] void handle(uefi::status, const wchar_t*) override;
+	virtual ~uefi_handler() {}
+	void handle(uefi::status, const wchar_t*) override;
 
 private:
 	console &m_con;
@@ -52,7 +53,8 @@ class cpu_assert_handler :
 {
 public:
 	cpu_assert_handler();
-	[[ noreturn ]] void handle(uefi::status, const wchar_t*) override;
+	virtual ~cpu_assert_handler() {}
+	void handle(uefi::status, const wchar_t*) override;
 };
 
 } // namespace error
