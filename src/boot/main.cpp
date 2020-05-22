@@ -137,14 +137,18 @@ load_module(
 /// The main procedure for the portion of the loader that runs while
 /// UEFI is still in control of the machine. (ie, while the loader still
 /// has access to boot services.
-kernel::entrypoint
-bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con, size_t *map_key)
+kernel::args::header *
+bootloader_main_uefi(
+	uefi::handle image,
+	uefi::system_table *st,
+	console &con,
+	kernel::entrypoint *kentry)
 {
 	error::uefi_handler handler(con);
+	status_line status(L"Performing UEFI pre-boot");
 
 	uefi::boot_services *bs = st->boot_services;
 	uefi::runtime_services *rs = st->runtime_services;
-
 	memory::init_pointer_fixup(bs, rs);
 
 	kernel::args::header *args =
@@ -155,6 +159,10 @@ bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con, s
 	args->runtime_services = rs;
 	args->acpi_table = hw::find_acpi_table(st);
 
+	memory::mark_pointer_fixup(&args->runtime_services);
+	for (unsigned i = 0; i < args->num_modules; ++i)
+		memory::mark_pointer_fixup(reinterpret_cast<void**>(&args->modules[i]));
+
 	fs::file disk = fs::get_boot_volume(image, bs);
 	load_module(disk, args, L"initrd", L"initrd.img", kernel::args::mod_type::initrd);
 
@@ -162,13 +170,8 @@ bootloader_main_uefi(uefi::handle image, uefi::system_table *st, console &con, s
 		load_module(disk, args, L"kernel", L"jsix.elf", kernel::args::mod_type::kernel);
 
 	paging::allocate_tables(args, bs);
-
-	kernel::entrypoint kentry =
-		loader::load(kernel->location, kernel->size, args, bs);
-
-	*map_key = memory::build_kernel_mem_map(args, bs);
-
-	return kentry;
+	*kentry = loader::load(kernel->location, kernel->size, args, bs);
+	return args;
 }
 
 } // namespace boot
@@ -182,14 +185,17 @@ efi_main(uefi::handle image_handle, uefi::system_table *st)
 	error::cpu_assert_handler handler;
 	console con(st->boot_services, st->con_out);
 
-	size_t map_key;
-	kernel::entrypoint kentry =
-		bootloader_main_uefi(image_handle, st, con, &map_key);
+	kernel::entrypoint kentry = nullptr;
+	kernel::args::header *args =
+		bootloader_main_uefi(image_handle, st, con, &kentry);
+
+	size_t map_key = memory::build_kernel_mem_map(args, st->boot_services);
 
 	try_or_raise(
 		st->boot_services->exit_boot_services(image_handle, map_key),
 		L"Failed to exit boot services");
 
+	kentry(args);
 	debug_break();
 	return uefi::status::unsupported;
 }

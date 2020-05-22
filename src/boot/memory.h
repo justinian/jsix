@@ -80,11 +80,6 @@ struct efi_mem_map
 	iterator end() { return offset_ptr<desc>(entries, length); }
 };
 
-/// Get the memory map from UEFI.
-/// \arg allocate  If false, don't actually fetch the mappings, just
-///                return a structure describing them.
-efi_mem_map get_uefi_mappings(bool allocate, uefi::boot_services *bs);
-
 /// Add the kernel's memory map as a module to the kernel args.
 /// \returns  The uefi memory map key for the version used to build
 ///           this map

@@ -62,11 +62,11 @@ load(
 		console::print(L"    Kernel section %d physical: 0x%lx\r\n", i, pages);
 		console::print(L"    Kernel section %d virtual:  0x%lx\r\n", i, pheader->vaddr);
 
-		// TODO: map these pages into kernel args' page tables
-		// remember to set appropriate RWX permissions
+		// TODO: set appropriate RWX permissions
 		paging::map_pages(pml4, args, reinterpret_cast<uintptr_t>(pages), pheader->vaddr, pheader->mem_size);
 	}
 
+	console::print(L"    Kernel entrypoint:         0x%lx\r\n", header->entrypoint);
 	return reinterpret_cast<kernel::entrypoint>(header->entrypoint);
 }
 
