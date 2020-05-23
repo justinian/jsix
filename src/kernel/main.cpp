@@ -33,6 +33,7 @@ extern "C" {
 extern void __kernel_assert(const char *, unsigned, const char *);
 
 extern kutil::heap_allocator g_kernel_heap;
+using namespace kernel;
 
 class test_observer :
 	public kobject::observer
@@ -69,15 +70,19 @@ init_console()
 }
 
 void
-kernel_main(kernel::args::header *header)
+kernel_main(args::header *header)
 {
-	bool waiting = header && (header->mode == kernel::args::mode::debug);
+	bool waiting = header && (header->mode == args::mode::debug);
 	while (waiting);
 
 	kutil::assert_set_callback(__kernel_assert);
+	init_console();
 
 	gdt_init();
 	interrupts_init();
+
+	cpu_id cpu;
+	cpu.validate();
 
 	/*
 	memory_initialize(
@@ -94,7 +99,6 @@ kernel_main(kernel::args::header *header)
 				header->frame_buffer_length);
 	}
 
-	init_console();
 
 	log::debug(logs::boot, " jsix header is at: %016lx", header);
 	log::debug(logs::boot, "    Framebuffer is at: %016lx", header->frame_buffer);
@@ -102,9 +106,6 @@ kernel_main(kernel::args::header *header)
 	log::debug(logs::boot, "     Memory map is at: %016lx", header->memory_map);
 	log::debug(logs::boot, "ACPI root table is at: %016lx", header->acpi_table);
 	log::debug(logs::boot, "Runtime service is at: %016lx", header->runtime);
-
-	cpu_id cpu;
-	cpu.validate();
 
 	initrd::disk ird(header->initrd, heap);
 	log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());
