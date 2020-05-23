@@ -80,6 +80,9 @@ struct header {
 	uint32_t num_modules;
 	module *modules;
 
+	mem_entry *mem_map;
+	size_t num_map_entries;
+
 	void *runtime_services;
 	void *acpi_table;
 }

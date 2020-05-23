@@ -231,6 +231,11 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 		}
 	}
 
+	// Give just the actually-set entries in the header
+	args->mem_map = kernel_map;
+	args->num_map_entries = i;
+
+	// But pass the entire allocated area in a module as well
 	kernel::args::module &module = args->modules[args->num_modules++];
 	module.location = reinterpret_cast<void*>(kernel_map);
 	module.size = map_size;
