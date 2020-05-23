@@ -8,25 +8,25 @@
 namespace memory {
 
 	/// Size of a single page frame.
-	static const size_t frame_size = 0x1000;
+	constexpr size_t frame_size = 0x1000;
 
 	/// Start of kernel memory.
-	static const uintptr_t kernel_offset = 0xffff800000000000;
+	constexpr uintptr_t kernel_offset = 0xffff800000000000;
 
 	/// Offset from physical where page tables are mapped.
-	static const uintptr_t page_offset = 0xffffc00000000000;
+	constexpr uintptr_t page_offset = 0xffffc00000000000;
 
 	/// Initial process thread's stack address
-	static const uintptr_t initial_stack = 0x0000800000000000;
+	constexpr uintptr_t initial_stack = 0x0000800000000000;
 
 	/// Initial process thread's stack size, in pages
-	static const unsigned initial_stack_pages = 1;
+	constexpr unsigned initial_stack_pages = 1;
 
 	/// Max size of the kernel heap
-	static const size_t kernel_max_heap = 0x800000000; // 32GiB
+	constexpr size_t kernel_max_heap = 0x8000000000; // 512GiB
 
 	/// Start of the kernel heap
-	static const uintptr_t heap_start = page_offset - kernel_max_heap;
+	constexpr uintptr_t heap_start = page_offset - kernel_max_heap;
 
 	/// Helper to determine if a physical address can be accessed
 	/// through the page_offset area.
