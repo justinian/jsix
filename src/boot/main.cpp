@@ -197,6 +197,7 @@ efi_main(uefi::handle image_handle, uefi::system_table *st)
 		L"Failed to exit boot services");
 
 	memory::virtualize(args->pml4, map, st->runtime_services);
+	hw::setup_cr4();
 
 	kentry(args);
 	debug_break();
