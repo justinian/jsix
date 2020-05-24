@@ -36,6 +36,10 @@ struct page_table
 			(entries[i] & 0x80) == 0x80;
 	}
 
+	inline bool is_page(level l, int i) const {
+		return (l == level::pt) || is_large_page(l, i);
+	}
+
 	void dump(
 		level lvl = level::pml4,
 		bool recurse = true);

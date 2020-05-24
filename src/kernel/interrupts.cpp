@@ -1,5 +1,7 @@
 #include <stdint.h>
 
+#include "kernel_memory.h"
+
 #include "apic.h"
 #include "console.h"
 #include "cpu.h"
@@ -14,6 +16,8 @@
 
 static const uint16_t PIC1 = 0x20;
 static const uint16_t PIC2 = 0xa0;
+
+constexpr uintptr_t apic_eoi_addr = 0xfee000b0 + ::memory::page_offset;
 
 extern "C" {
 	void _halt();
@@ -273,7 +277,7 @@ isr_handler(cpu_state *regs)
 		print_stacktrace(2);
 		_halt();
 	}
-	*reinterpret_cast<uint32_t *>(0xffffff80fee000b0) = 0;
+	*reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
 }
 
 void
@@ -290,5 +294,5 @@ irq_handler(cpu_state *regs)
 		_halt();
 	}
 
-	*reinterpret_cast<uint32_t *>(0xffffff80fee000b0) = 0;
+	*reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
 }

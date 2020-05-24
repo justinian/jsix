@@ -84,13 +84,9 @@ kernel_main(args::header *header)
 	cpu_id cpu;
 	cpu.validate();
 
-	/*
-	memory_initialize(
-			header->scratch_pages,
-			header->memory_map,
-			header->memory_map_length,
-			header->memory_map_desc_size);
+	memory_initialize(header);
 
+	/*
 	kutil::allocator &heap = g_kernel_heap;
 
 	if (header->frame_buffer && header->frame_buffer_length) {

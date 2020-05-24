@@ -175,8 +175,6 @@ private:
 
 	frame_allocator &m_frames;
 
-	bool m_memory_initialized;
-
 	friend class memory_bootstrap;
 	page_manager(const page_manager &) = delete;
 };
@@ -208,10 +206,11 @@ page_table_align(T p)
 	return ((p - 1) & ~0x1fffffull) + 0x200000;
 }
 
+namespace kernel {
+namespace args {
+	struct header;
+}
+}
 
 /// Bootstrap the memory managers.
-void memory_initialize(
-		uint16_t scratch_pages,
-		const void *memory_map,
-		size_t map_length,
-		size_t desc_length);
+void memory_initialize(kernel::args::header *mem_map);
