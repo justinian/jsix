@@ -28,6 +28,15 @@ namespace memory {
 	/// Start of the kernel heap
 	constexpr uintptr_t heap_start = page_offset - kernel_max_heap;
 
+	/// First kernel space PML4 entry
+	constexpr unsigned pml4e_kernel = 256;
+
+	/// First offset-mapped space PML4 entry
+	constexpr unsigned pml4e_offset = 384;
+
+	/// Number of page_table entries
+	constexpr unsigned table_entries = 512;
+
 	/// Helper to determine if a physical address can be accessed
 	/// through the page_offset area.
 	inline bool page_mappable(uintptr_t a) { return (a & page_offset) == 0; }

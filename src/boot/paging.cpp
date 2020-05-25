@@ -165,7 +165,7 @@ add_current_mappings(page_table *new_pml4)
 	asm volatile ( "mov %%cr3, %0" : "=r" (old_pml4) );
 
 	// Only copy mappings in the lower half
-	for (int i = 0; i < 256; ++i) {
+	for (int i = 0; i < ::memory::pml4e_kernel; ++i) {
 		uint64_t entry = old_pml4->entries[i];
 		if (entry & 1)
 			new_pml4->entries[i] = entry;

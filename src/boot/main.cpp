@@ -17,67 +17,21 @@
 
 #include "kernel_args.h"
 
-/*
-#define KERNEL_HEADER_MAGIC   0x600db007
-#define KERNEL_HEADER_VERSION 1
-
-#pragma pack(push, 1)
-struct kernel_header {
-	uint32_t magic;
-	uint16_t version;
-	uint16_t length;
-
-	uint8_t major;
-	uint8_t minor;
-	uint16_t patch;
-	uint32_t gitsha;
-};
-#pragma pack(pop)
-*/
+namespace kernel {
+#include "kernel_memory.h"
+}
 
 namespace boot {
 
 constexpr int max_modules = 10; // Max modules to allocate room for
 
-/*
-
-EFI_STATUS
-detect_debug_mode(EFI_RUNTIME_SERVICES *run, kernel_args *header) {
-	CHAR16 var_name[] = L"debug";
-
-	EFI_STATUS status;
-	uint8_t debug = 0;
-	UINTN var_size = sizeof(debug);
-
-#ifdef __JSIX_SET_DEBUG_UEFI_VAR__
-	debug = __JSIX_SET_DEBUG_UEFI_VAR__;
-	uint32_t attrs =
-		EFI_VARIABLE_NON_VOLATILE |
-		EFI_VARIABLE_BOOTSERVICE_ACCESS |
-		EFI_VARIABLE_RUNTIME_ACCESS;
-	status = run->SetVariable(
-			var_name,
-			&guid_jsix_vendor,
-			attrs,
-			var_size,
-			&debug);
-	CHECK_EFI_STATUS_OR_RETURN(status, "detect_debug_mode::SetVariable");
-#endif
-
-	status = run->GetVariable(
-			var_name,
-			&guid_jsix_vendor,
-			nullptr,
-			&var_size,
-			&debug);
-	CHECK_EFI_STATUS_OR_RETURN(status, "detect_debug_mode::GetVariable");
-
-	if (debug)
-		header->flags |= JSIX_FLAG_DEBUG;
-
-	return EFI_SUCCESS;
+/// Change a pointer to point to the higher-half linear-offset version
+/// of the address it points to.
+template <typename T>
+void change_pointer(T *&pointer)
+{
+	pointer = offset_ptr<T>(pointer, kernel::memory::page_offset);
 }
-*/
 
 /// Allocate space for kernel args. Allocates enough space from pool
 /// memory for the args header and `max_modules` module headers.
@@ -160,8 +114,6 @@ bootloader_main_uefi(
 	args->acpi_table = hw::find_acpi_table(st);
 
 	memory::mark_pointer_fixup(&args->runtime_services);
-	for (unsigned i = 0; i < args->num_modules; ++i)
-		memory::mark_pointer_fixup(reinterpret_cast<void**>(&args->modules[i]));
 
 	fs::file disk = fs::get_boot_volume(image, bs);
 	load_module(disk, args, L"initrd", L"initrd.img", kernel::args::mod_type::initrd);
@@ -171,6 +123,12 @@ bootloader_main_uefi(
 
 	paging::allocate_tables(args, bs);
 	*kentry = loader::load(kernel->location, kernel->size, args, bs);
+
+	for (unsigned i = 0; i < args->num_modules; ++i) {
+		kernel::args::module &mod = args->modules[i];
+		change_pointer(mod.location);
+	}
+
 	return args;
 }
 
@@ -197,6 +155,7 @@ efi_main(uefi::handle image_handle, uefi::system_table *st)
 		L"Failed to exit boot services");
 
 	memory::virtualize(args->pml4, map, st->runtime_services);
+	change_pointer(args->pml4);
 	hw::setup_cr4();
 
 	kentry(args);

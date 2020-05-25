@@ -17,6 +17,9 @@ using memory::heap_start;
 using memory::kernel_max_heap;
 using memory::kernel_offset;
 using memory::page_offset;
+using memory::pml4e_kernel;
+using memory::pml4e_offset;
+using memory::table_entries;
 
 using namespace kernel;
 
@@ -38,7 +41,7 @@ void walk_page_table(
 	constexpr size_t huge_page_size = (1ull<<30);
 	constexpr size_t large_page_size = (1ull<<21);
 
-	for (unsigned i = 0; i < 512; ++i) {
+	for (unsigned i = 0; i < table_entries; ++i) {
 		page_table *next = table->get(i);
 		if (!next) {
 			kspace.commit(current_start, current_bytes);
@@ -95,7 +98,7 @@ memory_initialize(args::header *kargs)
 	size_t current_bytes = 0;
 
 	// TODO: Should we exclude the top of this area? (eg, buffers, stacks, etc)
-	for (unsigned i = 256; i < 384; ++i) {
+	for (unsigned i = pml4e_kernel; i < pml4e_offset; ++i) {
 		page_table *pdp = kpml4->get(i);
 
 		if (!pdp) {

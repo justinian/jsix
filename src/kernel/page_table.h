@@ -15,7 +15,7 @@ struct page_table
 		return static_cast<level>(static_cast<unsigned>(l) + 1);
 	}
 
-	uint64_t entries[512];
+	uint64_t entries[memory::table_entries];
 
 	inline page_table * get(int i, uint16_t *flags = nullptr) const {
 		uint64_t entry = entries[i];

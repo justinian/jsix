@@ -13,6 +13,8 @@ using memory::kernel_max_heap;
 using memory::kernel_offset;
 using memory::page_offset;
 using memory::page_mappable;
+using memory::pml4e_kernel;
+using memory::table_entries;
 
 page_manager g_page_manager(g_frame_allocator, 0);
 extern kutil::vm_space g_kernel_space;
@@ -58,7 +60,7 @@ page_manager::create_process_map()
 	page_table *table = get_table_page();
 
 	kutil::memset(table, 0, frame_size/2);
-	for (unsigned i = 256; i < 512; ++i)
+	for (unsigned i = pml4e_kernel; i < table_entries; ++i)
 		table->entries[i] = m_kernel_pml4->entries[i];
 
 	// Create the initial user stack
@@ -74,9 +76,6 @@ page_manager::create_process_map()
 uintptr_t
 page_manager::copy_page(uintptr_t orig)
 {
-	bool paged_orig = false;
-	bool paged_copy = false;
-
 	uintptr_t copy = 0;
 	size_t n = m_frames.allocate(1, &copy);
 	kassert(n, "copy_page could not allocate page");
@@ -99,14 +98,14 @@ page_manager::copy_table(page_table *from, page_table::level lvl, page_table_ind
 	log::debug(logs::paging, "Page manager copying level %d table at %016lx to %016lx.", lvl, from, to);
 
 	if (lvl == page_table::level::pml4) {
-		to->entries[510] = m_kernel_pml4->entries[510];
-		to->entries[511] = m_kernel_pml4->entries[511];
+		for (unsigned i = pml4e_kernel; i < table_entries; ++i)
+			to->entries[i] = m_kernel_pml4->entries[i];
 	}
 
 	const int max =
-		lvl == page_table::level::pml4 ?
-			510 :
-			512;
+		lvl == page_table::level::pml4
+			? pml4e_kernel
+			: table_entries;
 
 	unsigned pages_copied = 0;
 	uintptr_t from_addr = 0;
@@ -242,9 +241,9 @@ void
 page_manager::unmap_table(page_table *table, page_table::level lvl, bool free, page_table_indices index)
 {
 	const int max =
-		lvl == page_table::level::pml4 ?
-			510 :
-			512;
+		lvl == page_table::level::pml4
+			? pml4e_kernel
+			: table_entries;
 
 	uintptr_t free_start = 0;
 	uintptr_t free_start_virt = 0;
@@ -344,7 +343,7 @@ page_manager::check_needs_page(page_table *table, unsigned index, bool user)
 	if ((table->entries[index] & 0x1) == 1) return;
 
 	page_table *new_table = get_table_page();
-	for (int i=0; i<512; ++i) new_table->entries[i] = 0;
+	for (int i=0; i<table_entries; ++i) new_table->entries[i] = 0;
 	table->entries[index] = pt_to_phys(new_table) | (user ? user_table_flags : sys_table_flags);
 }
 
@@ -361,23 +360,23 @@ page_manager::page_in(page_table *pml4, uintptr_t phys_addr, uintptr_t virt_addr
 
 	uint64_t flags = user ? user_table_flags : sys_table_flags;
 
-	for (; idx[0] < 512; idx[0] += 1) {
+	for (; idx[0] < table_entries; idx[0] += 1) {
 		check_needs_page(tables[0], idx[0], user);
 		tables[1] = tables[0]->get(idx[0]);
 
-		for (; idx[1] < 512; idx[1] += 1, idx[2] = 0, idx[3] = 0) {
+		for (; idx[1] < table_entries; idx[1] += 1, idx[2] = 0, idx[3] = 0) {
 			check_needs_page(tables[1], idx[1], user);
 			tables[2] = tables[1]->get(idx[1]);
 
-			for (; idx[2] < 512; idx[2] += 1, idx[3] = 0) {
+			for (; idx[2] < table_entries; idx[2] += 1, idx[3] = 0) {
 				if (large &&
 					idx[3] == 0 &&
-					count >= 512 &&
+					count >= table_entries &&
 					tables[2]->get(idx[2]) == nullptr) {
 					// Do a 2MiB page instead
 					tables[2]->entries[idx[2]] = phys_addr | flags | 0x80;
-					phys_addr += frame_size * 512;
-					count -= 512;
+					phys_addr += frame_size * table_entries;
+					count -= table_entries;
 					if (count == 0) return;
 					continue;
 				}
@@ -385,7 +384,7 @@ page_manager::page_in(page_table *pml4, uintptr_t phys_addr, uintptr_t virt_addr
 				check_needs_page(tables[2], idx[2], user);
 				tables[3] = tables[2]->get(idx[2]);
 
-				for (; idx[3] < 512; idx[3] += 1) {
+				for (; idx[3] < table_entries; idx[3] += 1) {
 					tables[3]->entries[idx[3]] = phys_addr | flags;
 					phys_addr += frame_size;
 					if (--count == 0) return;
@@ -407,16 +406,16 @@ page_manager::page_out(page_table *pml4, uintptr_t virt_addr, size_t count, bool
 	uintptr_t free_start = 0;
 	unsigned free_count = 0;
 
-	for (; idx[0] < 512; idx[0] += 1) {
+	for (; idx[0] < table_entries; idx[0] += 1) {
 		tables[1] = tables[0]->get(idx[0]);
 
-		for (; idx[1] < 512; idx[1] += 1) {
+		for (; idx[1] < table_entries; idx[1] += 1) {
 			tables[2] = tables[1]->get(idx[1]);
 
-			for (; idx[2] < 512; idx[2] += 1) {
+			for (; idx[2] < table_entries; idx[2] += 1) {
 				tables[3] = tables[2]->get(idx[2]);
 
-				for (; idx[3] < 512; idx[3] += 1) {
+				for (; idx[3] < table_entries; idx[3] += 1) {
 					uintptr_t entry = tables[3]->entries[idx[3]] & ~0xfffull;
 					if (!found || entry != free_start + free_count * frame_size) {
 						if (found && free) m_frames.free(free_start, free_count);
@@ -447,7 +446,7 @@ page_table::dump(page_table::level lvl, bool recurse)
 	console *cons = console::get();
 
 	cons->printf("\nLevel %d page table @ %lx:\n", lvl, this);
-	for (int i=0; i<512; ++i) {
+	for (int i=0; i<table_entries; ++i) {
 		uint64_t ent = entries[i];
 
 		if ((ent & 0x1) == 0)
@@ -465,7 +464,7 @@ page_table::dump(page_table::level lvl, bool recurse)
 	}
 
 	if (lvl != level::pt && recurse) {
-		for (int i=0; i<=512; ++i) {
+		for (int i=0; i<=table_entries; ++i) {
 			if (is_large_page(lvl, i))
 				continue;
 
