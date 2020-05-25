@@ -61,7 +61,7 @@ public:
 	~vector()
 	{
 		while (m_size) remove();
-		delete [] m_elements;
+		m_alloc.free(m_elements);
 	}
 
 	/// Get the size of the array.
