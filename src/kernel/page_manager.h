@@ -20,7 +20,8 @@ class page_manager
 public:
 	/// Constructor.
 	/// \arg frames  The frame allocator to get physical frames from
-	page_manager(frame_allocator &frames);
+	/// \arg pml4    The initial kernel-space pml4
+	page_manager(frame_allocator &frames, page_table *pml4);
 
 	/// Helper to get the number of pages needed for a given number of bytes.
 	/// \arg bytes  The number of bytes desired

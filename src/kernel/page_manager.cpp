@@ -14,7 +14,7 @@ using memory::kernel_offset;
 using memory::page_offset;
 using memory::page_mappable;
 
-page_manager g_page_manager(g_frame_allocator);
+page_manager g_page_manager(g_frame_allocator, 0);
 extern kutil::vm_space g_kernel_space;
 
 // NB: in 4KiB page table entries, bit 7 isn't pagesize but PAT. Currently this
@@ -45,7 +45,8 @@ struct free_page_header
 };
 
 
-page_manager::page_manager(frame_allocator &frames) :
+page_manager::page_manager(frame_allocator &frames, page_table *pml4) :
+	m_kernel_pml4(pml4),
 	m_page_cache(nullptr),
 	m_frames(frames)
 {
@@ -56,9 +57,9 @@ page_manager::create_process_map()
 {
 	page_table *table = get_table_page();
 
-	kutil::memset(table, 0, frame_size);
-	table->entries[510] = m_kernel_pml4->entries[510];
-	table->entries[511] = m_kernel_pml4->entries[511];
+	kutil::memset(table, 0, frame_size/2);
+	for (unsigned i = 256; i < 512; ++i)
+		table->entries[i] = m_kernel_pml4->entries[i];
 
 	// Create the initial user stack
 	map_pages(

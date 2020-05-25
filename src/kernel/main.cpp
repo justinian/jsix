@@ -86,41 +86,44 @@ kernel_main(args::header *header)
 
 	memory_initialize(header);
 
-	/*
 	kutil::allocator &heap = g_kernel_heap;
 
+	/*
 	if (header->frame_buffer && header->frame_buffer_length) {
 		page_manager::get()->map_offset_pointer(
 				&header->frame_buffer,
 				header->frame_buffer_length);
 	}
-
-
-	log::debug(logs::boot, " jsix header is at: %016lx", header);
-	log::debug(logs::boot, "    Framebuffer is at: %016lx", header->frame_buffer);
-	log::debug(logs::boot, "    Kernel data is at: %016lx", header->data);
-	log::debug(logs::boot, "     Memory map is at: %016lx", header->memory_map);
-	log::debug(logs::boot, "ACPI root table is at: %016lx", header->acpi_table);
-	log::debug(logs::boot, "Runtime service is at: %016lx", header->runtime);
-
-	initrd::disk ird(header->initrd, heap);
-	log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());
-	for (auto &f : ird.files())
-		log::info(logs::boot, "  %s%s (%d bytes).", f.executable() ? "*" : "", f.name(), f.size());
-
 	*/
+
+	log::debug(logs::boot, "    jsix header is at: %016lx", header);
+	log::debug(logs::boot, "     Memory map is at: %016lx", header->mem_map);
+	log::debug(logs::boot, "ACPI root table is at: %016lx", header->acpi_table);
+	log::debug(logs::boot, "Runtime service is at: %016lx", header->runtime_services);
+
+	// Load the module tagged as initrd
+	kutil::vector<initrd::disk> initrds(heap);
+	for (unsigned i = 0; i < header->num_modules; ++i) {
+		args::module &mod = header->modules[i];
+		if (mod.type != args::mod_type::initrd)
+			continue;
+
+		initrd::disk &ird = initrds.emplace(mod.location, heap);
+		log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());
+		for (auto &f : ird.files())
+			log::info(logs::boot, "  %s%s (%d bytes).", f.executable() ? "*" : "", f.name(), f.size());
+	}
+
 	/*
 	   page_manager::get()->dump_pml4(nullptr, 0);
 	   page_manager::get()->dump_blocks(true);
 	*/
-	/*
 
 	device_manager *devices =
 		new (&device_manager::get()) device_manager(header->acpi_table, heap);
 
 	interrupts_enable();
 
-	*/
 	/*
 	auto r = cpu.get(0x15);
 	log::info(logs::boot, "CPU Crystal: %dHz", r.ecx);
@@ -129,11 +132,9 @@ kernel_main(args::header *header)
 	__asm__ __volatile__ ( "mov %%cr4, %0" : "=r" (cr4) );
 	log::info(logs::boot, "cr4: %016x", cr4);
 	*/
-	/*
 
 	devices->init_drivers();
 
-	*/
 	/*
 	block_device *disk = devices->get_block_device(0);
 	if (disk) {
@@ -157,7 +158,6 @@ kernel_main(args::header *header)
 		log::warn(logs::boot, "No block devices present.");
 	}
 	*/
-	/*
 
 	devices->get_lapic()->calibrate_timer();
 
@@ -166,9 +166,11 @@ kernel_main(args::header *header)
 
 	sched->create_kernel_task(-1, logger_task);
 
-	for (auto &f : ird.files()) {
-		if (f.executable())
-			sched->load_process(f.name(), f.data(), f.size());
+	for (auto &ird : initrds) {
+		for (auto &f : ird.files()) {
+			if (f.executable())
+				sched->load_process(f.name(), f.data(), f.size());
+		}
 	}
 
 	log::info(logs::objs, "Testing object system:");
@@ -187,5 +189,4 @@ kernel_main(args::header *header)
 	}
 
 	sched->start();
-	*/
 }

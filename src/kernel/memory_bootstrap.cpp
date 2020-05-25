@@ -70,6 +70,7 @@ memory_initialize(args::header *kargs)
 {
 	args::mem_entry *entries = kargs->mem_map;
 	size_t entry_count = kargs->num_map_entries;
+	page_table *kpml4 = reinterpret_cast<page_table*>(kargs->pml4);
 
 	new (&g_kernel_heap) kutil::heap_allocator {heap_start, kernel_max_heap};
 
@@ -82,14 +83,13 @@ memory_initialize(args::header *kargs)
 	}
 
 	// Create the page manager
-	page_manager *pm = new (&g_page_manager) page_manager(*fa);
+	page_manager *pm = new (&g_page_manager) page_manager(*fa, kpml4);
 
 	new (&g_kernel_space) kutil::vm_space {
 		kernel_offset,
 		(page_offset-kernel_offset),
 		g_kernel_heap};
 
-	page_table *kpml4 = reinterpret_cast<page_table*>(kargs->pml4);
 
 	uintptr_t current_start = 0;
 	size_t current_bytes = 0;
