@@ -72,9 +72,6 @@ init_console()
 void
 kernel_main(args::header *header)
 {
-	bool waiting = header && (header->mode == args::mode::debug);
-	while (waiting);
-
 	kutil::assert_set_callback(__kernel_assert);
 	init_console();
 

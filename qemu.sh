@@ -3,6 +3,7 @@
 build="$(dirname $0)/build"
 assets="$(dirname $0)/assets"
 debug=""
+debugtarget="${build}/jsix.elf"
 flash_name="ovmf_vars"
 gfx="-nographic"
 kvm=""
@@ -10,8 +11,13 @@ cpu="Broadwell,+pdpe1gb"
 
 for arg in $@; do
 	case "${arg}" in
+		--debugboot)
+			debug="-s -S"
+			debugtarget="${build}/boot/boot.efi"
+			flash_name="ovmf_vars_d"
+			;;
 		--debug)
-			debug="-s"
+			debug="-s -S"
 			flash_name="ovmf_vars_d"
 			;;
 		--gfx)
@@ -37,7 +43,7 @@ fi
 
 if [[ -n $TMUX ]]; then
 	if [[ -n $debug ]]; then
-		tmux split-window "gdb ${build}/jsix.elf" &
+		tmux split-window -h "gdb ${debugtarget}" &
 	else
 		tmux split-window -l 10 "sleep 1; telnet localhost 45454" &
 	fi
