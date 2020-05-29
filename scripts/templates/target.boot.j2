@@ -12,6 +12,7 @@ objcopy = objcopy
 {% block variables %}
 
 ccflags = $ccflags $
+    -I $srcroot/external $
     --target=x86_64-unknown-windows $
 	-ffreestanding $
 	-mno-red-zone $
