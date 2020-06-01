@@ -40,15 +40,6 @@ run_constructors()
 	}
 }
 
-class test_ctor
-{
-public:
-	test_ctor(int value) : value(value) {}
-	int value;
-};
-
-test_ctor ctor_tester(42);
-
 extern void __kernel_assert(const char *, unsigned, const char *);
 
 /// Bootstrap the memory managers.
@@ -100,7 +91,6 @@ kernel_main(args::header *header)
 	interrupts_init();
 
 	memory_initialize_pre_ctors(header);
-	kutil::memset(&ctor_tester, 0, sizeof(ctor_tester));
 	run_constructors();
 	memory_initialize_post_ctors(header);
 
