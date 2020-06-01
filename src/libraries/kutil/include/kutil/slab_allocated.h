@@ -25,11 +25,6 @@ public:
 
 	void operator delete(void *p) { s_free.append(reinterpret_cast<T*>(p)); }
 
-	// TODO: get rid of this terribleness
-	static void hacky_init_remove_me() {
-		memset(&s_free, 0, sizeof(s_free));
-	}
-
 private:
 	static void allocate_chunk()
 	{

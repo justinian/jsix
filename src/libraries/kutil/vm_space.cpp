@@ -12,9 +12,6 @@ DEFINE_SLAB_ALLOCATOR(node_type, 1);
 
 vm_space::vm_space(uintptr_t start, size_t size)
 {
-	// TODO: replace this with real global ctor
-	slab_allocated<node_type>::hacky_init_remove_me();
-
 	node_type *node = new node_type;
 	node->address = start;
 	node->size = size;
