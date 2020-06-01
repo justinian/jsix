@@ -6,8 +6,19 @@
 
 void * operator new (size_t, void *p) noexcept;
 
-
 namespace kutil {
+
+/// Allocate from the default allocator. Note this needs to be
+/// implemented by users of the kutil library.
+/// \arg size  The size in bytes requested
+/// \returns   A pointer to the newly allocated memory,
+///            or nullptr on error
+void * kalloc(size_t size);
+
+/// Free memory allocated by `kalloc`. Note this needs to be
+/// implemented by users of the kutil library.
+/// \arg p  Pointer that was returned from a `kalloc` call
+void kfree(void *p);
 
 /// Fill memory with the given value.
 /// \arg p   The beginning of the memory area to fill

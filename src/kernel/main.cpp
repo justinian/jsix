@@ -99,13 +99,13 @@ kernel_main(args::header *header)
 	log::debug(logs::boot, "Runtime service is at: %016lx", header->runtime_services);
 
 	// Load the module tagged as initrd
-	kutil::vector<initrd::disk> initrds(heap);
+	kutil::vector<initrd::disk> initrds;
 	for (unsigned i = 0; i < header->num_modules; ++i) {
 		args::module &mod = header->modules[i];
 		if (mod.type != args::mod_type::initrd)
 			continue;
 
-		initrd::disk &ird = initrds.emplace(mod.location, heap);
+		initrd::disk &ird = initrds.emplace(mod.location);
 		log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());
 		for (auto &f : ird.files())
 			log::info(logs::boot, "  %s%s (%d bytes).", f.executable() ? "*" : "", f.name(), f.size());
@@ -159,7 +159,7 @@ kernel_main(args::header *header)
 	devices->get_lapic()->calibrate_timer();
 
 	syscall_enable();
-	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic(), heap);
+	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic());
 
 	sched->create_kernel_task(-1, logger_task);
 

@@ -8,11 +8,14 @@ namespace kutil {
 using node_type = kutil::avl_node<vm_range>;
 using node_vec = kutil::vector<node_type*>;
 
-vm_space::vm_space(uintptr_t start, size_t size, allocator &alloc) :
-	m_slab(alloc),
-	m_alloc(alloc)
+DEFINE_SLAB_ALLOCATOR(node_type, 1);
+
+vm_space::vm_space(uintptr_t start, size_t size)
 {
-	node_type *node = m_slab.pop();
+	// TODO: replace this with real global ctor
+	slab_allocated<node_type>::hacky_init_remove_me();
+
+	node_type *node = new node_type;
 	node->address = start;
 	node->size = size;
 	node->state = vm_state::none;
@@ -22,9 +25,7 @@ vm_space::vm_space(uintptr_t start, size_t size, allocator &alloc) :
 			start, start+size);
 }
 
-vm_space::vm_space() :
-	m_slab(allocator::invalid),
-	m_alloc(allocator::invalid)
+vm_space::vm_space()
 {
 }
 
@@ -77,7 +78,7 @@ vm_space::split_out(node_type *node, uintptr_t start, size_t size, vm_state stat
 		// Split off rest into new node
 		size_t leading = start - node->address;
 
-		node_type *next = m_slab.pop();
+		node_type *next = new node_type;
 		next->state = state;
 		next->address = start;
 		next->size = node->size - leading;
@@ -100,7 +101,7 @@ vm_space::split_out(node_type *node, uintptr_t start, size_t size, vm_state stat
 		size_t trailing =  node->size - size;
 		node->size -= trailing;
 
-		node_type *next = m_slab.pop();
+		node_type *next = new node_type;
 		next->state = old_state;
 		next->address = node->end();
 		next->size = trailing;
@@ -132,7 +133,7 @@ inline void gather(node_type *node, node_vec &vec)
 node_type *
 vm_space::consolidate(node_type *needle)
 {
-	node_vec nodes(m_ranges.count(), m_alloc);
+	node_vec nodes(m_ranges.count());
 	gather(m_ranges.root(), nodes);
 
 	node_type *prev = nullptr;
@@ -150,7 +151,7 @@ vm_space::consolidate(node_type *needle)
 			prev->size += node->size;
 			if (needle == node)
 				needle = prev;
-			m_ranges.remove(node, m_slab);
+			m_ranges.remove(node);
 		} else {
 			prev = node;
 		}

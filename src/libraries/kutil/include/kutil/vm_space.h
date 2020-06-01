@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include "kutil/allocator.h"
 #include "kutil/avl_tree.h"
-#include "kutil/slab_allocator.h"
 
 namespace kutil {
 
@@ -39,8 +38,7 @@ public:
 	/// Constructor. Define a range of managed VM space.
 	/// \arg start       Starting address of the managed space
 	/// \arg size        Size of the managed space, in bytes
-	/// \arg alloc       Allocator to use for tracking objects
-	vm_space(uintptr_t start, size_t size, kutil::allocator &alloc);
+	vm_space(uintptr_t start, size_t size);
 
 	/// Reserve a section of address space.
 	/// \arg start  Starting address of reservaion, or 0 for any address
@@ -76,8 +74,6 @@ private:
 	node_type * split_out(node_type* node, uintptr_t start, size_t size, vm_state state);
 	node_type * consolidate(node_type* needle);
 
-	slab_allocator<node_type> m_slab;
-	allocator &m_alloc;
 	tree_type m_ranges;
 };
 

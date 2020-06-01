@@ -31,6 +31,11 @@ void * operator new [] (size_t size)       { return g_kernel_heap.allocate(size)
 void operator delete (void *p) noexcept    { return g_kernel_heap.free(p); }
 void operator delete [] (void *p) noexcept { return g_kernel_heap.free(p); }
 
+namespace kutil {
+void * kalloc(size_t size) { return g_kernel_heap.allocate(size); }
+void kfree(void *p) { return g_kernel_heap.free(p); }
+}
+
 void walk_page_table(
 	page_table *table,
 	page_table::level level,
@@ -90,8 +95,7 @@ memory_initialize(args::header *kargs)
 
 	new (&g_kernel_space) kutil::vm_space {
 		kernel_offset,
-		(page_offset-kernel_offset),
-		g_kernel_heap};
+		(page_offset-kernel_offset)};
 
 
 	uintptr_t current_start = 0;

@@ -12,7 +12,6 @@ static j6_koid_t next_koid;
 kobject::kobject(type t, j6_signal_t signals) :
 	m_koid(koid_generate(t)),
 	m_signals(signals),
-	m_observers(g_kernel_heap),
 	m_handle_count(0)
 {}
 

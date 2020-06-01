@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <stdint.h>
 #include "kutil/assert.h"
+#include "kutil/slab_allocated.h"
 
 namespace kutil {
 
@@ -14,7 +15,8 @@ template <typename T> class avl_tree;
 /// A node in a `avl_tree<T>`
 template <typename T>
 class avl_node :
-	public T
+	public T,
+	public slab_allocated<avl_node<T>>
 {
 public:
 	using item_type = T;
@@ -151,7 +153,7 @@ private:
 		return existing;
 	}
 
-	static node_type * remove(node_type *existing, node_type *subtrahend, allocator &alloc)
+	static node_type * remove(node_type *existing, node_type *subtrahend)
 	{
 		if (existing == nullptr)
 			return existing;
@@ -170,7 +172,7 @@ private:
 					*existing = *temp;
 				}
 
-				alloc.free(temp);
+				delete temp;
 			} else {
 				// Both children exist, find next node
 				node_type *temp = existing->m_right;
@@ -178,12 +180,12 @@ private:
 					temp = temp->m_left;
 
 				*existing = *temp;
-				existing->m_right = remove(existing->m_right, temp, alloc);
+				existing->m_right = remove(existing->m_right, temp);
 			}
 		} else if (existing->compare(subtrahend) < 0) {
-			existing->m_left = remove(existing->m_left, subtrahend, alloc);
+			existing->m_left = remove(existing->m_left, subtrahend);
 		} else {
-			existing->m_right = remove(existing->m_right, subtrahend, alloc);
+			existing->m_right = remove(existing->m_right, subtrahend);
 		}
 
 		if (!existing)
@@ -232,8 +234,8 @@ public:
 	inline node_type * root() { return m_root; }
 	inline unsigned count() const { return m_count; }
 
-	inline void remove(node_type *subtrahend, allocator &alloc) {
-		m_root = node_type::remove(m_root, subtrahend, alloc);
+	inline void remove(node_type *subtrahend) {
+		m_root = node_type::remove(m_root, subtrahend);
 		m_count--;
 	}
 

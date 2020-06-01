@@ -4,7 +4,6 @@
 
 #include <stdint.h>
 #include "kutil/allocator.h"
-#include "kutil/slab_allocator.h"
 #include "process.h"
 
 class lapic;
@@ -31,8 +30,7 @@ public:
 
 	/// Constructor.
 	/// \arg apic  Pointer to the local APIC object
-	/// \arg alloc Allocator to use for TCBs
-	scheduler(lapic *apic, kutil::allocator &alloc);
+	scheduler(lapic *apic);
 
 	/// Create a new process from a program image in memory.
 	/// \arg name  Name of the program image
@@ -85,9 +83,6 @@ private:
 
 	uint32_t m_next_pid;
 	uint32_t m_tick_count;
-
-	using process_slab = kutil::slab_allocator<process>;
-	process_slab m_process_allocator;
 
 	process_node *m_current;
 	process_list m_runlists[num_priorities];

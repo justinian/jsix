@@ -16,7 +16,7 @@
 
 using memory::initial_stack;
 
-scheduler scheduler::s_instance(nullptr, kutil::allocator::invalid);
+scheduler scheduler::s_instance(nullptr);
 
 const uint64_t rflags_noint = 0x002;
 const uint64_t rflags_int = 0x202;
@@ -28,12 +28,11 @@ extern "C" {
 
 extern uint64_t idle_stack_end;
 
-scheduler::scheduler(lapic *apic, kutil::allocator &alloc) :
+scheduler::scheduler(lapic *apic) :
 	m_apic(apic),
-	m_next_pid(1),
-	m_process_allocator(alloc)
+	m_next_pid(1)
 {
-	auto *idle = m_process_allocator.pop();
+	auto *idle = new process_node;
 	uint8_t last_pri = num_priorities - 1;
 
 	// The kernel idle task, also the thread we're in now
@@ -121,7 +120,7 @@ scheduler::create_process(pid_t pid)
 {
 	kassert(pid <= 0, "Cannot specify a positive pid in create_process");
 
-	auto *proc = m_process_allocator.pop();
+	auto *proc = new process_node;
 	proc->pid = pid ? pid : m_next_pid++;
 	proc->priority = default_priority;
 	return proc;
@@ -233,7 +232,7 @@ void scheduler::prune(uint64_t now)
 				if (parent && parent->wake_on_child(remove)) {
 					m_blocked.remove(parent);
 					m_runlists[parent->priority].push_front(parent);
-					m_process_allocator.push(remove);
+					delete remove;
 				} else {
 					m_exited.push_back(remove);
 				}

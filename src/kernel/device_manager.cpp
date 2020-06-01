@@ -60,12 +60,7 @@ void irq4_callback(void *)
 
 
 device_manager::device_manager(const void *root_table, kutil::allocator &alloc) :
-	m_lapic(nullptr),
-	m_ioapics(alloc),
-	m_pci(alloc),
-	m_devices(alloc),
-	m_irqs(alloc),
-	m_blockdevs(alloc)
+	m_lapic(nullptr)
 {
 	kassert(root_table != 0, "ACPI root table pointer is null.");
 

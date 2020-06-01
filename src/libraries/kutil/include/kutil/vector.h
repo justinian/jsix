@@ -15,20 +15,18 @@ class vector
 {
 public:
 	/// Default constructor. Creates an empty vector with no capacity.
-	vector(kutil::allocator &alloc = allocator::invalid) :
+	vector() :
 		m_size(0),
 		m_capacity(0),
-		m_elements(nullptr),
-		m_alloc(alloc)
+		m_elements(nullptr)
 	{}
 
 	/// Constructor. Creates an empty array with capacity.
 	/// \arg capacity  Initial capacity to allocate
-	vector(size_t capacity, allocator &alloc) :
+	vector(size_t capacity) :
 		m_size(0),
 		m_capacity(0),
-		m_elements(nullptr),
-		m_alloc(alloc)
+		m_elements(nullptr)
 	{
 		set_capacity(capacity);
 	}
@@ -37,8 +35,7 @@ public:
 	vector(const vector& other) :
 		m_size(0),
 		m_capacity(0),
-		m_elements(nullptr),
-		m_alloc(other.m_alloc)
+		m_elements(nullptr)
 	{
 		set_capacity(other.m_capacity);
 		kutil::memcpy(m_elements, other.m_elements, other.m_size * sizeof(T));
@@ -49,8 +46,7 @@ public:
 	vector(vector&& other) :
 		m_size(other.m_size),
 		m_capacity(other.m_capacity),
-		m_elements(other.m_elements),
-		m_alloc(other.m_alloc)
+		m_elements(other.m_elements)
 	{
 		other.m_size = 0;
 		other.m_capacity = 0;
@@ -61,7 +57,7 @@ public:
 	~vector()
 	{
 		while (m_size) remove();
-		m_alloc.free(m_elements);
+		kfree(m_elements);
 	}
 
 	/// Get the size of the array.
@@ -117,6 +113,14 @@ public:
 		m_elements[m_size].~T();
 	}
 
+	/// Remove an item from the end of the array and return it.
+	T pop()
+	{
+		T temp = m_elements[m_size - 1];
+		remove();
+		return temp;
+	}
+
 	/// Set the size of the array. Any new items are default constructed.
 	/// Any items past the end are deleted. The array is realloced if needed.
 	/// \arg size  The new size
@@ -149,7 +153,7 @@ public:
 	/// \arg capacity  Number of elements to allocate
 	void set_capacity(size_t capacity)
 	{
-		T *new_array = m_alloc.allocate<T>(capacity);
+		T *new_array = reinterpret_cast<T*>(kalloc(capacity * sizeof(T)));
 		size_t size = std::min(capacity, m_size);
 
 		kutil::memcpy(new_array, m_elements, size * sizeof(T));
@@ -158,7 +162,7 @@ public:
 		m_size = size;
 		m_capacity = capacity;
 
-		m_alloc.free(m_elements);
+		kfree(m_elements);
 		m_elements = new_array;
 	}
 
@@ -166,7 +170,6 @@ private:
 	size_t m_size;
 	size_t m_capacity;
 	T *m_elements;
-	allocator &m_alloc;
 };
 
 } // namespace kutil
