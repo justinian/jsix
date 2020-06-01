@@ -1,7 +1,7 @@
 #include "io.h"
 #include "serial.h"
 
-serial_port g_com1;
+serial_port g_com1(COM1);
 
 
 serial_port::serial_port() :

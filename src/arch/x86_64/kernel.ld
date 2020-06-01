@@ -20,6 +20,12 @@ SECTIONS
 		 *(.rodata)
 	}
 
+	.ctors : ALIGN(8) {
+		 __ctors = .;
+		 KEEP(*(.ctors))
+		 __ctors_end = .;
+	 }
+
 	.bss ALIGN(4096) : {
 		__bss_start = .;
 		*(.bss)

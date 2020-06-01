@@ -21,9 +21,9 @@ using kutil::memcpy;
 logger *logger::s_log = nullptr;
 const char *logger::s_level_names[] = {"", "debug", "info", "warn", "error", "fatal"};
 
-logger::logger() :
+logger::logger(logger::immediate output) :
 	m_buffer(nullptr, 0),
-	m_immediate(nullptr),
+	m_immediate(output),
 	m_sequence(0)
 {
 	memset(&m_levels, 0, sizeof(m_levels));
@@ -31,9 +31,9 @@ logger::logger() :
 	s_log = this;
 }
 
-logger::logger(uint8_t *buffer, size_t size) :
+logger::logger(uint8_t *buffer, size_t size, logger::immediate output) :
 	m_buffer(buffer, size),
-	m_immediate(nullptr),
+	m_immediate(output),
 	m_sequence(0)
 {
 	memset(&m_levels, 0, sizeof(m_levels));

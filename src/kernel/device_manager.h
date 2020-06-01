@@ -18,9 +18,7 @@ class device_manager
 {
 public:
 	/// Constructor.
-	/// \arg root_table  Pointer to the ACPI RSDP
-	/// \arg alloc       Allocator for device arrays
-	device_manager(const void *root_table, kutil::allocator &alloc);
+	device_manager();
 
 	/// Get the system global device manager.
 	/// \returns  A reference to the system device manager
@@ -35,6 +33,10 @@ public:
 	/// \returns An object representing the given IOAPIC if it exists,
 	/// otherwise nullptr.
 	ioapic * get_ioapic(int i);
+
+	/// Parse ACPI tables.
+	/// \arg root_table  Pointer to the ACPI RSDP
+	void parse_acpi(const void *root_table);
 
 	/// Intialize drivers for the current device list.
 	void init_drivers();
@@ -122,7 +124,6 @@ private:
 
 	static device_manager s_instance;
 
-	device_manager() = delete;
 	device_manager(const device_manager &) = delete;
 	device_manager operator=(const device_manager &) = delete;
 };

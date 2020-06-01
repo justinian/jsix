@@ -1,11 +1,16 @@
 #include "kutil/memory.h"
+#include "kutil/no_construct.h"
 #include "console.h"
 #include "log.h"
 #include "scheduler.h"
 
-
 static uint8_t log_buffer[0x10000];
-static log::logger g_logger(log_buffer, sizeof(log_buffer));
+
+// The logger is initialized _before_ global constructors are called,
+// so that we can start log output immediately. Keep its constructor
+// from being called here so as to not overwrite the previous initialization.
+static kutil::no_construct<log::logger> __g_logger_storage;
+static log::logger &g_logger = __g_logger_storage.value;
 
 static const uint8_t level_colors[] = {0x07, 0x07, 0x0f, 0x0b, 0x09};
 
@@ -50,6 +55,5 @@ logger_task()
 
 void logger_init()
 {
-	new (&g_logger) log::logger(log_buffer, sizeof(log_buffer));
-	g_logger.set_immediate(output_log);
+	new (&g_logger) log::logger(log_buffer, sizeof(log_buffer), output_log);
 }

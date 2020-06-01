@@ -18,20 +18,24 @@ enum class level : uint8_t {
 class logger
 {
 public:
+	/// Callback type for immediate-mode logging
+	typedef void (*immediate)(area_t, level, const char *);
+
 	/// Default constructor. Creates a logger without a backing store.
-	logger();
+	/// \arg output  Immediate-mode logging output function
+	logger(immediate output = nullptr);
 
 	/// Constructor. Logs are written to the given buffer.
-	logger(uint8_t *buffer, size_t size);
+	/// \arg buffer  Buffer to which logs are written
+	/// \arg size    Size of `buffer`, in bytes
+	/// \arg output  Immediate-mode logging output function
+	logger(uint8_t *buffer, size_t size, immediate output = nullptr);
 
 	/// Register a log area for future use.
 	/// \arg area      The key for the new area
 	/// \arg name      The area name
 	/// \arg verbosity What level of logs to print for this area
 	void register_area(area_t area, const char *name, level verbosity);
-
-	/// Callback type for immediate-mode logging
-	typedef void (*immediate)(area_t, level, const char *);
 
 	/// Register an immediate-mode log callback
 	inline void set_immediate(immediate cb) { m_immediate = cb; }

@@ -1,6 +1,7 @@
 #include "kutil/coord.h"
 #include "kutil/guid.h"
 #include "kutil/memory.h"
+#include "kutil/no_construct.h"
 #include "kutil/printf.h"
 #include "console.h"
 #include "font.h"
@@ -9,7 +10,9 @@
 
 
 const char digits[] = "0123456789abcdef";
-console g_console;
+
+static kutil::no_construct<console> __g_console_storage;
+console &g_console = __g_console_storage.value;
 
 
 class console::screen_out

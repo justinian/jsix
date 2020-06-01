@@ -5,7 +5,6 @@
 
 #include "initrd/initrd.h"
 #include "kutil/assert.h"
-#include "kutil/heap_allocator.h"
 #include "kutil/vm_space.h"
 #include "apic.h"
 #include "block_device.h"
@@ -27,12 +26,35 @@
 
 extern "C" {
 	void kernel_main(kernel::args::header *header);
-	void *__bss_start, *__bss_end;
+	void (*__ctors)(void);
+	void (*__ctors_end)(void);
 }
+
+void
+run_constructors()
+{
+	void (**p)(void) = &__ctors;
+	while (p < &__ctors_end) {
+		void (*ctor)(void) = *p++;
+		ctor();
+	}
+}
+
+class test_ctor
+{
+public:
+	test_ctor(int value) : value(value) {}
+	int value;
+};
+
+test_ctor ctor_tester(42);
 
 extern void __kernel_assert(const char *, unsigned, const char *);
 
-extern kutil::heap_allocator g_kernel_heap;
+/// Bootstrap the memory managers.
+void memory_initialize_pre_ctors(kernel::args::header *kargs);
+void memory_initialize_post_ctors(kernel::args::header *kargs);
+
 using namespace kernel;
 
 class test_observer :
@@ -65,7 +87,6 @@ init_console()
 	cons->puts("jsix OS ");
 	cons->set_color(0x08, 0x00);
 	cons->puts(GIT_VERSION " booting...\n");
-
 	logger_init();
 }
 
@@ -78,12 +99,13 @@ kernel_main(args::header *header)
 	gdt_init();
 	interrupts_init();
 
+	memory_initialize_pre_ctors(header);
+	kutil::memset(&ctor_tester, 0, sizeof(ctor_tester));
+	run_constructors();
+	memory_initialize_post_ctors(header);
+
 	cpu_id cpu;
 	cpu.validate();
-
-	memory_initialize(header);
-
-	kutil::allocator &heap = g_kernel_heap;
 
 	/*
 	if (header->frame_buffer && header->frame_buffer_length) {
@@ -116,8 +138,8 @@ kernel_main(args::header *header)
 	   page_manager::get()->dump_blocks(true);
 	*/
 
-	device_manager *devices =
-		new (&device_manager::get()) device_manager(header->acpi_table, heap);
+	device_manager &devices = device_manager::get();
+	devices.parse_acpi(header->acpi_table);
 
 	interrupts_enable();
 
@@ -130,7 +152,7 @@ kernel_main(args::header *header)
 	log::info(logs::boot, "cr4: %016x", cr4);
 	*/
 
-	devices->init_drivers();
+	devices.init_drivers();
 
 	/*
 	block_device *disk = devices->get_block_device(0);
@@ -156,10 +178,10 @@ kernel_main(args::header *header)
 	}
 	*/
 
-	devices->get_lapic()->calibrate_timer();
+	devices.get_lapic()->calibrate_timer();
 
 	syscall_enable();
-	scheduler *sched = new (&scheduler::get()) scheduler(devices->get_lapic());
+	scheduler *sched = new (&scheduler::get()) scheduler(devices.get_lapic());
 
 	sched->create_kernel_task(-1, logger_task);
 

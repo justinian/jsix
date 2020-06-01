@@ -1,10 +1,7 @@
 #include "j6/errors.h"
 #include "j6/signals.h"
 #include "j6/types.h"
-#include "kutil/heap_allocator.h"
 #include "objects/kobject.h"
-
-extern kutil::heap_allocator g_kernel_heap;
 
 // TODO: per-cpu this?
 static j6_koid_t next_koid;

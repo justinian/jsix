@@ -6,8 +6,6 @@ using memory::frame_size;
 using memory::page_offset;
 using frame_block_node = kutil::list_node<frame_block>;
 
-frame_allocator g_frame_allocator;
-
 int
 frame_block::compare(const frame_block *rhs) const
 {

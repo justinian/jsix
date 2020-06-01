@@ -5,6 +5,7 @@
 
 #include "kutil/assert.h"
 #include "kutil/heap_allocator.h"
+#include "kutil/no_construct.h"
 #include "kutil/vm_space.h"
 
 #include "frame_allocator.h"
@@ -24,7 +25,18 @@ using memory::table_entries;
 using namespace kernel;
 
 kutil::vm_space g_kernel_space;
-kutil::heap_allocator g_kernel_heap;
+
+// These objects are initialized _before_ global constructors are called,
+// so we don't want them to have global constructors at all, lest they
+// overwrite the previous initialization.
+static kutil::no_construct<kutil::heap_allocator> __g_kernel_heap_storage;
+kutil::heap_allocator &g_kernel_heap = __g_kernel_heap_storage.value;
+
+static kutil::no_construct<page_manager> __g_page_manager_storage;
+page_manager &g_page_manager = __g_page_manager_storage.value;
+
+static kutil::no_construct<frame_allocator> __g_frame_allocator_storage;
+frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
 
 void * operator new(size_t size)           { return g_kernel_heap.allocate(size); }
 void * operator new [] (size_t size)       { return g_kernel_heap.allocate(size); }
@@ -74,7 +86,7 @@ void walk_page_table(
 }
 
 void
-memory_initialize(args::header *kargs)
+memory_initialize_pre_ctors(args::header *kargs)
 {
 	args::mem_entry *entries = kargs->mem_map;
 	size_t entry_count = kargs->num_map_entries;
@@ -82,26 +94,30 @@ memory_initialize(args::header *kargs)
 
 	new (&g_kernel_heap) kutil::heap_allocator {heap_start, kernel_max_heap};
 
-	frame_allocator *fa = new (&g_frame_allocator) frame_allocator;
+	new (&g_frame_allocator) frame_allocator;
 	for (unsigned i = 0; i < entry_count; ++i) {
 		// TODO: use entry attributes
 		args::mem_entry &e = entries[i];
 		if (e.type == args::mem_type::free)
-			fa->free(e.start, e.pages);
+			g_frame_allocator.free(e.start, e.pages);
 	}
 
 	// Create the page manager
-	page_manager *pm = new (&g_page_manager) page_manager(*fa, kpml4);
+	new (&g_page_manager) page_manager {g_frame_allocator, kpml4};
+}
 
+void
+memory_initialize_post_ctors(args::header *kargs)
+{
 	new (&g_kernel_space) kutil::vm_space {
 		kernel_offset,
 		(page_offset-kernel_offset)};
-
 
 	uintptr_t current_start = 0;
 	size_t current_bytes = 0;
 
 	// TODO: Should we exclude the top of this area? (eg, buffers, stacks, etc)
+	page_table *kpml4 = reinterpret_cast<page_table*>(kargs->pml4);
 	for (unsigned i = pml4e_kernel; i < pml4e_offset; ++i) {
 		page_table *pdp = kpml4->get(i);
 
@@ -118,5 +134,7 @@ memory_initialize(args::header *kargs)
 			g_kernel_space);
 	}
 
-	fa->free(reinterpret_cast<uintptr_t>(kargs->page_table_cache), kargs->num_free_tables);
+	g_frame_allocator.free(
+		reinterpret_cast<uintptr_t>(kargs->page_table_cache),
+		kargs->num_free_tables);
 }

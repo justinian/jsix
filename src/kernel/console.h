@@ -46,7 +46,7 @@ private:
 	serial_port *m_serial;
 };
 
-extern console g_console;
+extern console &g_console;
 inline console * console::get() { return &g_console; }
 
 

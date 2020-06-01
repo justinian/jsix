@@ -14,7 +14,7 @@
 
 static const char expected_signature[] = "RSD PTR ";
 
-device_manager device_manager::s_instance(nullptr, kutil::allocator::invalid);
+device_manager device_manager::s_instance;
 
 struct acpi1_rsdp
 {
@@ -59,8 +59,17 @@ void irq4_callback(void *)
 }
 
 
-device_manager::device_manager(const void *root_table, kutil::allocator &alloc) :
+device_manager::device_manager() :
 	m_lapic(nullptr)
+{
+	m_irqs.ensure_capacity(32);
+	m_irqs.set_size(16);
+	m_irqs[2] = {"Clock interrupt", irq2_callback, nullptr};
+	m_irqs[4] = {"Serial interrupt", irq4_callback, nullptr};
+}
+
+void
+device_manager::parse_acpi(const void *root_table)
 {
 	kassert(root_table != 0, "ACPI root table pointer is null.");
 
@@ -83,11 +92,6 @@ device_manager::device_manager(const void *root_table, kutil::allocator &alloc) 
 	kassert(sum == 0, "ACPI 2.0 RSDP checksum mismatch.");
 
 	load_xsdt(reinterpret_cast<const acpi_xsdt *>(acpi2->xsdt_address));
-
-	m_irqs.ensure_capacity(32);
-	m_irqs.set_size(16);
-	m_irqs[2] = {"Clock interrupt", irq2_callback, nullptr};
-	m_irqs[4] = {"Serial interrupt", irq4_callback, nullptr};
 }
 
 ioapic *

@@ -16,9 +16,6 @@ using memory::page_mappable;
 using memory::pml4e_kernel;
 using memory::table_entries;
 
-page_manager g_page_manager(g_frame_allocator, 0);
-extern kutil::vm_space g_kernel_space;
-
 // NB: in 4KiB page table entries, bit 7 isn't pagesize but PAT. Currently this
 // doesn't matter, becasue in the default PAT table, both 000 and 100 are WB.
 constexpr uint64_t sys_page_flags   = 0x183; // global, pagesize, write, present
@@ -321,6 +318,7 @@ page_manager::fault_handler(uintptr_t addr)
 	if (!addr)
 		return false;
 
+	extern kutil::vm_space g_kernel_space;
 	bool is_heap = addr >= ::memory::heap_start &&
 		addr < ::memory::heap_start + ::memory::kernel_max_heap;
 

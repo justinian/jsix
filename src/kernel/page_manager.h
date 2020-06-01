@@ -181,7 +181,7 @@ private:
 };
 
 /// Global page manager.
-extern page_manager g_page_manager;
+extern page_manager &g_page_manager;
 
 inline page_manager * page_manager::get() { return &g_page_manager; }
 
@@ -206,12 +206,3 @@ page_table_align(T p)
 {
 	return ((p - 1) & ~0x1fffffull) + 0x200000;
 }
-
-namespace kernel {
-namespace args {
-	struct header;
-}
-}
-
-/// Bootstrap the memory managers.
-void memory_initialize(kernel::args::header *mem_map);

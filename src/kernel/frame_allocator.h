@@ -66,5 +66,3 @@ struct frame_block
 	int compare(const frame_block *rhs) const;
 };
 
-
-extern frame_allocator g_frame_allocator;
