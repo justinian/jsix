@@ -4,7 +4,6 @@
 
 #include <stdint.h>
 
-#include "kutil/allocator.h"
 #include "kutil/linked_list.h"
 
 struct frame_block;
@@ -30,23 +29,7 @@ public:
 	/// \arg count    The number of frames to be freed
 	void free(uintptr_t address, size_t count);
 
-	/// Get a memory allocator that allocates raw pages
-	/// \returns  The allocator ojbect
-	kutil::allocator & raw_allocator() { return m_raw_alloc; }
-
 private:
-	class raw_alloc :
-		public kutil::allocator
-	{
-	public:
-		raw_alloc(frame_allocator &fa);
-		virtual void * allocate(size_t size) override;
-		virtual void free(void *p) override;
-	private:
-		frame_allocator &m_fa;
-	};
-
-	raw_alloc m_raw_alloc;
 	frame_block_list m_free; ///< Free frames list
 
 	frame_allocator(const frame_allocator &) = delete;

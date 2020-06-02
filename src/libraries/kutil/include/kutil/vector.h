@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <utility>
-#include "kutil/allocator.h"
 #include "kutil/memory.h"
 
 namespace kutil {

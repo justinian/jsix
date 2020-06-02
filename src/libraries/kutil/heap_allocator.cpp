@@ -157,21 +157,4 @@ heap_allocator::pop_free(unsigned size)
 	return block;
 }
 
-
-class invalid_allocator :
-	public allocator
-{
-public:
-	virtual void * allocate(size_t) override {
-		kassert(false, "Attempting to allocate from allocator::invalid");
-		return nullptr;
-	}
-
-	virtual void free(void *) override {
-		kassert(false, "Attempting to free from allocator::invalid");
-	}
-} _invalid_allocator;
-
-allocator &allocator::invalid = _invalid_allocator;
-
 } // namespace kutil

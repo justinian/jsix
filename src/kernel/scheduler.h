@@ -3,7 +3,6 @@
 /// The task scheduler and related definitions
 
 #include <stdint.h>
-#include "kutil/allocator.h"
 #include "process.h"
 
 class lapic;

@@ -3,14 +3,12 @@
 /// A buddy allocator for a memory heap
 
 #include <stddef.h>
-#include "kutil/allocator.h"
 
 namespace kutil {
 
 
 /// Allocator for a given heap range
-class heap_allocator :
-	public allocator
+class heap_allocator
 {
 public:
 	/// Default constructor creates a valid but empty heap.
@@ -25,11 +23,11 @@ public:
 	/// \arg length  The amount of memory to allocate, in bytes
 	/// \returns     A pointer to the allocated memory, or nullptr if
 	///              allocation failed.
-	virtual void * allocate(size_t length) override;
+	virtual void * allocate(size_t length);
 
 	/// Free a previous allocation.
 	/// \arg p  A pointer previously retuned by allocate()
-	virtual void free(void *p) override;
+	virtual void free(void *p);
 
 	/// Minimum block size is (2^min_size). Must be at least 6.
 	static const unsigned min_size = 6;

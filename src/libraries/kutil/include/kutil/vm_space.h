@@ -3,7 +3,6 @@
 /// Structure for tracking a range of virtual memory addresses
 
 #include <stdint.h>
-#include "kutil/allocator.h"
 #include "kutil/avl_tree.h"
 
 namespace kutil {

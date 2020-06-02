@@ -1,3 +1,4 @@
+#include "kernel_memory.h"
 #include "kutil/assert.h"
 #include "kutil/memory.h"
 #include "frame_allocator.h"
@@ -17,30 +18,7 @@ frame_block::compare(const frame_block *rhs) const
 }
 
 
-frame_allocator::raw_alloc::raw_alloc(frame_allocator &fa) : m_fa(fa) {}
-
-void *
-frame_allocator::raw_alloc::allocate(size_t size)
-{
-	kassert(size <= frame_size, "Raw allocator only allocates a single page");
-
-	uintptr_t addr = 0;
-	if (size <= frame_size)
-		m_fa.allocate(1, &addr);
-	return reinterpret_cast<void*>(addr + page_offset);
-}
-
-void
-frame_allocator::raw_alloc::free(void *p)
-{
-	m_fa.free(reinterpret_cast<uintptr_t>(p), 1);
-}
-
-
-frame_allocator::frame_allocator() :
-	m_raw_alloc(*this)
-{
-}
+frame_allocator::frame_allocator() {}
 
 size_t
 frame_allocator::allocate(size_t count, uintptr_t *address)
