@@ -90,13 +90,13 @@ cpu_id::validate()
 	if (leaf != feat_leaf || sub != feat_sub) { \
 		leaf = feat_leaf; sub = feat_sub; r = get(leaf, sub); \
 	} \
-	if (r.regname & (1 << bit)) \
-		m_features |= (1 << static_cast<uint64_t>(cpu_feature::name)); \
-	log::debug(logs::boot, "    Supports %9s: %s", #name, (r.regname & (1<<bit)) ? "yes" : "no");
+	if (r.regname & (1ull << bit)) \
+		m_features |= (1ull << static_cast<uint64_t>(cpu_feature::name)); \
+	log::debug(logs::boot, "    Supports %9s: %s", #name, (r.regname & (1ull << bit)) ? "yes" : "no");
 
 #define CPU_FEATURE_REQ(name, feat_leaf, feat_sub, regname, bit) \
 	CPU_FEATURE_OPT(name, feat_leaf, feat_sub, regname, bit); \
-	if ((r.regname & (1 << bit)) == 0) { \
+	if ((r.regname & (1ull << bit)) == 0) { \
 		log::error(logs::boot, "CPU missing required feature " #name); \
 		fail = true; \
 	}
