@@ -30,7 +30,8 @@ extern uint64_t idle_stack_end;
 
 scheduler::scheduler(lapic *apic) :
 	m_apic(apic),
-	m_next_pid(1)
+	m_next_pid(1),
+	m_clock(0)
 {
 	auto *idle = new process_node;
 	uint8_t last_pri = num_priorities - 1;
@@ -261,9 +262,6 @@ void scheduler::prune(uint64_t now)
 void
 scheduler::schedule()
 {
-	// TODO: lol a real clock
-	static uint64_t now = 0;
-
 	pid_t lastpid = m_current->pid;
 
 	m_runlists[m_current->priority].remove(m_current);
@@ -273,7 +271,7 @@ scheduler::schedule()
 		m_blocked.push_back(m_current);
 	}
 
-	prune(++now);
+	prune(++m_clock);
 
 	uint8_t pri = 0;
 	while (m_runlists[pri].empty()) {
@@ -287,8 +285,8 @@ scheduler::schedule()
 		task_switch(m_current);
 
 		bool loading = m_current->flags && process_flags::loading;
-		log::debug(logs::task, "Scheduler switched to process %d, priority %d%s.",
-				m_current->pid, m_current->priority, loading ? " (loading)" : "");
+		log::debug(logs::task, "Scheduler switched to process %d, priority %d%s @ %lld.",
+				m_current->pid, m_current->priority, loading ? " (loading)" : "", m_clock);
 	}
 }
 

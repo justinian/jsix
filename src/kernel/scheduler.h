@@ -24,8 +24,8 @@ public:
 	/// How long the timer quantum is
 	static const uint64_t quantum_micros = 1000;
 
-	/// How many quantums a process gets before being rescheduled
-	static const uint16_t process_quanta = 100;
+	/// How many quanta a process gets before being rescheduled
+	static const uint16_t process_quanta = 10;
 
 	/// Constructor.
 	/// \arg apic  Pointer to the local APIC object
@@ -87,6 +87,9 @@ private:
 	process_list m_runlists[num_priorities];
 	process_list m_blocked;
 	process_list m_exited;
+
+	// TODO: lol a real clock
+	uint64_t m_clock = 0;
 
 	static scheduler s_instance;
 };
