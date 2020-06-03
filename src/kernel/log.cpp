@@ -33,8 +33,8 @@ logger_task()
 	auto *ent = reinterpret_cast<log::logger::entry *>(buffer);
 	auto *cons = console::get();
 
-	//g_logger.set_immediate(nullptr);
 	log::info(logs::task, "Starting kernel logger task");
+	g_logger.set_immediate(nullptr);
 
 	scheduler &s = scheduler::get();
 

@@ -8,6 +8,7 @@ bip_buffer::bip_buffer() :
 		m_start_b(0),
 		m_size_a(0),
 		m_size_b(0),
+		m_size_r(0),
 		m_buffer_size(0),
 		m_buffer(nullptr)
 	{}
@@ -17,6 +18,7 @@ bip_buffer::bip_buffer(uint8_t *buffer, size_t size) :
 		m_start_b(0),
 		m_size_a(0),
 		m_size_b(0),
+		m_size_r(0),
 		m_buffer_size(size),
 		m_buffer(buffer)
 	{}
