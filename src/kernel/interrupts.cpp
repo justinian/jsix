@@ -210,7 +210,7 @@ isr_handler(cpu_state *regs)
 		break;
 
 	case isr::isrTimer:
-		scheduler::get().tick();
+		scheduler::get().schedule();
 		break;
 
 	case isr::isrLINT0:

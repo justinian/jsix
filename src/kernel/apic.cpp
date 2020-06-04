@@ -5,6 +5,15 @@
 #include "log.h"
 #include "page_manager.h"
 
+static constexpr uint16_t lapic_spurious   = 0x00f0;
+
+static constexpr uint16_t lapic_lvt_timer  = 0x0320;
+static constexpr uint16_t lapic_lvt_lint0  = 0x0350;
+static constexpr uint16_t lapic_lvt_lint1  = 0x0360;
+
+static constexpr uint16_t lapic_timer_init = 0x0380;
+static constexpr uint16_t lapic_timer_cur  = 0x0390;
+static constexpr uint16_t lapic_timer_div  = 0x03e0;
 
 static uint32_t
 apic_read(uint32_t volatile *apic, uint16_t offset)
@@ -44,9 +53,10 @@ apic::apic(uint32_t *base) :
 
 
 lapic::lapic(uint32_t *base, isr spurious) :
-	apic(base)
+	apic(base),
+	m_divisor(0)
 {
-	apic_write(m_base, 0xf0, static_cast<uint32_t>(spurious));
+	apic_write(m_base, lapic_spurious, static_cast<uint32_t>(spurious));
 	log::info(logs::apic, "LAPIC created, base %lx", m_base);
 }
 
@@ -62,7 +72,9 @@ lapic::calibrate_timer()
 	outb(0x43, command);
 
 	const uint32_t initial = -1u;
-	enable_timer_internal(isr::isrSpurious, 1, initial, false);
+	enable_timer(isr::isrSpurious);
+	set_divisor(1);
+	apic_write(m_base, lapic_timer_init, initial);
 
 	const int iterations = 5;
 	for (int i=0; i<iterations; ++i) {
@@ -81,16 +93,16 @@ lapic::calibrate_timer()
 		}
 	}
 
-	uint32_t remain = stop_timer();
-	uint32_t ticks_total = initial - remain;
+	uint32_t remaining = apic_read(m_base, lapic_timer_cur);
+	uint32_t ticks_total = initial - remaining;
 	m_ticks_per_us = ticks_total / (iterations * 33000);
 	log::info(logs::apic, "APIC timer ticks %d times per nanosecond.", m_ticks_per_us);
 
 	interrupts_enable();
 }
 
-uint32_t
-lapic::enable_timer_internal(isr vector, uint8_t divisor, uint32_t count, bool repeat)
+void
+lapic::set_divisor(uint8_t divisor)
 {
 	uint32_t divbits = 0;
 
@@ -107,39 +119,45 @@ lapic::enable_timer_internal(isr vector, uint8_t divisor, uint32_t count, bool r
 		kassert(0, "Invalid divisor passed to lapic::enable_timer");
 	}
 
-	uint32_t lvte = static_cast<uint8_t>(vector);
-	if (repeat)
-		lvte |= 0x20000;
+	apic_write(m_base, lapic_timer_div, divbits);
+	m_divisor = divisor;
+}
 
-	log::debug(logs::apic, "Enabling APIC timer count %ld, divisor %d, isr %02x",
-			count, divisor, vector);
-
-	apic_write(m_base, 0x320, lvte);
-	apic_write(m_base, 0x3e0, divbits);
+uint32_t
+lapic::enable_timer_internal(isr vector, uint8_t divisor, uint32_t count, bool repeat)
+{
 
 	reset_timer(count);
 	return count;
 }
 
-uint32_t
-lapic::enable_timer(isr vector, uint64_t interval, bool repeat)
+void
+lapic::enable_timer(isr vector, bool repeat)
 {
-	uint64_t ticks = interval * m_ticks_per_us;
+	uint32_t lvte = static_cast<uint8_t>(vector);
+	if (repeat)
+		lvte |= 0x20000;
+	apic_write(m_base, lapic_lvt_timer, lvte);
 
-	int divisor = 1;
-	while (ticks > -1u) {
-		ticks /= 2;
-		divisor *= 2;
-	}
-
-	return enable_timer_internal(vector, divisor, static_cast<uint32_t>(ticks), repeat);
+	log::debug(logs::apic, "Enabling APIC timer at isr %02x", vector);
 }
 
 uint32_t
-lapic::reset_timer(uint32_t count)
+lapic::reset_timer(uint64_t interval)
 {
-	uint32_t remaining = apic_read(m_base, 0x390);
-	apic_write(m_base, 0x380, count);
+	uint64_t remaining = ticks_to_us(apic_read(m_base, lapic_timer_cur));
+	uint64_t ticks = us_to_ticks(interval);
+
+	int divisor = 1;
+	while (ticks > 0xffffffffull) {
+		ticks >>= 1;
+		divisor <<= 1;
+	}
+
+	if (divisor != m_divisor)
+		set_divisor(divisor);
+
+	apic_write(m_base, lapic_timer_init, ticks);
 	return remaining;
 }
 
@@ -148,7 +166,7 @@ lapic::enable_lint(uint8_t num, isr vector, bool nmi, uint16_t flags)
 {
 	kassert(num == 0 || num == 1, "Invalid LINT passed to lapic::enable_lint.");
 
-	uint16_t off = num ? 0x360 : 0x350;
+	uint16_t off = num ? lapic_lvt_lint1 : lapic_lvt_lint0;
 	uint32_t lvte = static_cast<uint8_t>(vector);
 
 	uint16_t polarity = flags & 0x3;
@@ -169,16 +187,16 @@ lapic::enable_lint(uint8_t num, isr vector, bool nmi, uint16_t flags)
 void
 lapic::enable()
 {
-	apic_write(m_base, 0xf0,
-			apic_read(m_base, 0xf0) | 0x100);
+	apic_write(m_base, lapic_spurious,
+			apic_read(m_base, lapic_spurious) | 0x100);
 	log::debug(logs::apic, "LAPIC enabled!");
 }
 
 void
 lapic::disable()
 {
-	apic_write(m_base, 0xf0,
-			apic_read(m_base, 0xf0) & ~0x100);
+	apic_write(m_base, lapic_spurious,
+			apic_read(m_base, lapic_spurious) & ~0x100);
 	log::debug(logs::apic, "LAPIC disabled.");
 }
 

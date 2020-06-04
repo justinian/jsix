@@ -32,18 +32,16 @@ public:
 
 	/// Enable interrupts for the LAPIC timer.
 	/// \arg vector   Interrupt vector the timer should use
-	/// \arg interval The timer interval, in microseconds
 	/// \arg repeat   If false, this timer is one-off, otherwise repeating
-	/// \returns      The count of ticks the timer is set for
-	uint32_t enable_timer(isr vector, uint64_t interval, bool repeat = true);
+	void enable_timer(isr vector, bool repeat = true);
 
 	/// Reset the timer countdown.
-	/// \arg count  The count of ticks before an interrupt, or 0 to stop the timer
-	/// \returns    The count of ticks that were remaining before reset
-	uint32_t reset_timer(uint32_t count);
+	/// \arg interval The interval in us before an interrupt, or 0 to stop the timer
+	/// \returns      The interval in us that was remaining before reset
+	uint32_t reset_timer(uint64_t interval);
 
 	/// Stop the timer.
-	/// \returns  The count of ticks remaining before an interrupt was to happen
+	/// \returns  The interval in us remaining before an interrupt was to happen
 	inline uint32_t stop_timer() { return reset_timer(0); }
 
 	/// Enable interrupts for the LAPIC LINT0 pin.
@@ -60,8 +58,19 @@ public:
 	void calibrate_timer();
 
 private:
+	inline uint64_t ticks_to_us(uint32_t ticks) const {
+		return static_cast<uint64_t>(ticks) / m_ticks_per_us;
+	}
+
+	inline uint64_t us_to_ticks(uint64_t interval) const {
+		return interval * m_ticks_per_us;
+	}
+
+	void set_divisor(uint8_t divisor);
+	void set_repeat(bool repeat);
 	uint32_t enable_timer_internal(isr vector, uint8_t divisor, uint32_t count, bool repeat);
 
+	uint32_t m_divisor;
 	uint32_t m_ticks_per_us;
 };
 

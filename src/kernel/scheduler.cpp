@@ -34,23 +34,21 @@ scheduler::scheduler(lapic *apic) :
 	m_clock(0)
 {
 	auto *idle = new process_node;
-	uint8_t last_pri = num_priorities - 1;
 
 	// The kernel idle task, also the thread we're in now
 	idle->pid = 0;
 	idle->ppid = 0;
-	idle->priority = last_pri;
+	idle->priority = max_priority;
 	idle->rsp = 0;  // This will get set when we switch away
 	idle->rsp3 = 0; // Never used for the idle task
 	idle->rsp0 = reinterpret_cast<uintptr_t>(&idle_stack_end);
 	idle->pml4 = page_manager::get_pml4();
-	idle->quanta = process_quanta;
 	idle->flags =
 		process_flags::running |
 		process_flags::ready |
 		process_flags::const_pri;
 
-	m_runlists[last_pri].push_back(idle);
+	m_runlists[max_priority].push_back(idle);
 	m_current = idle;
 
 	bsp_cpu_data.rsp0 = idle->rsp0;
@@ -161,7 +159,6 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	stack[6] = ss;
 
 	proc->rsp3 = initial_stack;
-	proc->quanta = process_quanta;
 	proc->flags =
 		process_flags::running |
 		process_flags::ready |
@@ -176,7 +173,7 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 }
 
 void
-scheduler::create_kernel_task(pid_t pid, void (*task)())
+scheduler::create_kernel_task(pid_t pid, void (*task)(), uint8_t priority, process_flags flags)
 {
 	auto *proc = create_process(pid);
 
@@ -188,11 +185,12 @@ scheduler::create_kernel_task(pid_t pid, void (*task)())
 	proc->add_fake_task_return(
 			reinterpret_cast<uintptr_t>(task));
 
+	proc->priority = priority;
 	proc->pml4 = page_manager::get()->get_kernel_pml4();
-	proc->quanta = process_quanta;
 	proc->flags =
 		process_flags::running |
-		process_flags::ready;
+		process_flags::ready |
+		flags;
 
 	m_runlists[default_priority].push_back(proc);
 
@@ -202,16 +200,25 @@ scheduler::create_kernel_task(pid_t pid, void (*task)())
 	log::debug(logs::task, "    PML4 %016lx", proc->pml4);
 }
 
+uint32_t
+scheduler::quantum(int priority)
+{
+	return quantum_micros * (priority+1);
+}
+
 void
 scheduler::start()
 {
 	log::info(logs::task, "Starting scheduler.");
 	wrmsr(msr::ia32_gs_base, reinterpret_cast<uintptr_t>(&bsp_cpu_data));
-	m_tick_count = m_apic->enable_timer(isr::isrTimer, quantum_micros, false);
+	m_apic->enable_timer(isr::isrTimer, false);
+	schedule();
 }
 
 void scheduler::prune(uint64_t now)
 {
+	// TODO: Promote processes that haven't been scheduled in too long
+
 	// Find processes that aren't ready or aren't running and
 	// move them to the appropriate lists.
 	for (auto &pri_list : m_runlists) {
@@ -263,8 +270,24 @@ void
 scheduler::schedule()
 {
 	pid_t lastpid = m_current->pid;
+	uint8_t priority = m_current->priority;
+	uint32_t remaining = m_apic->stop_timer();
 
-	m_runlists[m_current->priority].remove(m_current);
+	if (!(m_current->flags && process_flags::const_pri)) {
+		if (priority < max_priority && !remaining) {
+			// Process used its whole timeslice, demote it
+			++m_current->priority;
+			log::debug(logs::task, "Scheduler  demoting process %d, priority %d",
+					m_current->pid, m_current->priority);
+		} else if (priority > 0 && remaining > quantum(priority)/2) {
+			// Process used less than half it timeslice, promote it
+			--m_current->priority;
+			log::debug(logs::task, "Scheduler promoting process %d, priority %d",
+					m_current->pid, m_current->priority);
+		}
+	}
+
+	m_runlists[priority].remove(m_current);
 	if (m_current->flags && process_flags::ready) {
 		m_runlists[m_current->priority].push_back(m_current);
 	} else {
@@ -273,31 +296,23 @@ scheduler::schedule()
 
 	prune(++m_clock);
 
-	uint8_t pri = 0;
-	while (m_runlists[pri].empty()) {
-		++pri;
-		kassert(pri < num_priorities, "All runlists are empty");
+	priority = 0;
+	while (m_runlists[priority].empty()) {
+		++priority;
+		kassert(priority < num_priorities, "All runlists are empty");
 	}
 
-	m_current = m_runlists[pri].pop_front();
+	m_current = m_runlists[priority].pop_front();
 
 	if (lastpid != m_current->pid) {
 		task_switch(m_current);
 
 		bool loading = m_current->flags && process_flags::loading;
 		log::debug(logs::task, "Scheduler switched to process %d, priority %d%s @ %lld.",
-				m_current->pid, m_current->priority, loading ? " (loading)" : "", m_clock);
+				m_current->pid, priority, loading ? " (loading)" : "", m_clock);
 	}
-}
 
-void
-scheduler::tick()
-{
-	if (--m_current->quanta == 0) {
-		m_current->quanta = process_quanta;
-		schedule();
-	}
-	m_apic->reset_timer(m_tick_count);
+	m_apic->reset_timer(quantum(priority));
 }
 
 process_node *

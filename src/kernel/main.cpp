@@ -173,7 +173,7 @@ kernel_main(args::header *header)
 	syscall_enable();
 	scheduler *sched = new (&scheduler::get()) scheduler(devices.get_lapic());
 
-	sched->create_kernel_task(-1, logger_task);
+	sched->create_kernel_task(-1, logger_task, scheduler::max_priority-1, process_flags::const_pri);
 
 	for (auto &ird : initrds) {
 		for (auto &f : ird.files()) {

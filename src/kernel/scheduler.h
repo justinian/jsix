@@ -19,10 +19,11 @@ class scheduler
 {
 public:
 	static const uint8_t num_priorities = 8;
+	static const uint8_t max_priority = num_priorities - 1;
 	static const uint8_t default_priority = num_priorities / 2;
 
-	/// How long the timer quantum is
-	static const uint64_t quantum_micros = 1000;
+	/// How long the base timer quantum is, in us
+	static const uint64_t quantum_micros = 5000;
 
 	/// How many quanta a process gets before being rescheduled
 	static const uint16_t process_quanta = 10;
@@ -38,9 +39,18 @@ public:
 	void load_process(const char *name, const void *data, size_t size);
 
 	/// Create a new kernel task
-	/// \arg pid   Pid to use for this task, must be negative
-	/// \arg proc  Function to run as a kernel task
-	void create_kernel_task(pid_t pid, void (*task)());
+	/// \arg pid      Pid to use for this task, must be negative
+	/// \arg proc     Function to run as a kernel task
+	/// \arg priority Priority to start the process with
+	/// \arg flags    Flags to add to the process
+	void create_kernel_task(
+			pid_t pid,
+			void (*task)(),
+			uint8_t priority,
+			process_flags flags = process_flags::none);
+
+	/// Get the quantum for a given priority.
+	uint32_t quantum(int priority);
 
 	/// Start the scheduler working. This may involve starting
 	/// timer interrupts or other preemption methods.
@@ -64,7 +74,6 @@ public:
 
 private:
 	friend uintptr_t syscall_dispatch(uintptr_t, cpu_state &);
-	friend void isr_handler(cpu_state*);
 	friend class process;
 
 	/// Create a new process object. This process will have its pid
@@ -72,9 +81,6 @@ private:
 	/// \arg pid  The pid to give the process (0 for automatic)
 	/// \returns  The new process object
 	process_node * create_process(pid_t pid = 0);
-
-	/// Handle a timer tick
-	void tick();
 
 	void prune(uint64_t now);
 
