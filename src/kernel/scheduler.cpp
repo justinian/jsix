@@ -62,7 +62,7 @@ load_process_image(const void *image_start, size_t bytes, process *proc)
 	// process code and load it
 	page_manager *pager = page_manager::get();
 
-	log::debug(logs::task, "Loading task! ELF: %016lx [%d]", image_start, bytes);
+	log::debug(logs::loader, "Loading task! ELF: %016lx [%d]", image_start, bytes);
 
 	// TODO: Handle bad images gracefully
 	elf::elf image(image_start, bytes);
@@ -79,10 +79,10 @@ load_process_image(const void *image_start, size_t bytes, process *proc)
 		size_t size = (header->vaddr + header->mem_size) - aligned;
 		size_t pages = page_manager::page_count(size);
 
-		log::debug(logs::task, "  Loadable segment %02u: vaddr %016lx  size %016lx",
+		log::debug(logs::loader, "  Loadable segment %02u: vaddr %016lx  size %016lx",
 			i, header->vaddr, header->mem_size);
 
-		log::debug(logs::task, "         - aligned to: vaddr %016lx  pages %d",
+		log::debug(logs::loader, "         - aligned to: vaddr %016lx  pages %d",
 			aligned, pages);
 
 		void *mapped = pager->map_pages(aligned, pages, true);
@@ -99,7 +99,7 @@ load_process_image(const void *image_start, size_t bytes, process *proc)
 			!bitfield_has(header->flags, elf::section_flags::alloc))
 			continue;
 
-		log::debug(logs::task, "  Loadable section %02u: vaddr %016lx  size %016lx",
+		log::debug(logs::loader, "  Loadable section %02u: vaddr %016lx  size %016lx",
 			i, header->addr, header->size);
 
 		void *dest = reinterpret_cast<void *>(header->addr);
@@ -110,7 +110,7 @@ load_process_image(const void *image_start, size_t bytes, process *proc)
 	proc->flags &= ~process_flags::loading;
 
 	uintptr_t entrypoint = image.entrypoint();
-	log::debug(logs::task, "  Loaded! New process rip: %016lx", entrypoint);
+	log::debug(logs::loader, "  Loaded! New process rip: %016lx", entrypoint);
 	return entrypoint;
 }
 
@@ -122,6 +122,7 @@ scheduler::create_process(pid_t pid)
 	auto *proc = new process_node;
 	proc->pid = pid ? pid : m_next_pid++;
 	proc->priority = default_priority;
+	proc->time_left = quantum(default_priority);
 	return proc;
 }
 
@@ -203,7 +204,7 @@ scheduler::create_kernel_task(pid_t pid, void (*task)(), uint8_t priority, proce
 uint32_t
 scheduler::quantum(int priority)
 {
-	return quantum_micros * (priority+1);
+	return quantum_micros << priority;
 }
 
 void
@@ -224,10 +225,30 @@ void scheduler::prune(uint64_t now)
 	for (auto &pri_list : m_runlists) {
 		auto *proc = pri_list.front();
 		while (proc) {
-			bool running = proc->flags && process_flags::running;
-			bool ready = proc->flags && process_flags::ready;
+			uint64_t age = now - proc->last_ran;
+			process_flags flags = proc->flags;
+			uint8_t priority = proc->priority;
+
+			bool running = flags && process_flags::running;
+			bool ready = flags && process_flags::ready;
+
+			bool stale = age > quantum(priority) * 2 &&
+				proc->priority > promote_limit &&
+				!(flags && process_flags::const_pri);
+
 			if (running && ready) {
+				auto *remove = proc;
 				proc = proc->next();
+
+				if (stale) {
+					m_runlists[remove->priority].remove(remove);
+					remove->priority -= 1;
+					remove->time_left = quantum(remove->priority);
+					m_runlists[remove->priority].push_back(remove);
+					log::debug(logs::task, "Scheduler promoting process %d, priority %d",
+							remove->pid, remove->priority);
+				}
+
 				continue;
 			}
 
@@ -239,7 +260,7 @@ void scheduler::prune(uint64_t now)
 				auto *parent = get_process_by_id(remove->ppid);
 				if (parent && parent->wake_on_child(remove)) {
 					m_blocked.remove(parent);
-					m_runlists[parent->priority].push_front(parent);
+					m_runlists[parent->priority].push_back(parent);
 					delete remove;
 				} else {
 					m_exited.push_back(remove);
@@ -272,19 +293,15 @@ scheduler::schedule()
 	pid_t lastpid = m_current->pid;
 	uint8_t priority = m_current->priority;
 	uint32_t remaining = m_apic->stop_timer();
+	m_current->time_left = remaining;
 
-	if (!(m_current->flags && process_flags::const_pri)) {
-		if (priority < max_priority && !remaining) {
-			// Process used its whole timeslice, demote it
-			++m_current->priority;
-			log::debug(logs::task, "Scheduler  demoting process %d, priority %d",
-					m_current->pid, m_current->priority);
-		} else if (priority > 0 && remaining > quantum(priority)/2) {
-			// Process used less than half it timeslice, promote it
-			--m_current->priority;
-			log::debug(logs::task, "Scheduler promoting process %d, priority %d",
-					m_current->pid, m_current->priority);
-		}
+	if (remaining == 0 && priority < max_priority &&
+		!(m_current->flags && process_flags::const_pri)) {
+		// Process used its whole timeslice, demote it
+		++m_current->priority;
+		log::debug(logs::task, "Scheduler  demoting process %d, priority %d",
+				m_current->pid, m_current->priority);
+		m_current->time_left = quantum(m_current->priority);
 	}
 
 	m_runlists[priority].remove(m_current);
@@ -302,17 +319,18 @@ scheduler::schedule()
 		kassert(priority < num_priorities, "All runlists are empty");
 	}
 
+	m_current->last_ran = m_clock;
 	m_current = m_runlists[priority].pop_front();
 
 	if (lastpid != m_current->pid) {
 		task_switch(m_current);
 
 		bool loading = m_current->flags && process_flags::loading;
-		log::debug(logs::task, "Scheduler switched to process %d, priority %d%s @ %lld.",
-				m_current->pid, priority, loading ? " (loading)" : "", m_clock);
+		log::debug(logs::task, "Scheduler switched to process %d, priority %d @ %lld.",
+				m_current->pid, m_current->priority, m_clock);
 	}
 
-	m_apic->reset_timer(quantum(priority));
+	m_apic->reset_timer(m_current->time_left);
 }
 
 process_node *

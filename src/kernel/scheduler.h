@@ -18,12 +18,20 @@ extern "C" void task_fork(process *child);
 class scheduler
 {
 public:
+	/// Total number of priority levels
 	static const uint8_t num_priorities = 8;
+
+	/// Maximum (least urgent/interactive) priority
 	static const uint8_t max_priority = num_priorities - 1;
-	static const uint8_t default_priority = num_priorities / 2;
+
+	/// Default priority on process creation
+	static const uint8_t default_priority = 1;
+
+	/// Loest (most urgent) priority achieved via promotion
+	static const uint8_t promote_limit = 1;
 
 	/// How long the base timer quantum is, in us
-	static const uint64_t quantum_micros = 5000;
+	static const uint64_t quantum_micros = 500;
 
 	/// How many quanta a process gets before being rescheduled
 	static const uint16_t process_quanta = 10;

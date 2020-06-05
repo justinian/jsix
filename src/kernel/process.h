@@ -61,7 +61,8 @@ struct process
 
 	uint32_t return_code;
 
-	uint32_t reserved1;
+	uint32_t time_left;
+	uint64_t last_ran;
 
 	uintptr_t kernel_stack;
 	size_t kernel_stack_size;

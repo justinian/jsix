@@ -1,10 +1,11 @@
 LOG(apic,   info);
-LOG(device, info);
+LOG(device, debug);
 LOG(paging, warn);
 LOG(driver, info);
 LOG(memory, info);
 LOG(fs,     info);
-LOG(task,   info);
+LOG(task,   debug);
+LOG(loader, info);
 LOG(boot,   debug);
 LOG(syscall,debug);
 LOG(vmem,   debug);
