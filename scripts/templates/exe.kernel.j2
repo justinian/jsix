@@ -5,6 +5,7 @@
 asflags = $asflags -I${srcroot}/src/kernel/
 libs = $libs
 ldflags = $ldflags -T ${srcroot}/src/arch/x86_64/kernel.ld
+ccflags = $ccflags -I${srcroot}/external
 
 {% endblock %}
 
