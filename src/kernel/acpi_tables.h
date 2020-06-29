@@ -188,3 +188,13 @@ struct acpi_mcfg
 	acpi_mcfg_entry entries[0];
 } __attribute__ ((packed));
 
+struct acpi_hpet
+{
+	TABLE_HEADER('HPET');
+	uint32_t hardware_id;
+	acpi_gas base_address;
+	uint8_t index;
+	uint16_t periodic_min;
+	uint8_t attributes;
+} __attribute__ ((packed));
+

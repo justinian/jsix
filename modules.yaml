@@ -16,6 +16,7 @@ modules:
             - src/kernel/apic.cpp
             - src/kernel/assert.cpp
             - src/kernel/boot.s
+            - src/kernel/clock.cpp
             - src/kernel/console.cpp
             - src/kernel/cpprt.cpp
             - src/kernel/cpu.cpp
@@ -27,6 +28,7 @@ modules:
             - src/kernel/fs/gpt.cpp
             - src/kernel/gdt.cpp
             - src/kernel/gdt.s
+            - src/kernel/hpet.cpp
             - src/kernel/interrupts.cpp
             - src/kernel/interrupts.s
             - src/kernel/io.cpp

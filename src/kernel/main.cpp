@@ -169,6 +169,7 @@ kernel_main(args::header *header)
 	*/
 
 	devices.get_lapic()->calibrate_timer();
+	devices.init_drivers();
 
 	syscall_enable();
 	scheduler *sched = new (&scheduler::get()) scheduler(devices.get_lapic());

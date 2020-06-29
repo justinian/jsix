@@ -3,11 +3,13 @@
 /// The device manager definition
 #include "kutil/vector.h"
 #include "apic.h"
+#include "hpet.h"
 #include "pci.h"
 
 struct acpi_xsdt;
 struct acpi_apic;
 struct acpi_mcfg;
+struct acpi_hpet;
 class block_device;
 
 using irq_callback = void (*)(void *);
@@ -40,6 +42,18 @@ public:
 
 	/// Intialize drivers for the current device list.
 	void init_drivers();
+
+	/// Install an IRQ callback for a device
+	/// \arg irq   IRQ to install the handler for
+	/// \arg name  Name of the interrupt, for display to user
+	/// \arg cb    Callback to call when the interrupt is received
+	/// \arg data  Data to pass to the callback
+	/// \returns   True if an IRQ was installed successfully
+	bool install_irq(
+			unsigned irq,
+			const char *name,
+			irq_callback cb,
+			void *data);
 
 	/// Allocate an MSI IRQ for a device
 	/// \arg name    Name of the interrupt, for display to user
@@ -85,6 +99,15 @@ public:
 			m_blockdevs[i] : nullptr;
 	}
 
+	/// Get an HPET device
+	/// \arg i    Index of the device to get
+	/// \returns  A pointer to the requested device, or nullptr
+	inline hpet * get_hpet(unsigned i)
+	{
+		return i < m_hpets.count() ?
+			&m_hpets[i] : nullptr;
+	}
+
 private:
 	/// Parse the ACPI XSDT and load relevant sub-tables.
 	/// \arg xsdt  Pointer to the XSDT from the firmware
@@ -98,6 +121,10 @@ private:
 	/// \arg mcfg  Pointer to the MCFG from the XSDT
 	void load_mcfg(const acpi_mcfg *mcfg);
 
+	/// Parse the ACPI HPET and initialize an HPET from it.
+	/// \arg hpet  Pointer to the HPET from the XSDT
+	void load_hpet(const acpi_hpet *hpet);
+
 	/// Probe the PCIe busses and add found devices to our
 	/// device list. The device list is destroyed and rebuilt.
 	void probe_pci();
@@ -108,15 +135,16 @@ private:
 
 	lapic *m_lapic;
 	kutil::vector<ioapic> m_ioapics;
+	kutil::vector<hpet> m_hpets;
 
 	kutil::vector<pci_group> m_pci;
 	kutil::vector<pci_device> m_devices;
 
 	struct irq_allocation
 	{
-		const char *name;
-		irq_callback callback;
-		void *data;
+		const char *name = nullptr;
+		irq_callback callback = nullptr;
+		void *data = nullptr;
 	};
 	kutil::vector<irq_allocation> m_irqs;
 

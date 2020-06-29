@@ -6,7 +6,6 @@
 
 enum class isr : uint8_t;
 
-
 /// Base class for other APIC types
 class apic
 {
@@ -54,7 +53,7 @@ public:
 	void enable();  ///< Enable servicing of interrupts
 	void disable(); ///< Disable (temporarily) servicing of interrupts
 
-	/// Calibrate the timer speed against the PIT
+	/// Calibrate the timer speed against the clock
 	void calibrate_timer();
 
 private:
@@ -68,7 +67,6 @@ private:
 
 	void set_divisor(uint8_t divisor);
 	void set_repeat(bool repeat);
-	uint32_t enable_timer_internal(isr vector, uint8_t divisor, uint32_t count, bool repeat);
 
 	uint32_t m_divisor;
 	uint32_t m_ticks_per_us;

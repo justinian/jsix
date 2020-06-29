@@ -5,6 +5,7 @@
 #include "kutil/memory.h"
 #include "acpi_tables.h"
 #include "apic.h"
+#include "clock.h"
 #include "console.h"
 #include "device_manager.h"
 #include "interrupts.h"
@@ -133,6 +134,10 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 
 		case acpi_mcfg::type_id:
 			load_mcfg(reinterpret_cast<const acpi_mcfg *>(header));
+			break;
+
+		case acpi_hpet::type_id:
+			load_hpet(reinterpret_cast<const acpi_hpet *>(header));
 			break;
 
 		default:
@@ -269,6 +274,27 @@ device_manager::load_mcfg(const acpi_mcfg *mcfg)
 }
 
 void
+device_manager::load_hpet(const acpi_hpet *hpet)
+{
+	log::debug(logs::device, "  Found HPET device #%3d: base %016lx  pmin %d  attr %02x",
+			hpet->index, hpet->base_address.address, hpet->periodic_min, hpet->attributes);
+
+	uint32_t hwid = hpet->hardware_id;
+	uint8_t rev_id = hwid & 0xff;
+	uint8_t comparators = (hwid >> 8) & 0x1f;
+	uint8_t count_size_cap = (hwid >> 13) & 1;
+	uint8_t legacy_replacement = (hwid >> 15) & 1;
+	uint32_t pci_vendor_id = (hwid >> 16);
+
+	log::debug(logs::device, "      rev:%02d comparators:%02d count_size_cap:%1d legacy_repl:%1d",
+			rev_id, comparators, count_size_cap, legacy_replacement);
+	log::debug(logs::device, "      pci vendor id: %04x", pci_vendor_id);
+
+	m_hpets.emplace(hpet->index,
+		reinterpret_cast<uint64_t*>(hpet->base_address.address + ::memory::page_offset));
+}
+
+void
 device_manager::probe_pci()
 {
 	for (auto &pci : m_pci) {
@@ -308,6 +334,30 @@ device_manager::init_drivers()
 		ahcid.register_device(&device);
 	}
 	*/
+	if (m_hpets.count() > 0) {
+		hpet &h = m_hpets[0];
+		h.enable();
+
+		// becomes the singleton
+		clock *master_clock = new clock(h.rate(), hpet_clock_source, &h);
+		kassert(master_clock, "Failed to allocate master clock");
+		log::info(logs::clock, "Created master clock using HPET 0: Rate %d", h.rate());
+	} else {
+		//TODO: APIC clock?
+	}
+}
+
+bool
+device_manager::install_irq(unsigned irq, const char *name, irq_callback cb, void *data)
+{
+	if (irq >= m_irqs.count())
+		m_irqs.set_size(irq+1);
+
+	if (m_irqs[irq].callback != nullptr)
+		return false;
+
+	m_irqs[irq] = {name, cb, data};
+	return true;
 }
 
 bool

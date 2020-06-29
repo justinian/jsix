@@ -1,5 +1,6 @@
 #include "kutil/assert.h"
 #include "apic.h"
+#include "clock.h"
 #include "interrupts.h"
 #include "io.h"
 #include "log.h"
@@ -67,36 +68,20 @@ lapic::calibrate_timer()
 
 	log::info(logs::apic, "Calibrating APIC timer...");
 
-	// Set up PIT sleep
-	uint8_t command = 0x30; // channel 0, loybyte/highbyte, mode 0
-	outb(0x43, command);
-
 	const uint32_t initial = -1u;
 	enable_timer(isr::isrSpurious);
 	set_divisor(1);
 	apic_write(m_base, lapic_timer_init, initial);
 
-	const int iterations = 5;
-	for (int i=0; i<iterations; ++i) {
-		const uint16_t pit_33ms = 39375;
-		uint16_t pit_count = pit_33ms;
-		outb(0x40, pit_count & 0xff);
-		io_wait();
-		outb(0x40, (pit_count >> 8) & 0xff);
-
-
-		while (pit_count <= pit_33ms) {
-			outb(0x43, 0); // latch counter values
-			pit_count =
-				static_cast<uint16_t>(inb(0x40)) |
-				static_cast<uint16_t>(inb(0x40)) << 8;
-		}
-	}
+	uint64_t us = 200000;
+	uint64_t ns = us * 1000;
+	clock::get().spinwait(ns);
 
 	uint32_t remaining = apic_read(m_base, lapic_timer_cur);
 	uint32_t ticks_total = initial - remaining;
-	m_ticks_per_us = ticks_total / (iterations * 33000);
-	log::info(logs::apic, "APIC timer ticks %d times per nanosecond.", m_ticks_per_us);
+	m_ticks_per_us = ticks_total / us;
+
+	log::info(logs::apic, "APIC timer ticks %d times per microsecond.", m_ticks_per_us);
 
 	interrupts_enable();
 }
@@ -121,14 +106,6 @@ lapic::set_divisor(uint8_t divisor)
 
 	apic_write(m_base, lapic_timer_div, divbits);
 	m_divisor = divisor;
-}
-
-uint32_t
-lapic::enable_timer_internal(isr vector, uint8_t divisor, uint32_t count, bool repeat)
-{
-
-	reset_timer(count);
-	return count;
 }
 
 void
@@ -224,6 +201,9 @@ ioapic::ioapic(uint32_t *base, uint32_t base_gsi) :
 void
 ioapic::redirect(uint8_t irq, isr vector, uint16_t flags, bool masked)
 {
+	log::debug(logs::apic, "IOAPIC %d redirecting irq %3d to vector %3d [%04x]%s",
+			m_id, irq, vector, flags, masked ? " (masked)" : "");
+
 	uint64_t entry = static_cast<uint64_t>(vector);
 
 	uint16_t polarity = flags & 0x3;
@@ -244,6 +224,9 @@ ioapic::redirect(uint8_t irq, isr vector, uint16_t flags, bool masked)
 void
 ioapic::mask(uint8_t irq, bool masked)
 {
+	log::debug(logs::apic, "IOAPIC %d %smasking irq %3d",
+			m_id, masked ? "" : "un", irq);
+
 	uint32_t entry = ioapic_read(m_base, (2 * irq) + 0x10);
 	if (masked)
 		entry |= (1 << 16);

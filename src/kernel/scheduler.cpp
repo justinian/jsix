@@ -311,6 +311,7 @@ scheduler::schedule()
 		m_blocked.push_back(m_current);
 	}
 
+	clock::get().update();
 	prune(++m_clock);
 
 	priority = 0;

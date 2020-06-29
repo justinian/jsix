@@ -10,3 +10,5 @@ LOG(boot,   debug);
 LOG(syscall,debug);
 LOG(vmem,   debug);
 LOG(objs,   debug);
+LOG(timer,  debug);
+LOG(clock,  debug);
