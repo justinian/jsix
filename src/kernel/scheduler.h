@@ -33,6 +33,9 @@ public:
 	/// How long the base timer quantum is, in us
 	static const uint64_t quantum_micros = 500;
 
+	/// How much extra time (in us) to give a process to let it load
+	static const uint64_t startup_bonus = 16000;
+
 	/// How many quanta a process gets before being rescheduled
 	static const uint16_t process_quanta = 10;
 

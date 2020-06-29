@@ -1,4 +1,5 @@
 #include "apic.h"
+#include "clock.h"
 #include "console.h"
 #include "cpu.h"
 #include "debug.h"
@@ -122,7 +123,11 @@ scheduler::create_process(pid_t pid)
 	auto *proc = new process_node;
 	proc->pid = pid ? pid : m_next_pid++;
 	proc->priority = default_priority;
-	proc->time_left = quantum(default_priority);
+	proc->time_left = quantum(default_priority) + startup_bonus;
+
+	log::debug(logs::task, "Creating process %d, priority %d, time slice %d",
+			proc->pid, proc->priority, proc->time_left);
+
 	return proc;
 }
 
@@ -213,7 +218,7 @@ scheduler::start()
 	log::info(logs::task, "Starting scheduler.");
 	wrmsr(msr::ia32_gs_base, reinterpret_cast<uintptr_t>(&bsp_cpu_data));
 	m_apic->enable_timer(isr::isrTimer, false);
-	schedule();
+	m_apic->reset_timer(10);
 }
 
 void scheduler::prune(uint64_t now)
@@ -302,6 +307,11 @@ scheduler::schedule()
 		log::debug(logs::task, "Scheduler  demoting process %d, priority %d",
 				m_current->pid, m_current->priority);
 		m_current->time_left = quantum(m_current->priority);
+	} else if (remaining > 0) {
+		// Process gave up CPU, give it a small bonus to its
+		// remaining timeslice.
+		uint32_t bonus = quantum(priority) >> 4;
+		m_current->time_left += bonus;
 	}
 
 	m_runlists[priority].remove(m_current);
@@ -321,17 +331,17 @@ scheduler::schedule()
 	}
 
 	m_current->last_ran = m_clock;
+
 	m_current = m_runlists[priority].pop_front();
+	m_current->last_ran = m_clock;
+	m_apic->reset_timer(m_current->time_left);
 
 	if (lastpid != m_current->pid) {
 		task_switch(m_current);
 
-		bool loading = m_current->flags && process_flags::loading;
-		log::debug(logs::task, "Scheduler switched to process %d, priority %d @ %lld.",
-				m_current->pid, m_current->priority, m_clock);
+		log::debug(logs::task, "Scheduler switched to process %d, priority %d time left %d @ %lld.",
+				m_current->pid, m_current->priority, m_current->time_left, m_clock);
 	}
-
-	m_apic->reset_timer(m_current->time_left);
 }
 
 process_node *

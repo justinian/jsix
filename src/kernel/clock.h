@@ -25,7 +25,7 @@ public:
 
 	/// Update the internal state via the source
 	/// \returns Current value of the clock
-	inline void update() { m_current = value(); return m_current; }
+	inline void update() { m_current = value(); }
 
 	/// Wait in a tight loop
 	/// \arg interval  Time to wait, in ns
