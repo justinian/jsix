@@ -57,7 +57,13 @@ load(
 			L"Failed allocating space for kernel code");
 
 		void *data_start = offset_ptr<void>(data, pheader->offset);
-		bs->copy_mem(pages, data_start, pheader->mem_size);
+		bs->copy_mem(pages, data_start, pheader->file_size);
+
+		if (pheader->mem_size > pheader->file_size) {
+			void *extra = offset_ptr<void>(pages, pheader->file_size);
+			size_t size = pheader->mem_size - pheader->file_size;
+			bs->set_mem(extra, size, 0);
+		}
 
 		console::print(L"    section %d phys: 0x%lx\r\n", i, pages);
 		console::print(L"    section %d virt: 0x%lx\r\n", i, pheader->vaddr);
