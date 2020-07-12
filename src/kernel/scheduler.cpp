@@ -24,44 +24,96 @@ const uint64_t rflags_int = 0x202;
 
 extern "C" {
 	void ramdisk_process_loader();
-	uintptr_t load_process_image(const void *image_start, size_t bytes, process *proc);
+	uintptr_t load_process_image(const void *image_start, size_t bytes, TCB *tcb);
 };
 
 extern uint64_t idle_stack_end;
+
+/// Set up a new empty kernel stack for this thread. Sets rsp0 on the
+/// TCB object, but also returns it.
+/// \returns   The new rsp0 as a pointer
+static void *
+setup_kernel_stack(TCB *tcb)
+{
+	constexpr size_t initial_stack_size = 0x1000;
+	constexpr unsigned null_frame_entries = 2;
+	constexpr size_t null_frame_size = null_frame_entries * sizeof(uint64_t);
+
+	void *stack_bottom = kutil::kalloc(initial_stack_size);
+	kutil::memset(stack_bottom, 0, initial_stack_size);
+
+	log::debug(logs::memory, "Created kernel stack at %016lx size 0x%lx",
+			stack_bottom, initial_stack_size);
+
+	void *stack_top =
+		kutil::offset_pointer(stack_bottom,
+				initial_stack_size - null_frame_size);
+
+	uint64_t *null_frame = reinterpret_cast<uint64_t*>(stack_top);
+	for (unsigned i = 0; i < null_frame_entries; ++i)
+		null_frame[i] = 0;
+
+	tcb->kernel_stack_size = initial_stack_size;
+	tcb->kernel_stack = reinterpret_cast<uintptr_t>(stack_bottom);
+	tcb->rsp0 = reinterpret_cast<uintptr_t>(stack_top);
+	tcb->rsp = tcb->rsp0;
+
+	return stack_top;
+}
+
+/// Initialize this process' kenrel stack with a fake return segment for
+/// returning out of task_switch.
+/// \arg tcb  TCB of the thread to modify
+/// \arg rip  The rip to return to
+static void
+add_fake_task_return(TCB *tcb, uintptr_t rip)
+{
+	tcb->rsp -= sizeof(uintptr_t) * 7;
+	uintptr_t *stack = reinterpret_cast<uintptr_t*>(tcb->rsp);
+
+	stack[6] = rip;        // return rip
+	stack[5] = tcb->rsp0;  // rbp
+	stack[4] = 0xbbbbbbbb; // rbx
+	stack[3] = 0x12121212; // r12
+	stack[2] = 0x13131313; // r13
+	stack[1] = 0x14141414; // r14
+	stack[0] = 0x15151515; // r15
+}
 
 scheduler::scheduler(lapic *apic) :
 	m_apic(apic),
 	m_next_pid(1),
 	m_clock(0)
 {
-	auto *idle = new process_node;
+	page_table *pml4 = page_manager::get_pml4();
+	thread *idle = new thread(pml4, max_priority);
+
+	auto *tcb = idle->tcb();
+
+	log::debug(logs::task, "Idle thread koid %llx", idle->koid());
 
 	// The kernel idle task, also the thread we're in now
-	idle->pid = 0;
-	idle->ppid = 0;
-	idle->priority = max_priority;
-	idle->rsp = 0;  // This will get set when we switch away
-	idle->rsp3 = 0; // Never used for the idle task
-	idle->rsp0 = reinterpret_cast<uintptr_t>(&idle_stack_end);
-	idle->pml4 = page_manager::get_pml4();
-	idle->flags =
-		process_flags::running |
-		process_flags::ready |
-		process_flags::const_pri;
+	tcb->rsp = 0;  // This will get set when we switch away
+	tcb->rsp3 = 0; // Never used for the idle task
+	tcb->rsp0 = reinterpret_cast<uintptr_t>(&idle_stack_end);
 
-	m_runlists[max_priority].push_back(idle);
-	m_current = idle;
+	idle->set_state(thread::state::constant);
 
-	bsp_cpu_data.rsp0 = idle->rsp0;
-	bsp_cpu_data.tcb = idle;
+	m_runlists[max_priority].push_back(tcb);
+	m_current = tcb;
+
+	bsp_cpu_data.rsp0 = tcb->rsp0;
+	bsp_cpu_data.tcb = tcb;
 }
 
 uintptr_t
-load_process_image(const void *image_start, size_t bytes, process *proc)
+load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 {
 	// We're now in the process space for this process, allocate memory for the
 	// process code and load it
 	page_manager *pager = page_manager::get();
+
+	thread *th = tcb->thread_data;
 
 	log::debug(logs::loader, "Loading task! ELF: %016lx [%d]", image_start, bytes);
 
@@ -108,33 +160,30 @@ load_process_image(const void *image_start, size_t bytes, process *proc)
 		kutil::memcpy(dest, src, header->size);
 	}
 
-	proc->flags &= ~process_flags::loading;
+	th->clear_state(thread::state::loading);
 
 	uintptr_t entrypoint = image.entrypoint();
-	log::debug(logs::loader, "  Loaded! New process rip: %016lx", entrypoint);
+	log::debug(logs::loader, "  Loaded! New thread rip: %016lx", entrypoint);
 	return entrypoint;
 }
 
-process_node *
-scheduler::create_process(pid_t pid)
+thread *
+scheduler::create_process(page_table *pml4)
 {
-	kassert(pid <= 0, "Cannot specify a positive pid in create_process");
+	thread *th = new thread(pml4, default_priority);
+	auto *tcb = th->tcb();
 
-	auto *proc = new process_node;
-	proc->pid = pid ? pid : m_next_pid++;
-	proc->priority = default_priority;
-	proc->time_left = quantum(default_priority) + startup_bonus;
+	tcb->time_left = quantum(default_priority) + startup_bonus;
 
-	log::debug(logs::task, "Creating process %d, priority %d, time slice %d",
-			proc->pid, proc->priority, proc->time_left);
+	log::debug(logs::task, "Creating thread %llx, priority %d, time slice %d",
+			th->koid(), tcb->priority, tcb->time_left);
 
-	return proc;
+	return th;
 }
 
 void
 scheduler::load_process(const char *name, const void *data, size_t size)
 {
-	auto *proc = create_process();
 
 	uint16_t kcs = (1 << 3) | 0; // Kernel CS is GDT entry 1, ring 0
 	uint16_t cs = (5 << 3) | 3;  // User CS is GDT entry 5, ring 3
@@ -143,19 +192,22 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	uint16_t ss = (4 << 3) | 3;  // User SS is GDT entry 4, ring 3
 
 	// Set up the page tables - this also allocates an initial user stack
-	proc->pml4 = page_manager::get()->create_process_map();
+	page_table *pml4 = page_manager::get()->create_process_map();
+
+	thread* th = create_process(pml4);
+	auto *tcb = th->tcb();
 
 	// Create an initial kernel stack space
-	void *sp0 = proc->setup_kernel_stack();
+	void *sp0 = setup_kernel_stack(tcb);
 	uintptr_t *stack = reinterpret_cast<uintptr_t *>(sp0) - 7;
 
 	// Pass args to ramdisk_process_loader on the stack
 	stack[0] = reinterpret_cast<uintptr_t>(data);
 	stack[1] = reinterpret_cast<uintptr_t>(size);
-	stack[2] = reinterpret_cast<uintptr_t>(proc);
+	stack[2] = reinterpret_cast<uintptr_t>(tcb);
 
-	proc->rsp = reinterpret_cast<uintptr_t>(stack);
-	proc->add_fake_task_return(
+	tcb->rsp = reinterpret_cast<uintptr_t>(stack);
+	add_fake_task_return(tcb,
 			reinterpret_cast<uintptr_t>(ramdisk_process_loader));
 
 	// Arguments for iret - rip will be pushed on before these
@@ -164,46 +216,42 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	stack[5] = initial_stack;
 	stack[6] = ss;
 
-	proc->rsp3 = initial_stack;
-	proc->flags =
-		process_flags::running |
-		process_flags::ready |
-		process_flags::loading;
+	tcb->rsp3 = initial_stack;
 
-	m_runlists[default_priority].push_back(proc);
+	m_runlists[default_priority].push_back(tcb);
 
-	log::debug(logs::task, "Creating process %s: pid %d  pri %d", name, proc->pid, proc->priority);
-	log::debug(logs::task, "     RSP  %016lx", proc->rsp);
-	log::debug(logs::task, "     RSP0 %016lx", proc->rsp0);
-	log::debug(logs::task, "     PML4 %016lx", proc->pml4);
+	log::debug(logs::task, "Loading thread %s: koid %llx  pri %d", name, th->koid(), tcb->priority);
+	log::debug(logs::task, "     RSP  %016lx", tcb->rsp);
+	log::debug(logs::task, "     RSP0 %016lx", tcb->rsp0);
+	log::debug(logs::task, "     PML4 %016lx", tcb->pml4);
 }
 
 void
-scheduler::create_kernel_task(pid_t pid, void (*task)(), uint8_t priority, process_flags flags)
+scheduler::create_kernel_task(void (*task)(), uint8_t priority, bool constant)
 {
-	auto *proc = create_process(pid);
+	page_table *pml4 = page_manager::get()->get_kernel_pml4();
+	thread *th = create_process(pml4);
+	auto *tcb = th->tcb();
 
 	uint16_t kcs = (1 << 3) | 0; // Kernel CS is GDT entry 1, ring 0
 	uint16_t kss = (2 << 3) | 0; // Kernel SS is GDT entry 2, ring 0
 
 	// Create an initial kernel stack space
-	proc->setup_kernel_stack();
-	proc->add_fake_task_return(
+	setup_kernel_stack(tcb);
+	add_fake_task_return(tcb,
 			reinterpret_cast<uintptr_t>(task));
 
-	proc->priority = priority;
-	proc->pml4 = page_manager::get()->get_kernel_pml4();
-	proc->flags =
-		process_flags::running |
-		process_flags::ready |
-		flags;
+	tcb->priority = priority;
+	tcb->pml4 = page_manager::get()->get_kernel_pml4();
+	if (constant)
+		th->set_state(thread::state::constant);
 
-	m_runlists[default_priority].push_back(proc);
+	m_runlists[default_priority].push_back(tcb);
 
-	log::debug(logs::task, "Creating kernel task: pid %d  pri %d", proc->pid, proc->priority);
-	log::debug(logs::task, "    RSP0 %016lx", proc->rsp0);
-	log::debug(logs::task, "     RSP %016lx", proc->rsp);
-	log::debug(logs::task, "    PML4 %016lx", proc->pml4);
+	log::debug(logs::task, "Creating kernel task: thread %llx  pri %d", th->koid(), tcb->priority);
+	log::debug(logs::task, "    RSP0 %016lx", tcb->rsp0);
+	log::debug(logs::task, "     RSP %016lx", tcb->rsp);
+	log::debug(logs::task, "    PML4 %016lx", tcb->pml4);
 }
 
 uint32_t
@@ -223,45 +271,48 @@ scheduler::start()
 
 void scheduler::prune(uint64_t now)
 {
-	// TODO: Promote processes that haven't been scheduled in too long
-
 	// Find processes that aren't ready or aren't running and
 	// move them to the appropriate lists.
 	for (auto &pri_list : m_runlists) {
-		auto *proc = pri_list.front();
-		while (proc) {
-			uint64_t age = now - proc->last_ran;
-			process_flags flags = proc->flags;
-			uint8_t priority = proc->priority;
+		auto *tcb = pri_list.front();
+		while (tcb) {
+			thread *th = tcb->thread_data;
+			uint64_t age = now - tcb->last_ran;
+			uint8_t priority = tcb->priority;
 
-			bool running = flags && process_flags::running;
-			bool ready = flags && process_flags::ready;
+			bool ready = th->has_state(thread::state::ready);
+			bool constant = th->has_state(thread::state::constant);
 
 			bool stale = age > quantum(priority) * 2 &&
-				proc->priority > promote_limit &&
-				!(flags && process_flags::const_pri);
+				tcb->priority > promote_limit &&
+				!constant;
 
-			if (running && ready) {
-				auto *remove = proc;
-				proc = proc->next();
+			if (ready) {
+				auto *remove = tcb;
+				tcb = tcb->next();
 
 				if (stale) {
 					m_runlists[remove->priority].remove(remove);
 					remove->priority -= 1;
 					remove->time_left = quantum(remove->priority);
 					m_runlists[remove->priority].push_back(remove);
-					log::debug(logs::task, "Scheduler promoting process %d, priority %d",
-							remove->pid, remove->priority);
+					log::debug(logs::task, "Scheduler promoting thread %llx, priority %d",
+							th->koid(), remove->priority);
 				}
 
 				continue;
 			}
 
-			auto *remove = proc;
-			proc = proc->next();
+			auto *remove = tcb;
+			tcb = tcb->next();
 			pri_list.remove(remove);
 
-			if (!(remove->flags && process_flags::running)) {
+			bool exited = th->has_state(thread::state::exited);
+
+			if (exited) {
+				// TODO: Alert continaing process thread exitied,
+				// and exit process if it was the last thread.
+				/*
 				auto *parent = get_process_by_id(remove->ppid);
 				if (parent && parent->wake_on_child(remove)) {
 					m_blocked.remove(parent);
@@ -270,7 +321,10 @@ void scheduler::prune(uint64_t now)
 				} else {
 					m_exited.push_back(remove);
 				}
+				*/
+					m_exited.push_back(remove);
 			} else {
+				log::debug(logs::task, "Prune: moving blocked thread %llx", th->koid());
 				m_blocked.push_back(remove);
 			}
 		}
@@ -278,13 +332,15 @@ void scheduler::prune(uint64_t now)
 
 	// Find blocked processes that are ready (possibly after waking wating
 	// ones) and move them to the appropriate runlist.
-	auto *proc = m_blocked.front();
-	while (proc) {
-		bool ready = proc->flags && process_flags::ready;
-		ready |= proc->wake_on_time(now);
+	auto *tcb = m_blocked.front();
+	while (tcb) {
+		thread *th = tcb->thread_data;
 
-		auto *remove = proc;
-		proc = proc->next();
+		bool ready = th->has_state(thread::state::ready);
+		ready |= th->wake_on_time(now);
+
+		auto *remove = tcb;
+		tcb = tcb->next();
 		if (!ready) continue;
 
 		m_blocked.remove(remove);
@@ -295,17 +351,19 @@ void scheduler::prune(uint64_t now)
 void
 scheduler::schedule()
 {
-	pid_t lastpid = m_current->pid;
 	uint8_t priority = m_current->priority;
 	uint32_t remaining = m_apic->stop_timer();
 	m_current->time_left = remaining;
+	thread *th = m_current->thread_data;
+	const bool constant = th->has_state(thread::state::constant);
 
-	if (remaining == 0 && priority < max_priority &&
-		!(m_current->flags && process_flags::const_pri)) {
-		// Process used its whole timeslice, demote it
-		++m_current->priority;
-		log::debug(logs::task, "Scheduler  demoting process %d, priority %d",
-				m_current->pid, m_current->priority);
+	if (remaining == 0) {
+		if (priority < max_priority && !constant) {
+			// Process used its whole timeslice, demote it
+			++m_current->priority;
+			log::debug(logs::task, "Scheduler  demoting thread %llx, priority %d",
+					th->koid(), m_current->priority);
+		}
 		m_current->time_left = quantum(m_current->priority);
 	} else if (remaining > 0) {
 		// Process gave up CPU, give it a small bonus to its
@@ -315,7 +373,7 @@ scheduler::schedule()
 	}
 
 	m_runlists[priority].remove(m_current);
-	if (m_current->flags && process_flags::ready) {
+	if (th->has_state(thread::state::ready)) {
 		m_runlists[m_current->priority].push_back(m_current);
 	} else {
 		m_blocked.push_back(m_current);
@@ -332,18 +390,20 @@ scheduler::schedule()
 
 	m_current->last_ran = m_clock;
 
-	m_current = m_runlists[priority].pop_front();
-	m_current->last_ran = m_clock;
-	m_apic->reset_timer(m_current->time_left);
+	auto *next = m_runlists[priority].pop_front();
+	next->last_ran = m_clock;
+	m_apic->reset_timer(next->time_left);
 
-	if (lastpid != m_current->pid) {
+	if (next != m_current) {
+		m_current = next;
 		task_switch(m_current);
 
-		log::debug(logs::task, "Scheduler switched to process %d, priority %d time left %d @ %lld.",
-				m_current->pid, m_current->priority, m_current->time_left, m_clock);
+		log::debug(logs::task, "Scheduler switched to thread %llx, priority %d time left %d @ %lld.",
+				th->koid(), m_current->priority, m_current->time_left, m_clock);
 	}
 }
 
+/*
 process_node *
 scheduler::get_process_by_id(uint32_t pid)
 {
@@ -364,3 +424,4 @@ scheduler::get_process_by_id(uint32_t pid)
 
 	return nullptr;
 }
+*/

@@ -112,6 +112,28 @@ public:
 		m_elements[m_size].~T();
 	}
 
+	/// Remove the first occurance of an item from the array, not
+	/// order-preserving. Does nothing if the item is not in the array.
+	void remove_swap(const T &item)
+	{
+		for (size_t i = 0; i < m_size; ++i) {
+			if (m_elements[i] == item) {
+				remove_swap_at(i);
+				break;
+			}
+		}
+	}
+
+	/// Remove the item at the given index from the array, not
+	/// order-preserving.
+	void remove_swap_at(size_t i)
+	{
+		if (i >= count()) return;
+		if (i < m_size - 1)
+			m_elements[i] = m_elements[m_size - 1];
+		remove();
+	}
+
 	/// Remove an item from the end of the array and return it.
 	T pop()
 	{

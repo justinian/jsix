@@ -10,8 +10,9 @@ j6_status_t
 object_noop()
 {
 	auto &s = scheduler::get();
-	auto *p = s.current();
-	log::debug(logs::syscall, "Process %d called noop syscall.", p->pid);
+	TCB *tcb = s.current();
+	thread *th = tcb->thread_data;
+	log::debug(logs::syscall, "Thread %llx called noop syscall.", th->koid());
 	return j6_status_ok;
 }
 

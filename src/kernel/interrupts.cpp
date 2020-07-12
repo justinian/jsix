@@ -11,6 +11,7 @@
 #include "interrupts.h"
 #include "io.h"
 #include "log.h"
+#include "page_manager.h"
 #include "scheduler.h"
 #include "syscall.h"
 

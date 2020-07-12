@@ -2,6 +2,7 @@
 #include "j6/signals.h"
 #include "j6/types.h"
 #include "objects/kobject.h"
+#include "objects/thread.h"
 
 // TODO: per-cpu this?
 static j6_koid_t next_koid;
@@ -14,7 +15,8 @@ kobject::kobject(type t, j6_signal_t signals) :
 
 kobject::~kobject()
 {
-	notify_signal_observers(0, j6_status_destroyed);
+	for (auto *t : m_blocked_threads)
+		t->wake_on_result(this, j6_status_destroyed);
 }
 
 j6_koid_t
@@ -33,58 +35,30 @@ void
 kobject::assert_signal(j6_signal_t s)
 {
 	m_signals |= s;
-	notify_signal_observers(s);
+	notify_signal_observers();
 }
 
 void
 kobject::deassert_signal(j6_signal_t s)
 {
 	m_signals &= ~s;
-	notify_signal_observers(s);
 }
 
 void
-kobject::register_signal_observer(observer *object, j6_signal_t s)
+kobject::notify_signal_observers()
 {
-	m_observers.emplace(object, s);
-}
+	size_t i = 0;
+	bool readied = false;
+	while (i < m_blocked_threads.count()) {
+		thread *t = m_blocked_threads[i];
 
-void
-kobject::deregister_signal_observer(observer *object)
-{
-	for (size_t i = 0; i < m_observers.count(); ++i) {
-		auto &reg = m_observers[i];
-		if (reg.object != object) continue;
-
-		reg = m_observers[m_observers.count() - 1];
-		m_observers.remove();
-		break;
-	}
-}
-
-void
-kobject::notify_signal_observers(j6_signal_t mask, j6_status_t result)
-{
-	for (auto &reg : m_observers) {
-		if (mask == 0 || (reg.signals & mask) != 0) {
-			if (!reg.object->on_signals_changed(this, m_signals, mask, result))
-				reg.object = nullptr;
+		if (t->wake_on_signals(this, m_signals)) {
+			m_blocked_threads.remove_swap_at(i);
+			readied = true;
+		} else {
+			++i;
 		}
 	}
-
-	// Compact the observer list
-	long last = m_observers.count() - 1;
-	while (m_observers[last].object == nullptr && last >= 0) last--;
-
-	for (long i = 0; i < long(m_observers.count()) && i < last; ++i) {
-		auto &reg = m_observers[i];
-		if (reg.object != nullptr) continue;
-		reg = m_observers[last--];
-
-		while (m_observers[last].object == nullptr && last >= i) last--;
-	}
-
-	m_observers.set_size(last + 1);
 }
 
 void

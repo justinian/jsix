@@ -48,6 +48,7 @@ void memory_initialize_post_ctors(kernel::args::header *kargs);
 
 using namespace kernel;
 
+/*
 class test_observer :
 	public kobject::observer
 {
@@ -67,6 +68,7 @@ public:
 
 	const char *m_name;
 };
+*/
 
 void
 init_console()
@@ -174,7 +176,7 @@ kernel_main(args::header *header)
 	syscall_enable();
 	scheduler *sched = new (&scheduler::get()) scheduler(devices.get_lapic());
 
-	sched->create_kernel_task(-1, logger_task, scheduler::max_priority-1, process_flags::const_pri);
+	sched->create_kernel_task(logger_task, scheduler::max_priority-1, true);
 
 	for (auto &ird : initrds) {
 		for (auto &f : ird.files()) {
@@ -185,6 +187,7 @@ kernel_main(args::header *header)
 
 	log::info(logs::objs, "Testing object system:");
 
+	/*
 	test_observer obs1("event");
 	test_observer obs2("no handles");
 	{
@@ -197,6 +200,7 @@ kernel_main(args::header *header)
 
 		handle h(1, 0, &e);
 	}
+	*/
 
 	sched->start();
 }

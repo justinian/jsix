@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-struct process;
+struct TCB;
 
 struct cpu_state
 {
@@ -18,7 +18,7 @@ struct cpu_data
 {
 	uintptr_t rsp0;
 	uintptr_t rsp3;
-	process *tcb;
+	TCB *tcb;
 };
 
 extern cpu_data bsp_cpu_data;

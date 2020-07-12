@@ -11,7 +11,7 @@ ramdisk_process_loader:
 
 	pop rdi ; the address of the program image
 	pop rsi ; the size of the program image
-	pop rdx ; the address of this process' process structure
+	pop rdx ; the address of this thread's TCB
 
 	call load_process_image
 

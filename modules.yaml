@@ -39,9 +39,9 @@ modules:
             - src/kernel/msr.cpp
             - src/kernel/objects/handle.cpp
             - src/kernel/objects/kobject.cpp
+            - src/kernel/objects/thread.cpp
             - src/kernel/page_manager.cpp
             - src/kernel/pci.cpp
-            - src/kernel/process.cpp
             - src/kernel/scheduler.cpp
             - src/kernel/screen.cpp
             - src/kernel/serial.cpp
