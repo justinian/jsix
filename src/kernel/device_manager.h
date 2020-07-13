@@ -55,6 +55,16 @@ public:
 			irq_callback cb,
 			void *data);
 
+	/// Uninstall an IRQ callback for a device
+	/// \arg irq   IRQ to install the handler for
+	/// \arg cb    Callback to call when the interrupt is received
+	/// \arg data  Data to pass to the callback
+	/// \returns   True if an IRQ was uninstalled successfully
+	bool uninstall_irq(
+			unsigned irq,
+			irq_callback cb,
+			void *data);
+
 	/// Allocate an MSI IRQ for a device
 	/// \arg name    Name of the interrupt, for display to user
 	/// \arg device  Device this MSI is being allocated for

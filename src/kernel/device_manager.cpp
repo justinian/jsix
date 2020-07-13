@@ -47,7 +47,6 @@ acpi_table_header::validate(uint32_t expected_type) const
 	return !expected_type || (expected_type == type);
 }
 
-
 void irq2_callback(void *)
 {
 }
@@ -344,6 +343,7 @@ device_manager::init_drivers()
 		log::info(logs::clock, "Created master clock using HPET 0: Rate %d", h.rate());
 	} else {
 		//TODO: APIC clock?
+		kassert(0, "No HPET master clock");
 	}
 }
 
@@ -357,6 +357,20 @@ device_manager::install_irq(unsigned irq, const char *name, irq_callback cb, voi
 		return false;
 
 	m_irqs[irq] = {name, cb, data};
+	return true;
+}
+
+bool
+device_manager::uninstall_irq(unsigned irq, irq_callback cb, void *data)
+{
+	if (irq >= m_irqs.count())
+		return false;
+
+	const irq_allocation &existing = m_irqs[irq];
+	if (existing.callback != cb || existing.data != data)
+		return false;
+
+	m_irqs[irq] = {nullptr, nullptr, nullptr};
 	return true;
 }
 

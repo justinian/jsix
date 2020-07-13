@@ -37,7 +37,7 @@ hpet::hpet(uint8_t index, uint64_t *base) :
 	m_timers = ((caps >> 8) & 0x1f) + 1;
 	m_period = (caps >> 32);
 
-	// setup_timer_interrupts(0, 2, 1000000, true);
+	setup_timer_interrupts(0, 2, 1000, true);
 	// bool installed = device_manager::get()
 	// 	.install_irq(2, "HPET Timer", hpet_irq_callback, this);
 	// kassert(installed, "Installing HPET IRQ handler");
@@ -57,6 +57,7 @@ hpet::hpet(uint8_t index, uint64_t *base) :
 
 		log::debug(logs::timer, "HPET %d timer %d:", index, i);
 		log::debug(logs::timer, "       int type: %d", (config >> 1) & 1);
+		log::debug(logs::timer, "     int enable: %d", (config >> 2) & 1);
 		log::debug(logs::timer, "     timer type: %d", (config >> 3) & 1);
 		log::debug(logs::timer, "   periodic cap: %d", (config >> 4) & 1);
 		log::debug(logs::timer, "           bits: %d", ((config >> 5) & 1) ? 64 : 32);
@@ -72,10 +73,10 @@ hpet::hpet(uint8_t index, uint64_t *base) :
 void
 hpet::setup_timer_interrupts(unsigned timer, uint8_t irq, uint64_t interval, bool periodic)
 {
-	constexpr uint64_t femto_per_ns = 1000000ull;
+	constexpr uint64_t femto_per_us = 1000000000ull;
 	*timer_comparator(m_base, timer) =
 		*counter_value(m_base) +
-		(interval * femto_per_ns) / m_period;
+		(interval * femto_per_us) / m_period;
 
 	*timer_config(m_base, timer) = (irq << 9) | ((periodic ? 1 : 0) << 3);
 }
@@ -102,9 +103,7 @@ void
 hpet::enable()
 {
 	log::debug(logs::timer, "HPET %d enabling", m_index);
-
-	enable_timer(0);
-	*configuration(m_base) = 1;
+	*configuration(m_base) = (*configuration(m_base) & 0x3) | 1;
 }
 
 uint64_t

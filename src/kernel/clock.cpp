@@ -14,9 +14,9 @@ clock::clock(uint64_t rate, clock::source source_func, void *data) :
 }
 
 void
-clock::spinwait(uint64_t ns) const
+clock::spinwait(uint64_t us) const
 {
-	uint64_t when = m_source(m_data) + ns;
+	uint64_t when = m_source(m_data) + us;
 	while (value() < when);
 }
 

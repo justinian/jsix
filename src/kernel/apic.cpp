@@ -74,8 +74,7 @@ lapic::calibrate_timer()
 	apic_write(m_base, lapic_timer_init, initial);
 
 	uint64_t us = 200000;
-	uint64_t ns = us * 1000;
-	clock::get().spinwait(ns);
+	clock::get().spinwait(us);
 
 	uint32_t remaining = apic_read(m_base, lapic_timer_cur);
 	uint32_t ticks_total = initial - remaining;

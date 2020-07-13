@@ -20,12 +20,8 @@ public:
 	/// Configure the timer and start it running.
 	void enable();
 
-	/// Wait in a tight loop while reading the HPET counter.
-	/// \arg ns  Number of nanoseconds to wait
-	void spinwait(uint64_t ns) const;
-
-	/// Get the timer rate in ticks per ns
-	inline uint64_t rate() const { return m_period * 1000000ull; }
+	/// Get the timer rate in ticks per us
+	inline uint64_t rate() const { return 1000000000/m_period; }
 
 	/// Get the current timer value
 	uint64_t value() const;
