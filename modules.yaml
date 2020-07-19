@@ -40,6 +40,7 @@ modules:
             - src/kernel/objects/handle.cpp
             - src/kernel/objects/kobject.cpp
             - src/kernel/objects/thread.cpp
+            - src/kernel/objects/process.cpp
             - src/kernel/page_manager.cpp
             - src/kernel/pci.cpp
             - src/kernel/scheduler.cpp

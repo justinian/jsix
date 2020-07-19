@@ -6,6 +6,7 @@
 #include "objects/thread.h"
 
 class lapic;
+class process;
 struct page_table;
 struct cpu_state;
 
@@ -86,6 +87,8 @@ private:
 	friend uintptr_t syscall_dispatch(uintptr_t, cpu_state &);
 	friend class process;
 
+	static constexpr uint64_t promote_frequency = 10;
+
 	/// Create a new process object. This process will have its pid
 	/// set but nothing else.
 	/// \arg pml4 The root page table of the process
@@ -93,19 +96,21 @@ private:
 	thread * create_process(page_table *pml4);
 
 	void prune(uint64_t now);
+	void check_promotions(uint64_t now);
 
 	lapic *m_apic;
 
 	uint32_t m_next_pid;
 	uint32_t m_tick_count;
 
+	process *m_kernel_process;
 	tcb_node *m_current;
 	tcb_list m_runlists[num_priorities];
 	tcb_list m_blocked;
-	tcb_list m_exited;
 
 	// TODO: lol a real clock
 	uint64_t m_clock = 0;
+	uint64_t m_last_promotion;
 
 	static scheduler s_instance;
 };

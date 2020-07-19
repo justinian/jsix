@@ -1,18 +1,20 @@
 #include "j6/signals.h"
 #include "objects/thread.h"
+#include "objects/process.h"
 #include "scheduler.h"
 
 static constexpr j6_signal_t thread_default_signals = 0;
 
-thread::thread(page_table *pml4, priority_t pri) :
+thread::thread(process &parent, uint8_t pri) :
 	kobject(kobject::type::thread, thread_default_signals),
+	m_parent(parent),
 	m_state(state::loading),
 	m_wait_type(wait_type::none),
 	m_wait_data(0),
 	m_wait_obj(0)
 {
 	TCB *tcbp = tcb();
-	tcbp->pml4 = pml4;
+	tcbp->pml4 = parent.pml4();
 	tcbp->priority = pri;
 	tcbp->thread_data = this;
 	set_state(state::ready);
@@ -74,8 +76,6 @@ thread::wake_on_result(kobject *obj, j6_status_t result)
 void
 thread::exit(uint32_t code)
 {
-	// TODO: check if the process containing this thread
-	// needs to exit and clean up.
 	m_return_code = code;
 	set_state(state::exited);
 	clear_state(state::ready);

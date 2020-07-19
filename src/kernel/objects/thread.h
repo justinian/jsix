@@ -5,9 +5,8 @@
 #include "kutil/linked_list.h"
 #include "objects/kobject.h"
 
-using priority_t = uint8_t;
-
 struct page_table;
+class process;
 
 struct TCB
 {
@@ -18,7 +17,7 @@ struct TCB
 	uintptr_t rsp3;
 	page_table *pml4;
 
-	priority_t priority;
+	uint8_t priority;
 	// note: 3 bytes padding
 
 	// TODO: move state into TCB?
@@ -48,11 +47,6 @@ public:
 		none     = 0x00
 	};
 
-	/// Constructor.
-	/// \arg pml4 Root page table for the thread's owning process
-	/// \arg pri  Initial priority level of this thread
-	thread(page_table *pml4, priority_t pri);
-
 	/// Get the `ready` state of the thread.
 	/// \returns True if the thread is ready to execute.
 	inline bool ready() const { return has_state(state::ready); }
@@ -66,11 +60,11 @@ public:
 	inline bool constant() const { return has_state(state::constant); }
 
 	/// Get the thread priority.
-	inline priority_t priority() const { return m_tcb.priority; }
+	inline uint8_t priority() const { return m_tcb.priority; }
 
 	/// Set the thread priority.
 	/// \arg p  The new thread priority
-	inline void set_priority(priority_t p) { if (!constant()) m_tcb.priority = p; }
+	inline void set_priority(uint8_t p) { if (!constant()) m_tcb.priority = p; }
 
 	/// Block the thread, waiting on the given object's signals.
 	/// \arg obj     Object to wait on
@@ -110,6 +104,7 @@ public:
 	}
 
 	inline tcb_node * tcb() { return &m_tcb; }
+	inline process & parent() { return m_parent; }
 
 	/// Terminate this thread.
 	/// \arg code   The return code to exit with.
@@ -119,6 +114,14 @@ private:
 	thread() = delete;
 	thread(const thread &other) = delete;
 	thread(const thread &&other) = delete;
+	friend class process;
+
+	/// Constructor.
+	/// \arg p   The process which owns this thread
+	/// \arg pri Initial priority level of this thread
+	thread(process &parent, uint8_t pri);
+
+	process &m_parent;
 
 	tcb_node m_tcb;
 

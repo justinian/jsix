@@ -9,6 +9,7 @@
 #include "kernel_memory.h"
 #include "log.h"
 #include "msr.h"
+#include "objects/process.h"
 #include "page_manager.h"
 #include "scheduler.h"
 
@@ -83,10 +84,12 @@ add_fake_task_return(TCB *tcb, uintptr_t rip)
 scheduler::scheduler(lapic *apic) :
 	m_apic(apic),
 	m_next_pid(1),
-	m_clock(0)
+	m_clock(0),
+	m_last_promotion(0)
 {
 	page_table *pml4 = page_manager::get_pml4();
-	thread *idle = new thread(pml4, max_priority);
+	m_kernel_process = new process(pml4);
+	thread *idle = m_kernel_process->create_thread(max_priority);
 
 	auto *tcb = idle->tcb();
 
@@ -170,7 +173,8 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 thread *
 scheduler::create_process(page_table *pml4)
 {
-	thread *th = new thread(pml4, default_priority);
+	process *p = new process(pml4);
+	thread *th = p->create_thread(default_priority);
 	auto *tcb = th->tcb();
 
 	tcb->time_left = quantum(default_priority) + startup_bonus;
@@ -271,81 +275,68 @@ scheduler::start()
 
 void scheduler::prune(uint64_t now)
 {
-	// Find processes that aren't ready or aren't running and
+	// Find processes that are ready or have exited and
 	// move them to the appropriate lists.
-	for (auto &pri_list : m_runlists) {
-		auto *tcb = pri_list.front();
-		while (tcb) {
-			thread *th = tcb->thread_data;
-			uint64_t age = now - tcb->last_ran;
-			uint8_t priority = tcb->priority;
-
-			bool ready = th->has_state(thread::state::ready);
-			bool constant = th->has_state(thread::state::constant);
-
-			bool stale = age > quantum(priority) * 2 &&
-				tcb->priority > promote_limit &&
-				!constant;
-
-			if (ready) {
-				auto *remove = tcb;
-				tcb = tcb->next();
-
-				if (stale) {
-					m_runlists[remove->priority].remove(remove);
-					remove->priority -= 1;
-					remove->time_left = quantum(remove->priority);
-					m_runlists[remove->priority].push_back(remove);
-					log::debug(logs::task, "Scheduler promoting thread %llx, priority %d",
-							th->koid(), remove->priority);
-				}
-
-				continue;
-			}
-
-			auto *remove = tcb;
-			tcb = tcb->next();
-			pri_list.remove(remove);
-
-			bool exited = th->has_state(thread::state::exited);
-
-			if (exited) {
-				// TODO: Alert continaing process thread exitied,
-				// and exit process if it was the last thread.
-				/*
-				auto *parent = get_process_by_id(remove->ppid);
-				if (parent && parent->wake_on_child(remove)) {
-					m_blocked.remove(parent);
-					m_runlists[parent->priority].push_back(parent);
-					delete remove;
-				} else {
-					m_exited.push_back(remove);
-				}
-				*/
-					m_exited.push_back(remove);
-			} else {
-				log::debug(logs::task, "Prune: moving blocked thread %llx", th->koid());
-				m_blocked.push_back(remove);
-			}
-		}
-	}
-
-	// Find blocked processes that are ready (possibly after waking wating
-	// ones) and move them to the appropriate runlist.
 	auto *tcb = m_blocked.front();
 	while (tcb) {
 		thread *th = tcb->thread_data;
+		uint8_t priority = tcb->priority;
 
 		bool ready = th->has_state(thread::state::ready);
+		bool exited = th->has_state(thread::state::exited);
+		bool constant = th->has_state(thread::state::constant);
+
 		ready |= th->wake_on_time(now);
 
 		auto *remove = tcb;
 		tcb = tcb->next();
-		if (!ready) continue;
+		if (!exited && !ready)
+			continue;
 
 		m_blocked.remove(remove);
-		m_runlists[remove->priority].push_front(remove);
+
+		if (exited) {
+			process &p = th->parent();
+			if(p.thread_exited(th))
+				delete &p;
+		} else {
+			log::debug(logs::task, "Prune: readying unblocked thread %llx", th->koid());
+			m_runlists[remove->priority].push_back(remove);
+		}
 	}
+}
+
+void
+scheduler::check_promotions(uint64_t now)
+{
+	for (auto &pri_list : m_runlists) {
+		for (auto *tcb : pri_list) {
+			const thread *th = m_current->thread_data;
+			const bool constant = th->has_state(thread::state::constant);
+			if (constant)
+				continue;
+
+			const uint64_t age = now - tcb->last_ran;
+			const uint8_t priority = tcb->priority;
+
+			bool stale =
+				age > quantum(priority) * 2 &&
+				tcb->priority > promote_limit &&
+				!constant;
+
+			if (stale) {
+				// If the thread is stale, promote it
+				m_runlists[priority].remove(tcb);
+				tcb->priority -= 1;
+				tcb->time_left = quantum(tcb->priority);
+				m_runlists[tcb->priority].push_back(tcb);
+				log::debug(logs::task, "Scheduler promoting thread %llx, priority %d",
+						th->koid(), tcb->priority);
+			}
+		}
+	}
+
+	m_last_promotion = now;
 }
 
 void
@@ -381,6 +372,8 @@ scheduler::schedule()
 
 	clock::get().update();
 	prune(++m_clock);
+	if (m_clock - m_last_promotion > promote_frequency)
+		check_promotions(m_clock);
 
 	priority = 0;
 	while (m_runlists[priority].empty()) {
