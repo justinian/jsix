@@ -1,6 +1,8 @@
 #include "j6/errors.h"
 #include "j6/types.h"
 
+#include "objects/process.h"
+
 #include "log.h"
 #include "scheduler.h"
 
@@ -21,42 +23,19 @@ process_exit(int64_t status)
 	return j6_err_unexpected;
 }
 
-/*
 j6_status_t
-process_fork(pid_t *pid)
+process_koid(j6_koid_t *koid)
 {
-	if (pid == nullptr) {
+	if (koid == nullptr) {
 		return j6_err_invalid_arg;
 	}
 
-	auto &s = scheduler::get();
-	auto *p = s.current();
-	pid_t ppid = p->pid;
+	TCB *tcb = scheduler::get().current();
+	process &p = thread::from_tcb(tcb)->parent();
 
-	log::debug(logs::syscall, "Process %d calling fork(%016llx)", ppid, pid);
-
-	*pid = p->fork();
-
-	p = s.current();
-	log::debug(logs::syscall, "Process %d's fork: returning %d from process %d", ppid, *pid, p->pid);
-
+	*koid = p.koid();
 	return j6_status_ok;
 }
-
-j6_status_t
-process_getpid(pid_t *pid)
-{
-	if (pid == nullptr) {
-		return j6_err_invalid_arg;
-	}
-
-	auto &s = scheduler::get();
-	auto *p = s.current();
-
-	*pid = p->pid;
-	return j6_status_ok;
-}
-*/
 
 j6_status_t
 process_log(const char *message)
@@ -71,9 +50,6 @@ process_log(const char *message)
 	log::info(logs::syscall, "Message[%llx]: %s", th->koid(), message);
 	return j6_status_ok;
 }
-
-j6_status_t process_fork(uint32_t *pid) { *pid = 5; return process_log("CALLED FORK"); }
-j6_status_t process_getpid(uint32_t *pid) { *pid = 0; return process_log("CALLED GETPID"); }
 
 j6_status_t
 process_pause()
