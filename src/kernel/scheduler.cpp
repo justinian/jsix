@@ -116,7 +116,7 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 	// process code and load it
 	page_manager *pager = page_manager::get();
 
-	thread *th = tcb->thread_data;
+	thread *th = thread::from_tcb(tcb);
 
 	log::debug(logs::loader, "Loading task! ELF: %016lx [%d]", image_start, bytes);
 
@@ -279,7 +279,7 @@ void scheduler::prune(uint64_t now)
 	// move them to the appropriate lists.
 	auto *tcb = m_blocked.front();
 	while (tcb) {
-		thread *th = tcb->thread_data;
+		thread *th = thread::from_tcb(tcb);
 		uint8_t priority = tcb->priority;
 
 		bool ready = th->has_state(thread::state::ready);
@@ -311,7 +311,7 @@ scheduler::check_promotions(uint64_t now)
 {
 	for (auto &pri_list : m_runlists) {
 		for (auto *tcb : pri_list) {
-			const thread *th = m_current->thread_data;
+			const thread *th = thread::from_tcb(m_current);
 			const bool constant = th->has_state(thread::state::constant);
 			if (constant)
 				continue;
@@ -345,7 +345,7 @@ scheduler::schedule()
 	uint8_t priority = m_current->priority;
 	uint32_t remaining = m_apic->stop_timer();
 	m_current->time_left = remaining;
-	thread *th = m_current->thread_data;
+	thread *th = thread::from_tcb(m_current);
 	const bool constant = th->has_state(thread::state::constant);
 
 	if (remaining == 0) {

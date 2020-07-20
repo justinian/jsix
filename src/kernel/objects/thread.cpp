@@ -16,8 +16,15 @@ thread::thread(process &parent, uint8_t pri) :
 	TCB *tcbp = tcb();
 	tcbp->pml4 = parent.pml4();
 	tcbp->priority = pri;
-	tcbp->thread_data = this;
 	set_state(state::ready);
+}
+
+thread *
+thread::from_tcb(TCB *tcb)
+{
+	static ptrdiff_t offset =
+		-1 * static_cast<ptrdiff_t>(offsetof(thread, m_tcb));
+	return reinterpret_cast<thread*>(kutil::offset_pointer(tcb, offset));
 }
 
 void

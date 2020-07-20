@@ -11,7 +11,7 @@ object_noop()
 {
 	auto &s = scheduler::get();
 	TCB *tcb = s.current();
-	thread *th = tcb->thread_data;
+	thread *th = thread::from_tcb(tcb);
 	log::debug(logs::syscall, "Thread %llx called noop syscall.", th->koid());
 	return j6_status_ok;
 }

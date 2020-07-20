@@ -11,7 +11,7 @@ process_exit(int64_t status)
 {
 	auto &s = scheduler::get();
 	TCB *tcb = s.current();
-	thread *th = tcb->thread_data;
+	thread *th = thread::from_tcb(tcb);
 	log::debug(logs::syscall, "Thread %llx exiting with code %d", th->koid(), status);
 
 	th->exit(status);
@@ -67,7 +67,7 @@ process_log(const char *message)
 
 	auto &s = scheduler::get();
 	TCB *tcb = s.current();
-	thread *th = tcb->thread_data;
+	thread *th = thread::from_tcb(tcb);
 	log::info(logs::syscall, "Message[%llx]: %s", th->koid(), message);
 	return j6_status_ok;
 }
@@ -80,7 +80,7 @@ process_pause()
 {
 	auto &s = scheduler::get();
 	TCB *tcb = s.current();
-	thread *th = tcb->thread_data;
+	thread *th = thread::from_tcb(tcb);
 	th->wait_on_signals(th, -1ull);
 	s.schedule();
 	return j6_status_ok;
@@ -91,7 +91,7 @@ process_sleep(uint64_t til)
 {
 	auto &s = scheduler::get();
 	TCB *tcb = s.current();
-	thread *th = tcb->thread_data;
+	thread *th = thread::from_tcb(tcb);
 	log::debug(logs::syscall, "Thread %llx sleeping until %llu", th->koid(), til);
 
 	th->wait_on_time(til);

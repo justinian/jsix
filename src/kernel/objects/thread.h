@@ -27,8 +27,6 @@ struct TCB
 
 	uint32_t time_left;
 	uint64_t last_ran;
-
-	thread *thread_data;
 };
 
 using tcb_list = kutil::linked_list<TCB>;
@@ -46,6 +44,9 @@ public:
 		constant = 0x80,
 		none     = 0x00
 	};
+
+	/// Get the pointer to the thread object containing this TCB
+	static thread * from_tcb(TCB *tcb);
 
 	/// Get the `ready` state of the thread.
 	/// \returns True if the thread is ready to execute.
