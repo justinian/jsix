@@ -16,9 +16,6 @@ namespace memory {
 	/// Offset from physical where page tables are mapped.
 	constexpr uintptr_t page_offset = 0xffffc00000000000;
 
-	/// Initial process thread's stack address
-	constexpr uintptr_t initial_stack = 0x0000800000000000;
-
 	/// Initial process thread's stack size, in pages
 	constexpr unsigned initial_stack_pages = 1;
 

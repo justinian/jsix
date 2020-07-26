@@ -8,7 +8,8 @@ kutil::vector<process*> process::s_processes;
 
 process::process(page_table *pml4) :
 	kobject(kobject::type::process),
-	m_pml4(pml4)
+	m_pml4(pml4),
+	m_state(state::running)
 {
 	s_processes.append(this);
 }
@@ -21,6 +22,12 @@ process::~process()
 void
 process::exit(unsigned code)
 {
+	// TODO: make this thread-safe
+	if (m_state != state::running)
+		return;
+	else
+		m_state = state::exited;
+
 	for (auto *thread : m_threads) {
 		thread->exit(code);
 	}
@@ -53,10 +60,23 @@ process::update()
 }
 
 thread *
-process::create_thread(uint8_t priority)
+process::create_thread(uint8_t priority, bool user)
 {
 	thread *th = new thread(*this, priority);
 	kassert(th, "Failed to create thread!");
+
+	if (user) {
+		uintptr_t stack_top = stacks_top - (m_threads.count() * stack_size);
+		auto *pm = page_manager::get();
+		pm->map_pages(
+			stack_top - stack_size,
+			page_manager::page_count(stack_size),
+			true, // user stack
+			m_pml4);
+
+		th->tcb()->rsp3 = stack_top;
+	}
+
 	m_threads.append(th);
 	return th;
 }
@@ -75,4 +95,37 @@ process::thread_exited(thread *th)
 	}
 
 	return false;
+}
+
+j6_handle_t
+process::add_handle(kobject *obj)
+{
+	if (!obj)
+		return j6_handle_invalid;
+
+	obj->handle_retain();
+	size_t len = m_handles.count();
+	m_handles.append(obj);
+	return static_cast<j6_handle_t>(len);
+}
+
+bool
+process::remove_handle(j6_handle_t handle)
+{
+	if (handle < m_handles.count()) {
+		kobject *obj = m_handles[handle];
+		m_handles[handle] = nullptr;
+		if (obj)
+			obj->handle_release();
+		return true;
+	}
+	return false;
+}
+
+kobject *
+process::lookup_handle(j6_handle_t handle)
+{
+	if (handle < m_handles.count())
+		return m_handles[handle];
+	return nullptr;
 }

@@ -24,19 +24,19 @@ task_switch:
 	; Install next task's TCB
 	mov [gs:CPU_DATA.tcb], rdi     ; rdi: next TCB (function param)
 	mov rsp, [rdi + TCB.rsp]       ; next task's stack pointer
-	mov rax, 0x0000007fffffffff
+	mov rax, 0x00003fffffffffff
 	and rax, [rdi + TCB.pml4]      ; rax: next task's pml4 (phys portion of address)
 
 	; Update syscall/interrupt rsp
 	mov rcx, [rdi + TCB.rsp0]      ; rcx: top of next task's kernel stack
 	mov [gs:CPU_DATA.rsp0], rcx
 
+	lea rdx, [rel g_tss]           ; rdx: address of TSS
+	mov [rdx + TSS.rsp0], rcx
+
 	; Update saved user rsp
 	mov rcx, [rdi + TCB.rsp3]      ; rcx: new task's saved user rsp
 	mov [gs:CPU_DATA.rsp3], rcx
-
-	lea rdx, [rel g_tss]           ; rdx: address of TSS
-	mov [rdx + TSS.rsp0], rcx
 
 	; check if we need to update CR3
 	mov rdx, cr3                   ; rdx: old CR3
@@ -56,8 +56,7 @@ task_switch:
 
 
 extern syscall_handler_prelude.return
-global task_fork_return_thunk
-task_fork_return_thunk:
-	mov rax, 0
+global kernel_to_user_trampoline
+kernel_to_user_trampoline:
 	jmp syscall_handler_prelude.return
 

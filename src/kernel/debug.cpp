@@ -2,6 +2,8 @@
 #include "cpu.h"
 #include "debug.h"
 #include "gdt.h"
+#include "objects/process.h"
+#include "objects/thread.h"
 #include "page_manager.h"
 
 size_t __counter_syscall_enter = 0;
@@ -14,6 +16,9 @@ print_regs(const cpu_state &regs)
 
 	uint64_t cr2 = 0;
 	__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
+
+	cons->printf("       process: %llx", bsp_cpu_data.p->koid());
+	cons->printf("   thread: %llx\n", bsp_cpu_data.t->koid());
 
 	print_regL("rax", regs.rax);
 	print_regM("rbx", regs.rbx);

@@ -6,7 +6,12 @@
 #define j6_signal_no_handles		(1ull << 0)
 
 // Signals 16-47 are defined per-object-type
+
+// Process signals
 #define j6_signal_process_exit		(1ull << 16)
+
+// Thread signals
+#define j6_signal_thread_exit		(1ull << 16)
 
 // Signals 48-63 are user-defined signals
 #define j6_signal_user0				(1ull << 48)

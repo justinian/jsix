@@ -6,52 +6,30 @@ extern main
 extern exit
 
 section .text
-global get_process_koid
-get_process_koid:
-	push rbp
-	mov rbp, rsp
 
-	; address of out var should already be in rdi
-	mov rax, 0x10  ; getpid syscall
-	syscall        ; result is now already in rax, so just return
+%macro SYSCALL 2
+	global %1
+	%1:
+		push rbp
+		mov rbp, rsp
 
-	pop rbp
-	ret
+		; address of args should already be in rdi, etc
+		mov rax, %2
+		syscall
+		; result is now already in rax, so just return
 
-global debug
-debug:
-	push rbp
-	mov rbp, rsp
+		pop rbp
+		ret
+%endmacro
 
-	mov rax, 0x00  ; debug syscall
-	syscall
-
-	pop rbp
-	ret
-
-global sleep
-sleep:
-	push rbp
-	mov rbp, rsp
-
-	mov rax, 0x14  ; sleep syscall
-	syscall
-
-	pop rbp
-	ret
-
-global message
-message:
-	push rbp
-	mov rbp, rsp
-
-	; message should already be in rdi
-	mov rax, 0x12
-	syscall
-
-	pop rbp
-	ret
-
+SYSCALL system_log, 0x00
+SYSCALL object_wait, 0x09
+SYSCALL process_koid, 0x10
+SYSCALL thread_koid, 0x18
+SYSCALL thread_create, 0x19
+SYSCALL thread_exit, 0x1a
+SYSCALL thread_pause, 0x1b
+SYSCALL thread_sleep, 0x1c
 
 global _start
 _start:

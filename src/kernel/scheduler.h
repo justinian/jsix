@@ -72,12 +72,7 @@ public:
 	/// \returns  A pointer to the current thread's TCB
 	inline TCB * current() { return m_current; }
 
-	/*
-	/// Look up a process by its PID
-	/// \arg pid  The requested PID
-	/// \returns  The process matching that PID, or nullptr
-	tcb_node * get_process_by_id(uint32_t pid);
-	*/
+	inline void add_thread(TCB *t) { m_runlists[t->priority].push_back(static_cast<tcb_node*>(t)); }
 
 	/// Get a reference to the system scheduler
 	/// \returns  A reference to the global system scheduler
@@ -92,8 +87,9 @@ private:
 	/// Create a new process object. This process will have its pid
 	/// set but nothing else.
 	/// \arg pml4 The root page table of the process
+	/// \arg user True if this thread will enter userspace
 	/// \returns  The new process' main thread
-	thread * create_process(page_table *pml4);
+	thread * create_process(page_table *pml4, bool user);
 
 	void prune(uint64_t now);
 	void check_promotions(uint64_t now);
@@ -114,3 +110,4 @@ private:
 
 	static scheduler s_instance;
 };
+

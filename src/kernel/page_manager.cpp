@@ -60,13 +60,6 @@ page_manager::create_process_map()
 	for (unsigned i = pml4e_kernel; i < table_entries; ++i)
 		table->entries[i] = m_kernel_pml4->entries[i];
 
-	// Create the initial user stack
-	map_pages(
-		memory::initial_stack - (memory::initial_stack_pages * frame_size),
-		memory::initial_stack_pages,
-		true, // This is the ring3 stack, user = true
-		table);
-
 	return table;
 }
 

@@ -18,3 +18,5 @@ typedef uint64_t j6_signal_t;
 
 /// The rights of a handle/capability are a bitmap of 64 possible rights
 typedef uint64_t j6_rights_t;
+
+#define j6_handle_invalid 0xffffffff

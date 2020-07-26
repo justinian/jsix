@@ -16,8 +16,6 @@
 #include "elf/elf.h"
 #include "kutil/assert.h"
 
-using memory::initial_stack;
-
 scheduler scheduler::s_instance(nullptr);
 
 const uint64_t rflags_noint = 0x002;
@@ -30,57 +28,6 @@ extern "C" {
 
 extern uint64_t idle_stack_end;
 
-/// Set up a new empty kernel stack for this thread. Sets rsp0 on the
-/// TCB object, but also returns it.
-/// \returns   The new rsp0 as a pointer
-static void *
-setup_kernel_stack(TCB *tcb)
-{
-	constexpr size_t initial_stack_size = 0x1000;
-	constexpr unsigned null_frame_entries = 2;
-	constexpr size_t null_frame_size = null_frame_entries * sizeof(uint64_t);
-
-	void *stack_bottom = kutil::kalloc(initial_stack_size);
-	kutil::memset(stack_bottom, 0, initial_stack_size);
-
-	log::debug(logs::memory, "Created kernel stack at %016lx size 0x%lx",
-			stack_bottom, initial_stack_size);
-
-	void *stack_top =
-		kutil::offset_pointer(stack_bottom,
-				initial_stack_size - null_frame_size);
-
-	uint64_t *null_frame = reinterpret_cast<uint64_t*>(stack_top);
-	for (unsigned i = 0; i < null_frame_entries; ++i)
-		null_frame[i] = 0;
-
-	tcb->kernel_stack_size = initial_stack_size;
-	tcb->kernel_stack = reinterpret_cast<uintptr_t>(stack_bottom);
-	tcb->rsp0 = reinterpret_cast<uintptr_t>(stack_top);
-	tcb->rsp = tcb->rsp0;
-
-	return stack_top;
-}
-
-/// Initialize this process' kenrel stack with a fake return segment for
-/// returning out of task_switch.
-/// \arg tcb  TCB of the thread to modify
-/// \arg rip  The rip to return to
-static void
-add_fake_task_return(TCB *tcb, uintptr_t rip)
-{
-	tcb->rsp -= sizeof(uintptr_t) * 7;
-	uintptr_t *stack = reinterpret_cast<uintptr_t*>(tcb->rsp);
-
-	stack[6] = rip;        // return rip
-	stack[5] = tcb->rsp0;  // rbp
-	stack[4] = 0xbbbbbbbb; // rbx
-	stack[3] = 0x12121212; // r12
-	stack[2] = 0x13131313; // r13
-	stack[1] = 0x14141414; // r14
-	stack[0] = 0x15151515; // r15
-}
-
 scheduler::scheduler(lapic *apic) :
 	m_apic(apic),
 	m_next_pid(1),
@@ -88,25 +35,24 @@ scheduler::scheduler(lapic *apic) :
 	m_last_promotion(0)
 {
 	page_table *pml4 = page_manager::get_pml4();
-	m_kernel_process = new process(pml4);
-	thread *idle = m_kernel_process->create_thread(max_priority);
+	process *kp = new process(pml4);
+	m_kernel_process = kp;
 
-	auto *tcb = idle->tcb();
+	log::debug(logs::task, "Kernel process koid %llx", kp->koid());
+
+	thread *idle = thread::create_idle_thread(*kp, max_priority,
+		reinterpret_cast<uintptr_t>(&idle_stack_end));
 
 	log::debug(logs::task, "Idle thread koid %llx", idle->koid());
 
-	// The kernel idle task, also the thread we're in now
-	tcb->rsp = 0;  // This will get set when we switch away
-	tcb->rsp3 = 0; // Never used for the idle task
-	tcb->rsp0 = reinterpret_cast<uintptr_t>(&idle_stack_end);
-
-	idle->set_state(thread::state::constant);
-
+	auto *tcb = idle->tcb();
 	m_runlists[max_priority].push_back(tcb);
 	m_current = tcb;
 
 	bsp_cpu_data.rsp0 = tcb->rsp0;
 	bsp_cpu_data.tcb = tcb;
+	bsp_cpu_data.p = kp;
+	bsp_cpu_data.t = idle;
 }
 
 uintptr_t
@@ -171,10 +117,10 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 }
 
 thread *
-scheduler::create_process(page_table *pml4)
+scheduler::create_process(page_table *pml4, bool user)
 {
 	process *p = new process(pml4);
-	thread *th = p->create_thread(default_priority);
+	thread *th = p->create_thread(default_priority, user);
 	auto *tcb = th->tcb();
 
 	tcb->time_left = quantum(default_priority) + startup_bonus;
@@ -198,12 +144,11 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	// Set up the page tables - this also allocates an initial user stack
 	page_table *pml4 = page_manager::get()->create_process_map();
 
-	thread* th = create_process(pml4);
+	thread* th = create_process(pml4, true);
 	auto *tcb = th->tcb();
 
 	// Create an initial kernel stack space
-	void *sp0 = setup_kernel_stack(tcb);
-	uintptr_t *stack = reinterpret_cast<uintptr_t *>(sp0) - 7;
+	uintptr_t *stack = reinterpret_cast<uintptr_t *>(tcb->rsp0) - 7;
 
 	// Pass args to ramdisk_process_loader on the stack
 	stack[0] = reinterpret_cast<uintptr_t>(data);
@@ -211,16 +156,15 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	stack[2] = reinterpret_cast<uintptr_t>(tcb);
 
 	tcb->rsp = reinterpret_cast<uintptr_t>(stack);
-	add_fake_task_return(tcb,
-			reinterpret_cast<uintptr_t>(ramdisk_process_loader));
+	th->add_thunk_kernel(reinterpret_cast<uintptr_t>(ramdisk_process_loader));
 
 	// Arguments for iret - rip will be pushed on before these
 	stack[3] = cs;
 	stack[4] = rflags_int;
-	stack[5] = initial_stack;
+	stack[5] = process::stacks_top;
 	stack[6] = ss;
 
-	tcb->rsp3 = initial_stack;
+	tcb->rsp3 = process::stacks_top;
 
 	m_runlists[default_priority].push_back(tcb);
 
@@ -234,16 +178,13 @@ void
 scheduler::create_kernel_task(void (*task)(), uint8_t priority, bool constant)
 {
 	page_table *pml4 = page_manager::get()->get_kernel_pml4();
-	thread *th = create_process(pml4);
+	thread *th = create_process(pml4, false);
 	auto *tcb = th->tcb();
 
 	uint16_t kcs = (1 << 3) | 0; // Kernel CS is GDT entry 1, ring 0
 	uint16_t kss = (2 << 3) | 0; // Kernel SS is GDT entry 2, ring 0
 
-	// Create an initial kernel stack space
-	setup_kernel_stack(tcb);
-	add_fake_task_return(tcb,
-			reinterpret_cast<uintptr_t>(task));
+	th->add_thunk_kernel(reinterpret_cast<uintptr_t>(task));
 
 	tcb->priority = priority;
 	tcb->pml4 = page_manager::get()->get_kernel_pml4();
@@ -389,32 +330,13 @@ scheduler::schedule()
 
 	if (next != m_current) {
 		m_current = next;
+		bsp_cpu_data.t = thread::from_tcb(m_current);
+		bsp_cpu_data.p = &th->parent();
+		thread *next_thread = thread::from_tcb(m_current);
+
+		log::debug(logs::task, "Scheduler switching threads %llx->%llx, priority %d time left %d @ %lld.",
+				th->koid(), next_thread->koid(), m_current->priority, m_current->time_left, m_clock);
+
 		task_switch(m_current);
-
-		log::debug(logs::task, "Scheduler switched to thread %llx, priority %d time left %d @ %lld.",
-				th->koid(), m_current->priority, m_current->time_left, m_clock);
 	}
 }
-
-/*
-process_node *
-scheduler::get_process_by_id(uint32_t pid)
-{
-	// TODO: this needs to be a hash map
-	for (auto *proc : m_blocked) {
-		if (proc->pid == pid) return proc;
-	}
-
-	for (int i = 0; i < num_priorities; ++i) {
-		for (auto *proc : m_runlists[i]) {
-			if (proc->pid == pid) return proc;
-		}
-	}
-
-	for (auto *proc : m_exited) {
-		if (proc->pid == pid) return proc;
-	}
-
-	return nullptr;
-}
-*/

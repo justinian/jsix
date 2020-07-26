@@ -3,6 +3,8 @@
 #include <stdint.h>
 
 struct TCB;
+class thread;
+class process;
 
 struct cpu_state
 {
@@ -19,6 +21,8 @@ struct cpu_data
 	uintptr_t rsp0;
 	uintptr_t rsp3;
 	TCB *tcb;
+	thread *t;
+	process *p;
 };
 
 extern cpu_data bsp_cpu_data;

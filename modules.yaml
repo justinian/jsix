@@ -50,6 +50,8 @@ modules:
             - src/kernel/syscall.s
             - src/kernel/syscalls/object.cpp
             - src/kernel/syscalls/process.cpp
+            - src/kernel/syscalls/system.cpp
+            - src/kernel/syscalls/thread.cpp
             - src/kernel/task.s
             - src/kernel/crtn.s
 

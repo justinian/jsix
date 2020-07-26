@@ -41,6 +41,9 @@ public:
 	/// \returns   The object type for the koid
 	static type koid_type(j6_koid_t koid);
 
+	/// Get this object's type
+	inline type get_type() const { return koid_type(m_koid); }
+
 	/// Get this object's koid
 	inline j6_koid_t koid() const { return m_koid; }
 

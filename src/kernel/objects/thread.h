@@ -92,6 +92,12 @@ public:
 	/// \arg result  Result code to return to the thread
 	void wake_on_result(kobject *obj, j6_status_t result);
 
+	/// Get the result status code from the last blocking operation
+	j6_status_t get_wait_result() const { return m_wait_result; }
+
+	/// Get the current blocking opreation's wait data
+	uint64_t get_wait_data() const { return m_wait_data; }
+
 	inline bool has_state(state s) const {
 		return static_cast<uint8_t>(m_state) & static_cast<uint8_t>(s);
 	}
@@ -111,6 +117,20 @@ public:
 	/// \arg code   The return code to exit with.
 	void exit(unsigned code);
 
+	/// Add a stack header that returns to the given address in kernel space.
+	/// \arg rip  The address to return to, must be kernel space
+	void add_thunk_kernel(uintptr_t rip);
+
+	/// Add a stack header that returns to the given address in user space.
+	/// \arg rip  The address to return to, must be user space
+	void add_thunk_user(uintptr_t rip);
+
+	/// Create the kernel idle thread
+	/// \arg kernel The process object that owns kernel tasks
+	/// \arg pri    The idle thread priority value
+	/// \arg rsp    The existing stack for the idle thread
+	static thread * create_idle_thread(process &kernel, uint8_t pri, uintptr_t rsp);
+
 private:
 	thread() = delete;
 	thread(const thread &other) = delete;
@@ -118,13 +138,23 @@ private:
 	friend class process;
 
 	/// Constructor.
-	/// \arg p   The process which owns this thread
-	/// \arg pri Initial priority level of this thread
-	thread(process &parent, uint8_t pri);
+	/// \arg parent  The process which owns this thread
+	/// \arg pri     Initial priority level of this thread
+	/// \arg user    True if this is a userspace thread
+	thread(process &parent, uint8_t pri, bool user = true);
 
-	process &m_parent;
+	/// Constructor. Used when a kernel stack already exists.
+	/// \arg parent  The process which owns this thread
+	/// \arg pri     Initial priority level of this thread
+	/// \arg rsp0    The existing kernel stack rsp
+	thread(process &parent, uint8_t pri, uintptr_t rsp0);
+
+	/// Set up a new empty kernel stack for this thread.
+	void setup_kernel_stack();
 
 	tcb_node m_tcb;
+
+	process &m_parent;
 
 	state m_state;
 	wait_type m_wait_type;
@@ -133,5 +163,6 @@ private:
 	uint32_t m_return_code;
 
 	uint64_t m_wait_data;
+	j6_status_t m_wait_result;
 	j6_koid_t m_wait_obj;
 };

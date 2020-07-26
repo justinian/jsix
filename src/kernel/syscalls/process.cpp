@@ -1,27 +1,12 @@
 #include "j6/errors.h"
 #include "j6/types.h"
 
-#include "objects/process.h"
-
 #include "log.h"
+#include "objects/process.h"
+#include "objects/thread.h"
 #include "scheduler.h"
 
 namespace syscalls {
-
-j6_status_t
-process_exit(int64_t status)
-{
-	auto &s = scheduler::get();
-	TCB *tcb = s.current();
-	thread *th = thread::from_tcb(tcb);
-	log::debug(logs::syscall, "Thread %llx exiting with code %d", th->koid(), status);
-
-	th->exit(status);
-	s.schedule();
-
-	log::error(logs::syscall, "returned to exit syscall");
-	return j6_err_unexpected;
-}
 
 j6_status_t
 process_koid(j6_koid_t *koid)
@@ -38,41 +23,19 @@ process_koid(j6_koid_t *koid)
 }
 
 j6_status_t
-process_log(const char *message)
-{
-	if (message == nullptr) {
-		return j6_err_invalid_arg;
-	}
-
-	auto &s = scheduler::get();
-	TCB *tcb = s.current();
-	thread *th = thread::from_tcb(tcb);
-	log::info(logs::syscall, "Message[%llx]: %s", th->koid(), message);
-	return j6_status_ok;
-}
-
-j6_status_t
-process_pause()
+process_exit(int64_t status)
 {
 	auto &s = scheduler::get();
 	TCB *tcb = s.current();
-	thread *th = thread::from_tcb(tcb);
-	th->wait_on_signals(th, -1ull);
+	process &p = thread::from_tcb(tcb)->parent();
+
+	log::debug(logs::syscall, "Process %llx exiting with code %d", p.koid(), status);
+
+	p.exit(status);
 	s.schedule();
-	return j6_status_ok;
-}
 
-j6_status_t
-process_sleep(uint64_t til)
-{
-	auto &s = scheduler::get();
-	TCB *tcb = s.current();
-	thread *th = thread::from_tcb(tcb);
-	log::debug(logs::syscall, "Thread %llx sleeping until %llu", th->koid(), til);
-
-	th->wait_on_time(til);
-	s.schedule();
-	return j6_status_ok;
+	log::error(logs::syscall, "returned to exit syscall");
+	return j6_err_unexpected;
 }
 
 } // namespace syscalls
