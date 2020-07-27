@@ -30,6 +30,10 @@ SYSCALL thread_create, 0x19
 SYSCALL thread_exit, 0x1a
 SYSCALL thread_pause, 0x1b
 SYSCALL thread_sleep, 0x1c
+SYSCALL channel_create, 0x20
+SYSCALL channel_close, 0x21
+SYSCALL channel_send, 0x22
+SYSCALL channel_receive, 0x23
 
 global _start
 _start:

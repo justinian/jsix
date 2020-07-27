@@ -13,6 +13,11 @@
 // Thread signals
 #define j6_signal_thread_exit		(1ull << 16)
 
+// Channel signals
+#define j6_signal_channel_closed	(1ull << 16)
+#define j6_signal_channel_can_send	(1ull << 17)
+#define j6_signal_channel_can_recv	(1ull << 18)
+
 // Signals 48-63 are user-defined signals
 #define j6_signal_user0				(1ull << 48)
 #define j6_signal_user1				(1ull << 49)

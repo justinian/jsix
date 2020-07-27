@@ -37,7 +37,7 @@ modules:
             - src/kernel/main.cpp
             - src/kernel/memory_bootstrap.cpp
             - src/kernel/msr.cpp
-            - src/kernel/objects/handle.cpp
+            - src/kernel/objects/channel.cpp
             - src/kernel/objects/kobject.cpp
             - src/kernel/objects/thread.cpp
             - src/kernel/objects/process.cpp
@@ -48,6 +48,7 @@ modules:
             - src/kernel/serial.cpp
             - src/kernel/syscall.cpp
             - src/kernel/syscall.s
+            - src/kernel/syscalls/channel.cpp
             - src/kernel/syscalls/object.cpp
             - src/kernel/syscalls/process.cpp
             - src/kernel/syscalls/system.cpp

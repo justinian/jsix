@@ -1,0 +1,49 @@
+#pragma once
+/// \file channel.h
+/// Definition of channel objects and related functions
+
+#include "j6/signals.h"
+#include "objects/kobject.h"
+
+/// Channels are bi-directional means of sending messages
+class channel :
+	public kobject
+{
+public:
+	channel();
+	virtual ~channel();
+
+	/// Check if the channel has space for a message to be sent
+	inline bool can_send() const { return check_signal(j6_signal_channel_can_send); }
+
+	/// Check if the channel has a message wiating already
+	inline bool can_receive() const { return check_signal(j6_signal_channel_can_recv); }
+
+	/// Put a message into the channel
+	/// \arg len  Length of data, in bytes
+	/// \arg data Pointer to the message data
+	/// \returns  j6_status_ok on success
+	j6_status_t enqueue(size_t len, void *data);
+
+	/// Get a message from the channel, copied into a provided buffer
+	/// \arg len  On input, the size of the provided buffer. On output,
+	///           the size of the message copied into the buffer.
+	/// \arg data Pointer to the buffer
+	/// \returns  j6_status_ok on success
+	j6_status_t dequeue(size_t *len, void *data);
+
+	/// Mark this channel as closed, all future calls to enqueue or
+	/// dequeue messages will fail with j6_status_closed.
+	inline void close() { assert_signal(j6_signal_channel_closed); }
+
+	/// Check if this channel has been closed
+	inline bool closed() { return check_signal(j6_signal_channel_closed); }
+
+protected:
+	virtual void on_no_handles() override;
+
+private:
+	size_t m_len;
+	size_t m_capacity;
+	void *m_data;
+};

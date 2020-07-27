@@ -19,6 +19,7 @@ public:
 
 		event,
 		eventpair,
+		channel,
 
 		vms,
 		vmo,
@@ -54,6 +55,10 @@ public:
 	/// Clear the given signals on this object
 	/// \arg s  The set of signals to deassert
 	void deassert_signal(j6_signal_t s);
+
+	/// Check if the given signals are set on this object
+	/// \arg s  The set of signals to check
+	inline bool check_signal(j6_signal_t s) const { return (m_signals & s) == s; }
 
 	/// Increment the handle refcount
 	inline void handle_retain() { ++m_handle_count; }
