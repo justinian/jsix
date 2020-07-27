@@ -13,6 +13,7 @@ extern "C" {
 	j6_status_t system_log(const char *msg);
 
 	j6_status_t object_wait(j6_handle_t obj, j6_signal_t sig, j6_signal_t *out);
+	j6_status_t object_signal(j6_handle_t obj, j6_signal_t sig);
 
 	j6_status_t process_koid(j6_koid_t *koid);
 
@@ -34,7 +35,13 @@ thread_proc()
 {
 	system_log("sub thread starting");
 
-	j6_status_t result = channel_send(chan, sizeof(message), (void*)message);
+	j6_status_t result = object_signal(chan, j6_signal_user0);
+	if (result != j6_status_ok)
+		thread_exit(result);
+
+	system_log("sub thread signaled user0");
+
+	result = channel_send(chan, sizeof(message), (void*)message);
 	if (result != j6_status_ok)
 		thread_exit(result);
 
@@ -64,6 +71,14 @@ main(int argc, const char **argv)
 	result = thread_create(&thread_proc, &child);
 	if (result != j6_status_ok)
 		return result;
+
+	system_log("main thread waiting on user0");
+
+	result = object_wait(chan, j6_signal_user0, &out);
+	if (result != j6_status_ok)
+		return result;
+
+	system_log("main thread waiting on can_recv");
 
 	result = object_wait(chan, j6_signal_channel_can_recv, &out);
 	if (result != j6_status_ok)

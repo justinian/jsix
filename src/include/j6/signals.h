@@ -35,3 +35,5 @@
 #define j6_signal_user13			(1ull << 61)
 #define j6_signal_user14			(1ull << 62)
 #define j6_signal_user15			(1ull << 63)
+
+#define j6_signal_user_mask			(0xffffull << 48)

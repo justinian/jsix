@@ -24,6 +24,7 @@ section .text
 
 SYSCALL system_log, 0x00
 SYSCALL object_wait, 0x09
+SYSCALL object_signal, 0x0a
 SYSCALL process_koid, 0x10
 SYSCALL thread_koid, 0x18
 SYSCALL thread_create, 0x19

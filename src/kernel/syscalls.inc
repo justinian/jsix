@@ -2,6 +2,7 @@ SYSCALL(0x00, system_log,       const char *)
 SYSCALL(0x01, system_noop,      void)
 
 SYSCALL(0x09, object_wait,      j6_handle_t, j6_signal_t, j6_signal_t *)
+SYSCALL(0x0a, object_signal,    j6_handle_t, j6_signal_t)
 
 SYSCALL(0x10, process_koid,     j6_koid_t *)
 SYSCALL(0x11, process_exit,     int64_t)

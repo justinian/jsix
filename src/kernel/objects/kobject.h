@@ -60,6 +60,9 @@ public:
 	/// \arg s  The set of signals to check
 	inline bool check_signal(j6_signal_t s) const { return (m_signals & s) == s; }
 
+	/// Get the current object signal state
+	inline j6_signal_t signals() const { return m_signals; }
+
 	/// Increment the handle refcount
 	inline void handle_retain() { ++m_handle_count; }
 
