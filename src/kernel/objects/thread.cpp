@@ -37,6 +37,11 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 	set_state(state::ready);
 }
 
+thread::~thread()
+{
+	kutil::kfree(reinterpret_cast<void*>(m_tcb.kernel_stack));
+}
+
 thread *
 thread::from_tcb(TCB *tcb)
 {

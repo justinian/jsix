@@ -48,6 +48,9 @@ public:
 	/// Get the pointer to the thread object containing this TCB
 	static thread * from_tcb(TCB *tcb);
 
+	/// Destructor
+	virtual ~thread();
+
 	/// Get the `ready` state of the thread.
 	/// \returns True if the thread is ready to execute.
 	inline bool ready() const { return has_state(state::ready); }
