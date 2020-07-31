@@ -74,9 +74,10 @@ heap_allocator::allocate(size_t length)
 {
 	size_t total = length + sizeof(mem_header);
 
-	unsigned order = min_order;
-	while (total > (1 << order)) order++;
+	if (length == 0)
+		return nullptr;
 
+	unsigned order = 64 - __builtin_clz(length);
 	kassert(order <= max_order, "Tried to allocate a block bigger than max_order");
 	if (order > max_order)
 		return nullptr;
