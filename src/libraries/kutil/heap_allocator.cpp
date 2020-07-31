@@ -64,7 +64,7 @@ private:
 heap_allocator::heap_allocator() : m_next(0), m_size(0) {}
 
 heap_allocator::heap_allocator(uintptr_t start, size_t size) :
-	m_next(start), m_size(size)
+	m_next(start), m_size(size), m_allocated_size(0)
 {
 	kutil::memset(m_free, 0, sizeof(m_free));
 }
@@ -82,6 +82,7 @@ heap_allocator::allocate(size_t length)
 
 	mem_header *header = pop_free(size);
 	header->set_used(true);
+	m_allocated_size += (1 << size);
 	return header + 1;
 }
 
@@ -93,6 +94,7 @@ heap_allocator::free(void *p)
 	mem_header *header = reinterpret_cast<mem_header *>(p);
 	header -= 1; // p points after the header
 	header->set_used(false);
+	m_allocated_size -= (1 << header->size());
 
 	while (header->size() != max_size) {
 		auto size = header->size();

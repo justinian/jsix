@@ -55,6 +55,7 @@ protected:
 	uintptr_t m_next;
 	size_t m_size;
 	mem_header *m_free[max_size - min_size + 1];
+	size_t m_allocated_size;
 
 	heap_allocator(const heap_allocator &) = delete;
 };
