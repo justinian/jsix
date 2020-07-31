@@ -29,32 +29,32 @@ public:
 	/// \arg p  A pointer previously retuned by allocate()
 	virtual void free(void *p);
 
-	/// Minimum block size is (2^min_size). Must be at least 6.
-	static const unsigned min_size = 6;
+	/// Minimum block size is (2^min_order). Must be at least 6.
+	static const unsigned min_order = 6;
 
-	/// Maximum block size is (2^max_size). Must be less than 64.
-	static const unsigned max_size = 22;
+	/// Maximum block size is (2^max_order). Must be less than 64.
+	static const unsigned max_order = 22;
 
 protected:
 	class mem_header;
 
-	/// Ensure there is a block of a given size, recursively splitting
-	/// \arg size   Size category of the block we want
-	void ensure_block(unsigned size);
+	/// Ensure there is a block of a given order, recursively splitting
+	/// \arg order   Order (2^N) of the block we want
+	void ensure_block(unsigned order);
 
-	/// Helper accessor for the list of blocks of a given size
-	/// \arg size   Size category of the block we want
+	/// Helper accessor for the list of blocks of a given order
+	/// \arg order  Order (2^N) of the block we want
 	/// \returns    A mutable reference to the head of the list
-	mem_header *& get_free(unsigned size)  { return m_free[size - min_size]; }
+	mem_header *& get_free(unsigned order)  { return m_free[order - min_order]; }
 
-	/// Helper to get a block of the given size, growing if necessary
-	/// \arg size   Size category of the block we want
-	/// \returns    A detached block of the given size
-	mem_header * pop_free(unsigned size);
+	/// Helper to get a block of the given order, growing if necessary
+	/// \arg order  Order (2^N) of the block we want
+	/// \returns    A detached block of the given order
+	mem_header * pop_free(unsigned order);
 
 	uintptr_t m_next;
 	size_t m_size;
-	mem_header *m_free[max_size - min_size + 1];
+	mem_header *m_free[max_order - min_order + 1];
 	size_t m_allocated_size;
 
 	heap_allocator(const heap_allocator &) = delete;
