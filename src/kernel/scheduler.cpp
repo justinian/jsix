@@ -123,7 +123,7 @@ scheduler::create_process(page_table *pml4, bool user)
 	thread *th = p->create_thread(default_priority, user);
 	auto *tcb = th->tcb();
 
-	tcb->time_left = quantum(default_priority) + startup_bonus;
+	tcb->time_left = quantum(default_priority);
 
 	log::debug(logs::task, "Creating thread %llx, priority %d, time slice %d",
 			th->koid(), tcb->priority, tcb->time_left);
