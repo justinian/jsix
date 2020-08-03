@@ -11,6 +11,8 @@ namespace boot {
 namespace paging {
 
 using memory::page_size;
+using ::memory::pml4e_kernel;
+using ::memory::table_entries;
 
 // Flags: 0 0 0 1  0 0 0 0  0 0 1 1 = 0x0103
 //         IGN  |  | | | |  | | | +- Present
@@ -157,6 +159,16 @@ add_offset_mappings(page_table *pml4, void *&page_cache, uint32_t &num_pages)
 	}
 }
 
+static void
+add_kernel_pds(page_table *pml4, void *&page_cache, uint32_t &num_pages)
+{
+	for (unsigned i = pml4e_kernel; i < table_entries; ++i) {
+		pml4->set(i, page_cache, table_flags);
+		page_cache = offset_ptr<void>(page_cache, page_size);
+		num_pages--;
+	}
+}
+
 void
 add_current_mappings(page_table *new_pml4)
 {
@@ -177,8 +189,13 @@ allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 {
 	status_line status(L"Allocating initial page tables");
 
-	static constexpr size_t offset_map_tables = 128 + 1;
-	static constexpr size_t tables_needed = offset_map_tables + 49;
+	static constexpr size_t pd_tables = 256;   // number of pages for kernelspace PDs
+	static constexpr size_t extra_tables = 49; // number of extra pages
+
+	// number of pages for kernelspace PDs + PML4
+	static constexpr size_t kernel_tables = pd_tables + 1;
+
+	static constexpr size_t tables_needed = kernel_tables + extra_tables;
 
 	void *addr = nullptr;
 	try_or_raise(
@@ -201,6 +218,7 @@ allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 	args->page_table_cache = offset_ptr<void>(addr, page_size);
 
 	page_table *pml4 = reinterpret_cast<page_table*>(addr);
+	add_kernel_pds(pml4, args->page_table_cache, args->num_free_tables);
 	add_offset_mappings(pml4, args->page_table_cache, args->num_free_tables);
 
 	console::print(L"    Set up initial mappings, %d spare tables.\r\n", args->num_free_tables);
