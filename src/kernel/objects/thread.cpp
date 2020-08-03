@@ -3,6 +3,7 @@
 #include "objects/thread.h"
 #include "objects/process.h"
 #include "scheduler.h"
+#include "stack_cache.h"
 
 extern "C" void kernel_to_user_trampoline();
 static constexpr j6_signal_t thread_default_signals = 0;
@@ -15,9 +16,8 @@ thread::thread(process &parent, uint8_t pri, bool user) :
 	m_wait_data(0),
 	m_wait_obj(0)
 {
-	TCB *tcbp = tcb();
-	tcbp->pml4 = parent.pml4();
-	tcbp->priority = pri;
+	m_tcb.pml4 = parent.pml4();
+	m_tcb.priority = pri;
 	setup_kernel_stack();
 	set_state(state::ready);
 }
@@ -30,16 +30,15 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 	m_wait_data(0),
 	m_wait_obj(0)
 {
-	TCB *tcbp = tcb();
-	tcbp->pml4 = parent.pml4();
-	tcbp->priority = pri;
-	tcbp->rsp0 = rsp0;
+	m_tcb.pml4 = parent.pml4();
+	m_tcb.priority = pri;
+	m_tcb.rsp0 = rsp0;
 	set_state(state::ready);
 }
 
 thread::~thread()
 {
-	kutil::kfree(reinterpret_cast<void*>(m_tcb.kernel_stack));
+	stack_cache::get().return_stack(m_tcb.kernel_stack);
 }
 
 thread *
@@ -153,27 +152,25 @@ thread::add_thunk_user(uintptr_t rip)
 void
 thread::setup_kernel_stack()
 {
-	constexpr size_t initial_stack_size = 0x1000;
+	using memory::frame_size;
+	using memory::kernel_stack_pages;
+	static constexpr size_t stack_bytes = kernel_stack_pages * frame_size;
+
 	constexpr unsigned null_frame_entries = 2;
 	constexpr size_t null_frame_size = null_frame_entries * sizeof(uint64_t);
 
-	void *stack_bottom = kutil::kalloc(initial_stack_size);
-	kutil::memset(stack_bottom, 0, initial_stack_size);
+	uintptr_t stack_addr = stack_cache::get().get_stack();
+	uintptr_t stack_end = stack_addr + stack_bytes;
 
-	log::debug(logs::memory, "Created kernel stack at %016lx size 0x%lx",
-			stack_bottom, initial_stack_size);
-
-	void *stack_top =
-		kutil::offset_pointer(stack_bottom,
-				initial_stack_size - null_frame_size);
-
-	uint64_t *null_frame = reinterpret_cast<uint64_t*>(stack_top);
+	uint64_t *null_frame = reinterpret_cast<uint64_t*>(stack_end - null_frame_size);
 	for (unsigned i = 0; i < null_frame_entries; ++i)
 		null_frame[i] = 0;
 
-	m_tcb.kernel_stack_size = initial_stack_size;
-	m_tcb.kernel_stack = reinterpret_cast<uintptr_t>(stack_bottom);
-	m_tcb.rsp0 = reinterpret_cast<uintptr_t>(stack_top);
+	log::debug(logs::memory, "Created kernel stack at %016lx size 0x%lx",
+			stack_addr, stack_bytes);
+
+	m_tcb.kernel_stack = stack_addr;
+	m_tcb.rsp0 = reinterpret_cast<uintptr_t>(null_frame);
 	m_tcb.rsp = m_tcb.rsp0;
 }
 

@@ -24,7 +24,8 @@ using memory::table_entries;
 
 using namespace kernel;
 
-kutil::vm_space g_kernel_space;
+kutil::vm_space g_kernel_space {kernel_offset, (page_offset-kernel_offset)};
+
 
 // These objects are initialized _before_ global constructors are called,
 // so we don't want them to have global constructors at all, lest they
@@ -61,7 +62,8 @@ void walk_page_table(
 	for (unsigned i = 0; i < table_entries; ++i) {
 		page_table *next = table->get(i);
 		if (!next) {
-			kspace.commit(current_start, current_bytes);
+			if (current_bytes)
+				kspace.commit(current_start, current_bytes);
 			current_start = 0;
 			current_bytes = 0;
 			continue;
@@ -109,10 +111,6 @@ memory_initialize_pre_ctors(args::header *kargs)
 void
 memory_initialize_post_ctors(args::header *kargs)
 {
-	new (&g_kernel_space) kutil::vm_space {
-		kernel_offset,
-		(page_offset-kernel_offset)};
-
 	uintptr_t current_start = 0;
 	size_t current_bytes = 0;
 
@@ -122,7 +120,8 @@ memory_initialize_post_ctors(args::header *kargs)
 		page_table *pdp = kpml4->get(i);
 
 		if (!pdp) {
-			g_kernel_space.commit(current_start, current_bytes);
+			if (current_bytes)
+				g_kernel_space.commit(current_start, current_bytes);
 			current_start = 0;
 			current_bytes = 0;
 			continue;

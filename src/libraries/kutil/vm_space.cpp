@@ -184,7 +184,23 @@ vm_space::unreserve(uintptr_t start, size_t size)
 uintptr_t
 vm_space::commit(uintptr_t start, size_t size)
 {
-	return 0;
+	log::debug(logs::vmem, "Committing region %016llx-%016llx", start, start+size);
+
+	node_type *node = find_overlapping(m_ranges.root(), start, size);
+	if (!node) {
+		log::debug(logs::vmem, "  found no match");
+		return 0;
+	} else if (node->state == vm_state::unknown || node->state == vm_state::mapped) {
+		log::debug(logs::vmem, "  found wrong state %016llx-%016llx[%d]",
+			node->address, node->address + node->size, node->state);
+		return 0;
+	}
+
+	if (node->address <= start && node->size >= size && node->state == vm_state::committed)
+		return start;
+
+	node = split_out(node, start, size, vm_state::committed);
+	return node ? start : 0;
 }
 
 void

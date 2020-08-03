@@ -325,6 +325,10 @@ page_manager::fault_handler(uintptr_t addr)
 	bool user = addr < kernel_offset;
 	map_pages(page, 1, user);
 
+	// Kernel stacks: zero them upon mapping them
+	if (addr >= memory::stacks_start && addr < memory::heap_start)
+		kutil::memset(reinterpret_cast<void*>(page), 0, memory::frame_size);
+
 	return true;
 }
 

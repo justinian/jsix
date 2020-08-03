@@ -23,7 +23,6 @@ struct TCB
 	// TODO: move state into TCB?
 
 	uintptr_t kernel_stack;
-	size_t kernel_stack_size;
 
 	uint32_t time_left;
 	uint64_t last_ran;
