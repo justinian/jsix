@@ -47,6 +47,7 @@ scheduler::scheduler(lapic *apic) :
 		reinterpret_cast<uintptr_t>(&idle_stack_end));
 
 	log::debug(logs::task, "Idle thread koid %llx", idle->koid());
+	log::debug(logs::task, "Kernel PML4 %llx", pml4);
 
 	auto *tcb = idle->tcb();
 	m_runlists[max_priority].push_back(tcb);
@@ -181,20 +182,16 @@ void
 scheduler::create_kernel_task(void (*task)(), uint8_t priority, bool constant)
 {
 	page_table *pml4 = page_manager::get()->get_kernel_pml4();
-	thread *th = create_process(pml4, false);
+	thread *th = m_kernel_process->create_thread(priority, false);
 	auto *tcb = th->tcb();
-
-	uint16_t kcs = (1 << 3) | 0; // Kernel CS is GDT entry 1, ring 0
-	uint16_t kss = (2 << 3) | 0; // Kernel SS is GDT entry 2, ring 0
 
 	th->add_thunk_kernel(reinterpret_cast<uintptr_t>(task));
 
-	tcb->priority = priority;
-	tcb->pml4 = page_manager::get()->get_kernel_pml4();
+	tcb->time_left = quantum(priority);
 	if (constant)
 		th->set_state(thread::state::constant);
 
-	m_runlists[default_priority].push_back(tcb);
+	m_runlists[priority].push_back(tcb);
 
 	log::debug(logs::task, "Creating kernel task: thread %llx  pri %d", th->koid(), tcb->priority);
 	log::debug(logs::task, "    RSP0 %016lx", tcb->rsp0);
@@ -337,8 +334,11 @@ scheduler::schedule()
 		bsp_cpu_data.p = &th->parent();
 		thread *next_thread = thread::from_tcb(m_current);
 
-		log::debug(logs::task, "Scheduler switching threads %llx->%llx, priority %d time left %d @ %lld.",
-				th->koid(), next_thread->koid(), m_current->priority, m_current->time_left, m_clock);
+		log::debug(logs::task, "Scheduler switching threads %llx->%llx",
+				th->koid(), next_thread->koid());
+		log::debug(logs::task, "    priority %d time left %d @ %lld.",
+				m_current->priority, m_current->time_left, m_clock);
+		log::debug(logs::task, "    PML4 %llx", m_current->pml4);
 
 		task_switch(m_current);
 	}
