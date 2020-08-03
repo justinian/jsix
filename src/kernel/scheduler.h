@@ -73,7 +73,7 @@ public:
 
 	/// Get a reference to the system scheduler
 	/// \returns  A reference to the global system scheduler
-	static scheduler & get() { return s_instance; }
+	static scheduler & get() { return *s_instance; }
 
 private:
 	friend uintptr_t syscall_dispatch(uintptr_t, cpu_state &);
@@ -105,6 +105,6 @@ private:
 	uint64_t m_clock = 0;
 	uint64_t m_last_promotion;
 
-	static scheduler s_instance;
+	static scheduler *s_instance;
 };
 

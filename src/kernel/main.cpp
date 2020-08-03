@@ -174,7 +174,7 @@ kernel_main(args::header *header)
 	devices.init_drivers();
 
 	syscall_enable();
-	scheduler *sched = new (&scheduler::get()) scheduler(devices.get_lapic());
+	scheduler *sched = new scheduler(devices.get_lapic());
 
 	sched->create_kernel_task(logger_task, scheduler::max_priority-1, true);
 

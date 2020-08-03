@@ -16,7 +16,7 @@
 #include "elf/elf.h"
 #include "kutil/assert.h"
 
-scheduler scheduler::s_instance(nullptr);
+scheduler *scheduler::s_instance = nullptr;
 
 const uint64_t rflags_noint = 0x002;
 const uint64_t rflags_int = 0x202;
@@ -34,6 +34,9 @@ scheduler::scheduler(lapic *apic) :
 	m_clock(0),
 	m_last_promotion(0)
 {
+	kassert(!s_instance, "Multiple schedulers created!");
+	s_instance = this;
+
 	page_table *pml4 = page_manager::get_pml4();
 	process *kp = new process(pml4);
 	m_kernel_process = kp;
