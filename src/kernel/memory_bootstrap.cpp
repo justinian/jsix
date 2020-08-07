@@ -118,20 +118,16 @@ memory_initialize_post_ctors(args::header *kargs)
 	page_table *kpml4 = reinterpret_cast<page_table*>(kargs->pml4);
 	for (unsigned i = pml4e_kernel; i < pml4e_offset; ++i) {
 		page_table *pdp = kpml4->get(i);
-
-		if (!pdp) {
-			if (current_bytes)
-				g_kernel_space.commit(current_start, current_bytes);
-			current_start = 0;
-			current_bytes = 0;
-			continue;
-		}
+		kassert(pdp, "Bootloader did not create all kernelspace PDs");
 
 		walk_page_table(
 			pdp, page_table::level::pdp,
 			current_start, current_bytes,
 			g_kernel_space);
 	}
+
+	if (current_bytes)
+		g_kernel_space.commit(current_start, current_bytes);
 
 	g_frame_allocator.free(
 		reinterpret_cast<uintptr_t>(kargs->page_table_cache),
