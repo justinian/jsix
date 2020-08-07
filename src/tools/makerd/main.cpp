@@ -11,7 +11,7 @@
 
 int main(int argc, char **argv)
 {
-	if (argc < 3 && argc > 4) {
+	if (argc < 3 || argc > 4) {
 		std::cerr << "Usage: " << argv[0] << " <manifest> <output> [sourceroot]" << std::endl;
 		return 1;
 	}
