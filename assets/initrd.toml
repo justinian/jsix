@@ -13,6 +13,10 @@ dest = "screenfont.psf"
 source = "../assets/fonts/tamsyn8x16r.psf"
 
 [[files]]
+dest = "symbol_table.dat"
+source = "symbol_table.dat"
+
+[[files]]
 dest = "nulldrv1"
 source = "user/nulldrv"
 executable = true

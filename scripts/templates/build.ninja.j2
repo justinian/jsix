@@ -122,6 +122,10 @@ rule makerd
     description = Making init ramdisk
     command = $builddir/native/makerd $in $out
 
+rule makest
+    description = Making symbol table
+    command = nm $in | ${srcroot}/scripts/build_symbol_table.py $out
+
 rule makeefi
     description = Converting $name
     command = objcopy $
@@ -186,9 +190,13 @@ build $builddir/fatroot/jsix.elf : cp $builddir/jsix.elf
 build $builddir/fatroot/efi/boot/bootx64.efi : cp $builddir/boot/boot.efi
     name = bootloader to FAT image
 
+build ${builddir}/symbol_table.dat : makest ${builddir}/jsix.elf | $
+    ${builddir}/native/makest
+
 build $builddir/fatroot/initrd.img : makerd ${srcroot}/assets/initrd.toml | $
     ${builddir}/native/makerd $
-    ${builddir}/user/nulldrv
+    ${builddir}/user/nulldrv $
+    ${builddir}/symbol_table.dat
 
 build $builddir/jsix.img : makefat | $
     $builddir/fatroot/initrd.img $
