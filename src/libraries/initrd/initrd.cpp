@@ -22,6 +22,11 @@ file::executable() const {
 	return bitfield_has(m_header->flags, file_flags::executable);
 }
 
+bool
+file::symbols() const {
+	return bitfield_has(m_header->flags, file_flags::symbols);
+}
+
 
 disk::disk(const void *start)
 {

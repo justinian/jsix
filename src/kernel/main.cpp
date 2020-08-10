@@ -22,6 +22,7 @@
 #include "page_manager.h"
 #include "scheduler.h"
 #include "serial.h"
+#include "symbol_table.h"
 #include "syscall.h"
 
 extern "C" {
@@ -121,8 +122,11 @@ kernel_main(args::header *header)
 
 		initrd::disk &ird = initrds.emplace(mod.location);
 		log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());
-		for (auto &f : ird.files())
-			log::info(logs::boot, "  %s%s (%d bytes).", f.executable() ? "*" : "", f.name(), f.size());
+		for (auto &f : ird.files()) {
+			char type = f.executable() ? '*' :
+				f.symbols() ? '+' : ' ';
+			log::info(logs::boot, "  %c%s (%d bytes).", type, f.name(), f.size());
+		}
 	}
 
 	/*
@@ -180,14 +184,16 @@ kernel_main(args::header *header)
 
 	for (auto &ird : initrds) {
 		for (auto &f : ird.files()) {
-			if (f.executable())
+			if (f.executable()) {
 				sched->load_process(f.name(), f.data(), f.size());
+			} else if (f.symbols()) {
+				new symbol_table {f.data(), f.size()};
+			}
 		}
 	}
 
-	log::info(logs::objs, "Testing object system:");
-
 	/*
+	log::info(logs::objs, "Testing object system:");
 	test_observer obs1("event");
 	test_observer obs2("no handles");
 	{

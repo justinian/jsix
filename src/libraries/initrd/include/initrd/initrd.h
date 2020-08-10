@@ -36,6 +36,9 @@ public:
 	/// Whether this file is an executable
 	bool executable() const;
 
+	/// Whether this file is a symbol table
+	bool symbols() const;
+
 private:
 	const file_header *m_header;
 	void const *m_data;

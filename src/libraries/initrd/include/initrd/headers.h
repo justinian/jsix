@@ -21,7 +21,8 @@ struct disk_header
 
 enum class file_flags : uint16_t
 {
-	executable = 0x01
+	executable = 0x01,
+	symbols    = 0x02
 };
 
 struct file_header

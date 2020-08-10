@@ -47,6 +47,7 @@ modules:
             - src/kernel/screen.cpp
             - src/kernel/serial.cpp
             - src/kernel/stack_cache.cpp
+            - src/kernel/symbol_table.cpp
             - src/kernel/syscall.cpp
             - src/kernel/syscall.s
             - src/kernel/syscalls/channel.cpp

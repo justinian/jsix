@@ -44,8 +44,9 @@ int main(int argc, char **argv)
 		}
 
 		auto exec = file->get_as<bool>("executable").value_or(false);
+		auto syms = file->get_as<bool>("symbols").value_or(false);
 
-		entries.emplace_back(*source, *dest, exec);
+		entries.emplace_back(*source, *dest, exec, syms);
 		const entry &e = entries.back();
 
 		if (!e.good()) {
@@ -95,6 +96,9 @@ int main(int argc, char **argv)
 
 		if (e.executable())
 			fheader.flags |= initrd::file_flags::executable;
+
+		if (e.symbols())
+			fheader.flags |= initrd::file_flags::symbols;
 
 		out.write(
 			reinterpret_cast<const char *>(&fheader),

@@ -5,6 +5,7 @@
 #include "objects/process.h"
 #include "objects/thread.h"
 #include "page_manager.h"
+#include "symbol_table.h"
 
 size_t __counter_syscall_enter = 0;
 size_t __counter_syscall_sysret = 0;
@@ -59,14 +60,26 @@ void
 print_stacktrace(int skip)
 {
 	console *cons = console::get();
+	symbol_table *syms = symbol_table::get();
 
 	frame *fp = nullptr;
 	int fi = -skip;
 	__asm__ __volatile__ ( "mov %%rbp, %0" : "=r" (fp) );
 
 	while (fp && fp->return_addr) {
-		if (fi++ >= 0)
-			cons->printf("  frame %2d: %lx\n", fi-1, fp->return_addr);
+		if (fi++ >= 0) {
+			const symbol_table::entry *e = syms ? syms->find_symbol(fp->return_addr) : nullptr;
+			const char *name = e ? e->name : "";
+			cons->printf("  frame %2d:", fi-1);
+
+			cons->set_color(5);
+			cons->printf(" %016llx", fp->return_addr);
+			cons->set_color();
+
+			cons->set_color(6);
+			cons->printf("  %s\n", name);
+			cons->set_color();
+		}
 		fp = fp->prev;
 	}
 }

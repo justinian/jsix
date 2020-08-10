@@ -15,6 +15,7 @@ source = "../assets/fonts/tamsyn8x16r.psf"
 [[files]]
 dest = "symbol_table.dat"
 source = "symbol_table.dat"
+symbols = true
 
 [[files]]
 dest = "nulldrv1"
