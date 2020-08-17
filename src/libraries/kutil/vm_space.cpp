@@ -27,6 +27,13 @@ vm_space::vm_space()
 }
 
 inline static bool
+contains(node_type *node, uintptr_t start, size_t size)
+{
+	return start >= node->address &&
+		size <= node->size;
+}
+
+inline static bool
 overlaps(node_type *node, uintptr_t start, size_t size)
 {
 	return start < node->end() &&
@@ -52,12 +59,8 @@ node_type *
 vm_space::split_out(node_type *node, uintptr_t start, size_t size, vm_state state)
 {
 	// No cross-boundary splits allowed for now
-	bool contained =
-		start >= node->address &&
-		start+size <= node->end();
-
-	kassert(contained,
-		"Tried to split an address range across existing boundaries");
+	const bool contained = contains(node, start, size);
+	kassert(contained, "Tried to split an address range across existing boundaries");
 	if (!contained)
 		return nullptr;
 
@@ -76,7 +79,6 @@ vm_space::split_out(node_type *node, uintptr_t start, size_t size, vm_state stat
 		size_t leading = start - node->address;
 
 		node_type *next = new node_type;
-		next->state = state;
 		next->address = start;
 		next->size = node->size - leading;
 
@@ -116,6 +118,27 @@ vm_space::split_out(node_type *node, uintptr_t start, size_t size, vm_state stat
 		node = consolidate(node);
 
 	return node;
+}
+
+node_type *
+vm_space::find_empty(node_type *node, size_t size, vm_state state)
+{
+	if (node->state == vm_state::none && node->size >= size)
+		return split_out(node, node->address, size, state);
+
+	if (node->left()) {
+		node_type *found = find_empty(node->left(), size, state);
+		if (found)
+			return found;
+	}
+
+	if (node->right()) {
+		node_type *found = find_empty(node->right(), size, state);
+		if (found)
+			return found;
+	}
+
+	return nullptr;
 }
 
 inline void gather(node_type *node, node_vec &vec)
@@ -160,15 +183,24 @@ vm_space::consolidate(node_type *needle)
 uintptr_t
 vm_space::reserve(uintptr_t start, size_t size)
 {
-	log::debug(logs::vmem, "Reserving region %016llx-%016llx", start, start+size);
 
+	if (start == 0) {
+		log::debug(logs::vmem, "Reserving any region of size %llx", size);
+		node_type *node = find_empty(m_ranges.root(), size, vm_state::reserved);
+		if (!node) {
+			log::debug(logs::vmem, "  found no large enough region");
+			return 0;
+		}
+
+		return node->address;
+	}
+
+	log::debug(logs::vmem, "Reserving region %016llx-%016llx",
+		start, start+size);
 	node_type *node = find_overlapping(m_ranges.root(), start, size);
+
 	if (!node) {
 		log::debug(logs::vmem, "  found no match");
-		return 0;
-	} else if (node->state != vm_state::none) {
-		log::debug(logs::vmem, "  found wrong state %016llx-%016llx[%d]",
-			node->address, node->address + node->size, node->state);
 		return 0;
 	}
 
@@ -179,35 +211,43 @@ vm_space::reserve(uintptr_t start, size_t size)
 void
 vm_space::unreserve(uintptr_t start, size_t size)
 {
+	log::debug(logs::vmem, "Unreserving region %016llx-%016llx", start, start+size);
+	node_type *node = find_overlapping(m_ranges.root(), start, size);
+
+	if (!node || !contains(node, start, size)) {
+		log::debug(logs::vmem, "  found no match");
+		return;
+	}
+
+	split_out(node, start, size, vm_state::none);
 }
 
 uintptr_t
 vm_space::commit(uintptr_t start, size_t size)
 {
-	log::debug(logs::vmem, "Committing region %016llx-%016llx", start, start+size);
+	if (start == 0) {
+		log::debug(logs::vmem, "Committing any region of size %llx", size);
+		node_type *node = find_empty(m_ranges.root(), size, vm_state::reserved);
+		if (!node) {
+			log::debug(logs::vmem, "  found no large enough region");
+			return 0;
+		}
+
+		return node->address;
+	}
+
+	log::debug(logs::vmem, "Committing region %016llx-%016llx",
+		start, start+size);
 
 	node_type *node = find_overlapping(m_ranges.root(), start, size);
 	if (!node) {
 		log::debug(logs::vmem, "  found no match");
 		return 0;
-	} else if (node->state == vm_state::unknown || node->state == vm_state::mapped) {
-		log::debug(logs::vmem, "  found wrong state %016llx-%016llx[%d]",
-			node->address, node->address + node->size, node->state);
-		return 0;
 	}
-
-	if (node->address <= start && node->size >= size && node->state == vm_state::committed)
-		return start;
 
 	node = split_out(node, start, size, vm_state::committed);
 	return node ? start : 0;
 }
-
-void
-vm_space::uncommit(uintptr_t start, size_t size)
-{
-}
-
 
 vm_state
 vm_space::get(uintptr_t addr)

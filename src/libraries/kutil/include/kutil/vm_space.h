@@ -51,15 +51,10 @@ public:
 	void unreserve(uintptr_t start, size_t size);
 
 	/// Mark a section of address space as committed.
-	/// \arg start  Starting address of reservaion
+	/// \arg start  Starting address of reservaion, or 0 for any address
 	/// \arg size   Size of reservation in bytes
 	/// \returns  The address of the reservation, or 0 on failure
 	uintptr_t commit(uintptr_t start, size_t size);
-
-	/// Mark a section of address space as uncommitted, but still reserved.
-	/// \arg start  Starting address of reservaion
-	/// \arg size   Size of reservation in bytes
-	void uncommit(uintptr_t start, size_t size);
 
 	/// Check the state of the given address.
 	/// \arg addr  The address to check
@@ -72,6 +67,7 @@ private:
 
 	node_type * split_out(node_type* node, uintptr_t start, size_t size, vm_state state);
 	node_type * consolidate(node_type* needle);
+	node_type * find_empty(node_type* node, size_t size, vm_state state);
 
 	tree_type m_ranges;
 };
