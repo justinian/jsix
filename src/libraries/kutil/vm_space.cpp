@@ -81,6 +81,7 @@ vm_space::split_out(node_type *node, uintptr_t start, size_t size, vm_state stat
 		node_type *next = new node_type;
 		next->address = start;
 		next->size = node->size - leading;
+		next->state = state;
 
 		node->size = leading;
 		node->state = old_state;
@@ -97,7 +98,7 @@ vm_space::split_out(node_type *node, uintptr_t start, size_t size, vm_state stat
 
 	if (node->end() > start + size) {
 		// Split off remaining into new node
-		size_t trailing =  node->size - size;
+		size_t trailing = node->size - size;
 		node->size -= trailing;
 
 		node_type *next = new node_type;
@@ -227,7 +228,7 @@ vm_space::commit(uintptr_t start, size_t size)
 {
 	if (start == 0) {
 		log::debug(logs::vmem, "Committing any region of size %llx", size);
-		node_type *node = find_empty(m_ranges.root(), size, vm_state::reserved);
+		node_type *node = find_empty(m_ranges.root(), size, vm_state::committed);
 		if (!node) {
 			log::debug(logs::vmem, "  found no large enough region");
 			return 0;

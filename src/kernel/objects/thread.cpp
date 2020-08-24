@@ -8,20 +8,6 @@
 extern "C" void kernel_to_user_trampoline();
 static constexpr j6_signal_t thread_default_signals = 0;
 
-thread::thread(process &parent, uint8_t pri, bool user) :
-	kobject(kobject::type::thread, thread_default_signals),
-	m_parent(parent),
-	m_state(state::loading),
-	m_wait_type(wait_type::none),
-	m_wait_data(0),
-	m_wait_obj(0)
-{
-	m_tcb.pml4 = parent.pml4();
-	m_tcb.priority = pri;
-	setup_kernel_stack();
-	set_state(state::ready);
-}
-
 thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 	kobject(kobject::type::thread, thread_default_signals),
 	m_parent(parent),
@@ -32,7 +18,12 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 {
 	m_tcb.pml4 = parent.pml4();
 	m_tcb.priority = pri;
-	m_tcb.rsp0 = rsp0;
+
+	if (!rsp0)
+		setup_kernel_stack();
+	else
+		m_tcb.rsp0 = rsp0;
+
 	set_state(state::ready);
 }
 

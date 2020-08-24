@@ -139,17 +139,11 @@ private:
 	thread(const thread &&other) = delete;
 	friend class process;
 
-	/// Constructor.
-	/// \arg parent  The process which owns this thread
-	/// \arg pri     Initial priority level of this thread
-	/// \arg user    True if this is a userspace thread
-	thread(process &parent, uint8_t pri, bool user = true);
-
 	/// Constructor. Used when a kernel stack already exists.
 	/// \arg parent  The process which owns this thread
 	/// \arg pri     Initial priority level of this thread
-	/// \arg rsp0    The existing kernel stack rsp
-	thread(process &parent, uint8_t pri, uintptr_t rsp0);
+	/// \arg rsp0    The existing kernel stack rsp, 0 for none
+	thread(process &parent, uint8_t pri, uintptr_t rsp0 = 0);
 
 	/// Set up a new empty kernel stack for this thread.
 	void setup_kernel_stack();
