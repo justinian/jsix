@@ -180,8 +180,6 @@ kernel_main(args::header *header)
 	syscall_enable();
 	scheduler *sched = new scheduler(devices.get_lapic());
 
-	sched->create_kernel_task(logger_task, scheduler::max_priority-1, true);
-
 	for (auto &ird : initrds) {
 		for (auto &f : ird.files()) {
 			if (f.executable()) {
@@ -208,5 +206,6 @@ kernel_main(args::header *header)
 	}
 	*/
 
+	sched->create_kernel_task(logger_task, scheduler::max_priority-1, true);
 	sched->start();
 }
