@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 #include "apic.h"
 #include "clock.h"
 #include "console.h"

@@ -23,6 +23,7 @@ ccflags = $ccflags $
     -D__ELF__ $
     -D__JSIX__ $
     -isystem${srcroot}/sysroot/include $
+    -isystem${srcroot}/src/libraries/libc/include $
     --sysroot="${srcroot}/sysroot"
 
 cxxflags = $cxxflags $
@@ -37,9 +38,6 @@ ldflags = $ldflags $
     -Bstatic $
     --sysroot="${srcroot}/sysroot" $
 	-L "${srcroot}/sysroot/lib" $
-
-libs = $libs $
-	-lc
 
 {% endblock %}
 

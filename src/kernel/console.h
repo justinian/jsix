@@ -1,5 +1,4 @@
 #pragma once
-#include <algorithm>
 #include <stdarg.h>
 #include <stdint.h>
 
@@ -61,7 +60,7 @@ void console::put_hex(T x, int width, char pad)
 	int len = 1;
 	for (int i = chars - 1; i >= 0; --i) {
 		uint8_t nibble = (x >> (i*4)) & 0xf;
-		if (nibble) len = std::max(i + 1, len);
+		if (nibble) len = len > i + 1 ? len : i + 1;
 		message[chars - i - 1] = digits[nibble];
 	}
 	message[chars] = 0;

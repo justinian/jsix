@@ -1,5 +1,3 @@
-#include <algorithm>
-
 #include "kutil/assert.h"
 #include "kutil/vm_space.h"
 #include "console.h"

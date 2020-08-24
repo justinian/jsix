@@ -77,6 +77,8 @@ modules:
         kind: exe
         target: user
         output: nulldrv
+        deps:
+          - libc
         source:
             - src/drivers/nulldrv/main.cpp
             - src/drivers/nulldrv/main.s
@@ -114,6 +116,182 @@ modules:
             - src/libraries/kutil/memory.cpp
             - src/libraries/kutil/printf.c
             - src/libraries/kutil/vm_space.cpp
+
+
+    libc:
+        kind: lib
+        output: libc.a
+        includes:
+          - src/libraries/libc/include
+        target: user
+        defines:
+            - DISABLE_SSE
+            - LACKS_UNISTD_H
+            - LACKS_FCNTL_H
+            - LACKS_SYS_PARAM_H
+            - LACKS_SYS_MMAN_H
+            - LACKS_SCHED_H
+            - LACKS_STRINGS_H
+            - HAVE_MMAP=0
+              #- LACKS_STRING_H
+              #- LACKS_ERRNO_H
+              #- LACKS_STDLIB_H
+              #- LACKS_TIME_H
+        source:
+            - src/libraries/libc/arch/x86_64/_Exit.s
+            - src/libraries/libc/ctype/isalnum.c
+            - src/libraries/libc/ctype/isalpha.c
+            - src/libraries/libc/ctype/isblank.c
+            - src/libraries/libc/ctype/iscntrl.c
+            - src/libraries/libc/ctype/isdigit.c
+            - src/libraries/libc/ctype/isgraph.c
+            - src/libraries/libc/ctype/islower.c
+            - src/libraries/libc/ctype/isprint.c
+            - src/libraries/libc/ctype/ispunct.c
+            - src/libraries/libc/ctype/isspace.c
+            - src/libraries/libc/ctype/isupper.c
+            - src/libraries/libc/ctype/isxdigit.c
+            - src/libraries/libc/ctype/tolower.c
+            - src/libraries/libc/ctype/toupper.c
+            - src/libraries/libc/inttypes/imaxabs.c
+            - src/libraries/libc/inttypes/imaxdiv.c
+            - src/libraries/libc/inttypes/strtoimax.c
+            - src/libraries/libc/inttypes/strtoumax.c
+            - src/libraries/libc/locale/localeconv.c
+            - src/libraries/libc/locale/setlocale.c
+            - src/libraries/libc/j6libc/assert.c
+            - src/libraries/libc/j6libc/errno.c
+            - src/libraries/libc/j6libc/allocpages.c
+            - src/libraries/libc/j6libc/atomax.c
+            - src/libraries/libc/j6libc/closeall.c
+            - src/libraries/libc/j6libc/close.c
+            - src/libraries/libc/j6libc/digits.c
+            - src/libraries/libc/j6libc/filemode.c
+            - src/libraries/libc/j6libc/fillbuffer.c
+            - src/libraries/libc/j6libc/flushbuffer.c
+            - src/libraries/libc/j6libc/is_leap.c
+            - src/libraries/libc/j6libc/load_lc_collate.c
+            - src/libraries/libc/j6libc/load_lc_ctype.c
+            - src/libraries/libc/j6libc/load_lc_messages.c
+            - src/libraries/libc/j6libc/load_lc_monetary.c
+            - src/libraries/libc/j6libc/load_lc_numeric.c
+            - src/libraries/libc/j6libc/load_lc_time.c
+            - src/libraries/libc/j6libc/load_lines.c
+            - src/libraries/libc/j6libc/open.c
+            - src/libraries/libc/j6libc/prepread.c
+            - src/libraries/libc/j6libc/prepwrite.c
+            - src/libraries/libc/j6libc/print.c
+            - src/libraries/libc/j6libc/rename.c
+            - src/libraries/libc/j6libc/scan.c
+            - src/libraries/libc/j6libc/seed.c
+            - src/libraries/libc/j6libc/seek.c
+            - src/libraries/libc/j6libc/stdinit.c
+            - src/libraries/libc/j6libc/strtox_main.c
+            - src/libraries/libc/j6libc/strtox_prelim.c
+            - src/libraries/libc/j6libc/sbrk.c
+            - src/libraries/libc/signal/raise.c
+            - src/libraries/libc/signal/signal.c
+            - src/libraries/libc/stdio/clearerr.c
+            - src/libraries/libc/stdio/fclose.c
+            - src/libraries/libc/stdio/feof.c
+            - src/libraries/libc/stdio/ferror.c
+            - src/libraries/libc/stdio/fflush.c
+            - src/libraries/libc/stdio/fgetc.c
+            - src/libraries/libc/stdio/fgetpos.c
+            - src/libraries/libc/stdio/fgets.c
+            - src/libraries/libc/stdio/fopen.c
+            - src/libraries/libc/stdio/fprintf.c
+            - src/libraries/libc/stdio/fputc.c
+            - src/libraries/libc/stdio/fputs.c
+            - src/libraries/libc/stdio/fread.c
+            - src/libraries/libc/stdio/freopen.c
+            - src/libraries/libc/stdio/fscanf.c
+            - src/libraries/libc/stdio/fseek.c
+            - src/libraries/libc/stdio/fsetpos.c
+            - src/libraries/libc/stdio/ftell.c
+            - src/libraries/libc/stdio/fwrite.c
+            - src/libraries/libc/stdio/getc.c
+            - src/libraries/libc/stdio/getchar.c
+            - src/libraries/libc/stdio/perror.c
+            - src/libraries/libc/stdio/printf.c
+            - src/libraries/libc/stdio/putc.c
+            - src/libraries/libc/stdio/putchar.c
+            - src/libraries/libc/stdio/puts.c
+            - src/libraries/libc/stdio/remove.c
+            - src/libraries/libc/stdio/rename.c
+            - src/libraries/libc/stdio/rewind.c
+            - src/libraries/libc/stdio/scanf.c
+            - src/libraries/libc/stdio/setbuf.c
+            - src/libraries/libc/stdio/setvbuf.c
+            - src/libraries/libc/stdio/snprintf.c
+            - src/libraries/libc/stdio/sprintf.c
+            - src/libraries/libc/stdio/sscanf.c
+            - src/libraries/libc/stdio/tmpfile.c
+            - src/libraries/libc/stdio/tmpnam.c
+            - src/libraries/libc/stdio/ungetc.c
+            - src/libraries/libc/stdio/vfprintf.c
+            - src/libraries/libc/stdio/vfscanf.c
+            - src/libraries/libc/stdio/vprintf.c
+            - src/libraries/libc/stdio/vscanf.c
+            - src/libraries/libc/stdio/vsnprintf.c
+            - src/libraries/libc/stdio/vsprintf.c
+            - src/libraries/libc/stdio/vsscanf.c
+            - src/libraries/libc/stdlib/abort.c
+            - src/libraries/libc/stdlib/abs.c
+            - src/libraries/libc/stdlib/atexit.c
+            - src/libraries/libc/stdlib/atoi.c
+            - src/libraries/libc/stdlib/atol.c
+            - src/libraries/libc/stdlib/atoll.c
+            - src/libraries/libc/stdlib/bsearch.c
+            - src/libraries/libc/stdlib/div.c
+            - src/libraries/libc/stdlib/exit.c
+            - src/libraries/libc/stdlib/_Exit.c
+            - src/libraries/libc/stdlib/getenv.c
+            - src/libraries/libc/stdlib/labs.c
+            - src/libraries/libc/stdlib/ldiv.c
+            - src/libraries/libc/stdlib/llabs.c
+            - src/libraries/libc/stdlib/lldiv.c
+            - src/libraries/libc/stdlib/malloc.c
+            - src/libraries/libc/stdlib/qsort.c
+            - src/libraries/libc/stdlib/rand.c
+            - src/libraries/libc/stdlib/srand.c
+            - src/libraries/libc/stdlib/strtol.c
+            - src/libraries/libc/stdlib/strtoll.c
+            - src/libraries/libc/stdlib/strtoul.c
+            - src/libraries/libc/stdlib/strtoull.c
+            - src/libraries/libc/stdlib/system.c
+            - src/libraries/libc/string/memchr.c
+            - src/libraries/libc/string/memcmp.c
+            - src/libraries/libc/string/memcpy.c
+            - src/libraries/libc/string/memmove.c
+            - src/libraries/libc/string/memset.c
+            - src/libraries/libc/string/strcat.c
+            - src/libraries/libc/string/strchr.c
+            - src/libraries/libc/string/strcmp.c
+            - src/libraries/libc/string/strcoll.c
+            - src/libraries/libc/string/strcpy.c
+            - src/libraries/libc/string/strcspn.c
+            - src/libraries/libc/string/strerror.c
+            - src/libraries/libc/string/strlen.c
+            - src/libraries/libc/string/strncat.c
+            - src/libraries/libc/string/strncmp.c
+            - src/libraries/libc/string/strncpy.c
+            - src/libraries/libc/string/strpbrk.c
+            - src/libraries/libc/string/strrchr.c
+            - src/libraries/libc/string/strspn.c
+            - src/libraries/libc/string/strstr.c
+            - src/libraries/libc/string/strtok.c
+            - src/libraries/libc/string/strxfrm.c
+            - src/libraries/libc/time/asctime.c
+            - src/libraries/libc/time/clock.c
+            - src/libraries/libc/time/ctime.c
+            - src/libraries/libc/time/difftime.c
+            - src/libraries/libc/time/gmtime.c
+            - src/libraries/libc/time/localtime.c
+            - src/libraries/libc/time/mktime.c
+            - src/libraries/libc/time/strftime.c
+            - src/libraries/libc/time/time.c
+            - src/libraries/libc/time/timespec_get.c
 
     makerd:
         kind: exe

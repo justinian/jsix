@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <utility>
 
 #include "kernel_args.h"

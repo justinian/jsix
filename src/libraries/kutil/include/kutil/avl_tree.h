@@ -2,7 +2,6 @@
 /// \file avl_tree.h
 /// Templated container class for an AVL tree
 
-#include <algorithm>
 #include <stdint.h>
 #include "kutil/assert.h"
 #include "kutil/slab_allocated.h"
@@ -72,7 +71,7 @@ private:
 	{
 		int left = height(m_left);
 		int right = height(m_right);
-		m_height = std::max(left, right) + 1;
+		m_height = left > right ? left : right;
 		return left - right;
 	}
 

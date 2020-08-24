@@ -22,5 +22,10 @@ build ${builddir}/cpp.defs : dump_cpp_defs | {{ buildfile }}
 build ${builddir}/c.run : dump_c_run | {{ buildfile }}
 build ${builddir}/cpp.run : dump_cpp_run | {{ buildfile }}
 
+default ${builddir}/c.defs
+default ${builddir}/cpp.defs
+default ${builddir}/c.run
+default ${builddir}/cpp.run
+
 # vim: ft=ninja et ts=4 sts=4 sw=4
 

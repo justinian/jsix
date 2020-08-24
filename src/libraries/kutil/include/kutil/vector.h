@@ -2,7 +2,6 @@
 /// \file vector.h
 /// Definition of a simple dynamic vector collection for use in kernel space
 
-#include <algorithm>
 #include <utility>
 #include "kutil/memory.h"
 
@@ -175,7 +174,7 @@ public:
 	void set_capacity(size_t capacity)
 	{
 		T *new_array = reinterpret_cast<T*>(kalloc(capacity * sizeof(T)));
-		size_t size = std::min(capacity, m_size);
+		size_t size = capacity > m_size ? m_size : capacity;
 
 		kutil::memcpy(new_array, m_elements, size * sizeof(T));
 
