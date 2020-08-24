@@ -67,7 +67,7 @@ rule dump_c_run
     description = Dumping C arguments for $target
     command = $
         echo "#!/bin/bash" > $out; $
-        echo '$cc $ccflags $cflags $$*' > $out; $
+        echo '$cc $ccflags $cflags $$*' >> $out; $
         chmod a+x $out
 
 rule cpp
@@ -84,7 +84,7 @@ rule dump_cpp_run
     description = Dumping C++ arguments for $target
     command = $
         echo "#!/bin/bash" > $out; $
-        echo '$cc $cxxflags $ccflags $$*' > $out; $
+        echo '$cc $cxxflags $ccflags $$*' >> $out; $
         chmod a+x $out
 
 rule s
