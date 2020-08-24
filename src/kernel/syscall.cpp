@@ -1,9 +1,10 @@
+#include <stddef.h>
+
 #include "console.h"
 #include "cpu.h"
 #include "debug.h"
 #include "log.h"
 #include "msr.h"
-#include "process.h"
 #include "scheduler.h"
 #include "syscall.h"
 
