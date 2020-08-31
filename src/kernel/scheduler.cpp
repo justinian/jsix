@@ -11,12 +11,14 @@
 #include "kernel_memory.h"
 #include "log.h"
 #include "msr.h"
+#include "objects/channel.h"
 #include "objects/process.h"
 #include "page_manager.h"
 #include "scheduler.h"
 
 #include "elf/elf.h"
 #include "kutil/assert.h"
+
 
 scheduler *scheduler::s_instance = nullptr;
 
@@ -69,6 +71,7 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 	page_manager *pager = page_manager::get();
 
 	thread *th = thread::from_tcb(tcb);
+	process &proc = th->parent();
 
 	log::debug(logs::loader, "Loading task! ELF: %016lx [%d]", image_start, bytes);
 
@@ -114,6 +117,16 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 		const void *src = kutil::offset_pointer(image_start, header->offset);
 		kutil::memcpy(dest, src, header->size);
 	}
+
+	tcb->rsp3 -= 2 * sizeof(uint64_t);
+	uint64_t *sentinel = reinterpret_cast<uint64_t*>(tcb->rsp3);
+	sentinel[0] = sentinel[1] = 0;
+
+	tcb->rsp3 -= sizeof(j6_process_init);
+	j6_process_init *init = reinterpret_cast<j6_process_init*>(tcb->rsp3);
+
+	extern channel *std_out;
+	init->output = proc.add_handle(std_out);
 
 	th->clear_state(thread::state::loading);
 

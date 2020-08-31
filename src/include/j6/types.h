@@ -20,3 +20,10 @@ typedef uint64_t j6_signal_t;
 typedef uint64_t j6_rights_t;
 
 #define j6_handle_invalid 0xffffffff
+
+/// A process' initial data structure for communicating with the system
+struct j6_process_init
+{
+	j6_handle_t input;
+	j6_handle_t output;
+};

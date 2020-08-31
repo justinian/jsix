@@ -92,7 +92,13 @@ stdout_task()
 		}
 
 		buffer[n] = 0;
-		cons->puts(reinterpret_cast<const char *>(buffer));
+		const char *s = reinterpret_cast<const char *>(buffer);
+
+		while (n) {
+			size_t r = cons->puts(s);
+			n -= r + 1;
+			s += r + 1;
+		}
 	}
 }
 
@@ -193,6 +199,8 @@ kernel_main(args::header *header)
 	syscall_enable();
 	scheduler *sched = new scheduler(devices.get_lapic());
 
+	std_out = new channel;
+
 	for (auto &ird : initrds) {
 		for (auto &f : ird.files()) {
 			if (f.executable()) {
@@ -202,8 +210,6 @@ kernel_main(args::header *header)
 			}
 		}
 	}
-
-	std_out = new channel;
 
 	sched->create_kernel_task(logger_task, scheduler::max_priority-1, true);
 	sched->create_kernel_task(stdout_task, scheduler::max_priority-1, true);

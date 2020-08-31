@@ -7,11 +7,14 @@
 
 #include <j6libc/syscalls.h>
 
-const char message[] = "Hello! This is a message being sent over a channel!";
+const char message[] = "Hello! This is a message being sent over a channel!\n";
 char inbuf[1024];
 j6_handle_t chan = j6_handle_invalid;
 
+j6_process_init *init = nullptr;
+
 extern "C" {
+	void _init_libc(j6_process_init *);
 	int main(int, const char **);
 }
 
@@ -40,6 +43,12 @@ thread_proc()
 	_syscall_thread_exit(0);
 }
 
+void
+_init_libc(j6_process_init *i)
+{
+	init = i;
+}
+
 int
 main(int argc, const char **argv)
 {
@@ -49,6 +58,11 @@ main(int argc, const char **argv)
 	_syscall_system_log("main thread starting");
 
 	j6_status_t result = _syscall_channel_create(&chan);
+	if (result != j6_status_ok)
+		return result;
+
+	size_t size = sizeof(message);
+	result = _syscall_channel_send(init->output, &size, (void*)message);
 	if (result != j6_status_ok)
 		return result;
 

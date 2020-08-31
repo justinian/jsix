@@ -16,7 +16,7 @@ public:
 	void set_color(uint8_t fg = 7, uint8_t bg = 0);
 
 	void putc(char c);
-	void puts(const char *message);
+	size_t puts(const char *message);
 	void vprintf(const char *fmt, va_list args);
 
 	inline void printf(const char *fmt, ...)

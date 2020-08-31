@@ -261,11 +261,16 @@ console::set_color(uint8_t fg, uint8_t bg)
 	}
 }
 
-void
+size_t
 console::puts(const char *message)
 {
-	while (message && *message)
+	size_t n = 0;
+	while (message && *message) {
+		n++;
 		putc(*message++);
+	}
+
+	return n;
 }
 
 void
