@@ -3,7 +3,7 @@
 #include "objects/thread.h"
 #include "objects/process.h"
 #include "scheduler.h"
-#include "stack_cache.h"
+#include "buffer_cache.h"
 
 extern "C" void kernel_to_user_trampoline();
 static constexpr j6_signal_t thread_default_signals = 0;
@@ -29,7 +29,7 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 
 thread::~thread()
 {
-	stack_cache::get().return_stack(m_tcb.kernel_stack);
+	g_kstack_cache.return_buffer(m_tcb.kernel_stack);
 }
 
 thread *
@@ -150,7 +150,7 @@ thread::setup_kernel_stack()
 	constexpr unsigned null_frame_entries = 2;
 	constexpr size_t null_frame_size = null_frame_entries * sizeof(uint64_t);
 
-	uintptr_t stack_addr = stack_cache::get().get_stack();
+	uintptr_t stack_addr = g_kstack_cache.get_buffer();
 	uintptr_t stack_end = stack_addr + stack_bytes;
 
 	uint64_t *null_frame = reinterpret_cast<uint64_t*>(stack_end - null_frame_size);

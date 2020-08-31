@@ -46,7 +46,7 @@ modules:
             - src/kernel/scheduler.cpp
             - src/kernel/screen.cpp
             - src/kernel/serial.cpp
-            - src/kernel/stack_cache.cpp
+            - src/kernel/buffer_cache.cpp
             - src/kernel/symbol_table.cpp
             - src/kernel/syscall.cpp
             - src/kernel/syscall.s
