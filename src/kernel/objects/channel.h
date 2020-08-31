@@ -3,6 +3,7 @@
 /// Definition of channel objects and related functions
 
 #include "j6/signals.h"
+#include "kutil/bip_buffer.h"
 #include "objects/kobject.h"
 
 /// Channels are bi-directional means of sending messages
@@ -20,10 +21,10 @@ public:
 	inline bool can_receive() const { return check_signal(j6_signal_channel_can_recv); }
 
 	/// Put a message into the channel
-	/// \arg len  Length of data, in bytes
+	/// \arg len  [in] Bytes in data buffer [out] number of bytes written
 	/// \arg data Pointer to the message data
 	/// \returns  j6_status_ok on success
-	j6_status_t enqueue(size_t len, void *data);
+	j6_status_t enqueue(size_t *len, const void *data);
 
 	/// Get a message from the channel, copied into a provided buffer
 	/// \arg len  On input, the size of the provided buffer. On output,
@@ -34,7 +35,7 @@ public:
 
 	/// Mark this channel as closed, all future calls to enqueue or
 	/// dequeue messages will fail with j6_status_closed.
-	inline void close() { assert_signal(j6_signal_channel_closed); }
+	void close();
 
 	/// Check if this channel has been closed
 	inline bool closed() { return check_signal(j6_signal_channel_closed); }
@@ -44,6 +45,6 @@ protected:
 
 private:
 	size_t m_len;
-	size_t m_capacity;
-	void *m_data;
+	uintptr_t m_data;
+	kutil::bip_buffer m_buffer;
 };

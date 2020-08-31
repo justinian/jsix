@@ -15,5 +15,5 @@ SYSCALL(0x1c, thread_sleep,     uint64_t)
 
 SYSCALL(0x20, channel_create,   j6_handle_t *)
 SYSCALL(0x21, channel_close,    j6_handle_t)
-SYSCALL(0x22, channel_send,     j6_handle_t, size_t, void *)
+SYSCALL(0x22, channel_send,     j6_handle_t, size_t *, void *)
 SYSCALL(0x23, channel_receive,  j6_handle_t, size_t *, void *)

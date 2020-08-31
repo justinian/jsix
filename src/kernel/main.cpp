@@ -17,6 +17,7 @@
 #include "kernel_args.h"
 #include "kernel_memory.h"
 #include "log.h"
+#include "objects/channel.h"
 #include "objects/event.h"
 #include "objects/handle.h"
 #include "page_manager.h"
@@ -49,28 +50,6 @@ void memory_initialize_post_ctors(kernel::args::header *kargs);
 
 using namespace kernel;
 
-/*
-class test_observer :
-	public kobject::observer
-{
-public:
-	test_observer(const char *name) : m_name(name) {}
-
-	virtual bool on_signals_changed(
-			kobject *obj,
-			j6_signal_t s,
-			j6_signal_t ds,
-			j6_status_t result)
-	{
-		log::info(logs::objs, "  %s: Signals %016lx changed, object %p, result %016lx",
-				m_name, ds, obj, result);
-		return false;
-	}
-
-	const char *m_name;
-};
-*/
-
 void
 init_console()
 {
@@ -83,6 +62,40 @@ init_console()
 	cons->puts(GIT_VERSION " booting...\n");
 	logger_init();
 }
+
+channel *std_out = nullptr;
+
+void
+stdout_task()
+{
+	uint8_t buffer[257];
+	auto *ent = reinterpret_cast<log::logger::entry *>(buffer);
+	auto *cons = console::get();
+
+	log::info(logs::task, "Starting kernel stdout task");
+
+	scheduler &s = scheduler::get();
+	thread *th = thread::from_tcb(s.current());
+
+	while (true) {
+		j6_signal_t current = std_out->signals();
+		if (!(current & j6_signal_channel_can_recv)) {
+			th->wait_on_signals(std_out, j6_signal_channel_can_recv);
+			s.schedule();
+		}
+
+		size_t n = 256;
+		j6_status_t status = std_out->dequeue(&n, buffer);
+		if (status != j6_status_ok) {
+			log::warn(logs::task, "Kernel stdout error: %x", status);
+			return;
+		}
+
+		buffer[n] = 0;
+		cons->puts(reinterpret_cast<const char *>(buffer));
+	}
+}
+
 
 void
 kernel_main(args::header *header)
@@ -190,22 +203,14 @@ kernel_main(args::header *header)
 		}
 	}
 
-	/*
-	log::info(logs::objs, "Testing object system:");
-	test_observer obs1("event");
-	test_observer obs2("no handles");
-	{
-		event e;
-
-		e.register_signal_observer(&obs1, j6_signal_user0);
-		e.register_signal_observer(&obs2, j6_signal_no_handles);
-
-		e.assert_signal(j6_signal_user0);
-
-		handle h(1, 0, &e);
-	}
-	*/
+	std_out = new channel;
 
 	sched->create_kernel_task(logger_task, scheduler::max_priority-1, true);
+	sched->create_kernel_task(stdout_task, scheduler::max_priority-1, true);
+
+	const char stdout_message[] = "Hello on the fake stdout channel\n";
+	size_t message_size = sizeof(stdout_message);
+	std_out->enqueue(&message_size, reinterpret_cast<const void*>(stdout_message));
+
 	sched->start();
 }

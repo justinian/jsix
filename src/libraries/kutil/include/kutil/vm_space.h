@@ -22,8 +22,10 @@ struct vm_range
 	vm_state state;
 
 	inline uintptr_t end() const { return address + size; }
-	inline int compare(const vm_range *other) const {
-		return other->address - address;
+	inline int64_t compare(const vm_range *other) const {
+		if (address > other->address) return -1;
+		else if (address < other->address) return 1;
+		else return 0;
 	}
 };
 

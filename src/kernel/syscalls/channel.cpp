@@ -42,7 +42,7 @@ channel_close(j6_handle_t handle)
 }
 
 j6_status_t
-channel_send(j6_handle_t handle, size_t len, void *data)
+channel_send(j6_handle_t handle, size_t *len, void *data)
 {
 	scheduler &s = scheduler::get();
 	TCB *tcb = s.current();

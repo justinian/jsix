@@ -253,7 +253,7 @@ vm_space::commit(uintptr_t start, size_t size)
 vm_state
 vm_space::get(uintptr_t addr)
 {
-	node_type *node = find_overlapping(m_ranges.root(), addr, 0);
+	node_type *node = find_overlapping(m_ranges.root(), addr, 1);
 	return node ? node->state : vm_state::unknown;
 }
 

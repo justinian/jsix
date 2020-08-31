@@ -16,6 +16,7 @@ using memory::frame_size;
 using memory::heap_start;
 using memory::kernel_max_heap;
 using memory::kernel_offset;
+using memory::heap_start;
 using memory::page_offset;
 using memory::pml4e_kernel;
 using memory::pml4e_offset;
@@ -23,7 +24,7 @@ using memory::table_entries;
 
 using namespace kernel;
 
-kutil::vm_space g_kernel_space {kernel_offset, (page_offset-kernel_offset)};
+kutil::vm_space g_kernel_space {kernel_offset, (heap_start-kernel_offset)};
 
 
 // These objects are initialized _before_ global constructors are called,

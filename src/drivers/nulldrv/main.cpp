@@ -26,7 +26,8 @@ thread_proc()
 
 	_syscall_system_log("sub thread signaled user0");
 
-	result = _syscall_channel_send(chan, sizeof(message), (void*)message);
+	size_t size = sizeof(message);
+	result = _syscall_channel_send(chan, &size, (void*)message);
 	if (result != j6_status_ok)
 		_syscall_thread_exit(result);
 
