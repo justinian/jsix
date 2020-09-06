@@ -45,6 +45,8 @@ inline uintptr_t end(frame_block *node) { return node->address + node->count * f
 void
 frame_allocator::free(uintptr_t address, size_t count)
 {
+	kassert(address % frame_size == 0, "Trying to free a non page-aligned frame!");
+
 	frame_block_node *node =
 		reinterpret_cast<frame_block_node*>(address + page_offset);
 

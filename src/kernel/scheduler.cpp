@@ -241,6 +241,7 @@ void scheduler::prune(uint64_t now)
 		bool ready = th->has_state(thread::state::ready);
 		bool exited = th->has_state(thread::state::exited);
 		bool constant = th->has_state(thread::state::constant);
+		bool current = tcb == m_current;
 
 		ready |= th->wake_on_time(now);
 
@@ -253,7 +254,10 @@ void scheduler::prune(uint64_t now)
 
 		if (exited) {
 			process &p = th->parent();
-			if(p.thread_exited(th))
+
+			// If the current thread has exited, wait until the next call
+			// to prune() to delete it.
+			if(!current && p.thread_exited(th))
 				delete &p;
 		} else {
 			log::debug(logs::task, "Prune: readying unblocked thread %llx", th->koid());
