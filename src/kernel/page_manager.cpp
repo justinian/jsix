@@ -395,42 +395,75 @@ page_manager::page_out(page_table *pml4, uintptr_t virt_addr, size_t count, bool
 	page_table_indices idx{virt_addr};
 	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
 
-	bool found = false;
 	uintptr_t free_start = 0;
 	unsigned free_count = 0;
 
 	for (; idx[0] < table_entries; idx[0] += 1) {
-		tables[1] = tables[0]->get(idx[0]);
+		page_table *table = tables[0]->get(idx[0]);
+		if (!table) {
+			constexpr size_t skip = 512 * 512 * 512;
+			if (count > skip) {
+				count -= skip;
+				continue;
+			}
+			goto page_out_end;
+		}
+
+		tables[1] = table;
 
 		for (; idx[1] < table_entries; idx[1] += 1) {
-			tables[2] = tables[1]->get(idx[1]);
+			page_table *table = tables[1]->get(idx[1]);
+			if (!table) {
+				constexpr size_t skip = 512 * 512;
+				if (count > skip) {
+					count -= skip;
+					continue;
+				}
+				goto page_out_end;
+			}
+
+			tables[2] = table;
 
 			for (; idx[2] < table_entries; idx[2] += 1) {
-				tables[3] = tables[2]->get(idx[2]);
+				page_table *table = tables[2]->get(idx[2]);
+				if (!table) {
+					constexpr size_t skip = 512;
+					if (count > skip) {
+						count -= skip;
+						continue;
+					}
+					goto page_out_end;
+				}
+
+				tables[3] = table;
 
 				for (; idx[3] < table_entries; idx[3] += 1) {
-					uintptr_t entry = tables[3]->entries[idx[3]] & ~0xfffull;
-					if (!found || entry != free_start + free_count * frame_size) {
-						if (found && free) m_frames.free(free_start, free_count);
-						free_start = tables[3]->entries[idx[3]] & ~0xfffull;
-						free_count = 1;
-						found = true;
-					} else {
-						free_count++;
+					uintptr_t entry = tables[3]->entries[idx[3]];
+					bool present = entry & 1;
+
+					if (present) {
+						entry &= ~0xfffull;
+						if (!free_count || entry != free_start + free_count * frame_size) {
+							if (free_count && free) m_frames.free(free_start, free_count);
+							free_start = tables[3]->entries[idx[3]] & ~0xfffull;
+							free_count = 1;
+						} else {
+							free_count++;
+						}
+
+						tables[3]->entries[idx[3]] = 0;
 					}
 
-					tables[3]->entries[idx[3]] = 0;
-
-					if (--count == 0) {
-						if (free) m_frames.free(free_start, free_count);
-						return;
-					}
+					if (--count == 0)
+						goto page_out_end;
 				}
 			}
 		}
 	}
 
-	kassert(0, "Ran to end of page_out");
+page_out_end:
+	if (free && free_count)
+		m_frames.free(free_start, free_count);
 }
 
 void
