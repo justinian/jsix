@@ -313,7 +313,6 @@ modules:
         deps:
             - kutil
         source:
-            - src/tests/address_manager.cpp
             - src/tests/constexpr_hash.cpp
             - src/tests/linked_list.cpp
             - src/tests/logger.cpp

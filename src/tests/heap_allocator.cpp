@@ -20,6 +20,10 @@ int signalled = 0;
 void *signalled_at = nullptr;
 
 void *mem_base = nullptr;
+size_t mem_size = 4 * max_block;
+
+extern bool ASSERT_EXPECTED;
+extern bool ASSERT_HAPPENED;
 
 std::vector<size_t> sizes = {
 	16000, 8000, 4000, 4000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 150,
@@ -27,9 +31,23 @@ std::vector<size_t> sizes = {
 
 void segfault_handler(int signum, siginfo_t *info, void *ctxp)
 {
-	signalled += 1;
+	uintptr_t start = reinterpret_cast<uintptr_t>(mem_base);
+	uintptr_t end = start + mem_size;
+	uintptr_t addr = reinterpret_cast<uintptr_t>(info->si_addr);
+
+	if (addr < start || addr >= end) {
+		CAPTURE( start );
+		CAPTURE( end );
+		CAPTURE( addr );
+		FAIL("Segfaulted outside memory area");
+	}
+
 	signalled_at = info->si_addr;
-	mprotect(signalled_at, max_block, PROT_READ|PROT_WRITE);
+	signalled += 1;
+	if (mprotect(signalled_at, max_block, PROT_READ|PROT_WRITE)) {
+		perror("mprotect");
+		exit(100);
+	}
 }
 
 TEST_CASE( "Buddy blocks tests", "[memory buddy]" )
@@ -38,7 +56,7 @@ TEST_CASE( "Buddy blocks tests", "[memory buddy]" )
 	unsigned seed = clock::now().time_since_epoch().count();
 	std::default_random_engine rng(seed);
 
-	mem_base = aligned_alloc(max_block, max_block * 4);
+	mem_base = aligned_alloc(max_block, mem_size);
 
 	// Catch segfaults so we can track memory access
 	struct sigaction sigact;
@@ -59,8 +77,14 @@ TEST_CASE( "Buddy blocks tests", "[memory buddy]" )
 	CHECK( signalled == 0 );
 	signalled = 0;
 
+	// Allocating too much should assert
+	ASSERT_EXPECTED = true;
+	void *p = mm.allocate(max_block - hs + 1);
+	REQUIRE( ASSERT_HAPPENED );
+	ASSERT_HAPPENED = false;
+
 	// Allocating should signal just at the first page.
-	void *p = mm.allocate(max_block - hs);
+	p = mm.allocate(max_block - hs);
 	CHECK( p == offset_pointer(mem_base, hs) );
 	CHECK( signalled == 1 );
 	CHECK( signalled_at == mem_base );

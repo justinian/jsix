@@ -115,7 +115,7 @@ ListContainsMatcher<T> ListContains(const list_node<T> &item)
 	return ListContainsMatcher<T>(item);
 }
 
-TEST_CASE( "Linked list tests", "[containers list]" )
+TEST_CASE( "Linked list tests", "[containers] [list]" )
 {
 	linked_list<unsortableT> ulist;
 
@@ -144,7 +144,7 @@ TEST_CASE( "Linked list tests", "[containers list]" )
 	CHECK_THAT( ulist_reversed, !ListContains(removed) );
 }
 
-TEST_CASE( "Sorted list tests", "[containers list]" )
+TEST_CASE( "Sorted list tests", "[containers] [list]" )
 {
 	using clock = std::chrono::system_clock;
 	unsigned seed = clock::now().time_since_epoch().count();

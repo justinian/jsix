@@ -77,8 +77,10 @@ heap_allocator::allocate(size_t length)
 	if (length == 0)
 		return nullptr;
 
-	const unsigned clz = __builtin_clzll(total);
-	const unsigned order = 64 - clz;
+	const unsigned clz = __builtin_clzll(total - 1);
+	unsigned order = 64 - clz;
+	if (order < min_order)
+		order = min_order;
 
 	kassert(order <= max_order, "Tried to allocate a block bigger than max_order");
 	if (order > max_order)
