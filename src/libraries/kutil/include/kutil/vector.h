@@ -141,6 +141,16 @@ public:
 		return temp;
 	}
 
+	/// Remove an item from the beginning of the array and return it.
+	T pop_front()
+	{
+		T temp = m_elements[0];
+		for (size_t i = 1; i < m_size; ++i)
+			m_elements[i-1] = m_elements[i];
+		remove();
+		return temp;
+	}
+
 	/// Set the size of the array. Any new items are default constructed.
 	/// Any items past the end are deleted. The array is realloced if needed.
 	/// \arg size  The new size

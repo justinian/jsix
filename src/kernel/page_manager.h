@@ -101,6 +101,11 @@ public:
 		return kutil::offset_pointer(reinterpret_cast<void *>(a), memory::page_offset);
 	}
 
+	/// Get the offet-mapped virtual address of a normal virtual address
+	/// \arg p   Virtual address
+	/// \returns Virtual address in offset-mapped linear space
+	void * get_offset_from_mapped(void *p, page_table *pml4 = nullptr);
+
 	/// Dump the given or current PML4 to the console
 	/// \arg pml4     The page table to use, null for the current one
 	/// \arg recurse  Whether to print sub-tables

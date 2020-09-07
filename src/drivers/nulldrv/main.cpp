@@ -7,9 +7,8 @@
 
 #include <j6libc/syscalls.h>
 
-const char message[] = "Hello! This is a message being sent over a channel!\n";
 char inbuf[1024];
-j6_handle_t chan = j6_handle_invalid;
+j6_handle_t endp = j6_handle_invalid;
 
 j6_process_init *init = nullptr;
 
@@ -23,18 +22,23 @@ thread_proc()
 {
 	_syscall_system_log("sub thread starting");
 
-	j6_status_t result = _syscall_object_signal(chan, j6_signal_user0);
+	char buffer[512];
+	size_t len = sizeof(buffer);
+	j6_status_t result = _syscall_endpoint_receive(endp, &len, (void*)buffer);
 	if (result != j6_status_ok)
 		_syscall_thread_exit(result);
 
-	_syscall_system_log("sub thread signaled user0");
+	_syscall_system_log("sub thread received message");
 
-	size_t size = sizeof(message);
-	result = _syscall_channel_send(chan, &size, (void*)message);
+	for (int i = 0; i < len; ++i)
+		if (buffer[i] >= 'A' && buffer[i] <= 'Z')
+			buffer[i] += 0x20;
+
+	result = _syscall_endpoint_send(endp, len, (void*)buffer);
 	if (result != j6_status_ok)
 		_syscall_thread_exit(result);
 
-	_syscall_system_log("sub thread sent on channel");
+	_syscall_system_log("sub thread sent message");
 
 	for (int i = 1; i < 5; ++i)
 		_syscall_thread_sleep(i*10);
@@ -57,44 +61,25 @@ main(int argc, const char **argv)
 
 	_syscall_system_log("main thread starting");
 
-	j6_status_t result = _syscall_channel_create(&chan);
+	j6_status_t result = _syscall_endpoint_create(&endp);
 	if (result != j6_status_ok)
 		return result;
 
-	size_t size = sizeof(message);
-	result = _syscall_channel_send(init->output, &size, (void*)message);
-	if (result != j6_status_ok)
-		return result;
-
-	_syscall_system_log("main thread created channel");
+	_syscall_system_log("main thread created endpoint");
 
 	result = _syscall_thread_create(reinterpret_cast<void*>(&thread_proc), &child);
 	if (result != j6_status_ok)
 		return result;
 
-	_syscall_system_log("main thread waiting on user0");
+	_syscall_system_log("main thread created sub thread");
 
-	result = _syscall_object_wait(chan, j6_signal_user0, &out);
+	char message[] = "MAIN THREAD SUCCESSFULLY CALLED SENDRECV IF THIS IS LOWERCASE";
+	size_t size = sizeof(message);
+	result = _syscall_endpoint_sendrecv(endp, &size, (void*)message);
 	if (result != j6_status_ok)
 		return result;
 
-	_syscall_system_log("main thread waiting on can_recv");
-
-	result = _syscall_object_wait(chan, j6_signal_channel_can_recv, &out);
-	if (result != j6_status_ok)
-		return result;
-
-	size_t len = sizeof(inbuf);
-	result = _syscall_channel_receive(chan, &len, (void*)inbuf);
-	if (result != j6_status_ok)
-		return result;
-
-	for (int i = 0; i < sizeof(message); ++i) {
-		if (inbuf[i] != message[i])
-			return 127;
-	}
-
-	_syscall_system_log("main thread received on channel");
+	_syscall_system_log(message);
 
 	_syscall_system_log("main thread waiting on child");
 
@@ -102,11 +87,11 @@ main(int argc, const char **argv)
 	if (result != j6_status_ok)
 		return result;
 
-	result = _syscall_channel_close(chan);
+	_syscall_system_log("main thread closing endpoint");
+
+	result = _syscall_endpoint_close(endp);
 	if (result != j6_status_ok)
 		return result;
-
-	_syscall_system_log("main thread closed channel");
 
 	_syscall_system_log("main thread done, exiting");
 	return 0;

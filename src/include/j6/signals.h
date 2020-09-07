@@ -18,6 +18,11 @@
 #define j6_signal_channel_can_send	(1ull << 17)
 #define j6_signal_channel_can_recv	(1ull << 18)
 
+// Endpoint signals
+#define j6_signal_endpoint_closed	(1ull << 16)
+#define j6_signal_endpoint_can_send	(1ull << 17)
+#define j6_signal_endpoint_can_recv	(1ull << 18)
+
 // Signals 48-63 are user-defined signals
 #define j6_signal_user0				(1ull << 48)
 #define j6_signal_user1				(1ull << 49)

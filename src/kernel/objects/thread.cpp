@@ -56,6 +56,14 @@ thread::wait_on_time(uint64_t t)
 	clear_state(state::ready);
 }
 
+void
+thread::wait_on_object(kobject *o)
+{
+	m_wait_type = wait_type::object;
+	m_wait_data = reinterpret_cast<uint64_t>(o);
+	clear_state(state::ready);
+}
+
 bool
 thread::wake_on_signals(kobject *obj, j6_signal_t signals)
 {
@@ -82,6 +90,20 @@ thread::wake_on_time(uint64_t now)
 	m_wait_result = j6_status_ok;
 	m_wait_data = now;
 	m_wait_obj = 0;
+	set_state(state::ready);
+	return true;
+}
+
+bool
+thread::wake_on_object(kobject *o)
+{
+	if (m_wait_type != wait_type::object ||
+		reinterpret_cast<uint64_t>(o) != m_wait_data)
+		return false;
+
+	m_wait_type = wait_type::none;
+	m_wait_result = j6_status_ok;
+	m_wait_obj = o->koid();
 	set_state(state::ready);
 	return true;
 }

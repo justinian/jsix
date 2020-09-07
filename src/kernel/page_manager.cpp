@@ -153,6 +153,30 @@ page_manager::map_offset_pointer(void **pointer, size_t length)
 	*pointer = kutil::offset_pointer(*pointer, page_offset);
 }
 
+void *
+page_manager::get_offset_from_mapped(void *p, page_table *pml4)
+{
+	if (!pml4) pml4 = get_pml4();
+	uintptr_t v = reinterpret_cast<uintptr_t>(p);
+
+	page_table_indices idx{v};
+	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
+
+	for (int i = 1; i < 4; ++i) {
+		tables[i] = tables[i-1]->get(idx[i-1]);
+		if (!tables[i])
+			return nullptr;
+	}
+
+	uintptr_t a = tables[3]->entries[idx[3]];
+	if (!(a & 1))
+		return nullptr;
+
+	return offset_virt(
+			(a & ~0xfffull) |
+			(v & 0xfffull));
+}
+
 void
 page_manager::dump_pml4(page_table *pml4, bool recurse)
 {

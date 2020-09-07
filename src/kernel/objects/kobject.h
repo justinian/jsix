@@ -20,6 +20,7 @@ public:
 		event,
 		eventpair,
 		channel,
+		endpoint,
 
 		vms,
 		vmo,

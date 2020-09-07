@@ -35,7 +35,7 @@ class thread :
 	public kobject
 {
 public:
-	enum class wait_type : uint8_t { none, signal, time };
+	enum class wait_type : uint8_t { none, signal, time, object };
 	enum class state : uint8_t {
 		ready    = 0x01,
 		loading  = 0x02,
@@ -78,6 +78,10 @@ public:
 	/// \arg t  Clock value to wait for
 	void wait_on_time(uint64_t t);
 
+	/// Block the thread, waiting on the given object
+	/// \arg o  The ojbect that should wake this thread
+	void wait_on_object(kobject *o);
+
 	/// Wake the thread if it is waiting on signals.
 	/// \arg obj     Object that changed signals
 	/// \arg signals Signal state of the object
@@ -88,6 +92,11 @@ public:
 	/// \arg now  Current clock value
 	/// \returns  True if this action unblocked the thread
 	bool wake_on_time(uint64_t now);
+
+	/// Wake the thread if it is waiting on the given object.
+	/// \arg o  Object trying to wake the thread
+	/// \returns  True if this action unblocked the thread
+	bool wake_on_object(kobject *o);
 
 	/// Wake the thread with a given result code.
 	/// \arg obj     Object that changed signals
