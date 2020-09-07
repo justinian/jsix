@@ -5,21 +5,11 @@
 #include <vector>
 #include "kutil/linked_list.h"
 #include "catch.hpp"
+#include "container_helpers.h"
 
 using namespace kutil;
 
 const int test_list_size = 100;
-
-struct unsortableT {
-	int value;
-};
-
-struct sortableT {
-	int value;
-	int compare(const sortableT *other) {
-		return value - other->value;
-	}
-};
 
 template <typename T>
 class ListVectorCompare :

@@ -3,6 +3,7 @@
 /// Definition of a simple dynamic vector collection for use in kernel space
 
 #include <utility>
+#include "kutil/assert.h"
 #include "kutil/memory.h"
 
 namespace kutil {
@@ -104,11 +105,64 @@ public:
 		return m_elements[m_size++];
 	}
 
+	/// Insert an item into the array at the given index
+	void insert(size_t i, const T& item)
+	{
+		if (i >= count()) {
+			append(item);
+			return;
+		}
+
+		ensure_capacity(m_size + 1);
+		for (size_t j = m_size; j > i; --j)
+			m_elements[j] = m_elements[j-1];
+		m_size += 1;
+
+		m_elements[i] = item;
+	}
+
+	/// Insert an item into the list in a sorted position. Depends on T
+	/// having a method `int compare(const T *other)`.
+	void sorted_insert(const T& item)
+	{
+		size_t start = 0;
+		size_t end = m_size;
+		while (end > start) {
+			size_t m = start + (end - start) / 2;
+			int c = item.compare(&m_elements[m]);
+			if (c < 0) end = m;
+			else start = m + 1;
+		}
+
+		insert(start, item);
+	}
+
 	/// Remove an item from the end of the array.
 	void remove()
 	{
+		kassert(m_size, "Called remove() on an empty array");
+
 		m_size -= 1;
 		m_elements[m_size].~T();
+	}
+
+	/// Remove an item from the front of the array, preserving order.
+	void remove_front()
+	{
+		kassert(m_size, "Called remove_front() on an empty array");
+		remove_at(0);
+	}
+
+	/// Remove the item at the given index from the array, not
+	/// order-preserving.
+	void remove_at(size_t i)
+	{
+		if (i >= count()) return;
+
+		m_elements[i].~T();
+		for (; i < m_size - 1; ++i)
+			m_elements[i] = m_elements[i+1];
+		m_size -= 1;
 	}
 
 	/// Remove the first occurance of an item from the array, not
@@ -128,14 +182,18 @@ public:
 	void remove_swap_at(size_t i)
 	{
 		if (i >= count()) return;
+
+		m_elements[i].~T();
 		if (i < m_size - 1)
 			m_elements[i] = m_elements[m_size - 1];
-		remove();
+		m_size -= 1;
 	}
 
 	/// Remove an item from the end of the array and return it.
 	T pop()
 	{
+		kassert(m_size, "Called pop() on an empty array");
+
 		T temp = m_elements[m_size - 1];
 		remove();
 		return temp;
@@ -144,10 +202,10 @@ public:
 	/// Remove an item from the beginning of the array and return it.
 	T pop_front()
 	{
+		kassert(m_size, "Called pop_front() on an empty array");
+
 		T temp = m_elements[0];
-		for (size_t i = 1; i < m_size; ++i)
-			m_elements[i-1] = m_elements[i];
-		remove();
+		remove_front();
 		return temp;
 	}
 

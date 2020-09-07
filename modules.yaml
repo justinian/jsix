@@ -318,6 +318,7 @@ modules:
             - src/tests/logger.cpp
             - src/tests/heap_allocator.cpp
             - src/tests/main.cpp
+            - src/tests/vector.cpp
 overlays:
     - url: https://f000.backblazeb2.com/file/jsix-os/sysroot-llvm8-20190706.tar.bz2
       path: sysroot
