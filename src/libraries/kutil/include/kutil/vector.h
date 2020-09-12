@@ -5,6 +5,7 @@
 #include <utility>
 #include "kutil/assert.h"
 #include "kutil/memory.h"
+#include "kutil/util.h"
 
 namespace kutil {
 
@@ -12,6 +13,8 @@ namespace kutil {
 template <typename T>
 class vector
 {
+	static constexpr size_t min_capacity = 4;
+
 public:
 	/// Default constructor. Creates an empty vector with no capacity.
 	vector() :
@@ -227,12 +230,9 @@ public:
 	void ensure_capacity(size_t size)
 	{
 		if (m_capacity >= size) return;
-
-		size_t capacity = m_capacity;
-		while (capacity < size) {
-			if (capacity == 0) capacity = 4;
-			else capacity *= 2;
-		}
+		size_t capacity = (1 << log2(size));
+		if (capacity < min_capacity)
+			capacity = min_capacity;
 		set_capacity(capacity);
 	}
 

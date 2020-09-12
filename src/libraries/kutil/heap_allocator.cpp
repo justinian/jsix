@@ -1,7 +1,8 @@
 #include <stdint.h>
 #include "kutil/assert.h"
-#include "kutil/memory.h"
 #include "kutil/heap_allocator.h"
+#include "kutil/memory.h"
+#include "kutil/util.h"
 
 namespace kutil {
 
@@ -77,8 +78,7 @@ heap_allocator::allocate(size_t length)
 	if (length == 0)
 		return nullptr;
 
-	const unsigned clz = __builtin_clzll(total - 1);
-	unsigned order = 64 - clz;
+	unsigned order = log2(total);
 	if (order < min_order)
 		order = min_order;
 
