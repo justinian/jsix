@@ -1,10 +1,10 @@
 #include "kutil/assert.h"
-#include "kutil/vm_space.h"
 #include "kernel_memory.h"
 #include "page_manager.h"
 #include "buffer_cache.h"
+#include "vm_space.h"
 
-extern kutil::vm_space g_kernel_space;
+extern vm_space g_kernel_space;
 
 using memory::frame_size;
 using memory::kernel_stack_pages;

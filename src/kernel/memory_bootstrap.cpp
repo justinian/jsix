@@ -5,12 +5,12 @@
 #include "kutil/assert.h"
 #include "kutil/heap_allocator.h"
 #include "kutil/no_construct.h"
-#include "kutil/vm_space.h"
 
 #include "frame_allocator.h"
 #include "io.h"
 #include "log.h"
 #include "page_manager.h"
+#include "vm_space.h"
 
 using memory::frame_size;
 using memory::heap_start;
@@ -24,7 +24,7 @@ using memory::table_entries;
 
 using namespace kernel;
 
-kutil::vm_space g_kernel_space {kernel_offset, (heap_start-kernel_offset)};
+vm_space g_kernel_space {kernel_offset, (heap_start-kernel_offset)};
 
 
 // These objects are initialized _before_ global constructors are called,
@@ -54,7 +54,7 @@ void walk_page_table(
 	page_table::level level,
 	uintptr_t &current_start,
 	size_t &current_bytes,
-	kutil::vm_space &kspace)
+	vm_space &kspace)
 {
 	constexpr size_t huge_page_size = (1ull<<30);
 	constexpr size_t large_page_size = (1ull<<21);

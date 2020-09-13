@@ -1,9 +1,9 @@
 #include "kutil/assert.h"
-#include "kutil/vm_space.h"
 #include "console.h"
 #include "io.h"
 #include "log.h"
 #include "page_manager.h"
+#include "vm_space.h"
 
 using memory::frame_size;
 using memory::heap_start;
@@ -333,12 +333,12 @@ page_manager::fault_handler(uintptr_t addr)
 	if (!addr)
 		return false;
 
-	extern kutil::vm_space g_kernel_space;
+	extern vm_space g_kernel_space;
 	bool is_heap = addr >= ::memory::heap_start &&
 		addr < ::memory::heap_start + ::memory::kernel_max_heap;
 
 	if (!is_heap &&
-		g_kernel_space.get(addr) != kutil::vm_state::committed)
+		g_kernel_space.get(addr) != vm_state::committed)
 		return false;
 
 	uintptr_t page = addr & ~0xfffull;

@@ -5,7 +5,6 @@
 
 #include "initrd/initrd.h"
 #include "kutil/assert.h"
-#include "kutil/vm_space.h"
 #include "apic.h"
 #include "block_device.h"
 #include "console.h"

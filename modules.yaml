@@ -58,6 +58,7 @@ modules:
             - src/kernel/syscalls/system.cpp
             - src/kernel/syscalls/thread.cpp
             - src/kernel/task.s
+            - src/kernel/vm_space.cpp
             - src/kernel/crtn.s
 
     boot:
@@ -117,7 +118,6 @@ modules:
             - src/libraries/kutil/logger.cpp
             - src/libraries/kutil/memory.cpp
             - src/libraries/kutil/printf.c
-            - src/libraries/kutil/vm_space.cpp
 
 
     libc:

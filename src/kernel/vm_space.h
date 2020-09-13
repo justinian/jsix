@@ -5,14 +5,11 @@
 #include <stdint.h>
 #include "kutil/avl_tree.h"
 
-namespace kutil {
-
 enum class vm_state : uint8_t {
 	unknown,
 	none,
 	reserved,
-	committed,
-	mapped
+	committed
 };
 
 struct vm_range
@@ -74,4 +71,3 @@ private:
 	tree_type m_ranges;
 };
 
-} // namespace kutil

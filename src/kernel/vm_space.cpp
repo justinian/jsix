@@ -1,9 +1,7 @@
 #include <algorithm>
-#include "kutil/logger.h"
 #include "kutil/vector.h"
-#include "kutil/vm_space.h"
-
-namespace kutil {
+#include "log.h"
+#include "vm_space.h"
 
 using node_type = kutil::avl_node<vm_range>;
 using node_vec = kutil::vector<node_type*>;
@@ -256,5 +254,3 @@ vm_space::get(uintptr_t addr)
 	node_type *node = find_overlapping(m_ranges.root(), addr, 1);
 	return node ? node->state : vm_state::unknown;
 }
-
-} // namespace kutil
