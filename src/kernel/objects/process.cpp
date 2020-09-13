@@ -1,5 +1,6 @@
 #include "j6/signals.h"
 #include "kutil/assert.h"
+#include "cpu.h"
 #include "objects/process.h"
 #include "objects/thread.h"
 #include "page_manager.h"
@@ -9,6 +10,7 @@ kutil::vector<process*> process::s_processes;
 process::process(page_table *pml4) :
 	kobject(kobject::type::process),
 	m_pml4(pml4),
+	m_next_handle(0),
 	m_state(state::running)
 {
 	s_processes.append(this);
@@ -17,6 +19,12 @@ process::process(page_table *pml4) :
 process::~process()
 {
 	s_processes.remove_swap(this);
+}
+
+process &
+process::current()
+{
+	return *bsp_cpu_data.p;
 }
 
 void
@@ -104,28 +112,21 @@ process::add_handle(kobject *obj)
 		return j6_handle_invalid;
 
 	obj->handle_retain();
-	size_t len = m_handles.count();
-	m_handles.append(obj);
-	return static_cast<j6_handle_t>(len);
+	j6_handle_t handle = m_next_handle++;
+	m_handles.insert(handle, obj);
+	return handle;
 }
 
 bool
 process::remove_handle(j6_handle_t handle)
 {
-	if (handle < m_handles.count()) {
-		kobject *obj = m_handles[handle];
-		m_handles[handle] = nullptr;
-		if (obj)
-			obj->handle_release();
-		return true;
-	}
-	return false;
+	kobject *obj = m_handles.find(handle);
+	if (obj) obj->handle_release();
+	return m_handles.erase(handle);
 }
 
 kobject *
 process::lookup_handle(j6_handle_t handle)
 {
-	if (handle < m_handles.count())
-		return m_handles[handle];
-	return nullptr;
+	return m_handles.find(handle);
 }

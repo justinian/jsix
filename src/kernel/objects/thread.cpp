@@ -1,4 +1,5 @@
 #include "j6/signals.h"
+#include "cpu.h"
 #include "log.h"
 #include "objects/thread.h"
 #include "objects/process.h"
@@ -38,6 +39,12 @@ thread::from_tcb(TCB *tcb)
 	static ptrdiff_t offset =
 		-1 * static_cast<ptrdiff_t>(offsetof(thread, m_tcb));
 	return reinterpret_cast<thread*>(kutil::offset_pointer(tcb, offset));
+}
+
+thread &
+thread::current()
+{
+	return *bsp_cpu_data.t;
 }
 
 void

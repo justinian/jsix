@@ -13,8 +13,8 @@ j6_status_t
 object_wait(j6_handle_t handle, j6_signal_t mask, j6_signal_t *sigs)
 {
 	scheduler &s = scheduler::get();
-	thread *th = thread::from_tcb(s.current());
-	process &p = th->parent();
+	thread &th = thread::current();
+	process &p = process::current();
 
 	kobject *obj = p.lookup_handle(handle);
 	if (!obj)
@@ -26,13 +26,13 @@ object_wait(j6_handle_t handle, j6_signal_t mask, j6_signal_t *sigs)
 		return j6_status_ok;
 	}
 
-	obj->add_blocked_thread(th);
-	th->wait_on_signals(obj, mask);
+	obj->add_blocked_thread(&th);
+	th.wait_on_signals(obj, mask);
 	s.schedule();
 
-	j6_status_t result = th->get_wait_result();
+	j6_status_t result = th.get_wait_result();
 	if (result == j6_status_ok) {
-		*sigs = th->get_wait_data();
+		*sigs = th.get_wait_data();
 	}
 	return result;
 }
@@ -43,10 +43,7 @@ object_signal(j6_handle_t handle, j6_signal_t signals)
 	if ((signals & j6_signal_user_mask) != signals)
 		return j6_err_invalid_arg;
 
-	scheduler &s = scheduler::get();
-	thread *th = thread::from_tcb(s.current());
-	process &p = th->parent();
-
+	process &p = process::current();
 	kobject *obj = p.lookup_handle(handle);
 	if (!obj)
 		return j6_err_invalid_arg;

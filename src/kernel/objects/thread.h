@@ -50,6 +50,9 @@ public:
 	/// Destructor
 	virtual ~thread();
 
+	/// Get the currently executing thread.
+	static thread & current();
+
 	/// Get the `ready` state of the thread.
 	/// \returns True if the thread is ready to execute.
 	inline bool ready() const { return has_state(state::ready); }

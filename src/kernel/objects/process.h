@@ -2,6 +2,8 @@
 /// \file process.h
 /// Definition of process kobject types
 
+#include "kutil/map.h"
+#include "kutil/vector.h"
 #include "objects/kobject.h"
 #include "page_table.h"
 
@@ -21,6 +23,9 @@ public:
 
 	/// Destructor.
 	virtual ~process();
+
+	/// Get the currently executing process.
+	static process & current();
 
 	/// Terminate this process.
 	/// \arg code   The return code to exit with.
@@ -68,7 +73,8 @@ private:
 
 	page_table *m_pml4;
 	kutil::vector<thread*> m_threads;
-	kutil::vector<kobject*> m_handles;
+	kutil::map<j6_handle_t, kobject*> m_handles;
+	j6_handle_t m_next_handle;
 
 	enum class state : uint8_t { running, exited };
 	state m_state;
