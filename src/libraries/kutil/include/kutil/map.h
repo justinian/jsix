@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 #include "kutil/hash.h"
+#include "kutil/memory.h"
 #include "kutil/vector.h"
 #include "kutil/util.h"
 
@@ -29,16 +30,48 @@ inline bool equal<const char *>(const char * const &a, const char * const &b) {
 	return *a1 == *b1; // Make sure they're both zero
 }
 
-/// An open addressing hash map using robinhood hashing.
 template <typename K, typename V>
-class map
+struct hash_node
 {
+	uint64_t h {0};
+	K key;
+	V val;
+
+	hash_node(hash_node &&o) : h(o.h), key(std::move(o.key)), val(std::move(o.val)) {}
+	hash_node(uint64_t h, K &&k, V &&v) : h(h), key(std::move(k)), val(std::move(v)) {}
+	~hash_node() { h = 0; }
+
+	inline uint64_t & hash() { return h; }
+	inline uint64_t hash() const { return h; }
+};
+
+template <typename V>
+struct hash_node <uint64_t, V>
+{
+	uint64_t key;
+	V val;
+
+	hash_node(hash_node &&o) : key(std::move(o.key)), val(std::move(o.val)) {}
+	hash_node(uint64_t h, uint64_t &&k, V &&v) : key(std::move(k)), val(std::move(v)) {}
+	~hash_node() {}
+
+	inline uint64_t & hash() { return key; }
+	inline uint64_t hash() const { return key; }
+};
+
+/// Base class for hash maps
+template <typename K, typename V>
+class base_map
+{
+protected:
+	using node = hash_node<K, V>;
+
 public:
 	static constexpr size_t min_capacity = 8;
 	static constexpr size_t max_load = 90;
 
 	/// Default constructor. Creates an empty map with the given capacity.
-	map(size_t capacity = 0) :
+	base_map(size_t capacity = 0) :
 		m_count(0),
 		m_capacity(0),
 		m_nodes(nullptr)
@@ -47,7 +80,7 @@ public:
 			set_capacity(1 << log2(capacity));
 	}
 
-	~map() {
+	virtual ~base_map() {
 		for (size_t i = 0; i < m_capacity; ++i)
 			m_nodes[i].~node();
 		kfree(m_nodes);
@@ -56,16 +89,6 @@ public:
 	void insert(K k, V v) {
 		if (++m_count > threshold()) grow();
 		insert_node(hash(k), std::move(k), std::move(v));
-	}
-
-	V * find(const K &k) {
-		node *n = lookup(k);
-		return n ? &n->val : nullptr;
-	}
-
-	const V * find(const K &k) const {
-		const node *n = lookup(k);
-		return n ? &n->val : nullptr;
 	}
 
 	bool erase(const K &k)
@@ -80,8 +103,8 @@ public:
 		while (true) {
 			size_t next = mod(i+1);
 			node &m = m_nodes[next];
-			if (!m.hash || mod(m.hash) == next) break;
-			construct(i, m.hash, std::move(m.key), std::move(m.val));
+			if (!m.hash() || mod(m.hash()) == next) break;
+			construct(i, m.hash(), std::move(m.key), std::move(m.val));
 			m.~node();
 			i = mod(++i);
 		}
@@ -93,18 +116,7 @@ public:
 	inline size_t capacity() const { return m_capacity; }
 	inline size_t threshold() const { return (m_capacity * max_load) / 100; }
 
-private:
-	struct node
-	{
-		uint64_t hash {0};
-		K key;
-		V val;
-
-		node(node &&o) : hash(o.h), key(std::move(o.key)), val(std::move(o.val)) {}
-		node(uint64_t h, K &&k, V &&v) : hash(h), key(std::move(k)), val(std::move(v)) {}
-		~node() { hash = 0; }
-	};
-
+protected:
 	inline size_t mod(uint64_t i) const { return i & (m_capacity - 1); }
 	inline size_t offset(uint64_t h, size_t i) const {
 		return mod(i + m_capacity - mod(h));
@@ -117,7 +129,7 @@ private:
 		m_capacity = capacity;
 		const size_t size = m_capacity * sizeof(node);
 		m_nodes = reinterpret_cast<node*>(kalloc(size));
-		memset(m_nodes, 0, size);
+		kutil::memset(m_nodes, 0, size);
 	}
 
 	void grow() {
@@ -132,7 +144,7 @@ private:
 
 		for (size_t i = 0; i < count; ++i) {
 			node &n = old[i];
-			insert_node(n.hash, std::move(n.key), std::move(n.val));
+			insert_node(n.hash(), std::move(n.key), std::move(n.val));
 			n.~node();
 		}
 
@@ -148,14 +160,14 @@ private:
 		size_t dist = 0;
 
 		while (true) {
-			if (!m_nodes[i].hash) {
+			if (!m_nodes[i].hash()) {
 				return construct(i, h, std::move(k), std::move(v));
 			}
 
 			node &elem = m_nodes[i];
-			size_t elem_dist = offset(elem.hash, i);
+			size_t elem_dist = offset(elem.hash(), i);
 			if (elem_dist < dist) {
-				std::swap(h, elem.hash);
+				std::swap(h, elem.hash());
 				std::swap(k, elem.key);
 				std::swap(v, elem.val);
 				dist = elem_dist;
@@ -173,10 +185,10 @@ private:
 
 		while (true) {
 			node &n = m_nodes[i];
-			if (!n.hash || dist > offset(n.hash, i))
+			if (!n.hash() || dist > offset(n.hash(), i))
 				return nullptr;
 
-			else if (n.hash == h && equal(n.key, k))
+			else if (n.hash() == h && equal(n.key, k))
 				return &n;
 
 			i = mod(++i);
@@ -192,10 +204,10 @@ private:
 
 		while (true) {
 			const node &n = m_nodes[i];
-			if (!n.hash || dist > offset(n.hash, i))
+			if (!n.hash() || dist > offset(n.hash(), i))
 				return nullptr;
 
-			else if (n.hash == h && equal(n.key, k))
+			else if (n.hash() == h && equal(n.key, k))
 				return &n;
 
 			i = mod(++i);
@@ -206,6 +218,48 @@ private:
 	size_t m_count;
 	size_t m_capacity;
 	node *m_nodes;
+};
+
+/// An open addressing hash map using robinhood hashing.
+template <typename K, typename V>
+class map :
+	public base_map<K, V>
+{
+	using base = base_map<K, V>;
+	using node = typename base::node;
+
+public:
+	map(size_t capacity = 0) :
+		base(capacity) {}
+
+	V * find(const K &k) {
+		node *n = this->lookup(k);
+		return n ? &n->val : nullptr;
+	}
+
+	const V * find(const K &k) const {
+		const node *n = this->lookup(k);
+		return n ? &n->val : nullptr;
+	}
+};
+
+/// An open addressing hash map using robinhood hashing. Specialization
+/// for storing pointers: don't return a pointer to a pointer.
+template <typename K, typename V>
+class map <K, V*> :
+	public base_map<K, V*>
+{
+	using base = base_map<K, V*>;
+	using node = typename base::node;
+
+public:
+	map(size_t capacity = 0) :
+		base(capacity) {}
+
+	V * find(const K &k) const {
+		const node *n = this->lookup(k);
+		return n ? n->val : nullptr;
+	}
 };
 
 } // namespace kutil

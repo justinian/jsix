@@ -33,13 +33,11 @@ inline uint64_t hash_buffer(const void *v, size_t len, uint64_t init = 0) {
 }
 
 template <typename T>
-uint64_t hash(const T &v) {
+inline uint64_t hash(const T &v) {
 	return hash_buffer(reinterpret_cast<const void*>(&v), sizeof(T));
 } 
 
-template <>
-uint64_t hash<const char *>(const char * const &s) {
-	return hash_string(s);
-}
+template <> inline uint64_t hash<uint64_t>(const uint64_t &i) { return i; }
+template <> inline uint64_t hash<const char *>(const char * const &s) { return hash_string(s); }
 
 } // namespace kutil
