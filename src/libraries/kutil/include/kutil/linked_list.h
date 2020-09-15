@@ -321,7 +321,7 @@ public:
 		if (!item) return;
 
 		item_type *cur = m_head;
-		while (cur && item->compare(cur) > 0)
+		while (cur && item->compare(*cur) > 0)
 			cur = cur->m_next;
 
 		insert_before(cur, item);

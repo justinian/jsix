@@ -6,8 +6,8 @@ struct unsortableT {
 
 struct sortableT {
 	int value;
-	int compare(const sortableT *other) const {
-		return value - other->value;
+	int compare(const sortableT &other) const {
+		return value - other.value;
 	}
 };
 

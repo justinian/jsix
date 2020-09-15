@@ -70,6 +70,21 @@ public:
 	static constexpr size_t min_capacity = 8;
 	static constexpr size_t max_load = 90;
 
+	class iterator
+	{
+	public:
+		iterator(node *n) : m_node(n) {}
+		inline node & operator*() { return *m_node; }
+		inline node * operator->() { return m_node; }
+		inline const node & operator*() const { return *m_node; }
+		inline iterator & operator++() { incr(); return *this; }
+		inline iterator operator++(int) { node *old = m_node; incr(); return iterator(old); }
+		inline bool operator!=(const iterator &o) { return m_node != o.m_node; }
+	private:
+		void incr() { do { m_node++; } while ( m_node && m_node->hash() == 0 ); }
+		node *m_node;
+	};
+
 	/// Default constructor. Creates an empty map with the given capacity.
 	base_map(size_t capacity = 0) :
 		m_count(0),
@@ -84,6 +99,18 @@ public:
 		for (size_t i = 0; i < m_capacity; ++i)
 			m_nodes[i].~node();
 		kfree(m_nodes);
+	}
+
+	iterator begin() {
+		return iterator(m_nodes);
+	}
+
+	const iterator begin() const {
+		return iterator(m_nodes);
+	}
+
+	const iterator end() const {
+		return iterator(m_nodes + m_capacity);
 	}
 
 	void insert(K k, V v) {

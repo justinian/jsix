@@ -8,11 +8,11 @@ using memory::page_offset;
 using frame_block_node = kutil::list_node<frame_block>;
 
 int
-frame_block::compare(const frame_block *rhs) const
+frame_block::compare(const frame_block &rhs) const
 {
-	if (address < rhs->address)
+	if (address < rhs.address)
 		return -1;
-	else if (address > rhs->address)
+	else if (address > rhs.address)
 		return 1;
 	return 0;
 }

@@ -125,19 +125,21 @@ public:
 	}
 
 	/// Insert an item into the list in a sorted position. Depends on T
-	/// having a method `int compare(const T *other)`.
-	void sorted_insert(const T& item)
+	/// having a method `int compare(const T &other)`.
+	/// \returns index of the new item
+	size_t sorted_insert(const T& item)
 	{
 		size_t start = 0;
 		size_t end = m_size;
 		while (end > start) {
 			size_t m = start + (end - start) / 2;
-			int c = item.compare(&m_elements[m]);
+			int c = item.compare(m_elements[m]);
 			if (c < 0) end = m;
 			else start = m + 1;
 		}
 
 		insert(start, item);
+		return start;
 	}
 
 	/// Remove an item from the end of the array.
@@ -156,16 +158,30 @@ public:
 		remove_at(0);
 	}
 
-	/// Remove the item at the given index from the array, not
-	/// order-preserving.
-	void remove_at(size_t i)
+	/// Remove an item from the array.
+	void remove(const T &item)
 	{
-		if (i >= count()) return;
+		kassert(m_size, "Called remove() on an empty array");
+		for (size_t i = 0; i < m_size; ++i) {
+			if (m_elements[i] == item) {
+				remove_at(i);
+				break;
+			}
+		}
+	}
 
-		m_elements[i].~T();
-		for (; i < m_size - 1; ++i)
-			m_elements[i] = m_elements[i+1];
-		m_size -= 1;
+	/// Remove n items starting at the given index from the array,
+	/// order-preserving.
+	void remove_at(size_t i, size_t n = 1)
+	{
+		for (size_t j = i; j < i + n; ++j) {
+			if (j >= m_size) return;
+			m_elements[j].~T();
+		}
+
+		for (; i < m_size - n; ++i)
+			m_elements[i] = m_elements[i+n];
+		m_size -= n;
 	}
 
 	/// Remove the first occurance of an item from the array, not

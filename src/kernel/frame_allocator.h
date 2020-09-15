@@ -46,6 +46,6 @@ struct frame_block
 	/// Compare two blocks by address.
 	/// \arg rhs   The right-hand comparator
 	/// \returns   <0 if this is sorts earlier, >0 if this sorts later, 0 for equal
-	int compare(const frame_block *rhs) const;
+	int compare(const frame_block &rhs) const;
 };
 
