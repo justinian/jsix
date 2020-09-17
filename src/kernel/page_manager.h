@@ -58,14 +58,6 @@ public:
 	/// \arg pml4  The process' PML4 table
 	void delete_process_map(page_table *pml4);
 
-	/// Copy a process' memory mappings (and memory pages).
-	/// \arg from  Page table to copy from
-	/// \arg lvl   Level of the given tables (default is PML4)
-	/// \returns   The new page table
-	page_table * copy_table(page_table *from,
-			page_table::level lvl = page_table::level::pml4,
-			page_table_indices index = {});
-
 	/// Allocate and map pages into virtual memory.
 	/// \arg address  The virtual address at which to map the pages
 	/// \arg count    The number of pages to map
@@ -79,27 +71,6 @@ public:
 	/// \arg count    The number of pages to unmap
 	/// \arg pml4     The pml4 to unmap from - null for the current one
 	void unmap_pages(void *address, size_t count, page_table *pml4 = nullptr);
-
-	/// Offset-map a pointer. No physical pages will be mapped.
-	/// \arg pointer  Pointer to a pointer to the memory area to be mapped
-	/// \arg length   Length of the memory area to be mapped
-	void map_offset_pointer(void **pointer, size_t length);
-
-	/// Get the physical address of an offset-mapped pointer
-	/// \arg p   Virtual address of memory that has been offset-mapped
-	/// \returns Physical address of the memory pointed to by p
-	inline uintptr_t offset_phys(void *p) const
-	{
-		return reinterpret_cast<uintptr_t>(kutil::offset_pointer(p, -memory::page_offset));
-	}
-
-	/// Get the virtual address of an offset-mapped physical address
-	/// \arg a   Physical address of memory that has been offset-mapped
-	/// \returns Virtual address of the memory at address a
-	inline void * offset_virt(uintptr_t a) const
-	{
-		return kutil::offset_pointer(reinterpret_cast<void *>(a), memory::page_offset);
-	}
 
 	/// Get the offet-mapped virtual address of a normal virtual address
 	/// \arg p   Virtual address
@@ -119,11 +90,6 @@ public:
 	inline page_table * get_kernel_pml4() { return m_kernel_pml4; }
 
 private:
-	/// Copy a physical page
-	/// \arg orig  Physical address of the page to copy
-	/// \returns   Physical address of the new page
-	uintptr_t copy_page(uintptr_t orig);
-
 	/// Allocate a page for a page table, or pull one from the cache
 	/// \returns  An empty page mapped in page space
 	page_table * get_table_page();

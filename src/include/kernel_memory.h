@@ -53,4 +53,9 @@ namespace memory {
 	/// through the page_offset area.
 	inline bool page_mappable(uintptr_t a) { return (a & page_offset) == 0; }
 
+	/// Convert a physical address to a virtual one (in the offset-mapped area)
+	template <typename T> T * to_virtual(uintptr_t a) {
+		return reinterpret_cast<T*>(a|page_offset);
+	}
+
 } // namespace memory

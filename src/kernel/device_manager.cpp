@@ -60,7 +60,7 @@ void irq4_callback(void *)
 
 
 device_manager::device_manager() :
-	m_lapic(nullptr)
+	m_lapic(0)
 {
 	m_irqs.ensure_capacity(32);
 	m_irqs.set_size(16);
@@ -148,8 +148,7 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 void
 device_manager::load_apic(const acpi_apic *apic)
 {
-	uint32_t *local = reinterpret_cast<uint32_t *>(apic->local_address);
-
+	uintptr_t local = apic->local_address;
 	m_lapic = new lapic(local, isr::isrSpurious);
 
 	size_t count = acpi_table_entries(apic, 1);
@@ -173,7 +172,7 @@ device_manager::load_apic(const acpi_apic *apic)
 		const uint8_t type = p[0];
 		const uint8_t length = p[1];
 		if (type == 1) {
-			uint32_t *base = reinterpret_cast<uint32_t *>(kutil::read_from<uint32_t>(p+4));
+			uintptr_t base = kutil::read_from<uint32_t>(p+4);
 			uint32_t base_gsr = kutil::read_from<uint32_t>(p+8);
 			m_ioapics.emplace(base, base_gsr);
 		}
@@ -257,13 +256,7 @@ device_manager::load_mcfg(const acpi_mcfg *mcfg)
 		m_pci[i].group = mcfge.group;
 		m_pci[i].bus_start = mcfge.bus_start;
 		m_pci[i].bus_end = mcfge.bus_end;
-		m_pci[i].base = reinterpret_cast<uint32_t *>(mcfge.base);
-
-		int num_busses = m_pci[i].bus_end - m_pci[i].bus_start + 1;
-
-		/// Map the MMIO space into memory
-		pm->map_offset_pointer(reinterpret_cast<void **>(&m_pci[i].base),
-				(num_busses << 20));
+		m_pci[i].base = memory::to_virtual<uint32_t>(mcfge.base);
 
 		log::debug(logs::device, "  Found MCFG entry: base %lx  group %d  bus %d-%d",
 				mcfge.base, mcfge.group, mcfge.bus_start, mcfge.bus_end);

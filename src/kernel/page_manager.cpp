@@ -63,78 +63,6 @@ page_manager::create_process_map()
 	return table;
 }
 
-uintptr_t
-page_manager::copy_page(uintptr_t orig)
-{
-	uintptr_t copy = 0;
-	size_t n = m_frames.allocate(1, &copy);
-	kassert(n, "copy_page could not allocate page");
-
-	uintptr_t orig_virt = orig + page_offset;
-	uintptr_t copy_virt = copy + page_offset;
-
-	kutil::memcpy(
-			reinterpret_cast<void *>(copy_virt),
-			reinterpret_cast<void *>(orig_virt),
-			frame_size);
-
-	return copy;
-}
-
-page_table *
-page_manager::copy_table(page_table *from, page_table::level lvl, page_table_indices index)
-{
-	page_table *to = get_table_page();
-	log::debug(logs::paging, "Page manager copying level %d table at %016lx to %016lx.", lvl, from, to);
-
-	if (lvl == page_table::level::pml4) {
-		for (unsigned i = pml4e_kernel; i < table_entries; ++i)
-			to->entries[i] = m_kernel_pml4->entries[i];
-	}
-
-	const int max =
-		lvl == page_table::level::pml4
-			? pml4e_kernel
-			: table_entries;
-
-	unsigned pages_copied = 0;
-	uintptr_t from_addr = 0;
-	uintptr_t to_addr = 0;
-
-	for (int i = 0; i < max; ++i) {
-		if (!from->is_present(i)) {
-			to->entries[i] = 0;
-			continue;
-		}
-
-		index[lvl] = i;
-
-		bool is_page =
-			lvl == page_table::level::pt ||
-			from->is_large_page(lvl, i);
-
-		if (is_page) {
-			uint16_t flags = from->entries[i] &  0xfffull;
-			uintptr_t orig = from->entries[i] & ~0xfffull;
-			to->entries[i] = copy_page(orig) | flags;
-			if (!pages_copied++)
-				from_addr = index.addr();
-			to_addr = index.addr();
-		} else {
-			uint16_t flags = 0;
-			page_table *next_from = from->get(i, &flags);
-			page_table *next_to = copy_table(next_from, page_table::deeper(lvl), index);
-			to->set(i, next_to, flags);
-		}
-	}
-
-	if (pages_copied)
-		log::debug(logs::paging, "   copied %3u pages %016lx - %016lx",
-			pages_copied, from_addr, to_addr + frame_size);
-
-	return to;
-}
-
 void
 page_manager::delete_process_map(page_table *pml4)
 {
@@ -146,13 +74,6 @@ page_manager::delete_process_map(page_table *pml4)
 			pml4, was_pml4 ? " (was current)" : "");
 
 	unmap_table(pml4, page_table::level::pml4, true);
-}
-
-void
-page_manager::map_offset_pointer(void **pointer, size_t length)
-{
-	log::debug(logs::paging, "Mapping offset pointer region at %016lx size 0x%lx", *pointer, length);
-	*pointer = kutil::offset_pointer(*pointer, page_offset);
 }
 
 void *
@@ -174,7 +95,7 @@ page_manager::get_offset_from_mapped(void *p, page_table *pml4)
 	if (!(a & 1))
 		return nullptr;
 
-	return offset_virt(
+	return memory::to_virtual<void>(
 			(a & ~0xfffull) |
 			(v & 0xfffull));
 }

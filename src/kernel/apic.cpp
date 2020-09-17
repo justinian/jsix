@@ -3,6 +3,7 @@
 #include "clock.h"
 #include "interrupts.h"
 #include "io.h"
+#include "kernel_memory.h"
 #include "log.h"
 #include "page_manager.h"
 
@@ -42,18 +43,13 @@ ioapic_write(uint32_t volatile *base, uint8_t reg, uint32_t value)
 	*(base + 4) = value;
 }
 
-apic::apic(uint32_t *base) :
-	m_base(base)
+apic::apic(uintptr_t base) :
+	m_base(memory::to_virtual<uint32_t>(base))
 {
-	// Map 1MiB of space for the APIC registers and
-	// MSI area
-	page_manager::get()->map_offset_pointer(
-			reinterpret_cast<void **>(&m_base),
-			0x100000);
 }
 
 
-lapic::lapic(uint32_t *base, isr spurious) :
+lapic::lapic(uintptr_t base, isr spurious) :
 	apic(base),
 	m_divisor(0)
 {
@@ -177,7 +173,7 @@ lapic::disable()
 }
 
 
-ioapic::ioapic(uint32_t *base, uint32_t base_gsi) :
+ioapic::ioapic(uintptr_t base, uint32_t base_gsi) :
 	apic(base),
 	m_base_gsi(base_gsi)
 {

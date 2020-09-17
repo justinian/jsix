@@ -11,8 +11,8 @@ class apic
 {
 public:
 	/// Constructor
-	/// \arg base   Base virtual address of the APIC's MMIO registers
-	apic(uint32_t *base);
+	/// \arg base   Physical base address of the APIC's MMIO registers
+	apic(uintptr_t base);
 
 protected:
 	uint32_t *m_base;
@@ -25,9 +25,9 @@ class lapic :
 {
 public:
 	/// Constructor
-	/// \arg base      Base virtual address of the APIC's MMIO registers
+	/// \arg base      Physicl base address of the APIC's MMIO registers
 	/// \arg spurious  Vector of the spurious interrupt handler
-	lapic(uint32_t *base, isr spurious);
+	lapic(uintptr_t base, isr spurious);
 
 	/// Enable interrupts for the LAPIC timer.
 	/// \arg vector   Interrupt vector the timer should use
@@ -79,9 +79,9 @@ class ioapic :
 {
 public:
 	/// Constructor
-	/// \arg base     Base virtual address of the APIC's MMIO registers
+	/// \arg base     Physical base address of the APIC's MMIO registers
 	/// \arg base_gsi Starting global system interrupt number of this IOAPIC
-	ioapic(uint32_t *base, uint32_t base_gsi);
+	ioapic(uintptr_t base, uint32_t base_gsi);
 
 	uint32_t get_base_gsi() const	{ return m_base_gsi; }
 	uint32_t get_num_gsi() const	{ return m_num_gsi; }
