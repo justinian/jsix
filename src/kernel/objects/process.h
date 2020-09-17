@@ -6,6 +6,7 @@
 #include "kutil/vector.h"
 #include "objects/kobject.h"
 #include "page_table.h"
+#include "vm_space.h"
 
 class process :
 	public kobject
@@ -36,6 +37,9 @@ public:
 
 	/// Get the process' page table root
 	page_table * pml4() { return m_pml4; }
+
+	/// Get the process' virtual memory space
+	vm_space & space() { return m_space; }
 
 	/// Create a new thread in this process
 	/// \args priority  The new thread's scheduling priority
@@ -72,6 +76,8 @@ private:
 	uint32_t m_return_code;
 
 	page_table *m_pml4;
+	vm_space m_space;
+
 	kutil::vector<thread*> m_threads;
 	kutil::map<j6_handle_t, kobject*> m_handles;
 	j6_handle_t m_next_handle;

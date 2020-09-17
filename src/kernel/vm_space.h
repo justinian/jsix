@@ -1,73 +1,93 @@
 #pragma once
-/// \file vm_range.h
+/// \file vm_space.h
 /// Structure for tracking a range of virtual memory addresses
 
 #include <stdint.h>
-#include "kutil/avl_tree.h"
+#include "kutil/enum_bitfields.h"
+#include "kutil/vector.h"
 
-enum class vm_state : uint8_t {
-	unknown,
-	none,
-	reserved,
-	committed
-};
-
-struct vm_range
-{
-	uintptr_t address;
-	size_t size;
-	vm_state state;
-
-	inline uintptr_t end() const { return address + size; }
-	inline int64_t compare(const vm_range *other) const {
-		if (address > other->address) return -1;
-		else if (address < other->address) return 1;
-		else return 0;
-	}
-};
+struct page_table;
+class process;
+class vm_area;
 
 /// Tracks a region of virtual memory address space
 class vm_space
 {
 public:
-	/// Default constructor. Define an empty range.
-	vm_space();
+	/// Constructor.
+	/// \arg pml4   The pml4 for this address space
+	/// \arg kernel True if this is the kernel address space
+	vm_space(page_table *pml4, bool kernel = false);
 
-	/// Constructor. Define a range of managed VM space.
-	/// \arg start       Starting address of the managed space
-	/// \arg size        Size of the managed space, in bytes
-	vm_space(uintptr_t start, size_t size);
+	~vm_space();
 
-	/// Reserve a section of address space.
-	/// \arg start  Starting address of reservaion, or 0 for any address
-	/// \arg size   Size of reservation in bytes
-	/// \returns  The address of the reservation, or 0 on failure
-	uintptr_t reserve(uintptr_t start, size_t size);
+	/// Add a virtual memorty area to this address space
+	/// \arg base  The starting address of the area
+	/// \arg area  The area to add
+	/// \returns   True if the add succeeded
+	bool add(uintptr_t base, vm_area *area);
 
-	/// Unreserve (and uncommit, if committed) a section of address space.
-	/// \arg start  Starting address of reservaion
-	/// \arg size   Size of reservation in bytes
-	void unreserve(uintptr_t start, size_t size);
+	/// Remove a virtual memory area from this address space
+	/// \arg area  The area to remove
+	/// \returns   True if the area was removed
+	bool remove(vm_area *area);
 
-	/// Mark a section of address space as committed.
-	/// \arg start  Starting address of reservaion, or 0 for any address
-	/// \arg size   Size of reservation in bytes
-	/// \returns  The address of the reservation, or 0 on failure
-	uintptr_t commit(uintptr_t start, size_t size);
-
-	/// Check the state of the given address.
+	/// Get the virtual memory area corresponding to an address
 	/// \arg addr  The address to check
-	/// \returns   The state of the memory if known, or 'unknown'
-	vm_state get(uintptr_t addr);
+	/// \arg base  [out] if not null, receives the base address of the area
+	/// \returns   The vm_area, or nullptr if not found
+	vm_area * get(uintptr_t addr, uintptr_t *base = nullptr);
+
+	/// Check if this is the kernel space
+	inline bool is_kernel() const { return m_kernel; }
+
+	/// Get the kernel virtual memory space
+	static vm_space & kernel_space();
+
+	/// Add page mappings into this space's page tables
+	/// \arg addr   The virtual address to map at
+	/// \arg count  The number of pages
+	/// \arg phys   The physical address of the first page
+	void page_in(uintptr_t addr, size_t count, uintptr_t phys);
+
+	/// Remove page mappings from this space's page tables
+	/// \arg addr   The virtual address to unmap
+	/// \arg count  The number of pages
+	void page_out(uintptr_t addr, size_t count);
+
+	/// Mark whether allocation is allowed or not in a range of
+	/// virtual memory.
+	/// \arg start  The starting virtual address of the area
+	/// \arg length The length in bytes of the area
+	/// \arg allow  True if allocation should be allowed
+	void allow(uintptr_t start, size_t length, bool allow);
+
+	enum class fault_type : uint8_t {
+		none     = 0x00,
+		present  = 0x01,
+		write    = 0x02,
+		user     = 0x04,
+		reserved = 0x08,
+		fetch    = 0x10
+	};
+
+	/// Handle a page fault.
+	/// \arg addr  Address which caused the fault
+	/// \arg ft    Flags from the interrupt about the kind of fault
+	/// \returns   True if the fault was successfully handled
+	bool handle_fault(uintptr_t addr, fault_type fault);
 
 private:
-	using node_type = kutil::avl_node<vm_range>;
-	using tree_type = kutil::avl_tree<vm_range>;
+	bool m_kernel;
+	page_table *m_pml4;
 
-	node_type * split_out(node_type* node, uintptr_t start, size_t size, vm_state state);
-	node_type * consolidate(node_type* needle);
-	node_type * find_empty(node_type* node, size_t size, vm_state state);
-
-	tree_type m_ranges;
+	struct area {
+		uintptr_t base;
+		vm_area *area;
+		int compare(const struct area &o) const;
+		bool operator==(const struct area &o) const;
+	};
+	kutil::vector<area> m_areas;
 };
 
+IS_BITFIELD(vm_space::fault_type);

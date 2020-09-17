@@ -2,6 +2,8 @@
 #include "console.h"
 #include "io.h"
 #include "log.h"
+#include "objects/process.h"
+#include "objects/vm_area.h"
 #include "page_manager.h"
 #include "vm_space.h"
 
@@ -327,33 +329,6 @@ page_manager::unmap_pages(void* address, size_t count, page_table *pml4)
 	page_out(pml4, iaddr, count, true);
 }
 
-bool
-page_manager::fault_handler(uintptr_t addr)
-{
-	if (!addr)
-		return false;
-
-	extern vm_space g_kernel_space;
-	bool is_heap = addr >= ::memory::heap_start &&
-		addr < ::memory::heap_start + ::memory::kernel_max_heap;
-
-	if (!is_heap &&
-		g_kernel_space.get(addr) != vm_state::committed)
-		return false;
-
-	uintptr_t page = addr & ~0xfffull;
-	log::debug(logs::memory, "PF: attempting to page in %016lx for %016lx", page, addr);
-
-	bool user = addr < kernel_offset;
-	map_pages(page, 1, user);
-
-	// Kernel stacks: zero them upon mapping them
-	if (addr >= memory::stacks_start && addr < memory::heap_start)
-		kutil::memset(reinterpret_cast<void*>(page), 0, memory::frame_size);
-
-	return true;
-}
-
 void
 page_manager::check_needs_page(page_table *table, unsigned index, bool user)
 {
@@ -488,62 +463,4 @@ page_manager::page_out(page_table *pml4, uintptr_t virt_addr, size_t count, bool
 page_out_end:
 	if (free && free_count)
 		m_frames.free(free_start, free_count);
-}
-
-void
-page_table::dump(page_table::level lvl, bool recurse)
-{
-	console *cons = console::get();
-
-	cons->printf("\nLevel %d page table @ %lx:\n", lvl, this);
-	for (int i=0; i<table_entries; ++i) {
-		uint64_t ent = entries[i];
-
-		if ((ent & 0x1) == 0)
-			cons->printf("  %3d: %016lx   NOT PRESENT\n", i, ent);
-
-		else if ((lvl == level::pdp || lvl == level::pd) && (ent & 0x80) == 0x80)
-			cons->printf("  %3d: %016lx -> Large page at    %016lx\n", i, ent, ent & ~0xfffull);
-
-		else if (lvl == level::pt)
-			cons->printf("  %3d: %016lx -> Page at          %016lx\n", i, ent, ent & ~0xfffull);
-
-		else
-			cons->printf("  %3d: %016lx -> Level %d table at %016lx\n",
-					i, ent, deeper(lvl), (ent & ~0xfffull) + page_offset);
-	}
-
-	if (lvl != level::pt && recurse) {
-		for (int i=0; i<=table_entries; ++i) {
-			if (is_large_page(lvl, i))
-				continue;
-
-			page_table *next = get(i);
-			if (next)
-				next->dump(deeper(lvl), true);
-		}
-	}
-}
-
-page_table_indices::page_table_indices(uint64_t v) :
-	index{
-		(v >> 39) & 0x1ff,
-		(v >> 30) & 0x1ff,
-		(v >> 21) & 0x1ff,
-		(v >> 12) & 0x1ff }
-{}
-
-uintptr_t
-page_table_indices::addr() const
-{
-	return
-		(index[0] << 39) |
-		(index[1] << 30) |
-		(index[2] << 21) |
-		(index[3] << 12);
-}
-
-bool operator==(const page_table_indices &l, const page_table_indices &r)
-{
-	return l[0] == r[0] && l[1] == r[1] && l[2] == r[2] && l[3] == r[3];
 }

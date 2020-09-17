@@ -10,6 +10,7 @@ kutil::vector<process*> process::s_processes;
 process::process(page_table *pml4) :
 	kobject(kobject::type::process),
 	m_pml4(pml4),
+	m_space(pml4),
 	m_next_handle(0),
 	m_state(state::running)
 {

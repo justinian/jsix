@@ -9,6 +9,7 @@
 #include "frame_allocator.h"
 #include "io.h"
 #include "log.h"
+#include "objects/vm_area.h"
 #include "page_manager.h"
 #include "vm_space.h"
 
@@ -24,8 +25,6 @@ using memory::table_entries;
 
 using namespace kernel;
 
-vm_space g_kernel_space {kernel_offset, (heap_start-kernel_offset)};
-
 
 // These objects are initialized _before_ global constructors are called,
 // so we don't want them to have global constructors at all, lest they
@@ -39,6 +38,9 @@ page_manager &g_page_manager = __g_page_manager_storage.value;
 static kutil::no_construct<frame_allocator> __g_frame_allocator_storage;
 frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
 
+static kutil::no_construct<vm_space> __g_kernel_space_storage;
+vm_space &g_kernel_space = __g_kernel_space_storage.value;
+
 void * operator new(size_t size)           { return g_kernel_heap.allocate(size); }
 void * operator new [] (size_t size)       { return g_kernel_heap.allocate(size); }
 void operator delete (void *p) noexcept    { return g_kernel_heap.free(p); }
@@ -49,12 +51,13 @@ void * kalloc(size_t size) { return g_kernel_heap.allocate(size); }
 void kfree(void *p) { return g_kernel_heap.free(p); }
 }
 
+/*
 void walk_page_table(
 	page_table *table,
 	page_table::level level,
 	uintptr_t &current_start,
 	size_t &current_bytes,
-	vm_space &kspace)
+	vm_area &karea)
 {
 	constexpr size_t huge_page_size = (1ull<<30);
 	constexpr size_t large_page_size = (1ull<<21);
@@ -63,7 +66,7 @@ void walk_page_table(
 		page_table *next = table->get(i);
 		if (!next) {
 			if (current_bytes)
-				kspace.commit(current_start, current_bytes);
+				karea.commit(current_start, current_bytes);
 			current_start = 0;
 			current_bytes = 0;
 			continue;
@@ -86,6 +89,7 @@ void walk_page_table(
 		}
 	}
 }
+*/
 
 void
 memory_initialize_pre_ctors(args::header *kargs)
@@ -106,11 +110,15 @@ memory_initialize_pre_ctors(args::header *kargs)
 
 	// Create the page manager
 	new (&g_page_manager) page_manager {g_frame_allocator, kpml4};
+
+	vm_space &vm = *new (&g_kernel_space) vm_space {kpml4, true};
+	vm.allow(memory::heap_start, memory::kernel_max_heap, true);
 }
 
 void
 memory_initialize_post_ctors(args::header *kargs)
 {
+	/*
 	uintptr_t current_start = 0;
 	size_t current_bytes = 0;
 
@@ -128,8 +136,10 @@ memory_initialize_post_ctors(args::header *kargs)
 
 	if (current_bytes)
 		g_kernel_space.commit(current_start, current_bytes);
+	*/
 
 	g_frame_allocator.free(
 		reinterpret_cast<uintptr_t>(kargs->page_table_cache),
 		kargs->num_free_tables);
+
 }

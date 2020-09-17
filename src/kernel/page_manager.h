@@ -118,11 +118,6 @@ public:
 	/// Get a pointer to the kernel's PML4
 	inline page_table * get_kernel_pml4() { return m_kernel_pml4; }
 
-	/// Attempt to handle a page fault.
-	/// \arg addr  Address that triggered the fault
-	/// \returns   True if the fault was handled
-	bool fault_handler(uintptr_t addr);
-
 private:
 	/// Copy a physical page
 	/// \arg orig  Physical address of the page to copy
@@ -182,6 +177,7 @@ private:
 	frame_allocator &m_frames;
 
 	friend class memory_bootstrap;
+	friend class vm_space;
 	page_manager(const page_manager &) = delete;
 };
 

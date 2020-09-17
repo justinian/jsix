@@ -18,12 +18,10 @@ public:
 		none,
 
 		event,
-		eventpair,
 		channel,
 		endpoint,
 
-		vms,
-		vmo,
+		vma,
 
 		job,
 		process,

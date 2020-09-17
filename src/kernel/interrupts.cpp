@@ -10,10 +10,12 @@
 #include "gdt.h"
 #include "interrupts.h"
 #include "io.h"
+#include "kernel_memory.h"
 #include "log.h"
-#include "page_manager.h"
+#include "objects/process.h"
 #include "scheduler.h"
 #include "syscall.h"
+#include "vm_space.h"
 
 static const uint16_t PIC1 = 0x20;
 static const uint16_t PIC2 = 0xa0;
@@ -189,8 +191,15 @@ isr_handler(cpu_state *regs)
 			uintptr_t cr2 = 0;
 			__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
 
-			if ((regs->errorcode & 0x9) == 0 &&
-				page_manager::get()->fault_handler(cr2))
+			bool user = cr2 < memory::kernel_offset;
+			vm_space::fault_type ft =
+				static_cast<vm_space::fault_type>(regs->errorcode);
+
+			vm_space &space = user
+				? process::current().space()
+				: vm_space::kernel_space();
+
+			if (cr2 && space.handle_fault(cr2, ft))
 				break;
 
 			cons->set_color(11);

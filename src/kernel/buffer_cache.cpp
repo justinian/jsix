@@ -1,7 +1,8 @@
 #include "kutil/assert.h"
-#include "kernel_memory.h"
-#include "page_manager.h"
 #include "buffer_cache.h"
+#include "kernel_memory.h"
+#include "objects/vm_area.h"
+#include "page_manager.h"
 #include "vm_space.h"
 
 extern vm_space g_kernel_space;
@@ -33,16 +34,17 @@ buffer_cache::get_buffer()
 		m_next += m_size;
 	}
 
-	g_kernel_space.commit(addr, m_size);
+	vm_space &vm = vm_space::kernel_space();
+	vm.allow(addr, m_size, true);
+
 	return addr;
 }
 
 void
 buffer_cache::return_buffer(uintptr_t addr)
 {
-	void *ptr = reinterpret_cast<void*>(addr);
-	size_t page_count = page_manager::page_count(m_size);
-	page_manager::get()->unmap_pages(ptr, page_count);
-	g_kernel_space.unreserve(addr, m_size);
+	vm_space &vm = vm_space::kernel_space();
+	vm.allow(addr, m_size, false);
+
 	m_cache.append(addr);
 }
