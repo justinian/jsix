@@ -76,7 +76,7 @@ struct page_table
 		/// Get a *non-const* reference to the current table entry of
 		/// the table at the given level.
 		inline uint64_t & entry(level l) {
-			for (unsigned i = 1; i < unsigned(l); ++i) ensure_table(level(i));
+			for (unsigned i = 1; i <= unsigned(l); ++i) ensure_table(level(i));
 			return table(l)->entries[index(l)];
 		}
 
@@ -148,6 +148,10 @@ struct page_table
 
 	/// Check if the given entry represents a page (of any size)
 	inline bool is_page(level l, int i) const { return (l == level::pt) || is_large_page(l, i); }
+
+	/// Free this page table and all resources it references
+	/// \arg l  The level of this page table
+	void free(level l);
 
 	/// Print this table to the debug console.
 	void dump(level lvl = level::pml4, bool recurse = true);

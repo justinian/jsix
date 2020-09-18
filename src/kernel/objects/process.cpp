@@ -7,10 +7,8 @@
 
 kutil::vector<process*> process::s_processes;
 
-process::process(page_table *pml4) :
+process::process() :
 	kobject(kobject::type::process),
-	m_pml4(pml4),
-	m_space(pml4),
 	m_next_handle(0),
 	m_state(state::running)
 {
@@ -41,7 +39,6 @@ process::exit(unsigned code)
 		thread->exit(code);
 	}
 	m_return_code = code;
-	page_manager::get()->delete_process_map(m_pml4);
 	assert_signal(j6_signal_process_exit);
 }
 
@@ -76,13 +73,7 @@ process::create_thread(uint8_t priority, bool user)
 
 	if (user) {
 		uintptr_t stack_top = stacks_top - (m_threads.count() * stack_size);
-		auto *pm = page_manager::get();
-		pm->map_pages(
-			stack_top - stack_size,
-			page_manager::page_count(stack_size),
-			true, // user stack
-			m_pml4);
-
+		m_space.allow(stack_top - stack_size, stack_size, true);
 		th->tcb()->rsp3 = stack_top;
 	}
 

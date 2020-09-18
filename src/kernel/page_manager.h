@@ -49,15 +49,6 @@ public:
 		__asm__ __volatile__ ( "mov %0, %%cr3" :: "r" (p) );
 	}
 
-	/// Allocate but don't switch to a new PML4 table. This table
-	/// should only have global kernel pages mapped.
-	/// \returns      A pointer to the PML4 table
-	page_table * create_process_map();
-
-	/// Deallocate a process' PML4 table and entries.
-	/// \arg pml4  The process' PML4 table
-	void delete_process_map(page_table *pml4);
-
 	/// Allocate and map pages into virtual memory.
 	/// \arg address  The virtual address at which to map the pages
 	/// \arg count    The number of pages to map
@@ -71,11 +62,6 @@ public:
 	/// \arg count    The number of pages to unmap
 	/// \arg pml4     The pml4 to unmap from - null for the current one
 	void unmap_pages(void *address, size_t count, page_table *pml4 = nullptr);
-
-	/// Get the offet-mapped virtual address of a normal virtual address
-	/// \arg p   Virtual address
-	/// \returns Virtual address in offset-mapped linear space
-	void * get_offset_from_mapped(void *p, page_table *pml4 = nullptr);
 
 	/// Dump the given or current PML4 to the console
 	/// \arg pml4     The page table to use, null for the current one

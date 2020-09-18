@@ -83,10 +83,9 @@ private:
 
 	/// Create a new process object. This process will have its pid
 	/// set but nothing else.
-	/// \arg pml4 The root page table of the process
 	/// \arg user True if this thread will enter userspace
 	/// \returns  The new process' main thread
-	thread * create_process(page_table *pml4, bool user);
+	thread * create_process(bool user);
 
 	void prune(uint64_t now);
 	void check_promotions(uint64_t now);

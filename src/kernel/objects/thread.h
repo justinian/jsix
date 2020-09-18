@@ -15,7 +15,7 @@ struct TCB
 	uintptr_t rsp;
 	uintptr_t rsp0;
 	uintptr_t rsp3;
-	page_table *pml4;
+	uintptr_t pml4;
 
 	uint8_t priority;
 	// note: 3 bytes padding

@@ -58,4 +58,10 @@ namespace memory {
 		return reinterpret_cast<T*>(a|page_offset);
 	}
 
+	/// Get the number of pages needed for a given number of bytes.
+	/// \arg bytes  The number of bytes desired
+	/// \returns    The number of pages needed to contain the desired bytes
+	inline size_t page_count(size_t bytes) {
+		return ((bytes - 1) & (frame_size - 1)) + 1;
+	}
 } // namespace memory

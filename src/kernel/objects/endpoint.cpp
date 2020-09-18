@@ -1,7 +1,9 @@
 #include "objects/endpoint.h"
+#include "objects/process.h"
 #include "objects/thread.h"
 #include "page_manager.h"
 #include "scheduler.h"
+#include "vm_space.h"
 
 endpoint::endpoint() :
 	kobject(kobject::type::endpoint)
@@ -86,9 +88,9 @@ endpoint::do_message_copy(const endpoint::thread_data &sender, endpoint::thread_
 		return j6_err_insufficient;
 
 	page_manager *pm = page_manager::get();
-	void *send_data = pm->get_offset_from_mapped(sender.data, sender.th->tcb()->pml4);
-	void *recv_data = pm->get_offset_from_mapped(receiver.data, receiver.th->tcb()->pml4);
-	kutil::memcpy(recv_data, send_data, sender.len);
+	vm_space &source = sender.th->parent().space();
+	vm_space &dest = receiver.th->parent().space();
+	vm_space::copy(source, dest, sender.data, receiver.data, sender.len);
 	*receiver.len_p = sender.len;
 
 	// TODO: this will not work if non-contiguous pages are mapped!!

@@ -45,55 +45,6 @@ page_manager::page_manager(frame_allocator &frames, page_table *pml4) :
 {
 }
 
-page_table *
-page_manager::create_process_map()
-{
-	page_table *table = page_table::get_table_page();
-
-	kutil::memset(table, 0, frame_size/2);
-	for (unsigned i = pml4e_kernel; i < table_entries; ++i)
-		table->entries[i] = m_kernel_pml4->entries[i];
-
-	return table;
-}
-
-void
-page_manager::delete_process_map(page_table *pml4)
-{
-	bool was_pml4 = (pml4 == get_pml4());
-	if (was_pml4)
-		set_pml4(m_kernel_pml4);
-
-	log::info(logs::paging, "Deleting process pml4 at %016lx%s",
-			pml4, was_pml4 ? " (was current)" : "");
-
-	unmap_table(pml4, page_table::level::pml4, true);
-}
-
-void *
-page_manager::get_offset_from_mapped(void *p, page_table *pml4)
-{
-	if (!pml4) pml4 = get_pml4();
-	uintptr_t v = reinterpret_cast<uintptr_t>(p);
-
-	page_table_indices idx{v};
-	page_table *tables[4] = {pml4, nullptr, nullptr, nullptr};
-
-	for (int i = 1; i < 4; ++i) {
-		tables[i] = tables[i-1]->get(idx[i-1]);
-		if (!tables[i])
-			return nullptr;
-	}
-
-	uintptr_t a = tables[3]->entries[idx[3]];
-	if (!(a & 1))
-		return nullptr;
-
-	return memory::to_virtual<void>(
-			(a & ~0xfffull) |
-			(v & 0xfffull));
-}
-
 void
 page_manager::dump_pml4(page_table *pml4, bool recurse)
 {

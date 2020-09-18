@@ -8,6 +8,7 @@
 
 struct page_table;
 class process;
+struct TCB;
 class vm_area;
 
 /// Tracks a region of virtual memory address space
@@ -64,6 +65,12 @@ public:
 	/// \arg allow  True if allocation should be allowed
 	void allow(uintptr_t start, size_t length, bool allow);
 
+	/// Check if this space is the current active space
+	bool active() const;
+
+	/// Set this space as the current active space
+	void activate() const;
+
 	enum class fault_type : uint8_t {
 		none     = 0x00,
 		present  = 0x01,
@@ -79,10 +86,21 @@ public:
 	/// \returns   True if the fault was successfully handled
 	bool handle_fault(uintptr_t addr, fault_type fault);
 
+	/// Set up a TCB to operate in this address space.
+	void initialize_tcb(TCB &tcb);
+
+	/// Copy data from one address space to another
+	/// \arg source The address space data is being copied from
+	/// \arg dest   The address space data is being copied to
+	/// \arg from   Pointer to the data in the source address space
+	/// \arg to     Pointer to the destination in the dest address space
+	/// \arg length Amount of data to copy, in bytes
+	/// \returnd    The number of bytes copied
+	static size_t copy(vm_space &source, vm_space &dest, void *from, void *to, size_t length);
+
 private:
 	bool m_kernel;
 	page_table *m_pml4;
-
 
 	struct area {
 		uintptr_t base;

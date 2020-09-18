@@ -17,7 +17,7 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 	m_wait_data(0),
 	m_wait_obj(0)
 {
-	m_tcb.pml4 = parent.pml4();
+	parent.space().initialize_tcb(m_tcb);
 	m_tcb.priority = pri;
 
 	if (!rsp0)

@@ -42,7 +42,7 @@ scheduler::scheduler(lapic *apic) :
 	s_instance = this;
 
 	page_table *pml4 = page_manager::get_pml4();
-	process *kp = new process(pml4);
+	process *kp = new process;
 	m_kernel_process = kp;
 
 	log::debug(logs::task, "Kernel process koid %llx", kp->koid());
@@ -136,9 +136,9 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 }
 
 thread *
-scheduler::create_process(page_table *pml4, bool user)
+scheduler::create_process(bool user)
 {
-	process *p = new process(pml4);
+	process *p = new process;
 	thread *th = p->create_thread(default_priority, user);
 	auto *tcb = th->tcb();
 
@@ -160,10 +160,7 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	uint16_t kss = (2 << 3) | 0; // Kernel SS is GDT entry 2, ring 0
 	uint16_t ss = (4 << 3) | 3;  // User SS is GDT entry 4, ring 3
 
-	// Set up the page tables - this also allocates an initial user stack
-	page_table *pml4 = page_manager::get()->create_process_map();
-
-	thread* th = create_process(pml4, true);
+	thread* th = create_process(true);
 	auto *tcb = th->tcb();
 
 	// Create an initial kernel stack space
@@ -348,10 +345,11 @@ scheduler::schedule()
 	m_apic->reset_timer(next->time_left);
 
 	if (next != m_current) {
+		thread *next_thread = thread::from_tcb(next);
+
+		bsp_cpu_data.t = next_thread;
+		bsp_cpu_data.p = &next_thread->parent();
 		m_current = next;
-		bsp_cpu_data.t = thread::from_tcb(m_current);
-		bsp_cpu_data.p = &th->parent();
-		thread *next_thread = thread::from_tcb(m_current);
 
 		log::debug(logs::task, "Scheduler switching threads %llx->%llx",
 				th->koid(), next_thread->koid());

@@ -19,8 +19,7 @@ public:
 	constexpr static size_t stack_size = 0x4000;
 
 	/// Constructor.
-	/// \args pml4  Root of the process' page tables
-	process(page_table *pml4);
+	process();
 
 	/// Destructor.
 	virtual ~process();
@@ -34,9 +33,6 @@ public:
 
 	/// Update internal bookkeeping about threads.
 	void update();
-
-	/// Get the process' page table root
-	page_table * pml4() { return m_pml4; }
 
 	/// Get the process' virtual memory space
 	vm_space & space() { return m_space; }
@@ -75,7 +71,6 @@ public:
 private:
 	uint32_t m_return_code;
 
-	page_table *m_pml4;
 	vm_space m_space;
 
 	kutil::vector<thread*> m_threads;

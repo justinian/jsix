@@ -12,6 +12,7 @@ extern frame_allocator &g_frame_allocator;
 
 free_page_header * page_table::s_page_cache = nullptr;
 size_t page_table::s_cache_count = 0;
+constexpr size_t page_table::entry_sizes[4];
 
 // Flags: 0 0 0 0  0 0 0 0  0 0 1 1 = 0x0003
 //        IGNORED  | | | |  | | | +- Present
@@ -88,7 +89,7 @@ page_table::iterator::align() const
 page_table::level
 page_table::iterator::depth() const
 {
-	for (level i = level::pml4; i < level::pt; ++i)
+	for (level i = level::pml4; i < level::page; ++i)
 		if (!(entry(i) & 1)) return i;
 	return level::pt;
 }
@@ -246,6 +247,26 @@ page_table::fill_table_page_cache()
 		s_page_cache = start;
 		s_cache_count += n;
 	}
+}
+
+void
+page_table::free(page_table::level l)
+{
+	unsigned last = l == level::pml4
+		? memory::pml4e_kernel
+		: memory::table_entries;
+
+	for (unsigned i = 0; i < last; ++i) {
+		if (!is_present(i)) continue;
+		if (is_page(l, i)) {
+			size_t count = memory::page_count(entry_sizes[unsigned(l)]);
+			g_frame_allocator.free(entries[i] & ~0xfffull, count);
+		} else {
+			get(i)->free(l + 1);
+		}
+	}
+
+	free_table_page(this);
 }
 
 void
