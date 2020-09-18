@@ -8,6 +8,11 @@
 using memory::page_offset;
 using level = page_table::level;
 
+extern frame_allocator &g_frame_allocator;
+
+free_page_header * page_table::s_page_cache = nullptr;
+size_t page_table::s_cache_count = 0;
+
 // Flags: 0 0 0 0  0 0 0 0  0 0 1 1 = 0x0003
 //        IGNORED  | | | |  | | | +- Present
 //                 | | | |  | | +--- Writeable
@@ -19,6 +24,7 @@ using level = page_table::level;
 //                 +---------------- Reserved 0 (Table pointer, not page)
 /// Page table entry flags for entries pointing at another table
 constexpr uint16_t table_flags = 0x003;
+
 
 page_table::iterator::iterator(uintptr_t virt, page_table *pml4) :
 	m_table {pml4, 0, 0, 0}
@@ -157,9 +163,6 @@ page_table::iterator::ensure_table(level l)
 	if (l == level::pml4 || l > level::pt) return;
 	if (check_table(l)) return;
 
-	// TODO: a better way to get at the frame allocator
-	extern frame_allocator g_frame_allocator;
-
 	uintptr_t phys = 0;
 	size_t n = g_frame_allocator.allocate(1, &phys);
 	kassert(n, "Failed to allocate a page table");
@@ -195,6 +198,55 @@ page_table::set(int i, page_table *p, uint16_t flags)
 		(flags & 0xfff);
 }
 
+struct free_page_header { free_page_header *next; };
+
+page_table *
+page_table::get_table_page()
+{
+	if (!s_cache_count)
+		fill_table_page_cache();
+
+	free_page_header *page = s_page_cache;
+	s_page_cache = s_page_cache->next;
+	--s_cache_count;
+
+	return reinterpret_cast<page_table*>(page);
+}
+
+void
+page_table::free_table_page(page_table *pt)
+{
+	free_page_header *page =
+		reinterpret_cast<free_page_header*>(pt);
+	page->next = s_page_cache;
+	s_page_cache = page->next;
+	++s_cache_count;
+}
+
+void
+page_table::fill_table_page_cache()
+{
+	constexpr size_t min_pages = 16;
+
+	while (s_cache_count < min_pages) {
+		uintptr_t phys = 0;
+		size_t n = g_frame_allocator.allocate(min_pages - s_cache_count, &phys);
+
+		free_page_header *start =
+			memory::to_virtual<free_page_header>(phys);
+
+		for (int i = 0; i < n - 1; ++i)
+			kutil::offset_pointer(start, i * memory::frame_size)
+				->next = kutil::offset_pointer(start, (i+1) * memory::frame_size);
+
+		free_page_header *end =
+			kutil::offset_pointer(start, (n-1) * memory::frame_size);
+
+		end->next = s_page_cache;
+		s_page_cache = start;
+		s_cache_count += n;
+	}
+}
 
 void
 page_table::dump(page_table::level lvl, bool recurse)

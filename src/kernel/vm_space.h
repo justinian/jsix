@@ -14,10 +14,12 @@ class vm_area;
 class vm_space
 {
 public:
-	/// Constructor.
-	/// \arg pml4   The pml4 for this address space
-	/// \arg kernel True if this is the kernel address space
-	vm_space(page_table *pml4, bool kernel = false);
+	/// Constructor for the kernel address space
+	/// \arg pml4   The existing kernel PML4
+	vm_space(page_table *pml4);
+
+	/// Constructor. Creates a new address space.
+	vm_space();
 
 	~vm_space();
 
@@ -80,6 +82,7 @@ public:
 private:
 	bool m_kernel;
 	page_table *m_pml4;
+
 
 	struct area {
 		uintptr_t base;

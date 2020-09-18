@@ -111,7 +111,7 @@ memory_initialize_pre_ctors(args::header *kargs)
 	// Create the page manager
 	new (&g_page_manager) page_manager {g_frame_allocator, kpml4};
 
-	vm_space &vm = *new (&g_kernel_space) vm_space {kpml4, true};
+	vm_space &vm = *new (&g_kernel_space) vm_space {kpml4};
 	vm.allow(memory::heap_start, memory::kernel_max_heap, true);
 }
 

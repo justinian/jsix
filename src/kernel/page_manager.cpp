@@ -37,16 +37,10 @@ pt_from_phys(uintptr_t p)
 }
 
 
-struct free_page_header
-{
-	free_page_header *next;
-	size_t count;
-};
 
 
 page_manager::page_manager(frame_allocator &frames, page_table *pml4) :
 	m_kernel_pml4(pml4),
-	m_page_cache(nullptr),
 	m_frames(frames)
 {
 }
@@ -54,7 +48,7 @@ page_manager::page_manager(frame_allocator &frames, page_table *pml4) :
 page_table *
 page_manager::create_process_map()
 {
-	page_table *table = get_table_page();
+	page_table *table = page_table::get_table_page();
 
 	kutil::memset(table, 0, frame_size/2);
 	for (unsigned i = pml4e_kernel; i < table_entries; ++i)
@@ -105,47 +99,6 @@ page_manager::dump_pml4(page_table *pml4, bool recurse)
 {
 	if (pml4 == nullptr) pml4 = get_pml4();
 	pml4->dump(page_table::level::pml4, recurse);
-}
-
-page_table *
-page_manager::get_table_page()
-{
-	if (!m_page_cache) {
-		uintptr_t phys = 0;
-		size_t n = m_frames.allocate(32, &phys); // TODO: indicate frames must be offset-mappable
-		uintptr_t virt = phys + page_offset;
-
-		m_page_cache = reinterpret_cast<free_page_header *>(virt);
-
-		// The last one needs to be null, so do n-1
-		uintptr_t end = virt + (n-1) * frame_size;
-		while (virt < end) {
-			reinterpret_cast<free_page_header *>(virt)->next =
-				reinterpret_cast<free_page_header *>(virt + frame_size);
-			virt += frame_size;
-		}
-		reinterpret_cast<free_page_header *>(virt)->next = nullptr;
-
-		log::info(logs::paging, "Mappd %d new page table pages at %lx", n, phys);
-	}
-
-	free_page_header *page = m_page_cache;
-	m_page_cache = page->next;
-
-	return reinterpret_cast<page_table *>(page);
-}
-
-void
-page_manager::free_table_pages(void *pages, size_t count)
-{
-	uintptr_t start = reinterpret_cast<uintptr_t>(pages);
-	for (size_t i = 0; i < count; ++i) {
-		uintptr_t addr = start + (i * frame_size);
-		free_page_header *header = reinterpret_cast<free_page_header *>(addr);
-		header->count = 1;
-		header->next = m_page_cache;
-		m_page_cache = header;
-	}
 }
 
 void *
@@ -233,7 +186,7 @@ page_manager::unmap_table(page_table *table, page_table::level lvl, bool free, p
 
 		m_frames.free(free_start, (free_count * size) / frame_size);
 	}
-	free_table_pages(table, 1);
+	page_table::free_table_page(table);
 
 	log::debug(logs::paging, "Unmapped%s lv %d table at %016lx",
 			free ? " (and freed)" : "", lvl, table);
@@ -255,7 +208,7 @@ page_manager::check_needs_page(page_table *table, unsigned index, bool user)
 {
 	if ((table->entries[index] & 0x1) == 1) return;
 
-	page_table *new_table = get_table_page();
+	page_table *new_table = page_table::get_table_page();
 	for (int i=0; i<table_entries; ++i) new_table->entries[i] = 0;
 	table->entries[index] = pt_to_phys(new_table) | (user ? user_table_flags : sys_table_flags);
 }

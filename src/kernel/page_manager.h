@@ -90,15 +90,6 @@ public:
 	inline page_table * get_kernel_pml4() { return m_kernel_pml4; }
 
 private:
-	/// Allocate a page for a page table, or pull one from the cache
-	/// \returns  An empty page mapped in page space
-	page_table * get_table_page();
-
-	/// Return a set of mapped contiguous pages to the page cache.
-	/// \arg pages  Pointer to the first page to be returned
-	/// \arg count  Number of pages in the range
-	void free_table_pages(void *pages, size_t count);
-
 	/// Helper function to allocate a new page table. If table entry `i` in
 	/// table `base` is empty, allocate a new page table and point `base[i]` at
 	/// it.
@@ -138,7 +129,6 @@ private:
 			page_table_indices index = {});
 
 	page_table *m_kernel_pml4; ///< The PML4 of just kernel pages
-	free_page_header *m_page_cache; ///< Cache of free pages to use for tables
 
 	frame_allocator &m_frames;
 

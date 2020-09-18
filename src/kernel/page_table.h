@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include "kernel_memory.h"
 
+struct free_page_header;
 class page_manager;
 
 /// Struct to allow easy accessing of a memory page being used as a page table.
@@ -110,6 +111,21 @@ struct page_table
 		mutable page_table *m_table[D];
 		uint16_t m_index[D];
 	};
+
+	/// Allocate a page for a page table, or pull one from the cache
+	/// \returns  An empty page, mapped in the linear offset area
+	static page_table * get_table_page();
+
+	/// Return a page table's page to the page cache.
+	/// \arg pt  The page to be returned
+	static void free_table_page(page_table *pt);
+
+	// Ensure the page table page cache has a minimum number of pages
+	// in it.
+	static void fill_table_page_cache();
+
+	static free_page_header *s_page_cache; ///< Cache of free pages to use for tables
+	static size_t s_cache_count;           ///< Number of pages in s_page_cache
 
 	/// Get an entry in the page table as a page_table pointer
 	/// \arg i     Index of the entry in this page table

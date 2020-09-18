@@ -19,9 +19,10 @@ vm_space::area::operator==(const vm_space::area &o) const
 }
 
 
-vm_space::vm_space(page_table *p, bool kernel) :
-	m_kernel(kernel),
-	m_pml4(p)
+vm_space::vm_space(page_table *p) : m_kernel(true), m_pml4(p) {}
+
+vm_space::vm_space() :
+	m_kernel(false)
 {
 }
 
