@@ -42,8 +42,7 @@ scheduler::scheduler(lapic *apic) :
 	s_instance = this;
 
 	page_table *pml4 = page_manager::get_pml4();
-	process *kp = new process;
-	m_kernel_process = kp;
+	process *kp = &process::kernel_process();
 
 	log::debug(logs::task, "Kernel process koid %llx", kp->koid());
 
@@ -193,8 +192,7 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 void
 scheduler::create_kernel_task(void (*task)(), uint8_t priority, bool constant)
 {
-	page_table *pml4 = page_manager::get()->get_kernel_pml4();
-	thread *th = m_kernel_process->create_thread(priority, false);
+	thread *th = process::kernel_process().create_thread(priority, false);
 	auto *tcb = th->tcb();
 
 	th->add_thunk_kernel(reinterpret_cast<uintptr_t>(task));

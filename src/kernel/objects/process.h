@@ -63,12 +63,19 @@ public:
 	/// \returns  True if this thread ending has ended the process
 	bool thread_exited(thread *th);
 
+	/// Get the process object that owns kernel threads and the
+	/// kernel address space
+	static process & kernel_process();
+
 	/// Create the special kernel process that owns kernel tasks
-	/// \arg pml4     The kernel-only pml4
-	/// \arg idle_rsp The idle thread's rsp
-	static process * create_kernel_process(page_table *pml4, uintptr_t idle_rsp);
+	/// \arg pml4 The kernel-only pml4
+	/// \returns  The kernel process object
+	static process * create_kernel_process(page_table *pml4);
 
 private:
+	// This constructor is called by create_kernel_process
+	process(page_table *kpml4);
+
 	uint32_t m_return_code;
 
 	vm_space m_space;

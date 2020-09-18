@@ -1,4 +1,5 @@
 #include "log.h"
+#include "objects/process.h"
 #include "objects/thread.h"
 #include "objects/vm_area.h"
 #include "page_manager.h"
@@ -52,8 +53,7 @@ vm_space::~vm_space()
 vm_space &
 vm_space::kernel_space()
 {
-	extern vm_space &g_kernel_space;
-	return g_kernel_space;
+	return process::kernel_process().space();
 }
 
 bool

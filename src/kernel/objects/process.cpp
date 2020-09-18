@@ -1,18 +1,34 @@
 #include "j6/signals.h"
 #include "kutil/assert.h"
+#include "kutil/no_construct.h"
 #include "cpu.h"
 #include "objects/process.h"
 #include "objects/thread.h"
 #include "page_manager.h"
 
+// This object is initialized _before_ global constructors are called,
+// so we don't want it to have a global constructor at all, lest it
+// overwrite the previous initialization.
+static kutil::no_construct<process> __g_kernel_process_storage;
+process &g_kernel_process = __g_kernel_process_storage.value;
+
+
 kutil::vector<process*> process::s_processes;
 
 process::process() :
-	kobject(kobject::type::process),
-	m_next_handle(0),
-	m_state(state::running)
+	kobject {kobject::type::process},
+	m_next_handle {0},
+	m_state {state::running}
 {
 	s_processes.append(this);
+}
+
+process::process(page_table *kpml4) :
+	kobject {kobject::type::process},
+	m_space {kpml4},
+	m_next_handle {0},
+	m_state {state::running}
+{
 }
 
 process::~process()
@@ -20,10 +36,13 @@ process::~process()
 	s_processes.remove_swap(this);
 }
 
-process &
-process::current()
+process & process::current() { return *bsp_cpu_data.p; }
+process & process::kernel_process() { return g_kernel_process; }
+
+process *
+process::create_kernel_process(page_table *pml4)
 {
-	return *bsp_cpu_data.p;
+	return new (&g_kernel_process) process {pml4};
 }
 
 void

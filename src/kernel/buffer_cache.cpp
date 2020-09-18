@@ -5,8 +5,6 @@
 #include "page_manager.h"
 #include "vm_space.h"
 
-extern vm_space g_kernel_space;
-
 using memory::frame_size;
 using memory::kernel_stack_pages;
 using memory::kernel_buffer_pages;

@@ -9,6 +9,7 @@
 #include "frame_allocator.h"
 #include "io.h"
 #include "log.h"
+#include "objects/process.h"
 #include "objects/vm_area.h"
 #include "page_manager.h"
 #include "vm_space.h"
@@ -37,9 +38,6 @@ page_manager &g_page_manager = __g_page_manager_storage.value;
 
 static kutil::no_construct<frame_allocator> __g_frame_allocator_storage;
 frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
-
-static kutil::no_construct<vm_space> __g_kernel_space_storage;
-vm_space &g_kernel_space = __g_kernel_space_storage.value;
 
 void * operator new(size_t size)           { return g_kernel_heap.allocate(size); }
 void * operator new [] (size_t size)       { return g_kernel_heap.allocate(size); }
@@ -111,7 +109,8 @@ memory_initialize_pre_ctors(args::header *kargs)
 	// Create the page manager
 	new (&g_page_manager) page_manager {g_frame_allocator, kpml4};
 
-	vm_space &vm = *new (&g_kernel_space) vm_space {kpml4};
+	process *kp = process::create_kernel_process(kpml4);
+	vm_space &vm = kp->space();
 	vm.allow(memory::heap_start, memory::kernel_max_heap, true);
 }
 
