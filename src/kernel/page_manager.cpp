@@ -52,30 +52,6 @@ page_manager::dump_pml4(page_table *pml4, bool recurse)
 	pml4->dump(page_table::level::pml4, recurse);
 }
 
-void *
-page_manager::map_pages(uintptr_t address, size_t count, bool user, page_table *pml4)
-{
-	kassert(address, "Cannot call map_pages with 0 address");
-
-	void *ret = reinterpret_cast<void *>(address);
-	if (!pml4) pml4 = get_pml4();
-
-	while (count) {
-		uintptr_t phys = 0;
-		size_t n = m_frames.allocate(count, &phys);
-
-		log::info(logs::paging, "Paging in %d pages at p:%016lx to v:%016lx into %016lx table",
-				n, phys, address, pml4);
-
-		page_in(pml4, phys, address, n, user);
-
-		address += n * frame_size;
-		count -= n;
-	}
-
-	return ret;
-}
-
 void
 page_manager::check_needs_page(page_table *table, unsigned index, bool user)
 {

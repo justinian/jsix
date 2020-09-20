@@ -49,14 +49,6 @@ public:
 		__asm__ __volatile__ ( "mov %0, %%cr3" :: "r" (p) );
 	}
 
-	/// Allocate and map pages into virtual memory.
-	/// \arg address  The virtual address at which to map the pages
-	/// \arg count    The number of pages to map
-	/// \arg user     True is this memory is user-accessible
-	/// \arg pml4     The pml4 to map into - null for the current one
-	/// \returns      A pointer to the start of the mapped region
-	void * map_pages(uintptr_t address, size_t count, bool user = false, page_table *pml4 = nullptr);
-
 	/// Dump the given or current PML4 to the console
 	/// \arg pml4     The page table to use, null for the current one
 	/// \arg recurse  Whether to print sub-tables

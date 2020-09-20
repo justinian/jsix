@@ -67,10 +67,8 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 {
 	// We're now in the process space for this process, allocate memory for the
 	// process code and load it
-	page_manager *pager = page_manager::get();
-
-	thread *th = thread::from_tcb(tcb);
-	process &proc = th->parent();
+	process &proc = process::current();
+	vm_space &space = proc.space();
 
 	log::debug(logs::loader, "Loading task! ELF: %016lx [%d]", image_start, bytes);
 
@@ -87,18 +85,16 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 
 		uintptr_t aligned = header->vaddr & ~(memory::frame_size - 1);
 		size_t size = (header->vaddr + header->mem_size) - aligned;
-		size_t pages = page_manager::page_count(size);
+		size_t pagesize = page_manager::page_count(size) * memory::frame_size;
 
 		log::debug(logs::loader, "  Loadable segment %02u: vaddr %016lx  size %016lx",
 			i, header->vaddr, header->mem_size);
 
 		log::debug(logs::loader, "         - aligned to: vaddr %016lx  pages %d",
-			aligned, pages);
+			aligned, pagesize >> 12);
 
-		void *mapped = pager->map_pages(aligned, pages, true);
-		kassert(mapped, "Tried to map userspace pages and failed!");
-
-		kutil::memset(mapped, 0, pages * memory::frame_size);
+		space.allow(aligned, pagesize, true);
+		kutil::memset(reinterpret_cast<void*>(aligned), 0, pagesize);
 	}
 
 	const unsigned section_count = image.section_count();
@@ -127,7 +123,7 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 	extern channel *std_out;
 	init->output = proc.add_handle(std_out);
 
-	th->clear_state(thread::state::loading);
+	thread::current().clear_state(thread::state::loading);
 
 	uintptr_t entrypoint = image.entrypoint();
 	log::debug(logs::loader, "  Loaded! New thread rip: %016lx", entrypoint);
