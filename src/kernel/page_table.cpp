@@ -14,17 +14,10 @@ free_page_header * page_table::s_page_cache = nullptr;
 size_t page_table::s_cache_count = 0;
 constexpr size_t page_table::entry_sizes[4];
 
-// Flags: 0 0 0 0  0 0 0 0  0 0 1 1 = 0x0003
-//        IGNORED  | | | |  | | | +- Present
-//                 | | | |  | | +--- Writeable
-//                 | | | |  | +----- Usermode access (Supervisor only)
-//                 | | | |  +------- PWT (determining memory type for pdpt)
-//                 | | | +---------- PCD (determining memory type for pdpt)
-//                 | | +------------ Accessed flag (not accessed yet)
-//                 | +-------------- Ignored
-//                 +---------------- Reserved 0 (Table pointer, not page)
-/// Page table entry flags for entries pointing at another table
-constexpr uint16_t table_flags = 0x003;
+
+constexpr page_table::flag table_flags =
+	page_table::flag::present |
+	page_table::flag::write;
 
 
 page_table::iterator::iterator(uintptr_t virt, page_table *pml4) :
@@ -114,7 +107,7 @@ page_table::iterator::allowed() const
 {
 	level d = depth();
 	while (true) {
-		if (entry(d) & flag_allowed) return true;
+		if (entry(d) & flag::allowed) return true;
 		else if (d == level::pml4) return false;
 		--d;
 	}
@@ -126,8 +119,8 @@ page_table::iterator::allow(level at, bool allowed)
 	for (level l = level::pdp; l <= at; ++l)
 		ensure_table(l);
 
-	if (allowed) entry(at) |= flag_allowed;
-	else entry(at) &= ~flag_allowed;
+	if (allowed) entry(at) |= flag::allowed;
+	else entry(at) &= ~flag::allowed;
 }
 
 bool
@@ -169,8 +162,9 @@ page_table::iterator::ensure_table(level l)
 	kassert(n, "Failed to allocate a page table");
 
 	uint64_t &parent = entry(l - 1);
-	uint64_t flags = table_flags |
-		(parent & flag_allowed) ? flag_allowed : 0;
+	flag flags = table_flags | (parent & flag::allowed);
+	if (m_index[0] < memory::pml4e_kernel)
+		flags |= flag::user;
 
 	m_table[unsigned(l)] = reinterpret_cast<page_table*>(phys | page_offset);
 	parent  = (reinterpret_cast<uintptr_t>(phys) & ~0xfffull) | flags;
@@ -193,7 +187,7 @@ page_table::get(int i, uint16_t *flags) const
 void
 page_table::set(int i, page_table *p, uint16_t flags)
 {
-	if (entries[i] & flag_allowed) flags |= flag_allowed;
+	if (entries[i] & flag::allowed) flags |= flag::allowed;
 	entries[i] =
 		(reinterpret_cast<uint64_t>(p) - page_offset) |
 		(flags & 0xfff);

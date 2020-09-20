@@ -3,6 +3,7 @@
 /// Helper structures for dealing with page tables.
 
 #include <stdint.h>
+#include "kutil/enum_bitfields.h"
 #include "kernel_memory.h"
 
 struct free_page_header;
@@ -14,6 +15,26 @@ struct page_table
 	/// Enum representing the table levels in 4-level paging
 	enum class level : unsigned { pml4, pdp, pd, pt, page };
 
+	/// Page entry flags
+	enum class flag : uint64_t
+	{
+		none      = 0x0000,
+		present   = 0x0001, /// Entry is present in the table
+		write     = 0x0002, /// Section may be written
+		user      = 0x0004, /// User-accessible
+		mtrr0     = 0x0008, /// MTRR selector bit 0
+		mtrr1     = 0x0010, /// MTRR selector bit 1
+		accessed  = 0x0020, /// Entry has been accessed
+		dirty     = 0x0040, /// Page has been written to
+		page      = 0x0080, /// Entry is a large page
+		pte_mtrr2 = 0x0080, /// MTRR selector bit 2 on PT entries
+		global    = 0x0100, /// Entry is not PCID-specific
+		mtrr2     = 0x1000, /// MTRR selector bit 2 on PD and PDP entries
+
+		// jsix-defined
+		allowed   = 0x0800  /// Allocation here is allowed
+	};
+
 	/// Helper for getting the next level value
 	inline static level deeper(level l) {
 		return static_cast<level>(static_cast<unsigned>(l) + 1);
@@ -24,9 +45,6 @@ struct page_table
 		0x40000000,   //  PDP entry:   1 GiB
 		0x200000,     //   PD entry:   2 MiB
 		0x1000};      //   PT entry:   4 KiB
-
-	/// Flag marking unused space as allowed for allocation
-	static constexpr uint64_t flag_allowed = (1ull << 11);
 
 	/// Iterator over page table entries.
 	class iterator
@@ -197,3 +215,5 @@ inline bool operator<(page_table::level a, page_table::level b) {
 
 inline page_table::level& operator++(page_table::level& l) { l = l + 1; return l; }
 inline page_table::level& operator--(page_table::level& l) { l = l - 1; return l; }
+
+IS_BITFIELD(page_table::flag);

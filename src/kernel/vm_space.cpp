@@ -1,9 +1,12 @@
+#include "frame_allocator.h"
 #include "log.h"
 #include "objects/process.h"
 #include "objects/thread.h"
 #include "objects/vm_area.h"
 #include "page_manager.h"
 #include "vm_space.h"
+
+extern frame_allocator &g_frame_allocator;
 
 int
 vm_space::area::compare(const vm_space::area &o) const
@@ -152,17 +155,26 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
 
 	page_table::iterator it {addr, m_pml4};
 
+	// TODO: Handle more fult types
+	if (fault && fault_type::present)
+		return false;
+
 	if (!it.allowed())
 		return false;
 
-	// TODO: pull this out of PM
-	page_manager::get()->map_pages(page, 1, m_pml4);
+	uintptr_t phys = 0;
+	size_t n = g_frame_allocator.allocate(1, &phys);
+	kassert(n, "Failed to allocate a new page during page fault");
 
-	/* TODO: Tell the VMA if there is one
-	uintptr_t base = 0;
-	vm_area *area = get(addr, &base);
-	*/
+	page_table::flag flags =
+		page_table::flag::present |
+		page_table::flag::write |
+		page_table::flag::allowed |
+		(is_kernel()
+		 ? page_table::flag::global
+		 : page_table::flag::user);
 
+	it.entry(page_table::level::pt) = phys | flags;
 	return true;
 }
 

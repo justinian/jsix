@@ -57,12 +57,6 @@ public:
 	/// \returns      A pointer to the start of the mapped region
 	void * map_pages(uintptr_t address, size_t count, bool user = false, page_table *pml4 = nullptr);
 
-	/// Unmap and free existing pages from memory.
-	/// \arg address  The virtual address of the memory to unmap
-	/// \arg count    The number of pages to unmap
-	/// \arg pml4     The pml4 to unmap from - null for the current one
-	void unmap_pages(void *address, size_t count, page_table *pml4 = nullptr);
-
 	/// Dump the given or current PML4 to the console
 	/// \arg pml4     The page table to use, null for the current one
 	/// \arg recurse  Whether to print sub-tables
@@ -109,10 +103,6 @@ private:
 			uintptr_t virt_addr,
 			size_t count,
 			bool free = false);
-
-	/// Low-level routine for unmapping an entire table of memory at once
-	void unmap_table(page_table *table, page_table::level lvl, bool free,
-			page_table_indices index = {});
 
 	page_table *m_kernel_pml4; ///< The PML4 of just kernel pages
 
