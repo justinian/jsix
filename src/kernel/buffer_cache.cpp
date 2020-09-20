@@ -2,7 +2,6 @@
 #include "buffer_cache.h"
 #include "kernel_memory.h"
 #include "objects/vm_area.h"
-#include "page_manager.h"
 #include "vm_space.h"
 
 using memory::frame_size;

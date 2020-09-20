@@ -47,16 +47,16 @@ public:
 	/// Get the kernel virtual memory space
 	static vm_space & kernel_space();
 
-	/// Add page mappings into this space's page tables
-	/// \arg addr   The virtual address to map at
-	/// \arg count  The number of pages
-	/// \arg phys   The physical address of the first page
-	void page_in(uintptr_t addr, size_t count, uintptr_t phys);
+	/// Copy a range of mappings from the given address space
+	/// \arg virt  The starting virutal address
+	/// \arg phys  The starting physical address
+	/// \arg count The number of contiugous physical pages to map
+	void page_in(uintptr_t virt, uintptr_t phys, size_t count);
 
-	/// Remove page mappings from this space's page tables
-	/// \arg addr   The virtual address to unmap
-	/// \arg count  The number of pages
-	void page_out(uintptr_t addr, size_t count);
+	/// Clear mappings from the given region
+	/// \arg start  The starting virutal address to clear
+	/// \arg count  The number of pages worth of mappings to clear
+	void clear(uintptr_t start, size_t count);
 
 	/// Mark whether allocation is allowed or not in a range of
 	/// virtual memory.

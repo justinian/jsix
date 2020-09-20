@@ -51,7 +51,7 @@ vm_area::remove_from(vm_space *space)
 	if (space && base) {
 		for (auto &m : m_mappings)
 			if (m.state == state::mapped)
-				space->page_out(*base + m.offset, m.count);
+				space->clear(*base + m.offset, m.count);
 		m_procs.erase(space);
 	}
 	return j6_status_ok;
@@ -272,7 +272,7 @@ vm_area::unmap(uintptr_t offset, size_t count)
 	for (auto &it : m_procs) {
 		uintptr_t addr = it.val + offset;
 		vm_space *space = it.key;
-		space->page_out(addr, count);
+		space->clear(addr, count);
 	}
 }
 

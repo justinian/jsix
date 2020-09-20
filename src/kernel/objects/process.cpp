@@ -4,7 +4,6 @@
 #include "cpu.h"
 #include "objects/process.h"
 #include "objects/thread.h"
-#include "page_manager.h"
 
 // This object is initialized _before_ global constructors are called,
 // so we don't want it to have a global constructor at all, lest it

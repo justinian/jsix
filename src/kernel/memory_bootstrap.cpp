@@ -11,7 +11,6 @@
 #include "log.h"
 #include "objects/process.h"
 #include "objects/vm_area.h"
-#include "page_manager.h"
 #include "vm_space.h"
 
 using memory::frame_size;
@@ -32,9 +31,6 @@ using namespace kernel;
 // overwrite the previous initialization.
 static kutil::no_construct<kutil::heap_allocator> __g_kernel_heap_storage;
 kutil::heap_allocator &g_kernel_heap = __g_kernel_heap_storage.value;
-
-static kutil::no_construct<page_manager> __g_page_manager_storage;
-page_manager &g_page_manager = __g_page_manager_storage.value;
 
 static kutil::no_construct<frame_allocator> __g_frame_allocator_storage;
 frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
@@ -105,9 +101,6 @@ memory_initialize_pre_ctors(args::header *kargs)
 		if (e.type == args::mem_type::free)
 			g_frame_allocator.free(e.start, e.pages);
 	}
-
-	// Create the page manager
-	new (&g_page_manager) page_manager {g_frame_allocator, kpml4};
 
 	process *kp = process::create_kernel_process(kpml4);
 	vm_space &vm = kp->space();

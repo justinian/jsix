@@ -5,7 +5,6 @@
 #include "io.h"
 #include "kernel_memory.h"
 #include "log.h"
-#include "page_manager.h"
 
 static constexpr uint16_t lapic_spurious   = 0x00f0;
 

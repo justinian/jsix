@@ -9,8 +9,8 @@
 #include "console.h"
 #include "device_manager.h"
 #include "interrupts.h"
+#include "kernel_memory.h"
 #include "log.h"
-#include "page_manager.h"
 
 
 static const char expected_signature[] = "RSD PTR ";
@@ -247,8 +247,6 @@ device_manager::load_mcfg(const acpi_mcfg *mcfg)
 	size_t count = acpi_table_entries(mcfg, sizeof(acpi_mcfg_entry));
 	m_pci.set_size(count);
 	m_devices.set_capacity(16);
-
-	page_manager *pm = page_manager::get();
 
 	for (unsigned i = 0; i < count; ++i) {
 		const acpi_mcfg_entry &mcfge = mcfg->entries[i];

@@ -1,7 +1,6 @@
 #include "objects/endpoint.h"
 #include "objects/process.h"
 #include "objects/thread.h"
-#include "page_manager.h"
 #include "scheduler.h"
 #include "vm_space.h"
 
@@ -87,7 +86,6 @@ endpoint::do_message_copy(const endpoint::thread_data &sender, endpoint::thread_
 	if (sender.len > *receiver.len_p)
 		return j6_err_insufficient;
 
-	page_manager *pm = page_manager::get();
 	vm_space &source = sender.th->parent().space();
 	vm_space &dest = receiver.th->parent().space();
 	vm_space::copy(source, dest, sender.data, receiver.data, sender.len);

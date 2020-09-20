@@ -4,7 +4,6 @@
 #include "gdt.h"
 #include "objects/process.h"
 #include "objects/thread.h"
-#include "page_manager.h"
 #include "symbol_table.h"
 
 size_t __counter_syscall_enter = 0;
@@ -17,6 +16,9 @@ print_regs(const cpu_state &regs)
 
 	uint64_t cr2 = 0;
 	__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
+
+	uintptr_t cr3 = 0;
+	__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (cr3) );
 
 	cons->printf("       process: %llx", bsp_cpu_data.p->koid());
 	cons->printf("   thread: %llx\n", bsp_cpu_data.t->koid());
@@ -44,7 +46,7 @@ print_regs(const cpu_state &regs)
 	print_regR("sp0", bsp_cpu_data.rsp0);
 
 	print_regL("rip", regs.rip);
-	print_regM("cr3", page_manager::get()->get_pml4());
+	print_regM("cr3", cr3);
 	print_regR("cr2", cr2);
 
 	cons->puts("\n");

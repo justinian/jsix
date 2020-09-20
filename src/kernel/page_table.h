@@ -7,7 +7,6 @@
 #include "kernel_memory.h"
 
 struct free_page_header;
-class page_manager;
 
 /// Struct to allow easy accessing of a memory page being used as a page table.
 struct page_table

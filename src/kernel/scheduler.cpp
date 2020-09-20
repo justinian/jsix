@@ -13,7 +13,6 @@
 #include "msr.h"
 #include "objects/channel.h"
 #include "objects/process.h"
-#include "page_manager.h"
 #include "scheduler.h"
 
 #include "elf/elf.h"
@@ -41,7 +40,6 @@ scheduler::scheduler(lapic *apic) :
 	kassert(!s_instance, "Multiple schedulers created!");
 	s_instance = this;
 
-	page_table *pml4 = page_manager::get_pml4();
 	process *kp = &process::kernel_process();
 
 	log::debug(logs::task, "Kernel process koid %llx", kp->koid());
@@ -50,7 +48,6 @@ scheduler::scheduler(lapic *apic) :
 		reinterpret_cast<uintptr_t>(&idle_stack_end));
 
 	log::debug(logs::task, "Idle thread koid %llx", idle->koid());
-	log::debug(logs::task, "Kernel PML4 %llx", pml4);
 
 	auto *tcb = idle->tcb();
 	m_runlists[max_priority].push_back(tcb);
@@ -85,7 +82,7 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 
 		uintptr_t aligned = header->vaddr & ~(memory::frame_size - 1);
 		size_t size = (header->vaddr + header->mem_size) - aligned;
-		size_t pagesize = page_manager::page_count(size) * memory::frame_size;
+		size_t pagesize = memory::page_count(size) * memory::frame_size;
 
 		log::debug(logs::loader, "  Loadable segment %02u: vaddr %016lx  size %016lx",
 			i, header->vaddr, header->mem_size);

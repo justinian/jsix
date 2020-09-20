@@ -3,7 +3,6 @@
 #include "objects/process.h"
 #include "objects/thread.h"
 #include "objects/vm_area.h"
-#include "page_manager.h"
 #include "vm_space.h"
 
 extern frame_allocator &g_frame_allocator;
@@ -93,17 +92,32 @@ vm_space::get(uintptr_t addr, uintptr_t *base)
 }
 
 void
-vm_space::page_in(uintptr_t addr, size_t count, uintptr_t phys)
+vm_space::page_in(uintptr_t virt, uintptr_t phys, size_t count)
 {
-	page_manager *pm = page_manager::get();
-	pm->page_in(m_pml4, phys, addr, count, is_kernel());
+	page_table::iterator it {virt, m_pml4};
+	for (size_t i = 0; i < count; ++i) {
+		uint64_t &e = it.entry(page_table::level::pt);
+		bool allowed = (e & page_table::flag::allowed);
+		e = (phys + i * memory::frame_size) |
+			(allowed ? page_table::flag::allowed : page_table::flag::none);
+		++it;
+	}
 }
 
 void
-vm_space::page_out(uintptr_t addr, size_t count)
+vm_space::clear(uintptr_t addr, size_t count)
 {
-	page_manager *pm = page_manager::get();
-	pm->page_out(m_pml4, addr, count, false);
+	page_table::iterator it {addr, m_pml4};
+	while (count--) {
+		uint64_t &e = it.entry(page_table::level::pt);
+		if (e & page_table::flag::present) {
+			g_frame_allocator.free(e & ~0xfffull, 1);
+		}
+		bool allowed = (e & page_table::flag::allowed);
+		e = 0;
+		if (allowed) e |= page_table::flag::allowed;
+		++it;
+	}
 }
 
 void
