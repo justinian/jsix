@@ -238,16 +238,22 @@ void scheduler::prune(uint64_t now)
 		if (!exited && !ready)
 			continue;
 
-		m_blocked.remove(remove);
 
 		if (exited) {
+			// If the current thread has exited, wait until the next call
+			// to prune() to delete it, because we may be deleting our current
+			// page tables
+			if (current) continue;
+
+			m_blocked.remove(remove);
 			process &p = th->parent();
 
-			// If the current thread has exited, wait until the next call
-			// to prune() to delete it.
+			// thread_exited deletes the thread, and returns true if the process
+			// should also now be deleted
 			if(!current && p.thread_exited(th))
 				delete &p;
 		} else {
+			m_blocked.remove(remove);
 			log::debug(logs::task, "Prune: readying unblocked thread %llx", th->koid());
 			m_runlists[remove->priority].push_back(remove);
 		}
