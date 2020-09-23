@@ -48,6 +48,13 @@ public:
 	static vm_space & kernel_space();
 
 	/// Copy a range of mappings from the given address space
+	/// \arg source The address space that already contains the mappings
+	/// \arg from   The starting virtual address in the source address space
+	/// \arg to     The starting virtual address in this address space
+	/// \arg count  The number of page entries to copy
+	void copy_from(const vm_space &source, uintptr_t from, uintptr_t to, size_t count);
+
+	/// Map virtual addressses to the given physical pages
 	/// \arg virt  The starting virutal address
 	/// \arg phys  The starting physical address
 	/// \arg count The number of contiugous physical pages to map

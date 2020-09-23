@@ -32,6 +32,8 @@ process::process(page_table *kpml4) :
 
 process::~process()
 {
+	for (auto &it : m_handles)
+		if (it.val) it.val->handle_release();
 	s_processes.remove_swap(this);
 }
 

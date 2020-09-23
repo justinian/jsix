@@ -8,8 +8,6 @@
 using memory::page_offset;
 using level = page_table::level;
 
-extern frame_allocator &g_frame_allocator;
-
 free_page_header * page_table::s_page_cache = nullptr;
 size_t page_table::s_cache_count = 0;
 constexpr size_t page_table::entry_sizes[4];
@@ -157,17 +155,16 @@ page_table::iterator::ensure_table(level l)
 	if (l == level::pml4 || l > level::pt) return;
 	if (check_table(l)) return;
 
-	uintptr_t phys = 0;
-	size_t n = g_frame_allocator.allocate(1, &phys);
-	kassert(n, "Failed to allocate a page table");
+	page_table *table = page_table::get_table_page();
+	uintptr_t phys = reinterpret_cast<uintptr_t>(table) & ~page_offset;
 
 	uint64_t &parent = entry(l - 1);
 	flag flags = table_flags | (parent & flag::allowed);
 	if (m_index[0] < memory::pml4e_kernel)
 		flags |= flag::user;
 
-	m_table[unsigned(l)] = reinterpret_cast<page_table*>(phys | page_offset);
-	parent  = (reinterpret_cast<uintptr_t>(phys) & ~0xfffull) | flags;
+	m_table[unsigned(l)] = table;
+	parent = (phys & ~0xfffull) | flags;
 }
 
 page_table *
@@ -223,9 +220,10 @@ page_table::fill_table_page_cache()
 {
 	constexpr size_t min_pages = 16;
 
+	frame_allocator &fa = frame_allocator::get();
 	while (s_cache_count < min_pages) {
 		uintptr_t phys = 0;
-		size_t n = g_frame_allocator.allocate(min_pages - s_cache_count, &phys);
+		size_t n = fa.allocate(min_pages - s_cache_count, &phys);
 
 		free_page_header *start =
 			memory::to_virtual<free_page_header>(phys);
@@ -250,11 +248,12 @@ page_table::free(page_table::level l)
 		? memory::pml4e_kernel
 		: memory::table_entries;
 
+	frame_allocator &fa = frame_allocator::get();
 	for (unsigned i = 0; i < last; ++i) {
 		if (!is_present(i)) continue;
 		if (is_page(l, i)) {
 			size_t count = memory::page_count(entry_sizes[unsigned(l)]);
-			g_frame_allocator.free(entries[i] & ~0xfffull, count);
+			fa.free(entries[i] & ~0xfffull, count);
 		} else {
 			get(i)->free(l + 1);
 		}

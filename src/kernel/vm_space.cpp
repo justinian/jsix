@@ -5,8 +5,6 @@
 #include "objects/vm_area.h"
 #include "vm_space.h"
 
-extern frame_allocator &g_frame_allocator;
-
 int
 vm_space::area::compare(const vm_space::area &o) const
 {
@@ -92,6 +90,21 @@ vm_space::get(uintptr_t addr, uintptr_t *base)
 }
 
 void
+vm_space::copy_from(const vm_space &source, uintptr_t from, uintptr_t to, size_t count)
+{
+	page_table::iterator sit {from, source.m_pml4};
+	page_table::iterator dit {to, m_pml4};
+
+	while (count--) {
+		uint64_t &e = dit.entry(page_table::level::pt);
+		if (e & page_table::flag::present) {
+			// TODO: handle clobbering mapping
+		}
+		e = sit.entry(page_table::level::pt);
+	}
+}
+
+void
 vm_space::page_in(uintptr_t virt, uintptr_t phys, size_t count)
 {
 	page_table::iterator it {virt, m_pml4};
@@ -107,17 +120,37 @@ vm_space::page_in(uintptr_t virt, uintptr_t phys, size_t count)
 void
 vm_space::clear(uintptr_t addr, size_t count)
 {
+	using memory::frame_size;
+
+	uintptr_t free_start = 0;
+	size_t free_count = 0;
+
+	frame_allocator &fa = frame_allocator::get();
 	page_table::iterator it {addr, m_pml4};
+
 	while (count--) {
 		uint64_t &e = it.entry(page_table::level::pt);
-		if (e & page_table::flag::present) {
-			g_frame_allocator.free(e & ~0xfffull, 1);
-		}
 		bool allowed = (e & page_table::flag::allowed);
-		e = 0;
-		if (allowed) e |= page_table::flag::allowed;
+		uintptr_t phys = e & ~0xfffull;
+
+		if (e & page_table::flag::present) {
+			if (free_count && phys == free_start + (free_count * frame_size)) {
+				++free_count;
+			} else {
+				if (free_count)
+					fa.free(free_start, free_count);
+				free_start = phys;
+				free_count = 1;
+			}
+			fa.free(e & ~0xfffull, 1);
+		}
+
+		e = 0 | (allowed ? page_table::flag::allowed : page_table::flag::none);
 		++it;
 	}
+
+	if (free_count)
+		fa.free(free_start, free_count);
 }
 
 void
@@ -173,22 +206,32 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
 	if (fault && fault_type::present)
 		return false;
 
-	if (!it.allowed())
+	uintptr_t base = 0;
+	vm_area *area = get(addr, &base);
+
+	if (!area && !it.allowed())
 		return false;
 
 	uintptr_t phys = 0;
-	size_t n = g_frame_allocator.allocate(1, &phys);
+	size_t n = frame_allocator::get().allocate(1, &phys);
 	kassert(n, "Failed to allocate a new page during page fault");
 
 	page_table::flag flags =
 		page_table::flag::present |
 		page_table::flag::write |
-		page_table::flag::allowed |
+		(area
+		 ? page_table::flag::none
+		 : page_table::flag::allowed) |
 		(is_kernel()
 		 ? page_table::flag::global
 		 : page_table::flag::user);
 
 	it.entry(page_table::level::pt) = phys | flags;
+	if (area) {
+		uintptr_t offset = page - base;
+		area->commit(phys, offset, 1);
+	}
+
 	return true;
 }
 

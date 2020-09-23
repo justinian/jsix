@@ -61,7 +61,17 @@ main(int argc, const char **argv)
 
 	_syscall_system_log("main thread starting");
 
-	j6_status_t result = _syscall_endpoint_create(&endp);
+	uintptr_t base = 0xcc0000000;
+	j6_handle_t vma = j6_handle_invalid;
+	j6_status_t result = _syscall_vma_create_map(&vma, 0x100000, base);
+	if (result != j6_status_ok)
+		return result;
+
+	uint64_t *vma_ptr = reinterpret_cast<uint64_t*>(base);
+	for (int i = 0; i < 4096; ++i)
+		vma_ptr[i] = uint64_t(i);
+
+	result = _syscall_endpoint_create(&endp);
 	if (result != j6_status_ok)
 		return result;
 

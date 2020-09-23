@@ -29,6 +29,9 @@ public:
 	/// \arg count    The number of frames to be freed
 	void free(uintptr_t address, size_t count);
 
+	/// Get the global frame allocator
+	static frame_allocator & get();
+
 private:
 	frame_block_list m_free; ///< Free frames list
 

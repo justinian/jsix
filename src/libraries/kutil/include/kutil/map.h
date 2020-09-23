@@ -73,7 +73,6 @@ public:
 	class iterator
 	{
 	public:
-		iterator(node *n) : m_node(n) {}
 		inline node & operator*() { return *m_node; }
 		inline node * operator->() { return m_node; }
 		inline const node & operator*() const { return *m_node; }
@@ -81,8 +80,12 @@ public:
 		inline iterator operator++(int) { node *old = m_node; incr(); return iterator(old); }
 		inline bool operator!=(const iterator &o) { return m_node != o.m_node; }
 	private:
-		void incr() { do { m_node++; } while ( m_node && m_node->hash() == 0 ); }
+		friend class base_map;
+		iterator(node *n) : m_node(n), m_end(n) {}
+		iterator(node *n, node *end) : m_node(n), m_end(end) {}
+		void incr() { while (m_node < m_end) { ++m_node; if (m_node->hash()) break; } }
 		node *m_node;
+		node *m_end;
 	};
 
 	/// Default constructor. Creates an empty map with the given capacity.
@@ -102,11 +105,13 @@ public:
 	}
 
 	iterator begin() {
-		return iterator(m_nodes);
+		iterator it {m_nodes - 1, m_nodes + m_capacity};
+		return ++it;
 	}
 
 	const iterator begin() const {
-		return iterator(m_nodes);
+		iterator it {m_nodes - 1, m_nodes + m_capacity};
+		return ++it;
 	}
 
 	const iterator end() const {
@@ -206,6 +211,9 @@ protected:
 	}
 
 	node * lookup(const K &k) {
+		if (!m_count)
+			return nullptr;
+
 		uint64_t h = hash(k);
 		size_t i = mod(h);
 		size_t dist = 0;
@@ -223,8 +231,10 @@ protected:
 		}
 	}
 
-	const node * lookup(const K &k) const
-	{
+	const node * lookup(const K &k) const {
+		if (!m_count)
+			return nullptr;
+
 		uint64_t h = hash(k);
 		size_t i = mod(h);
 		size_t dist = 0;

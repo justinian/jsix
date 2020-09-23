@@ -18,6 +18,13 @@ frame_block::compare(const frame_block &rhs) const
 }
 
 
+frame_allocator &
+frame_allocator::get()
+{
+	extern frame_allocator &g_frame_allocator;
+	return g_frame_allocator;
+}
+
 frame_allocator::frame_allocator() {}
 
 size_t
