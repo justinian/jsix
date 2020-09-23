@@ -38,6 +38,8 @@ public:
 	vm_area(size_t size, vm_flags flags = vm_flags::none);
 	virtual ~vm_area();
 
+	static constexpr kobject::type type = kobject::type::vma;
+
 	/// Get the current virtual size of the memory area
 	size_t size() const { return m_size; }
 

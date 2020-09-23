@@ -14,6 +14,8 @@ public:
 	channel();
 	virtual ~channel();
 
+	static constexpr kobject::type type = kobject::type::channel;
+
 	/// Check if the channel has space for a message to be sent
 	inline bool can_send() const { return check_signal(j6_signal_channel_can_send); }
 

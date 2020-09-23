@@ -24,6 +24,8 @@ public:
 	/// Destructor.
 	virtual ~process();
 
+	static constexpr kobject::type type = kobject::type::process;
+
 	/// Get the currently executing process.
 	static process & current();
 

@@ -13,6 +13,8 @@ public:
 	endpoint();
 	virtual ~endpoint();
 
+	static constexpr kobject::type type = kobject::type::endpoint;
+
 	/// Close the endpoint, waking all waiting processes with an error
 	void close();
 

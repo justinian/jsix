@@ -10,4 +10,6 @@ class event :
 public:
 	event() :
 		kobject(type::event) {}
+
+	static constexpr kobject::type type = kobject::type::event;
 };

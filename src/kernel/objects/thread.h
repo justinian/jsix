@@ -50,6 +50,8 @@ public:
 	/// Destructor
 	virtual ~thread();
 
+	static constexpr kobject::type type = kobject::type::thread;
+
 	/// Get the currently executing thread.
 	static thread & current();
 
