@@ -5,9 +5,10 @@
 		mov rbp, rsp
 
 		; args should already be in rdi, etc, but rcx will
-		; get stomped, so shift args out one spot from rcx
-		mov r9, r8
-		mov r8, rcx
+		; get stomped, so stash it in r10, which isn't a
+		; callee-saved register, but also isn't used in the
+		; function call ABI.
+		mov r10, rcx
 
 		mov rax, %2
 		syscall

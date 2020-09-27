@@ -23,9 +23,11 @@ syscall_handler_prelude:
 	mov rbp, rsp
 
 	; account for the hole in the sysv abi
-	; argument list since SYSCALL uses rcx
-	mov rcx, r8
-	mov r8, r9
+	; argument list since SYSCALL uses rcx.
+	; r10 is non-preserved but not part of
+	; the function call ABI, so the rcx arg
+	; was stashed there.
+	mov rcx, r10
 
 	push rbx
 	push r11
