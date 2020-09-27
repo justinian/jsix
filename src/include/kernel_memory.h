@@ -64,4 +64,11 @@ namespace memory {
 	inline size_t page_count(size_t bytes) {
 		return ((bytes - 1) >> 12) + 1;
 	}
+
+	/// Get the given address, aligned to the next lowest page
+	inline uintptr_t page_align_down(uintptr_t a) { return a & ~(frame_size-1); }
+
+	/// Get the given address, aligned to the next page
+	inline uintptr_t page_align_up(uintptr_t a) { return page_align_down(a-1) + frame_size; }
+
 } // namespace memory

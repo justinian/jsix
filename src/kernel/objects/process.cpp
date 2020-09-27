@@ -4,6 +4,7 @@
 #include "cpu.h"
 #include "objects/process.h"
 #include "objects/thread.h"
+#include "objects/vm_area.h"
 
 // This object is initialized _before_ global constructors are called,
 // so we don't want it to have a global constructor at all, lest it
@@ -94,7 +95,11 @@ process::create_thread(uint8_t priority, bool user)
 
 	if (user) {
 		uintptr_t stack_top = stacks_top - (m_threads.count() * stack_size);
-		m_space.allow(stack_top - stack_size, stack_size, true);
+
+		vm_area *vma = new vm_area_open(stack_size, m_space,
+				vm_flags::zero|vm_flags::write);
+		m_space.add(stack_top - stack_size, vma);
+
 		th->tcb()->rsp3 = stack_top;
 	}
 

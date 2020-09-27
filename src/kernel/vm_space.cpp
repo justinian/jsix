@@ -220,6 +220,15 @@ vm_space::clear(const vm_area &vma, uintptr_t offset, size_t count, bool free)
 		fa.free(free_start, free_count);
 }
 
+uintptr_t
+vm_space::lookup(const vm_area &vma, uintptr_t offset)
+{
+	uintptr_t base = 0;
+	if (!find_vma(vma, base))
+		return 0;
+	return base + offset;
+}
+
 void
 vm_space::allow(uintptr_t start, size_t length, bool allow)
 {
@@ -276,7 +285,7 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
 	uintptr_t base = 0;
 	vm_area *area = get(addr, &base);
 
-	if ((!area || !area->allowed(page)) && !it.allowed())
+	if ((!area || !area->allowed(page-base)) && !it.allowed())
 		return false;
 
 	uintptr_t phys = 0;
@@ -294,6 +303,9 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
 		 : page_table::flag::user);
 
 	if (area) {
+		if (area->flags() && vm_flags::zero)
+			kutil::memset(memory::to_virtual<void>(phys), 0, memory::frame_size);
+
 		uintptr_t offset = page - base;
 		area->commit(phys, offset, 1);
 		return true;

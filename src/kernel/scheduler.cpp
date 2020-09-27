@@ -13,6 +13,7 @@
 #include "msr.h"
 #include "objects/channel.h"
 #include "objects/process.h"
+#include "objects/vm_area.h"
 #include "scheduler.h"
 
 #include "elf/elf.h"
@@ -62,6 +63,9 @@ scheduler::scheduler(lapic *apic) :
 uintptr_t
 load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 {
+	using memory::page_align_down;
+	using memory::page_align_up;
+
 	// We're now in the process space for this process, allocate memory for the
 	// process code and load it
 	process &proc = process::current();
@@ -73,6 +77,9 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 	elf::elf image(image_start, bytes);
 	kassert(image.valid(), "Invalid ELF passed to load_process_image");
 
+	uintptr_t vma_base = -1;
+	uintptr_t vma_end = 0;
+
 	const unsigned program_count = image.program_count();
 	for (unsigned i = 0; i < program_count; ++i) {
 		const elf::program_header *header = image.program(i);
@@ -80,19 +87,21 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 		if (header->type != elf::segment_type::load)
 			continue;
 
-		uintptr_t aligned = header->vaddr & ~(memory::frame_size - 1);
-		size_t size = (header->vaddr + header->mem_size) - aligned;
-		size_t pagesize = memory::page_count(size) * memory::frame_size;
+		uintptr_t base = page_align_down(header->vaddr);
+		uintptr_t end = page_align_up(header->vaddr + header->mem_size);
+		if (base < vma_base) vma_base = base;
+		if (end > vma_end) vma_end = end;
 
 		log::debug(logs::loader, "  Loadable segment %02u: vaddr %016lx  size %016lx",
 			i, header->vaddr, header->mem_size);
 
 		log::debug(logs::loader, "         - aligned to: vaddr %016lx  pages %d",
-			aligned, pagesize >> 12);
-
-		space.allow(aligned, pagesize, true);
-		kutil::memset(reinterpret_cast<void*>(aligned), 0, pagesize);
+			base, memory::page_count(end-base));
 	}
+
+	vm_area *vma = new vm_area_open(vma_end - vma_base, space,
+			vm_flags::zero|vm_flags::write);
+	space.add(vma_base, vma);
 
 	const unsigned section_count = image.section_count();
 	for (unsigned i = 0; i < section_count; ++i) {

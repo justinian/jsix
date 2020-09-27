@@ -1,16 +1,16 @@
 #include "kutil/assert.h"
 
-#include "buffer_cache.h"
 #include "kernel_memory.h"
 #include "objects/channel.h"
+#include "objects/vm_area.h"
 
-using memory::frame_size;
-using memory::kernel_buffer_pages;
-static constexpr size_t buffer_bytes = kernel_buffer_pages * frame_size;
+extern vm_area_buffers g_kernel_buffers;
+
+constexpr size_t buffer_bytes = memory::kernel_buffer_pages * memory::frame_size;
 
 channel::channel() :
 	m_len(0),
-	m_data(g_kbuffer_cache.get_buffer()),
+	m_data(g_kernel_buffers.get_buffer()),
 	m_buffer(reinterpret_cast<uint8_t*>(m_data), buffer_bytes),
 	kobject(kobject::type::channel, j6_signal_channel_can_send)
 {
@@ -78,7 +78,7 @@ channel::dequeue(size_t *len, void *data)
 void
 channel::close()
 {
-	g_kbuffer_cache.return_buffer(m_data);
+	g_kernel_buffers.return_buffer(m_data);
 	assert_signal(j6_signal_channel_closed);
 }
 

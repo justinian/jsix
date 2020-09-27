@@ -52,6 +52,8 @@ public:
 	virtual void map(uintptr_t offset, size_t count, uintptr_t phys) override;
 	virtual void unmap(uintptr_t offset, size_t count) override;
 
+	vm_space & space() { return m_space; }
+
 private:
 	vm_area &m_area;
 	vm_space &m_space;

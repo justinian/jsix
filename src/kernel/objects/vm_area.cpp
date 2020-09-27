@@ -211,3 +211,51 @@ vm_area_open::uncommit(uintptr_t offset, size_t count)
 	m_mapper.unmap(offset, count);
 }
 
+
+vm_area_buffers::vm_area_buffers(size_t size, vm_space &space, vm_flags flags, size_t buf_pages) :
+	m_mapper {*this, space},
+	m_pages {buf_pages},
+	m_next {memory::frame_size},
+	vm_area {size, flags}
+{
+}
+
+uintptr_t
+vm_area_buffers::get_buffer()
+{
+	if (m_cache.count() > 0) {
+		return m_cache.pop();
+	}
+
+	uintptr_t addr = m_next;
+	m_next += (m_pages + 1) * memory::frame_size;
+	return m_mapper.space().lookup(*this, addr);
+}
+
+void
+vm_area_buffers::return_buffer(uintptr_t addr)
+{
+	m_cache.append(addr);
+}
+
+bool
+vm_area_buffers::allowed(uintptr_t offset) const
+{
+	if (offset >= m_next) return false;
+
+	// Buffers are m_pages big plus 1 leading guard page
+	return memory::page_align_down(offset) % (m_pages+1);
+}
+
+void
+vm_area_buffers::commit(uintptr_t phys, uintptr_t offset, size_t count)
+{
+	m_mapper.map(offset, count, phys);
+}
+
+void
+vm_area_buffers::uncommit(uintptr_t offset, size_t count)
+{
+	m_mapper.unmap(offset, count);
+}
+

@@ -3,11 +3,13 @@
 #include "log.h"
 #include "objects/thread.h"
 #include "objects/process.h"
+#include "objects/vm_area.h"
 #include "scheduler.h"
-#include "buffer_cache.h"
 
 extern "C" void kernel_to_user_trampoline();
 static constexpr j6_signal_t thread_default_signals = 0;
+
+extern vm_area_buffers g_kernel_stacks;
 
 thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 	kobject(kobject::type::thread, thread_default_signals),
@@ -30,7 +32,7 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 
 thread::~thread()
 {
-	g_kstack_cache.return_buffer(m_tcb.kernel_stack);
+	g_kernel_stacks.return_buffer(m_tcb.kernel_stack);
 }
 
 thread *
@@ -179,7 +181,7 @@ thread::setup_kernel_stack()
 	constexpr unsigned null_frame_entries = 2;
 	constexpr size_t null_frame_size = null_frame_entries * sizeof(uint64_t);
 
-	uintptr_t stack_addr = g_kstack_cache.get_buffer();
+	uintptr_t stack_addr = g_kernel_stacks.get_buffer();
 	uintptr_t stack_end = stack_addr + stack_bytes;
 
 	uint64_t *null_frame = reinterpret_cast<uint64_t*>(stack_end - null_frame_size);

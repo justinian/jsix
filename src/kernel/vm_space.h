@@ -61,6 +61,9 @@ public:
 	/// \arg free   If true, free the pages back to the system
 	void clear(const vm_area &vma, uintptr_t start, size_t count, bool free = false);
 
+	/// Look up the address of a given VMA's offset
+	uintptr_t lookup(const vm_area &vma, uintptr_t offset);
+
 	/// Mark whether allocation is allowed or not in a range of
 	/// virtual memory.
 	/// \arg start  The starting virtual address of the area

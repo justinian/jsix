@@ -38,6 +38,18 @@ frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
 static kutil::no_construct<vm_area_open> __g_kernel_heap_area_storage;
 vm_area_open &g_kernel_heap_area = __g_kernel_heap_area_storage.value;
 
+vm_area_buffers g_kernel_stacks {
+	memory::kernel_max_stacks,
+	vm_space::kernel_space(),
+	vm_flags::write,
+	memory::kernel_stack_pages};
+
+vm_area_buffers g_kernel_buffers {
+	memory::kernel_max_buffers,
+	vm_space::kernel_space(),
+	vm_flags::write,
+	memory::kernel_buffer_pages};
+
 void * operator new(size_t size)           { return g_kernel_heap.allocate(size); }
 void * operator new [] (size_t size)       { return g_kernel_heap.allocate(size); }
 void operator delete (void *p) noexcept    { return g_kernel_heap.free(p); }
@@ -136,6 +148,9 @@ memory_initialize_post_ctors(args::header *kargs)
 	if (current_bytes)
 		g_kernel_space.commit(current_start, current_bytes);
 	*/
+	vm_space &vm = vm_space::kernel_space();
+	vm.add(memory::stacks_start, &g_kernel_stacks);
+	vm.add(memory::buffers_start, &g_kernel_buffers);
 
 	g_frame_allocator.free(
 		reinterpret_cast<uintptr_t>(kargs->page_table_cache),
