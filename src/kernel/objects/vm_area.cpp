@@ -91,7 +91,6 @@ vm_area_shared::commit(uintptr_t phys, uintptr_t offset, size_t count)
 		.phys = phys});
 	n = 1;
 
-
 	// Try to expand to abutting similar areas
 	if (o > 0 &&
 		m_mappings[o-1].end() == offset &&

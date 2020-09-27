@@ -101,27 +101,6 @@ page_table::iterator::next(level l)
 }
 
 bool
-page_table::iterator::allowed() const
-{
-	level d = depth();
-	while (true) {
-		if (entry(d) & flag::allowed) return true;
-		else if (d == level::pml4) return false;
-		--d;
-	}
-}
-
-void
-page_table::iterator::allow(level at, bool allowed)
-{
-	for (level l = level::pdp; l <= at; ++l)
-		ensure_table(l);
-
-	if (allowed) entry(at) |= flag::allowed;
-	else entry(at) &= ~flag::allowed;
-}
-
-bool
 page_table::iterator::operator!=(const iterator &o) const
 {
 	for (unsigned i = 0; i < D; ++i)
@@ -159,7 +138,7 @@ page_table::iterator::ensure_table(level l)
 	uintptr_t phys = reinterpret_cast<uintptr_t>(table) & ~page_offset;
 
 	uint64_t &parent = entry(l - 1);
-	flag flags = table_flags | (parent & flag::allowed);
+	flag flags = table_flags;
 	if (m_index[0] < memory::pml4e_kernel)
 		flags |= flag::user;
 
@@ -185,7 +164,6 @@ page_table::get(int i, uint16_t *flags) const
 void
 page_table::set(int i, page_table *p, uint16_t flags)
 {
-	if (entries[i] & flag::allowed) flags |= flag::allowed;
 	entries[i] =
 		(reinterpret_cast<uint64_t>(p) - page_offset) |
 		(flags & 0xfff);

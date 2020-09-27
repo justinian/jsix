@@ -64,13 +64,6 @@ public:
 	/// Look up the address of a given VMA's offset
 	uintptr_t lookup(const vm_area &vma, uintptr_t offset);
 
-	/// Mark whether allocation is allowed or not in a range of
-	/// virtual memory.
-	/// \arg start  The starting virtual address of the area
-	/// \arg length The length in bytes of the area
-	/// \arg allow  True if allocation should be allowed
-	void allow(uintptr_t start, size_t length, bool allow);
-
 	/// Check if this space is the current active space
 	bool active() const;
 

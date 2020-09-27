@@ -28,10 +28,7 @@ struct page_table
 		page      = 0x0080, /// Entry is a large page
 		pte_mtrr2 = 0x0080, /// MTRR selector bit 2 on PT entries
 		global    = 0x0100, /// Entry is not PCID-specific
-		mtrr2     = 0x1000, /// MTRR selector bit 2 on PD and PDP entries
-
-		// jsix-defined
-		allowed   = 0x0800  /// Allocation here is allowed
+		mtrr2     = 0x1000  /// MTRR selector bit 2 on PD and PDP entries
 	};
 
 	/// Helper for getting the next level value
@@ -102,12 +99,6 @@ struct page_table
 
 		/// Increment iteration to the next entry aligned to the given level
 		void next(level l);
-
-		/// Check if allocation is allowed at the current location
-		bool allowed() const;
-
-		/// Mark allocation allowed at the given depth for the current location
-		void allow(level at, bool allowed);
 
 		/// Increment iteration to the next entry at the deepest level
 		inline void increment() { next(level::page); }

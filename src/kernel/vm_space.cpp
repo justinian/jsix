@@ -197,7 +197,6 @@ vm_space::clear(const vm_area &vma, uintptr_t offset, size_t count, bool free)
 
 	while (count--) {
 		uint64_t &e = it.entry(page_table::level::pt);
-		bool allowed = (e & page_table::flag::allowed);
 		uintptr_t phys = e & ~0xfffull;
 
 		if (e & page_table::flag::present) {
@@ -212,7 +211,7 @@ vm_space::clear(const vm_area &vma, uintptr_t offset, size_t count, bool free)
 			fa.free(e & ~0xfffull, 1);
 		}
 
-		e = 0 | (allowed ? page_table::flag::allowed : page_table::flag::none);
+		e = 0;
 		++it;
 	}
 
@@ -227,24 +226,6 @@ vm_space::lookup(const vm_area &vma, uintptr_t offset)
 	if (!find_vma(vma, base))
 		return 0;
 	return base + offset;
-}
-
-void
-vm_space::allow(uintptr_t start, size_t length, bool allow)
-{
-	using level = page_table::level;
-	kassert((start & 0xfff) == 0, "non-page-aligned address");
-	kassert((length & 0xfff) == 0, "non-page-aligned length");
-
-	const uintptr_t end = start + length;
-	page_table::iterator it {start, m_pml4};
-
-	while (it.vaddress() < end) {
-		level d = it.align();
-		while (it.end(d) > end) ++d;
-		it.allow(d-1, allow);
-		it.next(d);
-	}
 }
 
 bool
@@ -276,8 +257,6 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
 {
 	uintptr_t page = addr & ~0xfffull;
 
-	page_table::iterator it {addr, m_pml4};
-
 	// TODO: Handle more fult types
 	if (fault && fault_type::present)
 		return false;
@@ -285,33 +264,18 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
 	uintptr_t base = 0;
 	vm_area *area = get(addr, &base);
 
-	if ((!area || !area->allowed(page-base)) && !it.allowed())
+	if (!area || !area->allowed(page-base))
 		return false;
 
 	uintptr_t phys = 0;
 	size_t n = frame_allocator::get().allocate(1, &phys);
 	kassert(n, "Failed to allocate a new page during page fault");
 
-	page_table::flag flags =
-		page_table::flag::present |
-		page_table::flag::write |
-		(area
-		 ? page_table::flag::none
-		 : page_table::flag::allowed) |
-		(is_kernel()
-		 ? page_table::flag::global
-		 : page_table::flag::user);
+	if (area->flags() && vm_flags::zero)
+		kutil::memset(memory::to_virtual<void>(phys), 0, memory::frame_size);
 
-	if (area) {
-		if (area->flags() && vm_flags::zero)
-			kutil::memset(memory::to_virtual<void>(phys), 0, memory::frame_size);
-
-		uintptr_t offset = page - base;
-		area->commit(phys, offset, 1);
-		return true;
-	}
-
-	it.entry(page_table::level::pt) = phys | flags;
+	uintptr_t offset = page - base;
+	area->commit(phys, offset, 1);
 	return true;
 }
 
