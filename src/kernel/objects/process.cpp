@@ -22,6 +22,7 @@ process::process() :
 	s_processes.append(this);
 }
 
+// The "kernel process"-only constructor
 process::process(page_table *kpml4) :
 	kobject {kobject::type::process},
 	m_space {kpml4},

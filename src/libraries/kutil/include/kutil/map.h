@@ -105,16 +105,19 @@ public:
 	}
 
 	iterator begin() {
+		if (!m_count) return iterator {0};
 		iterator it {m_nodes - 1, m_nodes + m_capacity};
 		return ++it;
 	}
 
 	const iterator begin() const {
+		if (!m_count) return iterator {0};
 		iterator it {m_nodes - 1, m_nodes + m_capacity};
 		return ++it;
 	}
 
 	const iterator end() const {
+		if (!m_count) return iterator {0};
 		return iterator(m_nodes + m_capacity);
 	}
 

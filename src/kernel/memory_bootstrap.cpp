@@ -35,6 +35,9 @@ kutil::heap_allocator &g_kernel_heap = __g_kernel_heap_storage.value;
 static kutil::no_construct<frame_allocator> __g_frame_allocator_storage;
 frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
 
+static kutil::no_construct<vm_area_open> __g_kernel_heap_area_storage;
+vm_area_open &g_kernel_heap_area = __g_kernel_heap_area_storage.value;
+
 void * operator new(size_t size)           { return g_kernel_heap.allocate(size); }
 void * operator new [] (size_t size)       { return g_kernel_heap.allocate(size); }
 void operator delete (void *p) noexcept    { return g_kernel_heap.free(p); }
@@ -104,7 +107,11 @@ memory_initialize_pre_ctors(args::header *kargs)
 
 	process *kp = process::create_kernel_process(kpml4);
 	vm_space &vm = kp->space();
-	vm.allow(memory::heap_start, memory::kernel_max_heap, true);
+
+	vm_area *heap = new (&g_kernel_heap_area)
+		vm_area_open(memory::kernel_max_heap, vm, vm_flags::write);
+
+	vm.add(memory::heap_start, heap);
 }
 
 void

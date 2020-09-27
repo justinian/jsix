@@ -17,7 +17,7 @@ namespace memory {
 	constexpr uintptr_t page_offset = 0xffffc00000000000ull;
 
 	/// Max number of pages for a kernel stack
-	constexpr unsigned kernel_stack_pages = 1;
+	constexpr unsigned kernel_stack_pages = 4;
 
 	/// Max number of pages for a kernel buffer
 	constexpr unsigned kernel_buffer_pages = 16;
@@ -62,6 +62,6 @@ namespace memory {
 	/// \arg bytes  The number of bytes desired
 	/// \returns    The number of pages needed to contain the desired bytes
 	inline size_t page_count(size_t bytes) {
-		return ((bytes - 1) & (frame_size - 1)) + 1;
+		return ((bytes - 1) >> 12) + 1;
 	}
 } // namespace memory

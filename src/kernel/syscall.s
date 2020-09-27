@@ -22,6 +22,11 @@ syscall_handler_prelude:
 	push rbp
 	mov rbp, rsp
 
+	; account for the hole in the sysv abi
+	; argument list since SYSCALL uses rcx
+	mov rcx, r8
+	mov r8, r9
+
 	push rbx
 	push r11
 	push r12

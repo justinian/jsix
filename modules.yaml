@@ -60,6 +60,7 @@ modules:
             - src/kernel/syscalls/thread.cpp
             - src/kernel/syscalls/vm_area.cpp
             - src/kernel/task.s
+            - src/kernel/vm_mapper.cpp
             - src/kernel/vm_space.cpp
             - src/kernel/crtn.s
 

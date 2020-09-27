@@ -165,6 +165,7 @@ page_table::iterator::ensure_table(level l)
 
 	m_table[unsigned(l)] = table;
 	parent = (phys & ~0xfffull) | flags;
+	__atomic_thread_fence(__ATOMIC_SEQ_CST);
 }
 
 page_table *
@@ -295,27 +296,4 @@ page_table::dump(page_table::level lvl, bool recurse)
 				next->dump(deeper(lvl), true);
 		}
 	}
-}
-
-page_table_indices::page_table_indices(uint64_t v) :
-	index{
-		(v >> 39) & 0x1ff,
-		(v >> 30) & 0x1ff,
-		(v >> 21) & 0x1ff,
-		(v >> 12) & 0x1ff }
-{}
-
-uintptr_t
-page_table_indices::addr() const
-{
-	return
-		(index[0] << 39) |
-		(index[1] << 30) |
-		(index[2] << 21) |
-		(index[3] << 12);
-}
-
-bool operator==(const page_table_indices &l, const page_table_indices &r)
-{
-	return l[0] == r[0] && l[1] == r[1] && l[2] == r[2] && l[3] == r[3];
 }

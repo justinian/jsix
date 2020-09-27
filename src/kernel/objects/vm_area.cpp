@@ -1,4 +1,3 @@
-#include "frame_allocator.h"
 #include "kernel_memory.h"
 #include "objects/vm_area.h"
 #include "vm_space.h"
@@ -6,64 +5,55 @@
 using memory::frame_size;
 
 vm_area::vm_area(size_t size, vm_flags flags) :
-	m_size(size),
-	m_flags(flags),
-	kobject(kobject::type::vma)
+	m_size {size},
+	m_flags {flags},
+	kobject {kobject::type::vma}
 {
 }
 
-vm_area::~vm_area()
-{
-	for (auto &it : m_spaces)
-		remove_from(it.key);
-
-	frame_allocator &fa = frame_allocator::get();
-	for (auto &m : m_mappings)
-		fa.free(m.phys, m.count);
-}
+vm_area::~vm_area() {}
 
 size_t
 vm_area::resize(size_t size)
 {
+	if (mapper().can_resize(size))
+		m_size = size;
 	return m_size;
 }
 
 void
-vm_area::add_to(vm_space *space, uintptr_t base)
+vm_area::commit(uintptr_t phys, uintptr_t offset, size_t count)
 {
-	kassert(space, "null vm_space passed to vm_area::add_to");
-
-	// Multiple copies in the same space not yet supported
-	uintptr_t *prev = m_spaces.find(space);
-	if (prev) return;
-
-	if (m_spaces.count()) {
-		// Just get the first address space in the map
-		auto it = m_spaces.begin();
-		vm_space *source = it->key;
-		uintptr_t from = it->val;
-		size_t pages = memory::page_count(m_size);
-		space->copy_from(*source, from, base, pages);
-	}
-
-	m_spaces.insert(space, base);
-	space->add(base, this);
+	mapper().map(offset, count, phys);
 }
 
 void
-vm_area::remove_from(vm_space *space)
+vm_area::uncommit(uintptr_t offset, size_t count)
 {
-	size_t pages = memory::page_count(m_size);
-	uintptr_t *base = m_spaces.find(space);
-	if (space && base) {
-		space->clear(*base, pages);
-		m_spaces.erase(space);
-	}
-	space->remove(this);
+	mapper().unmap(offset, count);
+}
+
+void
+vm_area::on_no_handles()
+{
+	kobject::on_no_handles();
+	delete this;
+}
+
+
+
+vm_area_shared::vm_area_shared(size_t size, vm_flags flags) :
+	m_mapper {*this},
+	vm_area {size, flags}
+{
+}
+
+vm_area_shared::~vm_area_shared()
+{
 }
 
 size_t
-vm_area::overlaps(uintptr_t offset, size_t pages, size_t *count)
+vm_area_shared::overlaps(uintptr_t offset, size_t pages, size_t *count)
 {
 	size_t first = 0;
 	size_t n = 0;
@@ -84,14 +74,16 @@ vm_area::overlaps(uintptr_t offset, size_t pages, size_t *count)
 	return first;
 }
 
-bool
-vm_area::commit(uintptr_t phys, uintptr_t offset, size_t count)
+void
+vm_area_shared::commit(uintptr_t phys, uintptr_t offset, size_t count)
 {
 	size_t n = 0;
 	size_t o = overlaps(offset, count, &n);
 
 	// Mapping overlaps not allowed
-	if (n) return false;
+	if (n) return;
+
+	m_mapper.map(offset, count, phys);
 
 	o = m_mappings.sorted_insert({
 		.offset = offset,
@@ -99,7 +91,6 @@ vm_area::commit(uintptr_t phys, uintptr_t offset, size_t count)
 		.phys = phys});
 	n = 1;
 
-	map(offset, count, phys);
 
 	// Try to expand to abutting similar areas
 	if (o > 0 &&
@@ -134,15 +125,17 @@ vm_area::commit(uintptr_t phys, uintptr_t offset, size_t count)
 	if (n > 1)
 		m_mappings.remove_at(o+1, n-1);
 
-	return true;
+	return;
 }
 
-bool
-vm_area::uncommit(uintptr_t offset, size_t count)
+void
+vm_area_shared::uncommit(uintptr_t offset, size_t count)
 {
 	size_t n = 0;
 	size_t o = overlaps(offset, count, &n);
-	if (!n) return true;
+	if (!n) return;
+
+	m_mapper.unmap(offset, count);
 
 	mapping *first = &m_mappings[o];
 	mapping *last = &m_mappings[o+n-1];
@@ -169,7 +162,7 @@ vm_area::uncommit(uintptr_t offset, size_t count)
 		size_t remove_pages = first->count; 
 		first->count = leading / frame_size;
 		remove_pages -= first->count;
-		unmap(first->end(), remove_pages);
+		m_mapper.unmap(first->end(), remove_pages);
 	}
 
 	if (trailing) {
@@ -178,7 +171,7 @@ vm_area::uncommit(uintptr_t offset, size_t count)
 		last->offset = end;
 		last->count = trailing / frame_size;
 		remove_pages -= last->count;
-		unmap(remove_off, remove_pages);
+		m_mapper.unmap(remove_off, remove_pages);
 		last->phys += remove_pages * frame_size;
 	}
 
@@ -189,39 +182,32 @@ vm_area::uncommit(uintptr_t offset, size_t count)
 		if (offset <= m.offset && end >= m.end()) {
 			if (!delete_count) delete_start = i;
 			++delete_count;
-			unmap(m.offset, m.count);
+			m_mapper.unmap(m.offset, m.count);
 		}
 	}
 
 	if (delete_count)
 		m_mappings.remove_at(delete_start, delete_count);
 
-	return true;
+	return;
+}
+
+
+vm_area_open::vm_area_open(size_t size, vm_space &space, vm_flags flags) :
+	m_mapper(*this, space),
+	vm_area(size, flags)
+{
 }
 
 void
-vm_area::map(uintptr_t offset, size_t count, uintptr_t phys)
+vm_area_open::commit(uintptr_t phys, uintptr_t offset, size_t count)
 {
-	for (auto &it : m_spaces) {
-		uintptr_t addr = it.val + offset;
-		vm_space *space = it.key;
-		space->page_in(addr, phys, count);
-	} 
+	m_mapper.map(offset, count, phys);
 }
 
 void
-vm_area::unmap(uintptr_t offset, size_t count)
+vm_area_open::uncommit(uintptr_t offset, size_t count)
 {
-	for (auto &it : m_spaces) {
-		uintptr_t addr = it.val + offset;
-		vm_space *space = it.key;
-		space->clear(addr, count);
-	}
+	m_mapper.unmap(offset, count);
 }
 
-void
-vm_area::on_no_handles()
-{
-	kobject::on_no_handles();
-	delete this;
-}

@@ -45,7 +45,7 @@ public:
 	}
 
 	/// Move constructor. Takes ownership of the other's array.
-	vector(vector&& other) :
+	vector(vector &&other) :
 		m_size(other.m_size),
 		m_capacity(other.m_capacity),
 		m_elements(other.m_elements)
@@ -53,6 +53,15 @@ public:
 		other.m_size = 0;
 		other.m_capacity = 0;
 		other.m_elements = nullptr;
+	}
+
+	/// Static array constructor. Starts the vector off with the given
+	/// static storage.
+	vector(T *data, size_t size, size_t capacity) :
+		m_size(size),
+		m_capacity(capacity),
+		m_elements(&data[0])
+	{
 	}
 
 	/// Destructor. Destroys any remaining items in the array.

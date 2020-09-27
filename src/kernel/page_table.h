@@ -177,25 +177,6 @@ struct page_table
 };
 
 
-/// Helper struct for computing page table indices of a given address.
-struct page_table_indices
-{
-	page_table_indices(uint64_t v = 0);
-
-	uintptr_t addr() const;
-
-	inline operator uintptr_t() const { return addr(); }
-
-	/// Get the index for a given level of page table.
-	uint64_t & operator[](int i) { return index[i]; }
-	uint64_t operator[](int i) const { return index[i]; }
-	uint64_t & operator[](page_table::level i) { return index[static_cast<unsigned>(i)]; }
-	uint64_t operator[](page_table::level i) const { return index[static_cast<unsigned>(i)]; }
-	uint64_t index[4]; ///< Indices for each level of tables.
-};
-
-bool operator==(const page_table_indices &l, const page_table_indices &r);
-
 inline page_table::level operator+(page_table::level a, unsigned b) {
 	return static_cast<page_table::level>(static_cast<unsigned>(a) + b);
 }

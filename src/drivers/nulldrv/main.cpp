@@ -63,13 +63,23 @@ main(int argc, const char **argv)
 
 	uintptr_t base = 0xcc0000000;
 	j6_handle_t vma = j6_handle_invalid;
-	j6_status_t result = _syscall_vma_create_map(&vma, 0x100000, base);
+	j6_status_t result = _syscall_vma_create_map(&vma, 0x100000, base, 1);
 	if (result != j6_status_ok)
 		return result;
 
+	size_t size = 0x800000;
+	result = _syscall_vma_resize(vma, &size);
+	if (result != j6_status_ok)
+		return result;
+
+	if (size == 0x800000)
+		_syscall_system_log("main thread resized memory area");
+
 	uint64_t *vma_ptr = reinterpret_cast<uint64_t*>(base);
-	for (int i = 0; i < 4096; ++i)
-		vma_ptr[i] = uint64_t(i);
+	for (int i = 0; i < 300; ++i)
+		vma_ptr[i * 512] = uint64_t(i);
+
+	_syscall_system_log("main thread wrote to memory area");
 
 	result = _syscall_endpoint_create(&endp);
 	if (result != j6_status_ok)
@@ -84,7 +94,7 @@ main(int argc, const char **argv)
 	_syscall_system_log("main thread created sub thread");
 
 	char message[] = "MAIN THREAD SUCCESSFULLY CALLED SENDRECV IF THIS IS LOWERCASE";
-	size_t size = sizeof(message);
+	size = sizeof(message);
 	result = _syscall_endpoint_sendrecv(endp, &size, (void*)message);
 	if (result != j6_status_ok)
 		return result;

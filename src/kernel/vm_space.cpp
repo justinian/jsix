@@ -1,9 +1,13 @@
 #include "frame_allocator.h"
+#include "kernel_memory.h"
 #include "log.h"
 #include "objects/process.h"
 #include "objects/thread.h"
 #include "objects/vm_area.h"
 #include "vm_space.h"
+
+// The initial memory for the array of areas for the kernel space
+static uint64_t kernel_areas[16];
 
 int
 vm_space::area::compare(const vm_space::area &o) const
@@ -20,7 +24,12 @@ vm_space::area::operator==(const vm_space::area &o) const
 }
 
 
-vm_space::vm_space(page_table *p) : m_kernel(true), m_pml4(p) {}
+// Kernel address space contsructor
+vm_space::vm_space(page_table *p) :
+	m_kernel {true},
+	m_pml4 {p},
+	m_areas {reinterpret_cast<vm_space::area*>(kernel_areas), 0, 8}
+{}
 
 vm_space::vm_space() :
 	m_kernel(false)
@@ -36,7 +45,7 @@ vm_space::vm_space() :
 vm_space::~vm_space()
 {
 	for (auto &a : m_areas)
-		a.area->remove_from(this);
+		a.area->mapper().remove(this);
 
 	kassert(!is_kernel(), "Kernel vm_space destructor!");
 
@@ -61,6 +70,7 @@ vm_space::add(uintptr_t base, vm_area *area)
 {
 	//TODO: check for collisions
 	m_areas.sorted_insert({base, area});
+	area->mapper().add(this);
 	return true;
 }
 
@@ -70,10 +80,34 @@ vm_space::remove(vm_area *area)
 	for (auto &a : m_areas) {
 		if (a.area == area) {
 			m_areas.remove(a);
+			area->mapper().remove(this);
 			return true;
 		}
 	}
 	return false;
+}
+
+bool
+vm_space::can_resize(const vm_area &vma, size_t size) const
+{
+	uintptr_t base = 0;
+	unsigned n = m_areas.count();
+	for (unsigned i = 0; i < n - 1; ++i) {
+		const area &prev = m_areas[i - 1];
+		if (prev.area != &vma)
+			continue;
+
+		base = prev.base;
+		const area &next = m_areas[i];
+		if (prev.base + size > next.base)
+			return false;
+	}
+
+	uintptr_t end = base + size;
+	uintptr_t space_end = is_kernel() ?
+		uint64_t(-1) : 0x7fffffffffff;
+
+	return end <= space_end;
 }
 
 vm_area *
@@ -89,11 +123,28 @@ vm_space::get(uintptr_t addr, uintptr_t *base)
 	return nullptr;
 }
 
-void
-vm_space::copy_from(const vm_space &source, uintptr_t from, uintptr_t to, size_t count)
+bool
+vm_space::find_vma(const vm_area &vma, uintptr_t &base) const
 {
-	page_table::iterator sit {from, source.m_pml4};
+	for (auto &a : m_areas) {
+		if (a.area != &vma) continue;
+		base = a.base;
+		return true;
+	}
+	return false;
+}
+
+void
+vm_space::copy_from(const vm_space &source, const vm_area &vma)
+{
+	uintptr_t to = 0;
+	uintptr_t from = 0;
+	if (!find_vma(vma, from) || !source.find_vma(vma, from))
+		return;
+
+	size_t count = memory::page_count(vma.size());
 	page_table::iterator dit {to, m_pml4};
+	page_table::iterator sit {from, source.m_pml4};
 
 	while (count--) {
 		uint64_t &e = dit.entry(page_table::level::pt);
@@ -105,23 +156,39 @@ vm_space::copy_from(const vm_space &source, uintptr_t from, uintptr_t to, size_t
 }
 
 void
-vm_space::page_in(uintptr_t virt, uintptr_t phys, size_t count)
+vm_space::page_in(const vm_area &vma, uintptr_t offset, uintptr_t phys, size_t count)
 {
+	using memory::frame_size;
+
+	uintptr_t base = 0;
+	if (!find_vma(vma, base))
+		return;
+
+	uintptr_t virt = base + offset;
+	page_table::flag flags =
+		page_table::flag::present |
+		(m_kernel ? page_table::flag::none : page_table::flag::user) |
+		((vma.flags() && vm_flags::write) ? page_table::flag::write : page_table::flag::none);
+
 	page_table::iterator it {virt, m_pml4};
+
 	for (size_t i = 0; i < count; ++i) {
-		uint64_t &e = it.entry(page_table::level::pt);
-		bool allowed = (e & page_table::flag::allowed);
-		e = (phys + i * memory::frame_size) |
-			(allowed ? page_table::flag::allowed : page_table::flag::none);
+		it.entry(page_table::level::pt) =
+			(phys + i * frame_size) | flags;
 		++it;
 	}
 }
 
 void
-vm_space::clear(uintptr_t addr, size_t count)
+vm_space::clear(const vm_area &vma, uintptr_t offset, size_t count, bool free)
 {
 	using memory::frame_size;
 
+	uintptr_t base = 0;
+	if (!find_vma(vma, base))
+		return;
+
+	uintptr_t addr = base + offset;
 	uintptr_t free_start = 0;
 	size_t free_count = 0;
 
@@ -137,7 +204,7 @@ vm_space::clear(uintptr_t addr, size_t count)
 			if (free_count && phys == free_start + (free_count * frame_size)) {
 				++free_count;
 			} else {
-				if (free_count)
+				if (free && free_count)
 					fa.free(free_start, free_count);
 				free_start = phys;
 				free_count = 1;
@@ -149,7 +216,7 @@ vm_space::clear(uintptr_t addr, size_t count)
 		++it;
 	}
 
-	if (free_count)
+	if (free && free_count)
 		fa.free(free_start, free_count);
 }
 
@@ -209,7 +276,7 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
 	uintptr_t base = 0;
 	vm_area *area = get(addr, &base);
 
-	if (!area && !it.allowed())
+	if ((!area || !area->allowed(page)) && !it.allowed())
 		return false;
 
 	uintptr_t phys = 0;
@@ -226,12 +293,13 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
 		 ? page_table::flag::global
 		 : page_table::flag::user);
 
-	it.entry(page_table::level::pt) = phys | flags;
 	if (area) {
 		uintptr_t offset = page - base;
 		area->commit(phys, offset, 1);
+		return true;
 	}
 
+	it.entry(page_table::level::pt) = phys | flags;
 	return true;
 }
 
