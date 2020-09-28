@@ -100,28 +100,8 @@ public:
 	virtual vm_mapper & mapper() override { return m_mapper; }
 	virtual const vm_mapper & mapper() const override { return m_mapper; }
 
-	virtual void commit(uintptr_t phys, uintptr_t offset, size_t count) override;
-	virtual void uncommit(uintptr_t offset, size_t count) override;
-
 private:
 	vm_mapper_multi m_mapper;
-
-	struct mapping {
-		uintptr_t offset;
-		size_t count;
-		uintptr_t phys;
-
-		int compare(const struct mapping &o) const {
-			return offset > o.offset ? 1 : offset < o.offset ? -1 : 0;
-		}
-
-		inline uintptr_t end() const { return offset + count * memory::frame_size; }
-		inline uintptr_t phys_end() const { return phys + count * memory::frame_size; }
-	};
-
-	size_t overlaps(uintptr_t offset, size_t pages, size_t *count);
-
-	kutil::vector<mapping> m_mappings;
 };
 
 
