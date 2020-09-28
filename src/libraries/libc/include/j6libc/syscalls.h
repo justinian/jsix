@@ -1,5 +1,7 @@
 #pragma once
 
+#include <j6/types.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

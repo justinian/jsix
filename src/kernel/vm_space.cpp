@@ -71,6 +71,7 @@ vm_space::add(uintptr_t base, vm_area *area)
 	//TODO: check for collisions
 	m_areas.sorted_insert({base, area});
 	area->mapper().add(this);
+	area->handle_retain();
 	return true;
 }
 
@@ -81,6 +82,7 @@ vm_space::remove(vm_area *area)
 		if (a.area == area) {
 			m_areas.remove(a);
 			area->mapper().remove(this);
+			area->handle_release();
 			return true;
 		}
 	}
