@@ -1,7 +1,6 @@
 #include "objects/endpoint.h"
 #include "objects/process.h"
 #include "objects/thread.h"
-#include "scheduler.h"
 #include "vm_space.h"
 
 endpoint::endpoint() :
@@ -25,16 +24,13 @@ endpoint::close()
 j6_status_t
 endpoint::send(size_t len, void *data)
 {
-	scheduler &s = scheduler::get();
-	TCB *tcb = s.current();
-	thread_data sender = { thread::from_tcb(tcb), data };
+	thread_data sender = { &thread::current(), data };
 	sender.len = len;
 
 	if (!check_signal(j6_signal_endpoint_can_send)) {
 		assert_signal(j6_signal_endpoint_can_recv);
-		sender.th->wait_on_object(this);
 		m_blocked.append(sender);
-		s.schedule();
+		sender.th->wait_on_object(this);
 
 		// we woke up having already finished the send
 		// because it happened in the receiver
@@ -54,16 +50,13 @@ endpoint::send(size_t len, void *data)
 j6_status_t
 endpoint::receive(size_t *len, void *data)
 {
-	scheduler &s = scheduler::get();
-	TCB *tcb = s.current();
-	thread_data receiver = { thread::from_tcb(tcb), data };
+	thread_data receiver = { &thread::current(), data };
 	receiver.len_p = len;
 
 	if (!check_signal(j6_signal_endpoint_can_recv)) {
 		assert_signal(j6_signal_endpoint_can_send);
-		receiver.th->wait_on_object(this);
 		m_blocked.append(receiver);
-		s.schedule();
+		receiver.th->wait_on_object(this);
 
 		// we woke up having already finished the recv
 		// because it happened in the sender

@@ -5,6 +5,7 @@
 #include "objects/process.h"
 #include "objects/thread.h"
 #include "objects/vm_area.h"
+#include "scheduler.h"
 
 // This object is initialized _before_ global constructors are called,
 // so we don't want it to have a global constructor at all, lest it
@@ -62,6 +63,9 @@ process::exit(unsigned code)
 	}
 	m_return_code = code;
 	assert_signal(j6_signal_process_exit);
+
+	if (this == bsp_cpu_data.p)
+		scheduler::get().schedule();
 }
 
 void
@@ -90,6 +94,9 @@ process::update()
 thread *
 process::create_thread(uint8_t priority, bool user)
 {
+	if (priority == default_pri)
+		priority = scheduler::default_priority;
+
 	thread *th = new thread(*this, priority);
 	kassert(th, "Failed to create thread!");
 
@@ -104,6 +111,7 @@ process::create_thread(uint8_t priority, bool user)
 	}
 
 	m_threads.append(th);
+	scheduler::get().add_thread(th->tcb());
 	return th;
 }
 

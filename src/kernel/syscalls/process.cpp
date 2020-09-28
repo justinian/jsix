@@ -3,7 +3,6 @@
 
 #include "log.h"
 #include "objects/process.h"
-#include "scheduler.h"
 
 namespace syscalls {
 
@@ -20,13 +19,10 @@ process_koid(j6_koid_t *koid)
 j6_status_t
 process_exit(int64_t status)
 {
-	auto &s = scheduler::get();
 	process &p = process::current();
-
 	log::debug(logs::syscall, "Process %llx exiting with code %d", p.koid(), status);
 
 	p.exit(status);
-	s.schedule();
 
 	log::error(logs::syscall, "returned to exit syscall");
 	return j6_err_unexpected;

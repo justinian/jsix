@@ -141,13 +141,14 @@ scheduler::create_process(bool user)
 {
 	process *p = new process;
 	thread *th = p->create_thread(default_priority, user);
-	auto *tcb = th->tcb();
 
+	auto *tcb = th->tcb();
 	tcb->time_left = quantum(default_priority);
 
 	log::debug(logs::task, "Creating thread %llx, priority %d, time slice %d",
 			th->koid(), tcb->priority, tcb->time_left);
 
+	th->set_state(thread::state::ready);
 	return th;
 }
 
@@ -183,8 +184,6 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 
 	tcb->rsp3 = process::stacks_top;
 
-	m_runlists[default_priority].push_back(tcb);
-
 	log::debug(logs::task, "Loading thread %s: koid %llx  pri %d", name, th->koid(), tcb->priority);
 	log::debug(logs::task, "     RSP  %016lx", tcb->rsp);
 	log::debug(logs::task, "     RSP0 %016lx", tcb->rsp0);
@@ -203,7 +202,7 @@ scheduler::create_kernel_task(void (*task)(), uint8_t priority, bool constant)
 	if (constant)
 		th->set_state(thread::state::constant);
 
-	m_runlists[priority].push_back(tcb);
+	th->set_state(thread::state::ready);
 
 	log::debug(logs::task, "Creating kernel task: thread %llx  pri %d", th->koid(), tcb->priority);
 	log::debug(logs::task, "    RSP0 %016lx", tcb->rsp0);
@@ -246,7 +245,6 @@ void scheduler::prune(uint64_t now)
 		tcb = tcb->next();
 		if (!exited && !ready)
 			continue;
-
 
 		if (exited) {
 			// If the current thread has exited, wait until the next call

@@ -26,8 +26,6 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 		setup_kernel_stack();
 	else
 		m_tcb.rsp0 = rsp0;
-
-	set_state(state::ready);
 }
 
 thread::~thread()
@@ -49,12 +47,16 @@ thread::current()
 	return *bsp_cpu_data.t;
 }
 
+inline void schedule_if_current(thread *t) { if (t == bsp_cpu_data.t) scheduler::get().schedule(); }
+
 void
 thread::wait_on_signals(kobject *obj, j6_signal_t signals)
 {
 	m_wait_type = wait_type::signal;
 	m_wait_data = signals;
 	clear_state(state::ready);
+
+	schedule_if_current(this);
 }
 
 void
@@ -63,6 +65,8 @@ thread::wait_on_time(uint64_t t)
 	m_wait_type = wait_type::time;
 	m_wait_data = t;
 	clear_state(state::ready);
+
+	schedule_if_current(this);
 }
 
 void
@@ -71,6 +75,8 @@ thread::wait_on_object(kobject *o)
 	m_wait_type = wait_type::object;
 	m_wait_data = reinterpret_cast<uint64_t>(o);
 	clear_state(state::ready);
+
+	schedule_if_current(this);
 }
 
 bool
@@ -134,6 +140,8 @@ thread::exit(uint32_t code)
 	set_state(state::exited);
 	clear_state(state::ready);
 	assert_signal(j6_signal_thread_exit);
+
+	schedule_if_current(this);
 }
 
 void
@@ -200,7 +208,8 @@ thread *
 thread::create_idle_thread(process &kernel, uint8_t pri, uintptr_t rsp0)
 {
 	thread *idle = new thread(kernel, pri, rsp0);
-	idle->set_state(thread::state::constant);
+	idle->set_state(state::constant);
+	idle->set_state(state::ready);
 	log::info(logs::task, "Created idle thread as koid %llx", idle->koid());
 
 	return idle;

@@ -69,7 +69,7 @@ public:
 	/// \returns  A pointer to the current thread's TCB
 	inline TCB * current() { return m_current; }
 
-	inline void add_thread(TCB *t) { m_runlists[t->priority].push_back(static_cast<tcb_node*>(t)); }
+	inline void add_thread(TCB *t) { m_blocked.push_back(static_cast<tcb_node*>(t)); }
 
 	/// Get a reference to the system scheduler
 	/// \returns  A reference to the global system scheduler
