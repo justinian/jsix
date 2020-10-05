@@ -45,6 +45,8 @@ if [[ -n $TMUX ]]; then
 	if [[ -n $debug ]]; then
 		tmux split-window -h "gdb ${debugtarget}" &
 	else
+		tmux split-window -h -l 80 "sleep 1; telnet localhost 45455" &
+		tmux last-pane
 		tmux split-window -l 10 "sleep 1; telnet localhost 45454" &
 	fi
 elif [[ $DESKTOP_SESSION = "i3" ]]; then
@@ -61,6 +63,8 @@ exec qemu-system-x86_64 \
 	-drive "format=raw,file=${build}/jsix.img" \
 	-device "isa-debug-exit,iobase=0xf4,iosize=0x04" \
 	-monitor telnet:localhost:45454,server,nowait \
+	-serial stdio \
+	-serial telnet:localhost:45455,server,nowait \
 	-smp 4 \
 	-m 512 \
 	-d mmu,int,guest_errors \

@@ -37,7 +37,7 @@ struct program_desc
 const program_desc program_list[] = {
 	{L"kernel", L"jsix.elf"},
 	{L"null driver", L"nulldrv.elf"},
-	{L"terminal driver", L"terminal.elf"},
+	//{L"terminal driver", L"terminal.elf"},
 };
 
 /// Change a pointer to point to the higher-half linear-offset version

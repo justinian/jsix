@@ -17,7 +17,6 @@
 #include "log.h"
 #include "objects/channel.h"
 #include "objects/event.h"
-#include "objects/handle.h"
 #include "scheduler.h"
 #include "serial.h"
 #include "symbol_table.h"

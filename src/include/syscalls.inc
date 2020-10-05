@@ -20,9 +20,10 @@ SYSCALL(0x23, channel_receive,   j6_handle_t, size_t *, void *)
 
 SYSCALL(0x28, endpoint_create,   j6_handle_t *)
 SYSCALL(0x29, endpoint_close,    j6_handle_t)
-SYSCALL(0x2a, endpoint_send,     j6_handle_t, size_t, void *)
-SYSCALL(0x2b, endpoint_receive,  j6_handle_t, size_t *, void *)
-SYSCALL(0x2c, endpoint_sendrecv, j6_handle_t, size_t *, void *)
+SYSCALL(0x2a, endpoint_send,     j6_handle_t, j6_tag_t, size_t, void *)
+SYSCALL(0x2b, endpoint_receive,  j6_handle_t, j6_tag_t *, size_t *, void *)
+SYSCALL(0x2c, endpoint_sendrecv, j6_handle_t, j6_tag_t *, size_t *, void *)
+SYSCALL(0x2d, endpoint_bind_irq, j6_handle_t, unsigned)
 
 SYSCALL(0x30, vma_create,        j6_handle_t *, size_t, uint32_t)
 SYSCALL(0x31, vma_create_map,    j6_handle_t *, size_t, uintptr_t, uint32_t)

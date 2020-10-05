@@ -84,13 +84,6 @@ disable_legacy_pic()
 	outb(PIC2+1, 0x02); io_wait();
 }
 
-static void
-enable_serial_interrupts()
-{
-	uint8_t ier = inb(COM1+1);
-	outb(COM1+1, ier | 0x1);
-}
-
 void
 interrupts_init()
 {
@@ -105,7 +98,6 @@ interrupts_init()
 #undef ISR
 
 	disable_legacy_pic();
-	enable_serial_interrupts();
 
 	log::info(logs::boot, "Interrupts enabled.");
 }

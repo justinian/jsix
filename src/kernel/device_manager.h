@@ -11,6 +11,7 @@ struct acpi_apic;
 struct acpi_mcfg;
 struct acpi_hpet;
 class block_device;
+class endpoint;
 
 using irq_callback = void (*)(void *);
 
@@ -43,27 +44,15 @@ public:
 	/// Intialize drivers for the current device list.
 	void init_drivers();
 
-	/// Install an IRQ callback for a device
-	/// \arg irq   IRQ to install the handler for
-	/// \arg name  Name of the interrupt, for display to user
-	/// \arg cb    Callback to call when the interrupt is received
-	/// \arg data  Data to pass to the callback
-	/// \returns   True if an IRQ was installed successfully
-	bool install_irq(
-			unsigned irq,
-			const char *name,
-			irq_callback cb,
-			void *data);
+	/// Bind an IRQ to an endpoint
+	/// \arg irq    The IRQ number to bind
+	/// \arg target The endpoint to recieve messages when the IRQ is signalled
+	/// \returns    True on success
+	bool bind_irq(unsigned irq, endpoint *target);
 
-	/// Uninstall an IRQ callback for a device
-	/// \arg irq   IRQ to install the handler for
-	/// \arg cb    Callback to call when the interrupt is received
-	/// \arg data  Data to pass to the callback
-	/// \returns   True if an IRQ was uninstalled successfully
-	bool uninstall_irq(
-			unsigned irq,
-			irq_callback cb,
-			void *data);
+	/// Remove IRQ bindings for an endpoint
+	/// \arg target The endpoint to remove
+	void unbind_irqs(endpoint *target);
 
 	/// Allocate an MSI IRQ for a device
 	/// \arg name    Name of the interrupt, for display to user
@@ -80,17 +69,7 @@ public:
 	/// Dispatch an IRQ interrupt
 	/// \arg irq  The irq number of the interrupt
 	/// \returns  True if the interrupt was handled
-	inline bool dispatch_irq(uint8_t irq)
-	{
-		if (irq < m_irqs.count()) {
-			irq_allocation &cba = m_irqs[irq];
-			if (cba.callback) {
-				cba.callback(cba.data);
-				return true;
-			}
-		}
-		return false;
-	}
+	bool dispatch_irq(unsigned irq);
 
 	/// Register the existance of a block device.
 	/// \arg blockdev  Pointer to the block device
@@ -150,13 +129,7 @@ private:
 	kutil::vector<pci_group> m_pci;
 	kutil::vector<pci_device> m_devices;
 
-	struct irq_allocation
-	{
-		const char *name = nullptr;
-		irq_callback callback = nullptr;
-		void *data = nullptr;
-	};
-	kutil::vector<irq_allocation> m_irqs;
+	kutil::vector<endpoint*> m_irqs;
 
 	kutil::vector<block_device *> m_blockdevs;
 

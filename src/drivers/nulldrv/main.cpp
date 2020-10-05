@@ -7,6 +7,9 @@
 
 #include <j6libc/syscalls.h>
 
+#include "io.h"
+#include "serial.h"
+
 char inbuf[1024];
 j6_handle_t endp = j6_handle_invalid;
 
@@ -24,7 +27,8 @@ thread_proc()
 
 	char buffer[512];
 	size_t len = sizeof(buffer);
-	j6_status_t result = _syscall_endpoint_receive(endp, &len, (void*)buffer);
+	j6_tag_t tag = 0;
+	j6_status_t result = _syscall_endpoint_receive(endp, &tag, &len, (void*)buffer);
 	if (result != j6_status_ok)
 		_syscall_thread_exit(result);
 
@@ -34,7 +38,8 @@ thread_proc()
 		if (buffer[i] >= 'A' && buffer[i] <= 'Z')
 			buffer[i] += 0x20;
 
-	result = _syscall_endpoint_send(endp, len, (void*)buffer);
+	tag++;
+	result = _syscall_endpoint_send(endp, tag, len, (void*)buffer);
 	if (result != j6_status_ok)
 		_syscall_thread_exit(result);
 
@@ -66,8 +71,8 @@ main(int argc, const char **argv)
 		return 1;
 
 	uint64_t *vma_ptr = reinterpret_cast<uint64_t*>(base);
-	for (int i = 0; i < 300; ++i)
-		vma_ptr[i] = uint64_t(i);
+	for (int i = 0; i < 3; ++i)
+		vma_ptr[i*100] = uint64_t(i);
 
 	_syscall_system_log("main thread wrote to memory area");
 
@@ -85,9 +90,13 @@ main(int argc, const char **argv)
 
 	char message[] = "MAIN THREAD SUCCESSFULLY CALLED SENDRECV IF THIS IS LOWERCASE";
 	size_t size = sizeof(message);
-	result = _syscall_endpoint_sendrecv(endp, &size, (void*)message);
+	j6_tag_t tag = 16;
+	result = _syscall_endpoint_sendrecv(endp, &tag, &size, (void*)message);
 	if (result != j6_status_ok)
 		return result;
+
+	if (tag != 17)
+		_syscall_system_log("GOT WRONG TAG FROM SENDRECV");
 
 	_syscall_system_log(message);
 
@@ -96,6 +105,29 @@ main(int argc, const char **argv)
 	result = _syscall_object_wait(child, -1ull, &out);
 	if (result != j6_status_ok)
 		return result;
+
+	_syscall_system_log("main testing irqs");
+
+	_syscall_endpoint_bind_irq(endp, 3);
+
+	serial_port com2(COM2);
+
+	const char *fgseq = "\x1b[2J";
+	while (*fgseq)
+		com2.write(*fgseq++);
+
+	for (int i = 0; i < 10; ++i)
+		com2.write('%');
+
+	size_t len = 0;
+	while (true) {
+		result = _syscall_endpoint_receive(endp, &tag, &len, nullptr);
+		if (result != j6_status_ok)
+			return result;
+
+		if (j6_tag_is_irq(tag))
+			_syscall_system_log("main thread got irq!");
+	}
 
 	_syscall_system_log("main thread closing endpoint");
 

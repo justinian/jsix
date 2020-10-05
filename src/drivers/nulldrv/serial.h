@@ -3,6 +3,8 @@
 /// Declarations related to serial ports.
 #include <stdint.h>
 
+#define serial_port nulldrv_serial_port
+
 class serial_port
 {
 public:
@@ -22,4 +24,3 @@ private:
 	bool write_ready();
 };
 
-extern serial_port &g_com1;

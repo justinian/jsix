@@ -83,8 +83,10 @@ modules:
         deps:
           - libc
         source:
+            - src/drivers/nulldrv/io.cpp
             - src/drivers/nulldrv/main.cpp
             - src/drivers/nulldrv/main.s
+            - src/drivers/nulldrv/serial.cpp
 
     kutil:
         kind: lib

@@ -11,7 +11,10 @@
 #include "interrupts.h"
 #include "kernel_memory.h"
 #include "log.h"
+#include "objects/endpoint.h"
 
+
+static endpoint * const ignore_endpoint = reinterpret_cast<endpoint*>(-1ull);
 
 static const char expected_signature[] = "RSD PTR ";
 
@@ -64,8 +67,7 @@ device_manager::device_manager() :
 {
 	m_irqs.ensure_capacity(32);
 	m_irqs.set_size(16);
-	m_irqs[2] = {"Clock interrupt", irq2_callback, nullptr};
-	m_irqs[4] = {"Serial interrupt", irq4_callback, nullptr};
+	m_irqs[2] = ignore_endpoint;
 }
 
 void
@@ -339,35 +341,44 @@ device_manager::init_drivers()
 }
 
 bool
-device_manager::install_irq(unsigned irq, const char *name, irq_callback cb, void *data)
+device_manager::dispatch_irq(unsigned irq)
 {
 	if (irq >= m_irqs.count())
-		m_irqs.set_size(irq+1);
-
-	if (m_irqs[irq].callback != nullptr)
 		return false;
 
-	m_irqs[irq] = {name, cb, data};
+	endpoint *e = m_irqs[irq];
+	if (!e || e == ignore_endpoint)
+		return e == ignore_endpoint;
+
+	e->signal_irq(irq);
 	return true;
 }
 
 bool
-device_manager::uninstall_irq(unsigned irq, irq_callback cb, void *data)
+device_manager::bind_irq(unsigned irq, endpoint *target)
 {
+	// TODO: grow if under max size
 	if (irq >= m_irqs.count())
 		return false;
 
-	const irq_allocation &existing = m_irqs[irq];
-	if (existing.callback != cb || existing.data != data)
-		return false;
-
-	m_irqs[irq] = {nullptr, nullptr, nullptr};
+	m_irqs[irq]= target;
 	return true;
+}
+
+void
+device_manager::unbind_irqs(endpoint *target)
+{
+	const size_t count = m_irqs.count();
+	for (size_t i = 0; i < count; ++i) {
+		if (m_irqs[i] == target)
+			m_irqs[i] = nullptr;
+	}
 }
 
 bool
 device_manager::allocate_msi(const char *name, pci_device &device, irq_callback cb, void *data)
 {
+	/*
 	// TODO: find gaps to fill
 	uint8_t irq = m_irqs.count();
 	isr vector = isr::irq00 + irq;
@@ -378,6 +389,7 @@ device_manager::allocate_msi(const char *name, pci_device &device, irq_callback 
 	device.write_msi_regs(
 			0xFEE00000,
 			static_cast<uint16_t>(vector));
+	*/
 	return true;
 }
 

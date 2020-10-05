@@ -131,7 +131,7 @@ scheduler::load_process(uintptr_t phys, uintptr_t virt, size_t size, uintptr_t e
 	// Arguments for iret - rip will be pushed on before these
 	stack[4] = reinterpret_cast<uintptr_t>(entry);
 	stack[5] = cs;
-	stack[6] = rflags_int;
+	stack[6] = rflags_int | (3 << 12);
 	stack[7] = process::stacks_top;
 	stack[8] = ss;
 
