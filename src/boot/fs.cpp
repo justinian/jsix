@@ -50,19 +50,19 @@ file::open(const wchar_t *path)
 	return file(fh, m_bs);
 }
 
-void *
-file::load(size_t *out_size, uefi::memory_type mem_type)
+buffer
+file::load(uefi::memory_type mem_type)
 {
-	uint8_t buffer[sizeof(uefi::protos::file_info) + 100];
-	size_t size = sizeof(buffer);
+	uint8_t info_buf[sizeof(uefi::protos::file_info) + 100];
+	size_t size = sizeof(info_buf);
 	uefi::guid info_guid = uefi::protos::file_info::guid;
 
 	try_or_raise(
-		m_file->get_info(&info_guid, &size, &buffer),
+		m_file->get_info(&info_guid, &size, &info_buf),
 		L"Could not get file info");
 
 	uefi::protos::file_info *info =
-		reinterpret_cast<uefi::protos::file_info*>(&buffer);
+		reinterpret_cast<uefi::protos::file_info*>(&info_buf);
 
 	size_t pages = memory::bytes_to_pages(info->file_size);
 	void *data = nullptr;
@@ -77,8 +77,7 @@ file::load(size_t *out_size, uefi::memory_type mem_type)
 		m_file->read(&size, data),
 		L"Could not read from file");
 
-	*out_size = size;
-	return data;
+	return { .data = data, .size = size };
 }
 
 file

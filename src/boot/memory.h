@@ -30,8 +30,8 @@ constexpr uefi::memory_type args_type =
 constexpr uefi::memory_type module_type =
 	static_cast<uefi::memory_type>(0x80000001);
 
-/// Memory containing loaded kernel code and data sections
-constexpr uefi::memory_type kernel_type =
+/// Memory containing loaded kernel or program code and data sections
+constexpr uefi::memory_type program_type =
 	static_cast<uefi::memory_type>(0x80000002);
 
 /// Memory containing page tables set up by the loader

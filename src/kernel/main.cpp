@@ -3,7 +3,6 @@
 
 #include "j6/signals.h"
 
-#include "initrd/initrd.h"
 #include "kutil/assert.h"
 #include "apic.h"
 #include "block_device.h"
@@ -117,55 +116,30 @@ kernel_main(args::header *header)
 	cpu_id cpu;
 	cpu.validate();
 
-	/*
-	if (header->frame_buffer && header->frame_buffer_length) {
-		page_manager::get()->map_offset_pointer(
-				&header->frame_buffer,
-				header->frame_buffer_length);
+	for (size_t i = 0; i < header->num_modules; ++i) {
+		args::module &mod = header->modules[i];
+		switch (mod.type) {
+		case args::mod_type::symbol_table:
+			new symbol_table {mod.location, mod.size};
+			break;
+
+		default:
+			break;
+		}
 	}
-	*/
 
 	log::debug(logs::boot, "    jsix header is at: %016lx", header);
 	log::debug(logs::boot, "     Memory map is at: %016lx", header->mem_map);
 	log::debug(logs::boot, "ACPI root table is at: %016lx", header->acpi_table);
 	log::debug(logs::boot, "Runtime service is at: %016lx", header->runtime_services);
 
-	// Load the module tagged as initrd
-	kutil::vector<initrd::disk> initrds;
-	for (unsigned i = 0; i < header->num_modules; ++i) {
-		args::module &mod = header->modules[i];
-		if (mod.type != args::mod_type::initrd)
-			continue;
-
-		initrd::disk &ird = initrds.emplace(mod.location);
-		log::info(logs::boot, "initrd loaded with %d files.", ird.files().count());
-		for (auto &f : ird.files()) {
-			char type = f.executable() ? '*' :
-				f.symbols() ? '+' : ' ';
-			log::info(logs::boot, "  %c%s (%d bytes).", type, f.name(), f.size());
-		}
-	}
-
-	/*
-	   page_manager::get()->dump_pml4(nullptr, 0);
-	   page_manager::get()->dump_blocks(true);
-	*/
-
 	device_manager &devices = device_manager::get();
 	devices.parse_acpi(header->acpi_table);
 
 	interrupts_enable();
-
-	/*
-	auto r = cpu.get(0x15);
-	log::info(logs::boot, "CPU Crystal: %dHz", r.ecx);
-
-	uintptr_t cr4 = 0;
-	__asm__ __volatile__ ( "mov %%cr4, %0" : "=r" (cr4) );
-	log::info(logs::boot, "cr4: %016x", cr4);
-	*/
-
 	devices.init_drivers();
+
+	devices.get_lapic()->calibrate_timer();
 
 	/*
 	block_device *disk = devices->get_block_device(0);
@@ -191,22 +165,15 @@ kernel_main(args::header *header)
 	}
 	*/
 
-	devices.get_lapic()->calibrate_timer();
-	devices.init_drivers();
-
 	syscall_enable();
 	scheduler *sched = new scheduler(devices.get_lapic());
 
 	std_out = new channel;
 
-	for (auto &ird : initrds) {
-		for (auto &f : ird.files()) {
-			if (f.executable()) {
-				sched->load_process(f.name(), f.data(), f.size());
-			} else if (f.symbols()) {
-				new symbol_table {f.data(), f.size()};
-			}
-		}
+	// Skip program 0, which is the kernel itself
+	for (size_t i = 1; i < header->num_programs; ++i) {
+		args::program &prog = header->programs[i];
+		sched->load_process(prog.phys_addr, prog.virt_addr, prog.size, prog.entrypoint); 
 	}
 
 	sched->create_kernel_task(logger_task, scheduler::max_priority-1, true);

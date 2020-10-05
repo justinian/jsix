@@ -45,7 +45,7 @@ memory_type_name(uefi::memory_type t)
 	switch(t) {
 		case args_type:		return L"jsix kernel args";
 		case module_type:	return L"jsix bootloader module";
-		case kernel_type:	return L"jsix kernel code";
+		case program_type:	return L"jsix kernel or program code";
 		case table_type:	return L"jsix page tables";
 		default: return L"Bad Type Value";
 	}
@@ -195,8 +195,8 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 				type = mem_type::module;
 				break;
 
-			case kernel_type:
-				type = mem_type::kernel;
+			case program_type:
+				type = mem_type::program;
 				break;
 
 			case table_type:
@@ -233,21 +233,7 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 
 	// Give just the actually-set entries in the header
 	args->mem_map = kernel_map;
-	args->num_map_entries = i;
-
-	// But pass the entire allocated area in a module as well
-	kernel::args::module &module = args->modules[args->num_modules++];
-	module.location = reinterpret_cast<void*>(kernel_map);
-	module.size = map_size;
-	module.type = kernel::args::mod_type::memory_map;
-
-	/*
-	for (size_t i = 0; i<map.num_entries(); ++i) {
-		mem_entry &ent = kernel_map[i];
-		console::print(L"   Range %lx (%x) %d [%lu]\r\n",
-			ent.start, ent.attr, ent.type, ent.pages);
-	}
-	*/
+	args->map_count = i;
 
 	return efi_map;
 }

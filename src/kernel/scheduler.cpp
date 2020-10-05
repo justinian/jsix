@@ -16,7 +16,6 @@
 #include "objects/vm_area.h"
 #include "scheduler.h"
 
-#include "elf/elf.h"
 #include "kutil/assert.h"
 
 
@@ -26,8 +25,8 @@ const uint64_t rflags_noint = 0x002;
 const uint64_t rflags_int = 0x202;
 
 extern "C" {
-	void ramdisk_process_loader();
-	uintptr_t load_process_image(const void *image_start, size_t bytes, TCB *tcb);
+	void preloaded_process_init();
+	void load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb);
 };
 
 extern uint64_t idle_stack_end;
@@ -60,8 +59,8 @@ scheduler::scheduler(lapic *apic) :
 	bsp_cpu_data.t = idle;
 }
 
-uintptr_t
-load_process_image(const void *image_start, size_t bytes, TCB *tcb)
+void
+load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb)
 {
 	using memory::page_align_down;
 	using memory::page_align_up;
@@ -71,53 +70,9 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 	process &proc = process::current();
 	vm_space &space = proc.space();
 
-	log::debug(logs::loader, "Loading task! ELF: %016lx [%d]", image_start, bytes);
-
-	// TODO: Handle bad images gracefully
-	elf::elf image(image_start, bytes);
-	kassert(image.valid(), "Invalid ELF passed to load_process_image");
-
-	uintptr_t vma_base = -1;
-	uintptr_t vma_end = 0;
-
-	const unsigned program_count = image.program_count();
-	for (unsigned i = 0; i < program_count; ++i) {
-		const elf::program_header *header = image.program(i);
-
-		if (header->type != elf::segment_type::load)
-			continue;
-
-		uintptr_t base = page_align_down(header->vaddr);
-		uintptr_t end = page_align_up(header->vaddr + header->mem_size);
-		if (base < vma_base) vma_base = base;
-		if (end > vma_end) vma_end = end;
-
-		log::debug(logs::loader, "  Loadable segment %02u: vaddr %016lx  size %016lx",
-			i, header->vaddr, header->mem_size);
-
-		log::debug(logs::loader, "         - aligned to: vaddr %016lx  pages %d",
-			base, memory::page_count(end-base));
-	}
-
-	vm_area *vma = new vm_area_open(vma_end - vma_base, space,
-			vm_flags::zero|vm_flags::write);
-	space.add(vma_base, vma);
-
-	const unsigned section_count = image.section_count();
-	for (unsigned i = 0; i < section_count; ++i) {
-		const elf::section_header *header = image.section(i);
-
-		if (header->type != elf::section_type::progbits ||
-			!bitfield_has(header->flags, elf::section_flags::alloc))
-			continue;
-
-		log::debug(logs::loader, "  Loadable section %02u: vaddr %016lx  size %016lx",
-			i, header->addr, header->size);
-
-		void *dest = reinterpret_cast<void *>(header->addr);
-		const void *src = kutil::offset_pointer(image_start, header->offset);
-		kutil::memcpy(dest, src, header->size);
-	}
+	vm_area *vma = new vm_area_open(bytes, space, vm_flags::zero|vm_flags::write);
+	space.add(virt, vma);
+	vma->commit(phys, 0, memory::page_count(bytes));
 
 	tcb->rsp3 -= 2 * sizeof(uint64_t);
 	uint64_t *sentinel = reinterpret_cast<uint64_t*>(tcb->rsp3);
@@ -130,10 +85,6 @@ load_process_image(const void *image_start, size_t bytes, TCB *tcb)
 	init->output = proc.add_handle(std_out);
 
 	thread::current().clear_state(thread::state::loading);
-
-	uintptr_t entrypoint = image.entrypoint();
-	log::debug(logs::loader, "  Loaded! New thread rip: %016lx", entrypoint);
-	return entrypoint;
 }
 
 thread *
@@ -153,7 +104,7 @@ scheduler::create_process(bool user)
 }
 
 void
-scheduler::load_process(const char *name, const void *data, size_t size)
+scheduler::load_process(uintptr_t phys, uintptr_t virt, size_t size, uintptr_t entry)
 {
 
 	uint16_t kcs = (1 << 3) | 0; // Kernel CS is GDT entry 1, ring 0
@@ -166,25 +117,27 @@ scheduler::load_process(const char *name, const void *data, size_t size)
 	auto *tcb = th->tcb();
 
 	// Create an initial kernel stack space
-	uintptr_t *stack = reinterpret_cast<uintptr_t *>(tcb->rsp0) - 7;
+	uintptr_t *stack = reinterpret_cast<uintptr_t *>(tcb->rsp0) - 9;
 
-	// Pass args to ramdisk_process_loader on the stack
-	stack[0] = reinterpret_cast<uintptr_t>(data);
-	stack[1] = reinterpret_cast<uintptr_t>(size);
-	stack[2] = reinterpret_cast<uintptr_t>(tcb);
+	// Pass args to preloaded_process_init on the stack
+	stack[0] = reinterpret_cast<uintptr_t>(phys);
+	stack[1] = reinterpret_cast<uintptr_t>(virt);
+	stack[2] = reinterpret_cast<uintptr_t>(size);
+	stack[3] = reinterpret_cast<uintptr_t>(tcb);
 
 	tcb->rsp = reinterpret_cast<uintptr_t>(stack);
-	th->add_thunk_kernel(reinterpret_cast<uintptr_t>(ramdisk_process_loader));
+	th->add_thunk_kernel(reinterpret_cast<uintptr_t>(preloaded_process_init));
 
 	// Arguments for iret - rip will be pushed on before these
-	stack[3] = cs;
-	stack[4] = rflags_int;
-	stack[5] = process::stacks_top;
-	stack[6] = ss;
+	stack[4] = reinterpret_cast<uintptr_t>(entry);
+	stack[5] = cs;
+	stack[6] = rflags_int;
+	stack[7] = process::stacks_top;
+	stack[8] = ss;
 
 	tcb->rsp3 = process::stacks_top;
 
-	log::debug(logs::task, "Loading thread %s: koid %llx  pri %d", name, th->koid(), tcb->priority);
+	log::debug(logs::task, "Loading thread %llx  pri %d", th->koid(), tcb->priority);
 	log::debug(logs::task, "     RSP  %016lx", tcb->rsp);
 	log::debug(logs::task, "     RSP0 %016lx", tcb->rsp0);
 	log::debug(logs::task, "     PML4 %016lx", tcb->pml4);

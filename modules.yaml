@@ -6,8 +6,6 @@ modules:
         output: jsix.elf
         target: host
         deps:
-            - elf
-            - initrd
             - kutil
         includes:
             - src/kernel
@@ -81,32 +79,12 @@ modules:
     nulldrv:
         kind: exe
         target: user
-        output: nulldrv
+        output: nulldrv.elf
         deps:
           - libc
         source:
             - src/drivers/nulldrv/main.cpp
             - src/drivers/nulldrv/main.s
-
-    elf:
-        kind: lib
-        output: libelf.a
-        deps:
-            - kutil
-        includes:
-            - src/libraries/elf/include
-        source:
-            - src/libraries/elf/elf.cpp
-
-    initrd:
-        kind: lib
-        output: libinitrd.a
-        deps:
-            - kutil
-        includes:
-            - src/libraries/initrd/include
-        source:
-            - src/libraries/initrd/initrd.cpp
 
     kutil:
         kind: lib
@@ -297,16 +275,6 @@ modules:
             - src/libraries/libc/time/strftime.c
             - src/libraries/libc/time/time.c
             - src/libraries/libc/time/timespec_get.c
-
-    makerd:
-        kind: exe
-        target: native
-        output: makerd
-        deps:
-            - initrd
-        source:
-            - src/tools/makerd/entry.cpp
-            - src/tools/makerd/main.cpp
 
     tests:
         kind: exe

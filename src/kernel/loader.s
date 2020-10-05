@@ -2,21 +2,20 @@
 
 extern load_process_image
 
-global ramdisk_process_loader
-ramdisk_process_loader:
+global preloaded_process_init
+preloaded_process_init:
 
-	; create_process already pushed a cpu_state onto the stack for us, this
-	; acts both as the cpu_state parameter to load_process_image, and the
-	; saved state for the following iretq
+	; create_process already pushed the arguments for load_process_image and
+	; the following iretq onto the stack for us
 
-	pop rdi ; the address of the program image
-	pop rsi ; the size of the program image
-	pop rdx ; the address of this thread's TCB
+	pop rdi ; the physical address of the program image
+	pop rsi ; the virtual address of the program image
+	pop rdx ; the size in bytes of the program image
+	pop rcx ; the address of this thread's TCB
 
 	call load_process_image
 
-	push rax ; load_process_image returns the process entrypoint
-
+	; the entrypoint should already be on the stack
 	swapgs
 	iretq
 

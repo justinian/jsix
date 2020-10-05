@@ -39,13 +39,11 @@ void allocate_tables(
 void add_current_mappings(page_table *new_pml4);
 
 /// Map a physical address to a virtual address in the given page tables.
-/// \arg pml4  The root of the set of page tables to be updated
-/// \arg args  The kernel args header, used for the page table cache
+/// \arg args  The kernel args header, used for the page table cache and pml4
 /// \arg phys  The phyiscal address to map in
 /// \arg virt  The virtual address to map in
 /// \arg size  The size in bytes of the mapping 
 void map_pages(
-	page_table *pml4,
 	kernel::args::header *args,
 	uintptr_t phys, uintptr_t virt,
 	size_t bytes);

@@ -67,7 +67,7 @@ public:
 			uintptr_t virt,
 			page_table *pml4,
 			void *&page_cache,
-			uint32_t &cache_count) :
+			size_t &cache_count) :
 		m_page_cache(page_cache),
 		m_cache_count(cache_count)
 	{
@@ -130,14 +130,14 @@ private:
 	}
 
 	void *&m_page_cache;
-	uint32_t &m_cache_count;
+	size_t &m_cache_count;
 	page_table *m_table[D];
 	uint16_t m_index[D];
 };
 
 
 static void
-add_offset_mappings(page_table *pml4, void *&page_cache, uint32_t &num_pages)
+add_offset_mappings(page_table *pml4, void *&page_cache, size_t &num_pages)
 {
 	uintptr_t phys = 0;
 	uintptr_t virt = ::memory::page_offset; // Start of offset-mapped area
@@ -160,7 +160,7 @@ add_offset_mappings(page_table *pml4, void *&page_cache, uint32_t &num_pages)
 }
 
 static void
-add_kernel_pds(page_table *pml4, void *&page_cache, uint32_t &num_pages)
+add_kernel_pds(page_table *pml4, void *&page_cache, size_t &num_pages)
 {
 	for (unsigned i = pml4e_kernel; i < table_entries; ++i) {
 		pml4->set(i, page_cache, table_flags);
@@ -208,34 +208,31 @@ allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 
 	bs->set_mem(addr, tables_needed*page_size, 0);
 
-	kernel::args::module &mod = args->modules[++args->num_modules];
-	mod.type = kernel::args::mod_type::page_tables;
-	mod.location = addr;
-	mod.size = tables_needed*page_size;
-
 	args->pml4 = addr;
-	args->num_free_tables = tables_needed - 1;
-	args->page_table_cache = offset_ptr<void>(addr, page_size);
+	args->table_count = tables_needed - 1;
+	args->page_tables = offset_ptr<void>(addr, page_size);
 
 	page_table *pml4 = reinterpret_cast<page_table*>(addr);
-	add_kernel_pds(pml4, args->page_table_cache, args->num_free_tables);
-	add_offset_mappings(pml4, args->page_table_cache, args->num_free_tables);
+	add_kernel_pds(pml4, args->page_tables, args->table_count);
+	add_offset_mappings(pml4, args->page_tables, args->table_count);
 
-	console::print(L"    Set up initial mappings, %d spare tables.\r\n", args->num_free_tables);
+	console::print(L"    Set up initial mappings, %d spare tables.\r\n", args->table_count);
 }
 
 void
 map_pages(
-	page_table *pml4,
 	kernel::args::header *args,
 	uintptr_t phys, uintptr_t virt,
 	size_t size)
 {
+	paging::page_table *pml4 =
+		reinterpret_cast<paging::page_table*>(args->pml4);
+
 	size_t pages = memory::bytes_to_pages(size);
 	page_entry_iterator<4> iterator{
 		virt, pml4,
-		args->page_table_cache,
-		args->num_free_tables};
+		args->page_tables,
+		args->table_count};
 
 	while (true) {
 		*iterator = phys | page_flags;

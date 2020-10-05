@@ -5,11 +5,31 @@
 #include "console.h"
 #include "elf.h"
 #include "error.h"
+#include "fs.h"
 #include "memory.h"
 #include "paging.h"
 
+namespace args = kernel::args;
+
 namespace boot {
 namespace loader {
+
+buffer
+load_file(
+	fs::file &disk,
+	const wchar_t *name,
+	const wchar_t *path,
+	uefi::memory_type type)
+{
+	status_line status(L"Loading file", name);
+
+	fs::file file = disk.open(path);
+	buffer b = file.load(type);
+
+	console::print(L"    Loaded at: 0x%lx, %d bytes\r\n", b.data, b.size);
+	return b;
+}
+
 
 static bool
 is_elfheader_valid(const elf::header *header)
@@ -26,54 +46,68 @@ is_elfheader_valid(const elf::header *header)
 		header->header_version == elf::version;
 }
 
-kernel::entrypoint
-load(
-	const void *data, size_t size,
-	kernel::args::header *args,
+void
+load_program(
+	args::program &program,
+	const wchar_t *name,
+	buffer data,
 	uefi::boot_services *bs)
 {
-	status_line status(L"Loading kernel ELF binary");
-	const elf::header *header = reinterpret_cast<const elf::header*>(data);
+	status_line status(L"Loading program:", name);
+	const elf::header *header = reinterpret_cast<const elf::header*>(data.data);
 
-	if (size < sizeof(elf::header) || !is_elfheader_valid(header))
-		error::raise(uefi::status::load_error, L"Kernel ELF not valid");
+	if (data.size < sizeof(elf::header) || !is_elfheader_valid(header))
+		error::raise(uefi::status::load_error, L"ELF file not valid");
 
-	paging::page_table *pml4 = reinterpret_cast<paging::page_table*>(args->pml4);
+	uintptr_t prog_base = uintptr_t(-1);
+	uintptr_t prog_end = 0;
 
 	for (int i = 0; i < header->ph_num; ++i) {
 		ptrdiff_t offset = header->ph_offset + i * header->ph_entsize;
 		const elf::program_header *pheader =
-			offset_ptr<elf::program_header>(data, offset);
+			offset_ptr<elf::program_header>(data.data, offset);
 
 		if (pheader->type != elf::PT_LOAD)
 			continue;
 
-		size_t num_pages = memory::bytes_to_pages(pheader->mem_size);
-		void *pages = nullptr;
+		uintptr_t end = pheader->vaddr + pheader->mem_size;
+		if (pheader->vaddr < prog_base) prog_base = pheader->vaddr;
+		if (end > prog_end) prog_end = end;
+	}
 
-		try_or_raise(
-			bs->allocate_pages(uefi::allocate_type::any_pages,
-				memory::kernel_type, num_pages, &pages),
-			L"Failed allocating space for kernel code");
+	size_t total_size = prog_end - prog_base;
+	size_t num_pages = memory::bytes_to_pages(total_size);
+	void *pages = nullptr;
 
-		void *data_start = offset_ptr<void>(data, pheader->offset);
-		bs->copy_mem(pages, data_start, pheader->file_size);
+	try_or_raise(
+		bs->allocate_pages(uefi::allocate_type::any_pages,
+			memory::program_type, num_pages, &pages),
+		L"Failed allocating space for program");
 
-		if (pheader->mem_size > pheader->file_size) {
-			void *extra = offset_ptr<void>(pages, pheader->file_size);
-			size_t size = pheader->mem_size - pheader->file_size;
-			bs->set_mem(extra, size, 0);
-		}
+	bs->set_mem(pages, total_size, 0);
+
+	for (int i = 0; i < header->ph_num; ++i) {
+		ptrdiff_t offset = header->ph_offset + i * header->ph_entsize;
+		const elf::program_header *pheader =
+			offset_ptr<elf::program_header>(data.data, offset);
+
+		if (pheader->type != elf::PT_LOAD)
+			continue;
+
+		void *src_start = offset_ptr<void>(data.data, pheader->offset);
+		void *dest_start = offset_ptr<void>(pages, pheader->vaddr - prog_base);
+		bs->copy_mem(dest_start, src_start, pheader->file_size);
 
 		console::print(L"    section %d phys: 0x%lx\r\n", i, pages);
 		console::print(L"    section %d virt: 0x%lx\r\n", i, pheader->vaddr);
-
-		// TODO: set appropriate RWX permissions
-		paging::map_pages(pml4, args, reinterpret_cast<uintptr_t>(pages), pheader->vaddr, pheader->mem_size);
 	}
 
 	console::print(L"    entrypoint:     0x%lx\r\n", header->entrypoint);
-	return reinterpret_cast<kernel::entrypoint>(header->entrypoint);
+
+	program.phys_addr = reinterpret_cast<uintptr_t>(pages);
+	program.size = total_size;
+	program.virt_addr = prog_base;
+	program.entrypoint = header->entrypoint;
 }
 
 } // namespace loader

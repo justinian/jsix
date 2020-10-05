@@ -103,20 +103,19 @@ void walk_page_table(
 void
 memory_initialize_pre_ctors(args::header *kargs)
 {
-	args::mem_entry *entries = kargs->mem_map;
-	size_t entry_count = kargs->num_map_entries;
-	page_table *kpml4 = reinterpret_cast<page_table*>(kargs->pml4);
-
 	new (&g_kernel_heap) kutil::heap_allocator {heap_start, kernel_max_heap};
-
 	new (&g_frame_allocator) frame_allocator;
-	for (unsigned i = 0; i < entry_count; ++i) {
+
+	args::mem_entry *entries = kargs->mem_map;
+	const size_t count = kargs->map_count;
+	for (unsigned i = 0; i < count; ++i) {
 		// TODO: use entry attributes
 		args::mem_entry &e = entries[i];
 		if (e.type == args::mem_type::free)
 			g_frame_allocator.free(e.start, e.pages);
 	}
 
+	page_table *kpml4 = reinterpret_cast<page_table*>(kargs->pml4);
 	process *kp = process::create_kernel_process(kpml4);
 	vm_space &vm = kp->space();
 
@@ -153,7 +152,7 @@ memory_initialize_post_ctors(args::header *kargs)
 	vm.add(memory::buffers_start, &g_kernel_buffers);
 
 	g_frame_allocator.free(
-		reinterpret_cast<uintptr_t>(kargs->page_table_cache),
-		kargs->num_free_tables);
+		reinterpret_cast<uintptr_t>(kargs->page_tables),
+		kargs->table_count);
 
 }

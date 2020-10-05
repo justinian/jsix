@@ -5,18 +5,36 @@
 #include <uefi/boot_services.h>
 
 #include "kernel_args.h"
+#include "memory.h"
+#include "types.h"
 
 namespace boot {
+
+namespace fs { class file; }
+
 namespace loader {
 
+/// Load a file from disk into memory.
+/// \arg disk  The opened UEFI filesystem to load from
+/// \arg name  Name of the module (informational only)
+/// \arg path  Path on `disk` of the file to load
+/// \arg type  Memory type to use for allocation
+buffer
+load_file(
+	fs::file &disk,
+	const wchar_t *name,
+	const wchar_t *path,
+	uefi::memory_type type = uefi::memory_type::loader_data);
+
 /// Parse and load an ELF file in memory into a loaded image.
-/// \arg data  The start of the ELF file in memory
-/// \arg size  The size of the ELF file in memory
-/// \arg args  The kernel args, used for modifying page tables
-/// \returns   A descriptor defining the loaded image
-kernel::entrypoint load(
-	const void *data, size_t size,
-	kernel::args::header *args,
+/// \arg program  The program structure to fill
+/// \arg data     Buffer of the ELF file in memory
+/// \arg bs       Boot services
+void
+load_program(
+	kernel::args::program &program,
+	const wchar_t *name,
+	buffer data,
 	uefi::boot_services *bs);
 
 } // namespace loader

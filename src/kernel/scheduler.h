@@ -41,10 +41,11 @@ public:
 	scheduler(lapic *apic);
 
 	/// Create a new process from a program image in memory.
-	/// \arg name  Name of the program image
-	/// \arg data  Pointer to the image data
+	/// \arg phys  Physical address of the loaded program image
+	/// \arg virt  Virtual address of the loaded program image
 	/// \arg size  Size of the program image, in bytes
-	void load_process(const char *name, const void *data, size_t size);
+	/// \arg entry Virtual address of the program entrypoint
+	void load_process(uintptr_t phys, uintptr_t virt, size_t size, uintptr_t entry);
 
 	/// Create a new kernel task
 	/// \arg proc     Function to run as a kernel task

@@ -119,10 +119,6 @@ rule dump
     description = Dumping decompiled $name
     command = objdump -DSC -M intel $in > $out
 
-rule makerd
-    description = Making init ramdisk
-    command = $builddir/native/makerd $in $out
-
 rule makest
     description = Making symbol table
     command = nm $in | ${srcroot}/scripts/build_symbol_table.py $out
@@ -191,15 +187,18 @@ build $builddir/fatroot/jsix.elf : cp $builddir/jsix.elf
 build $builddir/fatroot/efi/boot/bootx64.efi : cp $builddir/boot/boot.efi
     name = bootloader to FAT image
 
-build ${builddir}/symbol_table.dat : makest ${builddir}/jsix.elf
+build $builddir/fatroot/nulldrv.elf : cp $builddir/user/nulldrv.elf
+    name = null driver to FAT image
 
-build $builddir/fatroot/initrd.img : makerd ${srcroot}/assets/initrd.toml | $
-    ${builddir}/native/makerd $
-    ${builddir}/user/nulldrv $
-    ${builddir}/symbol_table.dat
+build $builddir/fatroot/terminal.elf : cp $builddir/user/nulldrv.elf
+    name = terminal driver to FAT image
+
+build ${builddir}/fatroot/symbol_table.dat : makest ${builddir}/jsix.elf
 
 build $builddir/jsix.img : makefat | $
-    $builddir/fatroot/initrd.img $
+    $builddir/fatroot/symbol_table.dat $
+    $builddir/fatroot/nulldrv.elf $
+    $builddir/fatroot/terminal.elf $
     $builddir/fatroot/jsix.elf $
     $builddir/fatroot/efi/boot/bootx64.efi
     name = jsix.img

@@ -10,42 +10,28 @@ namespace args {
 constexpr uint32_t magic = 0x600dda7a;
 constexpr uint16_t version = 1;
 
-enum class mod_flags : uint32_t
-{
-	debug = 0x00000001
-};
-
 enum class mod_type : uint32_t {
-	unknown,
-
-	kernel,
-	initrd,
-
-	memory_map,
-	page_tables,
-	framebuffer,
-
-	max
-};
-
-enum class mode : uint8_t {
-	normal,
-	debug
+	symbol_table,
+	framebuffer
 };
 
 struct module {
 	void *location;
 	size_t size;
 	mod_type type;
-	mod_flags flags;
-}
-__attribute__((packed));
+};
 
+struct program {
+	uintptr_t phys_addr;
+	uintptr_t virt_addr;
+	uintptr_t entrypoint;
+	size_t size;
+};
 
 enum class mem_type : uint32_t {
 	free,
 	args,
-	kernel,
+	program,
 	module,
 	table,
 	acpi,
@@ -61,33 +47,35 @@ struct mem_entry
 	size_t pages;
 	mem_type type;
 	uint32_t attr;
-}
-__attribute__((packed));
+};
 
+enum class boot_flags : uint16_t {
+	none  = 0x0000,
+	debug = 0x0001
+};
 
 struct header {
 	uint32_t magic;
 	uint16_t version;
-
-	mode mode;
-
-	uint8_t _reserved0;
+	boot_flags flags;
 
 	void *pml4;
-	void *page_table_cache;
-	uint32_t num_free_tables;
+	void *page_tables;
+	size_t table_count;
 
-	uint32_t num_modules;
+	program *programs;
+	size_t num_programs;
+
 	module *modules;
+	size_t num_modules;
 
 	mem_entry *mem_map;
-	size_t num_map_entries;
+	size_t map_count;
 
 	void *runtime_services;
 	void *acpi_table;
 }
 __attribute__((aligned(alignof(max_align_t))));
-#pragma pack(pop)
 
 } // namespace args
 
