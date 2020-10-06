@@ -78,8 +78,8 @@ channel::dequeue(size_t *len, void *data)
 void
 channel::close()
 {
+	kobject::close();
 	g_kernel_buffers.return_buffer(m_data);
-	assert_signal(j6_signal_channel_closed);
 }
 
 void

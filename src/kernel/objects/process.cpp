@@ -1,4 +1,3 @@
-#include "j6/signals.h"
 #include "kutil/assert.h"
 #include "kutil/no_construct.h"
 #include "cpu.h"
@@ -62,7 +61,7 @@ process::exit(unsigned code)
 		thread->exit(code);
 	}
 	m_return_code = code;
-	assert_signal(j6_signal_process_exit);
+	close();
 
 	if (this == bsp_cpu_data.p)
 		scheduler::get().schedule();

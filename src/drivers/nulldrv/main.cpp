@@ -131,7 +131,7 @@ main(int argc, const char **argv)
 
 	_syscall_system_log("main thread closing endpoint");
 
-	result = _syscall_endpoint_close(endp);
+	result = _syscall_object_close(endp);
 	if (result != j6_status_ok)
 		return result;
 

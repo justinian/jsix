@@ -16,7 +16,7 @@ public:
 	static constexpr kobject::type type = kobject::type::endpoint;
 
 	/// Close the endpoint, waking all waiting processes with an error
-	void close();
+	virtual void close() override;
 
 	/// Check if the endpoint has space for a message to be sent
 	inline bool can_send() const { return check_signal(j6_signal_endpoint_can_send); }

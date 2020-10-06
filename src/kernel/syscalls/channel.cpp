@@ -14,15 +14,6 @@ channel_create(j6_handle_t *handle)
 }
 
 j6_status_t
-channel_close(j6_handle_t handle)
-{
-	channel *c = remove_handle<channel>(handle);
-	if (!c) return j6_err_invalid_arg;
-	c->close();
-	return j6_status_ok;
-}
-
-j6_status_t
 channel_send(j6_handle_t handle, size_t *len, void *data)
 {
 	channel *c = get_handle<channel>(handle);

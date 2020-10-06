@@ -139,7 +139,7 @@ thread::exit(uint32_t code)
 	m_return_code = code;
 	set_state(state::exited);
 	clear_state(state::ready);
-	assert_signal(j6_signal_thread_exit);
+	close();
 
 	schedule_if_current(this);
 }

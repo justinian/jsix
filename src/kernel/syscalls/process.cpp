@@ -7,16 +7,6 @@
 namespace syscalls {
 
 j6_status_t
-process_koid(j6_koid_t *koid)
-{
-	if (koid == nullptr)
-		return j6_err_invalid_arg;
-
-	*koid = process::current().koid();
-	return j6_status_ok;
-}
-
-j6_status_t
 process_exit(int64_t status)
 {
 	process &p = process::current();

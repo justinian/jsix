@@ -48,17 +48,6 @@ vma_unmap(j6_handle_t handle)
 }
 
 j6_status_t
-vma_close(j6_handle_t handle)
-{
-	j6_status_t status = vma_unmap(handle);
-	if (status != j6_status_ok)
-		return status;
-
-	remove_handle<vm_area>(handle);
-	return j6_status_ok;
-}
-
-j6_status_t
 vma_resize(j6_handle_t handle, size_t *size)
 {
 	if (!size)

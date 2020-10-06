@@ -8,16 +8,6 @@
 namespace syscalls {
 
 j6_status_t
-thread_koid(j6_koid_t *koid)
-{
-	if (koid == nullptr)
-		return j6_err_invalid_arg;
-
-	*koid =  thread::current().koid();
-	return j6_status_ok;
-}
-
-j6_status_t
 thread_create(void *rip, j6_handle_t *handle)
 {
 	thread &parent = thread::current();

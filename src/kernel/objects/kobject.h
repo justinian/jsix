@@ -3,6 +3,7 @@
 /// Definition of base type for user-interactable kernel objects
 
 #include "j6/errors.h"
+#include "j6/signals.h"
 #include "j6/types.h"
 #include "kutil/vector.h"
 
@@ -75,6 +76,12 @@ public:
 
 	/// Remove the given thread from the list of threads waiting on this object.
 	inline void remove_blocked_thread(thread *t) { m_blocked_threads.remove_swap(t); }
+
+	/// Perform any cleanup actions necessary to mark this object closed
+	virtual void close();
+
+	/// Check if this object has been closed
+	inline bool closed() const { return check_signal(j6_signal_closed); }
 
 protected:
 	/// Interface for subclasses to handle when all handles are closed. Subclasses

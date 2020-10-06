@@ -10,14 +10,15 @@ endpoint::endpoint() :
 
 endpoint::~endpoint()
 {
-	if (!check_signal(j6_signal_endpoint_closed))
+	if (!check_signal(j6_signal_closed))
 		close();
 }
 
 void
 endpoint::close()
 {
-	assert_signal(j6_signal_endpoint_closed);
+	kobject::close();
+
 	for (auto &data : m_blocked) {
 		if (data.th)
 			data.th->wake_on_result(this, j6_status_closed);

@@ -16,15 +16,6 @@ endpoint_create(j6_handle_t *handle)
 }
 
 j6_status_t
-endpoint_close(j6_handle_t handle)
-{
-	endpoint *e = remove_handle<endpoint>(handle);
-	if (!e) return j6_err_invalid_arg;
-	e->close();
-	return j6_status_ok;
-}
-
-j6_status_t
 endpoint_send(j6_handle_t handle, j6_tag_t tag, size_t len, void *data)
 {
 	if (tag & j6_tag_system_flag)

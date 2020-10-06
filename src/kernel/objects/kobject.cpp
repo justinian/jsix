@@ -62,6 +62,12 @@ kobject::notify_signal_observers()
 }
 
 void
+kobject::close()
+{
+	assert_signal(j6_signal_closed);
+}
+
+void
 kobject::on_no_handles()
 {
 	assert_signal(j6_signal_no_handles);

@@ -4,24 +4,21 @@
 
 // Signals 0-15 are common to all types
 #define j6_signal_no_handles		(1ull << 0)
+#define j6_signal_closed			(1ull << 1)
 
 // Signals 16-47 are defined per-object-type
 
 // Process signals
-#define j6_signal_process_exit		(1ull << 16)
 
 // Thread signals
-#define j6_signal_thread_exit		(1ull << 16)
 
 // Channel signals
-#define j6_signal_channel_closed	(1ull << 16)
-#define j6_signal_channel_can_send	(1ull << 17)
-#define j6_signal_channel_can_recv	(1ull << 18)
+#define j6_signal_channel_can_send	(1ull << 16)
+#define j6_signal_channel_can_recv	(1ull << 17)
 
 // Endpoint signals
-#define j6_signal_endpoint_closed	(1ull << 16)
-#define j6_signal_endpoint_can_send	(1ull << 17)
-#define j6_signal_endpoint_can_recv	(1ull << 18)
+#define j6_signal_endpoint_can_send	(1ull << 16)
+#define j6_signal_endpoint_can_recv	(1ull << 17)
 
 // Signals 48-63 are user-defined signals
 #define j6_signal_user0				(1ull << 48)

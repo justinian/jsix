@@ -3,18 +3,29 @@
 #include "j6/types.h"
 
 #include "log.h"
-#include "objects/process.h"
 #include "objects/thread.h"
+#include "syscalls/helpers.h"
 
 namespace syscalls {
 
 j6_status_t
+object_koid(j6_handle_t handle, j6_koid_t *koid)
+{
+	if (koid == nullptr)
+		return j6_err_invalid_arg;
+
+	kobject *obj = get_handle<kobject>(handle);
+	if (!obj)
+		return j6_err_invalid_arg;
+
+	*koid = obj->koid();
+	return j6_status_ok;
+}
+
+j6_status_t
 object_wait(j6_handle_t handle, j6_signal_t mask, j6_signal_t *sigs)
 {
-	thread &th = thread::current();
-	process &p = process::current();
-
-	kobject *obj = p.lookup_handle(handle);
+	kobject *obj = get_handle<kobject>(handle);
 	if (!obj)
 		return j6_err_invalid_arg;
 
@@ -24,6 +35,7 @@ object_wait(j6_handle_t handle, j6_signal_t mask, j6_signal_t *sigs)
 		return j6_status_ok;
 	}
 
+	thread &th = thread::current();
 	obj->add_blocked_thread(&th);
 	th.wait_on_signals(obj, mask);
 
@@ -40,12 +52,22 @@ object_signal(j6_handle_t handle, j6_signal_t signals)
 	if ((signals & j6_signal_user_mask) != signals)
 		return j6_err_invalid_arg;
 
-	process &p = process::current();
-	kobject *obj = p.lookup_handle(handle);
+	kobject *obj = get_handle<kobject>(handle);
 	if (!obj)
 		return j6_err_invalid_arg;
 
 	obj->assert_signal(signals);
+	return j6_status_ok;
+}
+
+j6_status_t
+object_close(j6_handle_t handle)
+{
+	kobject *obj = get_handle<kobject>(handle);
+	if (!obj)
+		return j6_err_invalid_arg;
+
+	obj->close();
 	return j6_status_ok;
 }
 

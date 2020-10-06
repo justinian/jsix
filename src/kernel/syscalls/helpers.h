@@ -3,6 +3,7 @@
 /// Utility functions for use in syscall handler implementations
 
 #include "j6/types.h"
+#include "objects/kobject.h"
 #include "objects/process.h"
 
 namespace syscalls {
@@ -24,6 +25,13 @@ T * get_handle(j6_handle_t handle)
 	if (!o || o->get_type() != T::type)
 		return nullptr;
 	return static_cast<T*>(o);
+}
+
+template <>
+inline kobject * get_handle<kobject>(j6_handle_t handle)
+{
+	process &p = process::current();
+	return p.lookup_handle(handle);
 }
 
 template <typename T>

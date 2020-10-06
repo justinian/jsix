@@ -37,10 +37,7 @@ public:
 
 	/// Mark this channel as closed, all future calls to enqueue or
 	/// dequeue messages will fail with j6_status_closed.
-	void close();
-
-	/// Check if this channel has been closed
-	inline bool closed() { return check_signal(j6_signal_channel_closed); }
+	virtual void close() override;
 
 protected:
 	virtual void on_no_handles() override;
