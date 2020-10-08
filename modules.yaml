@@ -10,7 +10,6 @@ modules:
         includes:
             - src/kernel
         source:
-            - src/kernel/crti.s
             - src/kernel/apic.cpp
             - src/kernel/assert.cpp
             - src/kernel/boot.s
@@ -59,7 +58,6 @@ modules:
             - src/kernel/task.s
             - src/kernel/vm_mapper.cpp
             - src/kernel/vm_space.cpp
-            - src/kernel/crtn.s
 
     boot:
         kind: exe
