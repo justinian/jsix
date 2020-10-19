@@ -67,6 +67,9 @@ device_manager::device_manager() :
 {
 	m_irqs.ensure_capacity(32);
 	m_irqs.set_size(16);
+	for (int i = 0; i < 16; ++i)
+		m_irqs[i] = nullptr;
+
 	m_irqs[2] = ignore_endpoint;
 }
 

@@ -39,6 +39,7 @@ modules:
             - src/kernel/objects/kobject.cpp
             - src/kernel/objects/thread.cpp
             - src/kernel/objects/process.cpp
+            - src/kernel/objects/system.cpp
             - src/kernel/objects/vm_area.cpp
             - src/kernel/page_table.cpp
             - src/kernel/pci.cpp

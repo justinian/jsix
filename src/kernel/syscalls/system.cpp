@@ -1,8 +1,11 @@
 #include "j6/errors.h"
 #include "j6/types.h"
 
+#include "device_manager.h"
 #include "log.h"
+#include "objects/endpoint.h"
 #include "objects/thread.h"
+#include "syscalls/helpers.h"
 
 namespace syscalls {
 
@@ -23,6 +26,25 @@ system_noop()
 	thread &th = thread::current();
 	log::debug(logs::syscall, "Thread %llx called noop syscall.", th.koid());
 	return j6_status_ok;
+}
+
+j6_status_t
+system_get_log(j6_handle_t sys, j6_handle_t *log)
+{
+	return j6_err_nyi;
+}
+
+j6_status_t
+system_bind_irq(j6_handle_t sys, j6_handle_t endp, unsigned irq)
+{
+	// TODO: check capabilities on sys handle
+	endpoint *e = get_handle<endpoint>(endp);
+	if (!e) return j6_err_invalid_arg;
+
+	if (device_manager::get().bind_irq(irq, e))
+		return j6_status_ok;
+
+	return j6_err_invalid_arg;
 }
 
 } // namespace syscalls

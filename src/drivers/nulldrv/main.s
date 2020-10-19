@@ -13,7 +13,6 @@ _start:
 	mov rbp, rsp
 
 	mov rdi, rsp
-	sub rdi, 8
 	call _init_libc
 
 	mov rdi, 0

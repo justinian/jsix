@@ -55,16 +55,4 @@ endpoint_sendrecv(j6_handle_t handle, j6_tag_t *tag, size_t *len, void *data)
 	return e->receive(tag, len, data);
 }
 
-j6_status_t
-endpoint_bind_irq(j6_handle_t handle, unsigned irq)
-{
-	endpoint *e = get_handle<endpoint>(handle);
-	if (!e) return j6_err_invalid_arg;
-
-	if (device_manager::get().bind_irq(irq, e))
-		return j6_status_ok;
-
-	return j6_err_invalid_arg;
-}
-
 } // namespace syscalls

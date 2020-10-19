@@ -11,9 +11,8 @@
 #include "serial.h"
 
 char inbuf[1024];
+j6_handle_t sys = j6_handle_invalid;
 j6_handle_t endp = j6_handle_invalid;
-
-j6_process_init *init = nullptr;
 
 extern "C" {
 	void _init_libc(j6_process_init *);
@@ -53,9 +52,9 @@ thread_proc()
 }
 
 void
-_init_libc(j6_process_init *i)
+_init_libc(j6_process_init *init)
 {
-	init = i;
+	sys = init->handles[0];
 }
 
 int
@@ -98,6 +97,10 @@ main(int argc, const char **argv)
 	if (tag != 17)
 		_syscall_system_log("GOT WRONG TAG FROM SENDRECV");
 
+	result = _syscall_system_bind_irq(sys, endp, 3);
+	if (result != j6_status_ok)
+		return result;
+
 	_syscall_system_log(message);
 
 	_syscall_system_log("main thread waiting on child");
@@ -108,7 +111,6 @@ main(int argc, const char **argv)
 
 	_syscall_system_log("main testing irqs");
 
-	_syscall_endpoint_bind_irq(endp, 3);
 
 	serial_port com2(COM2);
 

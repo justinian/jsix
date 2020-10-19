@@ -13,6 +13,7 @@
 #include "msr.h"
 #include "objects/channel.h"
 #include "objects/process.h"
+#include "objects/system.h"
 #include "objects/vm_area.h"
 #include "scheduler.h"
 
@@ -26,7 +27,7 @@ const uint64_t rflags_int = 0x202;
 
 extern "C" {
 	void preloaded_process_init();
-	void load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb);
+	uintptr_t load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb);
 };
 
 extern uint64_t idle_stack_end;
@@ -59,7 +60,7 @@ scheduler::scheduler(lapic *apic) :
 	bsp_cpu_data.t = idle;
 }
 
-void
+uintptr_t
 load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb)
 {
 	using memory::page_align_down;
@@ -81,10 +82,13 @@ load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb)
 	tcb->rsp3 -= sizeof(j6_process_init);
 	j6_process_init *init = reinterpret_cast<j6_process_init*>(tcb->rsp3);
 
-	extern channel *std_out;
-	init->output = proc.add_handle(std_out);
+	init->process = proc.add_handle(&proc);
+	init->handles[0] = proc.add_handle(system::get());
+	init->handles[1] = j6_handle_invalid;
+	init->handles[2] = j6_handle_invalid;
 
 	thread::current().clear_state(thread::state::loading);
+	return tcb->rsp3;
 }
 
 thread *

@@ -17,6 +17,7 @@ public:
 	enum class type : uint16_t
 	{
 		none,
+		system,
 
 		event,
 		channel,
@@ -24,9 +25,10 @@ public:
 
 		vma,
 
-		job,
 		process,
 		thread,
+
+		max
 	};
 
 	kobject(type t, j6_signal_t signals = 0ull);

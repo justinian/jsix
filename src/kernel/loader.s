@@ -15,6 +15,9 @@ preloaded_process_init:
 
 	call load_process_image
 
+	; user rsp is now in rax, put it in the right place for iret
+	mov [rsp + 0x18], rax
+
 	; the entrypoint should already be on the stack
 	swapgs
 	iretq

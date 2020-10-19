@@ -38,6 +38,12 @@ typedef uint64_t j6_handle_t;
 /// A process' initial data structure for communicating with the system
 struct j6_process_init
 {
-	j6_handle_t input;
-	j6_handle_t output;
+	j6_handle_t process;
+	j6_handle_t handles[3];
+};
+
+/// A thread's initial data structure
+struct j6_thread_init
+{
+	j6_handle_t thread;
 };

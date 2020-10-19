@@ -1,5 +1,7 @@
 SYSCALL(0x00, system_log,        const char *)
 SYSCALL(0x01, system_noop,       void)
+SYSCALL(0x02, system_get_log,    j6_handle_t, j6_handle_t *)
+SYSCALL(0x03, system_bind_irq,   j6_handle_t, j6_handle_t, unsigned)
 
 SYSCALL(0x08, object_koid,       j6_handle_t, j6_koid_t *)
 SYSCALL(0x09, object_wait,       j6_handle_t, j6_signal_t, j6_signal_t *)
@@ -21,7 +23,6 @@ SYSCALL(0x28, endpoint_create,   j6_handle_t *)
 SYSCALL(0x29, endpoint_send,     j6_handle_t, j6_tag_t, size_t, void *)
 SYSCALL(0x2a, endpoint_receive,  j6_handle_t, j6_tag_t *, size_t *, void *)
 SYSCALL(0x2b, endpoint_sendrecv, j6_handle_t, j6_tag_t *, size_t *, void *)
-SYSCALL(0x2c, endpoint_bind_irq, j6_handle_t, unsigned)
 
 SYSCALL(0x30, vma_create,        j6_handle_t *, size_t, uint32_t)
 SYSCALL(0x31, vma_create_map,    j6_handle_t *, size_t, uintptr_t, uint32_t)
