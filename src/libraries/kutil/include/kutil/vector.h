@@ -10,10 +10,11 @@
 namespace kutil {
 
 /// A dynamic array.
-template <typename T>
+template <typename T, typename S = uint32_t>
 class vector
 {
-	static constexpr size_t min_capacity = 4;
+	using count_t = S;
+	static constexpr count_t min_capacity = 4;
 
 public:
 	/// Default constructor. Creates an empty vector with no capacity.
@@ -25,7 +26,7 @@ public:
 
 	/// Constructor. Creates an empty array with capacity.
 	/// \arg capacity  Initial capacity to allocate
-	vector(size_t capacity) :
+	vector(count_t capacity) :
 		m_size(0),
 		m_capacity(0),
 		m_elements(nullptr)
@@ -57,7 +58,7 @@ public:
 
 	/// Static array constructor. Starts the vector off with the given
 	/// static storage.
-	vector(T *data, size_t size, size_t capacity) :
+	vector(T *data, count_t size, count_t capacity) :
 		m_size(size),
 		m_capacity(capacity),
 		m_elements(&data[0])
@@ -73,13 +74,13 @@ public:
 
 	/// Get the size of the array.
 	/// \returns  The number of elements in the array
-	inline size_t count() const { return m_size; }
+	inline count_t count() const { return m_size; }
 
 	/// Access an element in the array.
-	inline T & operator[] (size_t i) { return m_elements[i]; }
+	inline T & operator[] (count_t i) { return m_elements[i]; }
 
 	/// Access an element in the array.
-	inline const T & operator[] (size_t i) const { return m_elements[i]; }
+	inline const T & operator[] (count_t i) const { return m_elements[i]; }
 
 	/// Get a pointer to the beginning for iteration.
 	/// \returns  A pointer to the beginning of the array
@@ -118,7 +119,7 @@ public:
 	}
 
 	/// Insert an item into the array at the given index
-	void insert(size_t i, const T& item)
+	void insert(count_t i, const T& item)
 	{
 		if (i >= count()) {
 			append(item);
@@ -126,7 +127,7 @@ public:
 		}
 
 		ensure_capacity(m_size + 1);
-		for (size_t j = m_size; j > i; --j)
+		for (count_t j = m_size; j > i; --j)
 			m_elements[j] = m_elements[j-1];
 		m_size += 1;
 
@@ -136,12 +137,12 @@ public:
 	/// Insert an item into the list in a sorted position. Depends on T
 	/// having a method `int compare(const T &other)`.
 	/// \returns index of the new item
-	size_t sorted_insert(const T& item)
+	count_t sorted_insert(const T& item)
 	{
-		size_t start = 0;
-		size_t end = m_size;
+		count_t start = 0;
+		count_t end = m_size;
 		while (end > start) {
-			size_t m = start + (end - start) / 2;
+			count_t m = start + (end - start) / 2;
 			int c = item.compare(m_elements[m]);
 			if (c < 0) end = m;
 			else start = m + 1;
@@ -171,7 +172,7 @@ public:
 	void remove(const T &item)
 	{
 		kassert(m_size, "Called remove() on an empty array");
-		for (size_t i = 0; i < m_size; ++i) {
+		for (count_t i = 0; i < m_size; ++i) {
 			if (m_elements[i] == item) {
 				remove_at(i);
 				break;
@@ -181,9 +182,9 @@ public:
 
 	/// Remove n items starting at the given index from the array,
 	/// order-preserving.
-	void remove_at(size_t i, size_t n = 1)
+	void remove_at(count_t i, count_t n = 1)
 	{
-		for (size_t j = i; j < i + n; ++j) {
+		for (count_t j = i; j < i + n; ++j) {
 			if (j >= m_size) return;
 			m_elements[j].~T();
 		}
@@ -197,7 +198,7 @@ public:
 	/// order-preserving. Does nothing if the item is not in the array.
 	void remove_swap(const T &item)
 	{
-		for (size_t i = 0; i < m_size; ++i) {
+		for (count_t i = 0; i < m_size; ++i) {
 			if (m_elements[i] == item) {
 				remove_swap_at(i);
 				break;
@@ -207,7 +208,7 @@ public:
 
 	/// Remove the item at the given index from the array, not
 	/// order-preserving.
-	void remove_swap_at(size_t i)
+	void remove_swap_at(count_t i)
 	{
 		if (i >= count()) return;
 
@@ -240,22 +241,22 @@ public:
 	/// Set the size of the array. Any new items are default constructed.
 	/// Any items past the end are deleted. The array is realloced if needed.
 	/// \arg size  The new size
-	void set_size(size_t size)
+	void set_size(count_t size)
 	{
 		ensure_capacity(size);
-		for (size_t i = size; i < m_size; ++i)
+		for (count_t i = size; i < m_size; ++i)
 			m_elements[i].~T();
-		for (size_t i = m_size; i < size; ++i)
+		for (count_t i = m_size; i < size; ++i)
 			new (&m_elements[i]) T;
 		m_size = size;
 	}
 
 	/// Ensure the array will fit an item.
 	/// \arg size  Size of the array
-	void ensure_capacity(size_t size)
+	void ensure_capacity(count_t size)
 	{
 		if (m_capacity >= size) return;
-		size_t capacity = (1 << log2(size));
+		count_t capacity = (1 << log2(size));
 		if (capacity < min_capacity)
 			capacity = min_capacity;
 		set_capacity(capacity);
@@ -264,10 +265,10 @@ public:
 	/// Reallocate the array. Copy over any old elements that will
 	/// fit into the new array. The rest are destroyed.
 	/// \arg capacity  Number of elements to allocate
-	void set_capacity(size_t capacity)
+	void set_capacity(count_t capacity)
 	{
 		T *new_array = reinterpret_cast<T*>(kalloc(capacity * sizeof(T)));
-		size_t size = capacity > m_size ? m_size : capacity;
+		count_t size = capacity > m_size ? m_size : capacity;
 
 		kutil::memcpy(new_array, m_elements, size * sizeof(T));
 
@@ -280,8 +281,8 @@ public:
 	}
 
 private:
-	size_t m_size;
-	size_t m_capacity;
+	count_t m_size;
+	count_t m_capacity;
 	T *m_elements;
 };
 
