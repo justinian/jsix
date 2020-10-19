@@ -5,7 +5,7 @@
 #include "objects/thread.h"
 
 // TODO: per-cpu this?
-static j6_koid_t next_koid;
+static j6_koid_t next_koids [static_cast<size_t>(kobject::type::max)] = { 0 };
 
 kobject::kobject(type t, j6_signal_t signals) :
 	m_koid(koid_generate(t)),
@@ -22,7 +22,9 @@ kobject::~kobject()
 j6_koid_t
 kobject::koid_generate(type t)
 {
-	return (static_cast<uint64_t>(t) << 48) | next_koid++;
+	kassert(t < type::max, "Object type out of bounds");
+	uint64_t type_int = static_cast<uint64_t>(t);
+	return (type_int << 48) | next_koids[type_int]++;
 }
 
 kobject::type
