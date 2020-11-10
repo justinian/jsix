@@ -77,7 +77,7 @@ file::load(uefi::memory_type mem_type)
 		m_file->read(&size, data),
 		L"Could not read from file");
 
-	return { .data = data, .size = size };
+	return { .size = size,  .data = data };
 }
 
 file
