@@ -30,6 +30,10 @@ constexpr inline uint8_t pearson_hash_8(const char *s, uint8_t inv) {
 	return (*s) ? pearson_hash_8(s + 1, pearson_hash_table[inv ^ *s]) : inv;
 }
 
+constexpr inline uint32_t djb_hash_32(const char *s, int off = 0) {
+	return !s[off] ? 5381 : (djb_hash_32(s, off+1)*33) ^ s[off];
+}
+
 } // namespace kutil
 
 constexpr inline uint8_t operator "" _h (const char *s, size_t len) {
