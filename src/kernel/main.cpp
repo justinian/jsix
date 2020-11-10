@@ -22,6 +22,10 @@
 #include "symbol_table.h"
 #include "syscall.h"
 
+#ifndef GIT_VERSION
+#define GIT_VERSION
+#endif
+
 extern "C" {
 	void kernel_main(kernel::args::header *header);
 	void (*__ctors)(void);

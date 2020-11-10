@@ -2,7 +2,6 @@
 #include "j6/types.h"
 
 #include "log.h"
-#include "device_manager.h"
 #include "objects/endpoint.h"
 #include "syscalls/helpers.h"
 
