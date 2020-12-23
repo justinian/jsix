@@ -279,8 +279,8 @@ console::putc(char c)
 	if (m_screen) m_screen->putc(c);
 
 	if (m_serial) {
+		if (c == '\n') m_serial->write('\r');
 		m_serial->write(c);
-		if (c == '\r') m_serial->write('\n');
 	}
 }
 
