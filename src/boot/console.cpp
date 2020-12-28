@@ -49,9 +49,10 @@ wstrlen(const wchar_t *s)
 
 
 console::console(uefi::boot_services *bs, uefi::protos::simple_text_output *out) :
-	m_rows(0),
-	m_cols(0),
-	m_out(out)
+	m_rows {0},
+	m_cols {0},
+	m_out {out},
+	m_fb {0, 0}
 {
 	pick_mode(bs);
 
@@ -93,7 +94,7 @@ console::pick_mode(uefi::boot_services *bs)
 		(uefi::graphics_output_mode_info *)gfx_out_proto->mode;
 
 	uint32_t res = info->horizontal_resolution * info->vertical_resolution;
-	int is_fb = info->pixel_format != uefi::pixel_format::blt_only;
+	int pixmode = static_cast<int>(info->pixel_format);
 
 	for (uint32_t i = 0; i < modes; ++i) {
 		size_t size = 0;
@@ -107,17 +108,27 @@ console::pick_mode(uefi::boot_services *bs)
 #endif
 
 		const uint32_t new_res = info->horizontal_resolution * info->vertical_resolution;
-		const int new_is_fb = info->pixel_format != uefi::pixel_format::blt_only;
+		int new_pixmode = static_cast<int>(info->pixel_format);
 
-		if (new_is_fb > is_fb && new_res >= res) {
+		if (new_pixmode <= pixmode && new_res >= res) {
 			best = i;
 			res = new_res;
+			pixmode = new_pixmode;
 		}
 	}
 
 	try_or_raise(
 		gfx_out_proto->set_mode(best),
 		L"Failed to set graphics mode");
+
+	if (pixmode <= static_cast<int>(uefi::pixel_format::bgr8)) {
+		m_fb.phys_addr = gfx_out_proto->mode->frame_buffer_base;
+		m_fb.size = gfx_out_proto->mode->frame_buffer_size;
+		m_fb.vertical = gfx_out_proto->mode->info->vertical_resolution;
+		m_fb.horizontal = gfx_out_proto->mode->info->horizontal_resolution;
+		m_fb.scanline = gfx_out_proto->mode->info->pixels_per_scanline;
+		m_fb.type = static_cast<kernel::args::fb_type>(pixmode);
+	}
 }
 
 size_t
@@ -386,62 +397,5 @@ status_line::finish()
 	if (m_level <= level_ok)
 		print_status_tag();
 }
-
-/*
-uefi::status
-con_get_framebuffer(
-	EFI_BOOT_SERVICES *bootsvc,
-	void **buffer,
-	size_t *buffer_size,
-	uint32_t *hres,
-	uint32_t *vres,
-	uint32_t *rmask,
-	uint32_t *gmask,
-	uint32_t *bmask)
-{
-	uefi::status status;
-
-	uefi::protos::graphics_output *gop;
-	status = bootsvc->LocateProtocol(&guid_gfx_out, NULL, (void **)&gop);
-	if (status != EFI_NOT_FOUND) {
-		CHECK_EFI_STATUS_OR_RETURN(status, "LocateProtocol gfx");
-
-		*buffer = (void *)gop->Mode->FrameBufferBase;
-		*buffer_size = gop->Mode->FrameBufferSize;
-		*hres = gop->Mode->Info->horizontal_resolution;
-		*vres = gop->Mode->Info->vertical_resolution;
-
-		switch (gop->Mode->Info->PixelFormat) {
-			case PixelRedGreenBlueReserved8BitPerColor:
-				*rmask = 0x0000ff;
-				*gmask = 0x00ff00;
-				*bmask = 0xff0000;
-				return EFI_SUCCESS;
-
-			case PixelBlueGreenRedReserved8BitPerColor:
-				*bmask = 0x0000ff;
-				*gmask = 0x00ff00;
-				*rmask = 0xff0000;
-				return EFI_SUCCESS;
-
-			case PixelBitMask:
-				*rmask = gop->Mode->Info->PixelInformation.RedMask;
-				*gmask = gop->Mode->Info->PixelInformation.GreenMask;
-				*bmask = gop->Mode->Info->PixelInformation.BlueMask;
-				return EFI_SUCCESS;
-
-			default:
-				// Not a framebuffer, fall through to zeroing out
-				// values below.
-				break;
-		}
-	}
-
-	*buffer = NULL;
-	*buffer_size = *hres = *vres = 0;
-	*rmask = *gmask = *bmask = 0;
-	return EFI_SUCCESS;
-}
-*/
 
 } // namespace boot

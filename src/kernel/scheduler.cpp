@@ -22,6 +22,9 @@
 
 scheduler *scheduler::s_instance = nullptr;
 
+extern uintptr_t fb_loc;
+extern size_t fb_size;
+
 const uint64_t rflags_noint = 0x002;
 const uint64_t rflags_int = 0x202;
 
@@ -87,6 +90,12 @@ load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb)
 	init->handles[1] = j6_handle_invalid;
 	init->handles[2] = j6_handle_invalid;
 
+	// Crazypants framebuffer part
+	init->handles[1] = reinterpret_cast<j6_handle_t>(fb_size);
+	vma = new vm_area_open(fb_size, space, vm_flags::write|vm_flags::mmio);
+	space.add(0x100000000, vma);
+	vma->commit(fb_loc, 0, memory::page_count(fb_size));
+
 	thread::current().clear_state(thread::state::loading);
 	return tcb->rsp3;
 }
@@ -107,7 +116,7 @@ scheduler::create_process(bool user)
 	return th;
 }
 
-void
+thread *
 scheduler::load_process(uintptr_t phys, uintptr_t virt, size_t size, uintptr_t entry)
 {
 
@@ -145,6 +154,8 @@ scheduler::load_process(uintptr_t phys, uintptr_t virt, size_t size, uintptr_t e
 	log::debug(logs::task, "     RSP  %016lx", tcb->rsp);
 	log::debug(logs::task, "     RSP0 %016lx", tcb->rsp0);
 	log::debug(logs::task, "     PML4 %016lx", tcb->pml4);
+
+	return th;
 }
 
 void

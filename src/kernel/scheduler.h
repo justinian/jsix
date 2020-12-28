@@ -45,7 +45,8 @@ public:
 	/// \arg virt  Virtual address of the loaded program image
 	/// \arg size  Size of the program image, in bytes
 	/// \arg entry Virtual address of the program entrypoint
-	void load_process(uintptr_t phys, uintptr_t virt, size_t size, uintptr_t entry);
+	/// \returns   The main thread of the loaded process
+	thread * load_process(uintptr_t phys, uintptr_t virt, size_t size, uintptr_t entry);
 
 	/// Create a new kernel task
 	/// \arg proc     Function to run as a kernel task

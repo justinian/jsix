@@ -30,6 +30,14 @@ vm_mapper_single::unmap(uintptr_t offset, size_t count)
 	m_space.clear(m_area, offset, count, true);
 }
 
+void
+vm_mapper_single::remove(vm_space *space)
+{
+	size_t count = memory::page_count(m_area.size());
+	bool keep = m_area.flags() && vm_flags::mmio;
+	m_space.clear(m_area, 0, count, !keep);
+}
+
 
 
 vm_mapper_multi::vm_mapper_multi(vm_area &area) :
@@ -88,11 +96,13 @@ void
 vm_mapper_multi::remove(vm_space *space)
 {
 	size_t count = memory::page_count(m_area.size());
+	bool keep = m_area.flags() && vm_flags::mmio;
 
 	for (int i = 0; i < m_spaces.count(); ++i) {
 		if (m_spaces[i] == space) {
 			m_spaces.remove_swap_at(i);
-			space->clear(m_area, 0, count, m_spaces.count() == 0);
+			keep &= m_spaces.count() > 0;
+			space->clear(m_area, 0, count, !keep);
 		}
 	}
 }

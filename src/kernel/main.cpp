@@ -17,6 +17,7 @@
 #include "log.h"
 #include "objects/channel.h"
 #include "objects/event.h"
+#include "objects/thread.h"
 #include "scheduler.h"
 #include "serial.h"
 #include "symbol_table.h"
@@ -43,6 +44,10 @@ run_constructors()
 }
 
 extern void __kernel_assert(const char *, unsigned, const char *);
+
+/// TODO: not this. this is awful.
+uintptr_t fb_loc = 0;
+size_t fb_size = 0;
 
 /// Bootstrap the memory managers.
 void memory_initialize_pre_ctors(kernel::args::header *kargs);
@@ -131,6 +136,11 @@ kernel_main(args::header *header)
 		}
 	}
 
+	if (header->video.size > 0) {
+		fb_size = header->video.size;
+		fb_loc = header->video.phys_addr;
+	}
+
 	log::debug(logs::boot, "    jsix header is at: %016lx", header);
 	log::debug(logs::boot, "     Memory map is at: %016lx", header->mem_map);
 	log::debug(logs::boot, "ACPI root table is at: %016lx", header->acpi_table);
@@ -176,7 +186,10 @@ kernel_main(args::header *header)
 	// Skip program 0, which is the kernel itself
 	for (size_t i = 1; i < header->num_programs; ++i) {
 		args::program &prog = header->programs[i];
-		sched->load_process(prog.phys_addr, prog.virt_addr, prog.size, prog.entrypoint); 
+		thread *th = sched->load_process(prog.phys_addr, prog.virt_addr, prog.size, prog.entrypoint); 
+		if (i == 2) {
+			th->set_state(thread::state::constant);
+		}
 	}
 
 	sched->create_kernel_task(logger_task, scheduler::max_priority-1, true);

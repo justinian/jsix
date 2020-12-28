@@ -11,14 +11,27 @@ constexpr uint32_t magic = 0x600dda7a;
 constexpr uint16_t version = 1;
 
 enum class mod_type : uint32_t {
-	symbol_table,
-	framebuffer
+	symbol_table
 };
 
 struct module {
 	void *location;
 	size_t size;
 	mod_type type;
+};
+
+enum class fb_type : uint16_t {
+	rgb8,
+	bgr8
+};
+
+struct framebuffer {
+	uintptr_t phys_addr;
+	size_t size;
+	uint32_t vertical;
+	uint32_t horizontal;
+	uint16_t scanline;
+	fb_type type;
 };
 
 struct program {
@@ -74,6 +87,8 @@ struct header {
 
 	void *runtime_services;
 	void *acpi_table;
+
+	framebuffer video;
 }
 __attribute__((aligned(alignof(max_align_t))));
 
