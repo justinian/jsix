@@ -54,6 +54,8 @@ public:
 
 	vm_space & space() { return m_space; }
 
+	virtual void remove(vm_space *space) override;
+
 private:
 	vm_area &m_area;
 	vm_space &m_space;

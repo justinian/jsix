@@ -87,6 +87,16 @@ modules:
             - src/drivers/nulldrv/main.s
             - src/drivers/nulldrv/serial.cpp
 
+    fb:
+        kind: exe
+        target: user
+        output: fb.elf
+        deps:
+          - libc
+        source:
+            - src/drivers/fb/main.cpp
+            - src/drivers/fb/main.s
+
     kutil:
         kind: lib
         output: libkutil.a

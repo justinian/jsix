@@ -37,6 +37,7 @@ struct program_desc
 const program_desc program_list[] = {
 	{L"kernel", L"jsix.elf"},
 	{L"null driver", L"nulldrv.elf"},
+	{L"fb driver", L"fb.elf"},
 	//{L"terminal driver", L"terminal.elf"},
 };
 
@@ -126,6 +127,8 @@ bootloader_main_uefi(
 	buffer symbols = loader::load_file(disk, L"symbol table", L"symbol_table.dat",
 				memory::module_type);
 	add_module(args, args::mod_type::symbol_table, symbols);
+
+	args->video = con.fb();
 
 	for (auto &desc : program_list) {
 		buffer buf = loader::load_file(disk, desc.name, desc.path);

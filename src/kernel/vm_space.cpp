@@ -175,8 +175,10 @@ vm_space::page_in(const vm_area &vma, uintptr_t offset, uintptr_t phys, size_t c
 	page_table::iterator it {virt, m_pml4};
 
 	for (size_t i = 0; i < count; ++i) {
-		it.entry(page_table::level::pt) =
-			(phys + i * frame_size) | flags;
+		uint64_t &entry = it.entry(page_table::level::pt);
+		entry = (phys + i * frame_size) | flags;
+		log::debug(logs::paging, "Setting entry for %016llx: %016llx [%04llx]",
+				it.vaddress(), (phys + i * frame_size), flags);
 		++it;
 	}
 }
