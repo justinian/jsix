@@ -14,8 +14,8 @@ _header:
 
 section .text
 align 16
-global _start:function (_start.end - _start)
-_start:
+global _kernel_start:function (_kernel_start.end - _kernel_start)
+_kernel_start:
 	cli
 
 	mov rsp, idle_stack_end
