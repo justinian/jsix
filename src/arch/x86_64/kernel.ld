@@ -1,4 +1,4 @@
-ENTRY(_start)
+ENTRY(_kernel_start)
 SECTIONS
 {
 	. = 0xFFFF800000000000;
