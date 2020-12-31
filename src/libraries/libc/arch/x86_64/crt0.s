@@ -1,24 +1,19 @@
-section .bss
-mymessage:
-	resq 1024
-
 extern main
-extern _init_libc
 extern exit
+extern _init_libc
 
-section .text
-
-global _start
+global _start:function (_start.end - _start)
 _start:
 	mov rbp, rsp
-
 	mov rdi, rsp
+
 	call _init_libc
 
-	mov rdi, 0
-	mov rsi, 0
+	pop rdi
+	mov rsi, rsp
 
 	call main
 
 	mov rdi, rax
 	call exit
+.end:

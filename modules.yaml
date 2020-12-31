@@ -84,7 +84,6 @@ modules:
         source:
             - src/drivers/nulldrv/io.cpp
             - src/drivers/nulldrv/main.cpp
-            - src/drivers/nulldrv/main.s
             - src/drivers/nulldrv/serial.cpp
 
     fb:
@@ -95,7 +94,6 @@ modules:
           - libc
         source:
             - src/drivers/fb/main.cpp
-            - src/drivers/fb/main.s
 
     kutil:
         kind: lib
@@ -132,6 +130,8 @@ modules:
               #- LACKS_TIME_H
         source:
             - src/libraries/libc/arch/x86_64/_Exit.s
+            - src/libraries/libc/arch/x86_64/crt0.s
+            - src/libraries/libc/arch/x86_64/init_libc.c
             - src/libraries/libc/arch/x86_64/syscalls.s
             - src/libraries/libc/ctype/isalnum.c
             - src/libraries/libc/ctype/isalpha.c

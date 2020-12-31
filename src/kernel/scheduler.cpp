@@ -1,5 +1,7 @@
 #include <stddef.h>
 
+#include <j6/init.h>
+
 #include "apic.h"
 #include "clock.h"
 #include "console.h"
@@ -63,6 +65,14 @@ scheduler::scheduler(lapic *apic) :
 	bsp_cpu_data.t = idle;
 }
 
+template <typename T>
+inline T * push(uintptr_t &rsp, size_t size = sizeof(T)) {
+	rsp -= size;
+	T *p = reinterpret_cast<T*>(rsp);
+	rsp &= ~(sizeof(uint64_t)-1); // Align the stack
+	return p;
+}
+
 uintptr_t
 load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb)
 {
@@ -72,31 +82,60 @@ load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb)
 	// We're now in the process space for this process, allocate memory for the
 	// process code and load it
 	process &proc = process::current();
+	thread &th = thread::current();
 	vm_space &space = proc.space();
 
 	vm_area *vma = new vm_area_open(bytes, space, vm_flags::zero|vm_flags::write);
 	space.add(virt, vma);
 	vma->commit(phys, 0, memory::page_count(bytes));
 
-	tcb->rsp3 -= 2 * sizeof(uint64_t);
-	uint64_t *sentinel = reinterpret_cast<uint64_t*>(tcb->rsp3);
-	sentinel[0] = sentinel[1] = 0;
+	// double zero stack sentinel
+	*push<uint64_t>(tcb->rsp3) = 0;
+	*push<uint64_t>(tcb->rsp3) = 0;
 
-	tcb->rsp3 -= sizeof(j6_process_init);
-	j6_process_init *init = reinterpret_cast<j6_process_init*>(tcb->rsp3);
+	const char message[] = "Hello from the kernel!";
+	char *message_arg = push<char>(tcb->rsp3, sizeof(message));
+	kutil::memcpy(message_arg, message, sizeof(message));
 
-	init->process = proc.add_handle(&proc);
-	init->handles[0] = proc.add_handle(system::get());
-	init->handles[1] = j6_handle_invalid;
-	init->handles[2] = j6_handle_invalid;
+	j6_init_framebuffer *fb_desc = push<j6_init_framebuffer>(tcb->rsp3);
+	fb_desc->addr = reinterpret_cast<void*>(0x100000000);
+	fb_desc->size = fb_size;
+
+	j6_init_value *initv = push<j6_init_value>(tcb->rsp3);
+	initv->type = j6_init_handle_system;
+	initv->value = static_cast<uint64_t>(proc.add_handle(system::get()));
+
+	initv = push<j6_init_value>(tcb->rsp3);
+	initv->type = j6_init_handle_process;
+	initv->value = static_cast<uint64_t>(proc.add_handle(&proc));
+
+	initv = push<j6_init_value>(tcb->rsp3);
+	initv->type = j6_init_handle_thread;
+	initv->value = static_cast<uint64_t>(proc.add_handle(&th));
+
+	initv = push<j6_init_value>(tcb->rsp3);
+	initv->type = j6_init_handle_space;
+	//initv->value = static_cast<uint64_t>(proc.add_handle(&space));
+
+	initv = push<j6_init_value>(tcb->rsp3);
+	initv->type = j6_init_desc_framebuffer;
+	initv->value = reinterpret_cast<uint64_t>(fb_desc);
+
+	uint64_t *initc = push<uint64_t>(tcb->rsp3);
+	*initc = 5;
+
+	char **argv0 = push<char*>(tcb->rsp3);
+	*argv0 = message_arg;
+
+	uint64_t *argc = push<uint64_t>(tcb->rsp3);
+	*argc = 1;
 
 	// Crazypants framebuffer part
-	init->handles[1] = reinterpret_cast<j6_handle_t>(fb_size);
 	vma = new vm_area_open(fb_size, space, vm_flags::write|vm_flags::mmio);
 	space.add(0x100000000, vma);
 	vma->commit(fb_loc, 0, memory::page_count(fb_size));
 
-	thread::current().clear_state(thread::state::loading);
+	th.clear_state(thread::state::loading);
 	return tcb->rsp3;
 }
 
