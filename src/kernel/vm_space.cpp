@@ -212,7 +212,6 @@ vm_space::clear(const vm_area &vma, uintptr_t offset, size_t count, bool free)
 				free_start = phys;
 				free_count = 1;
 			}
-			fa.free(e & ~0xfffull, 1);
 		}
 
 		e = 0;
