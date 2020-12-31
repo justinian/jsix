@@ -11,7 +11,7 @@
 #include "serial.h"
 
 char inbuf[1024];
-j6_handle_t sys = j6_handle_invalid;
+extern j6_handle_t __handle_sys;
 j6_handle_t endp = j6_handle_invalid;
 
 extern "C" {
@@ -51,12 +51,6 @@ thread_proc()
 	_syscall_thread_exit(0);
 }
 
-void
-_init_libc(j6_process_init *init)
-{
-	sys = init->handles[0];
-}
-
 int
 main(int argc, const char **argv)
 {
@@ -64,6 +58,9 @@ main(int argc, const char **argv)
 	j6_signal_t out = 0;
 
 	_syscall_system_log("main thread starting");
+
+	for (int i = 0; i < argc; ++i)
+		_syscall_system_log(argv[i]);
 
 	void *base = malloc(0x1000);
 	if (!base)
@@ -97,7 +94,7 @@ main(int argc, const char **argv)
 	if (tag != 17)
 		_syscall_system_log("GOT WRONG TAG FROM SENDRECV");
 
-	result = _syscall_system_bind_irq(sys, endp, 3);
+	result = _syscall_system_bind_irq(__handle_sys, endp, 3);
 	if (result != j6_status_ok)
 		return result;
 
