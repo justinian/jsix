@@ -1,21 +1,6 @@
 #!/usr/bin/env python3
 
-MAGIC = (0x72, 0xb5, 0x4a, 0x86)
-
-from collections import namedtuple
-PSF2 = namedtuple("PSF2", ["version", "offset", "flags", "count", "charsize", "height", "width"])
-
-def read_header(data):
-    from struct import unpack_from, calcsize
-
-    fmt = "BBBBIIIIIII"
-
-    values = unpack_from(fmt, data)
-    if values[:len(MAGIC)] != MAGIC:
-        raise Exception("Bad magic number in header")
-
-    return PSF2(*values[len(MAGIC):])
-
+from fontpsf import PSF2
 
 def print_glyph(header, data):
     bw = (header.width + 7) // 8
@@ -28,16 +13,15 @@ def print_glyph(header, data):
 
 
 def display_font(filename):
-    data = open(filename, 'rb').read()
+    font = PSF2.load(filename)
+    print(font.header)
 
-    header = read_header(data)
-    print(header)
-
-    c = header.charsize
-    for i in range(0, header.count):
-        n = i * c + header.offset
-        print("Glyph {}:".format(i))
-        print_glyph(header, data[n:n+c])
+    for glyph in font:
+        if glyph.empty():
+            print("{}: BLANK".format(glyph.description()))
+        else:
+            print("{}:".format(glyph.description()))
+            print_glyph(font.header, glyph.data)
 
 
 if __name__ == "__main__":

@@ -8,6 +8,8 @@
 
 #include <j6libc/syscalls.h>
 
+#include "font.h"
+
 extern "C" {
 	int main(int, const char **);
 	void _get_init(size_t *initc, struct j6_init_value **initv);
@@ -32,6 +34,14 @@ main(int argc, const char **argv)
 
 	if (!fb)
 		return 1;
+
+	size_t font_size = sizeof(font_glyph_data);
+	if (font_size != (font_glyph_size*font_glyph_count)) {
+		_syscall_system_log("fb driver has wrong font data, exiting");
+		return 1;
+	}
+
+	volatile uint8_t const * p = font_glyph_data;
 
 	uint32_t *fbp = reinterpret_cast<uint32_t*>(fb->addr);
 	size_t size = fb->size;
