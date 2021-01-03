@@ -9,6 +9,7 @@
 #include <j6libc/syscalls.h>
 
 #include "font.h"
+#include "screen.h"
 
 extern "C" {
 	int main(int, const char **);
@@ -32,21 +33,34 @@ main(int argc, const char **argv)
 		}
 	}
 
-	if (!fb)
-		return 1;
-
-	size_t font_size = sizeof(font_glyph_data);
-	if (font_size != (font_glyph_size*font_glyph_count)) {
-		_syscall_system_log("fb driver has wrong font data, exiting");
+	if (!fb || fb->addr == nullptr) {
+		_syscall_system_log("fb driver didn't find a framebuffer, exiting");
 		return 1;
 	}
 
-	volatile uint8_t const * p = font_glyph_data;
+	const screen::pixel_order order = (fb->flags & 1) ?
+		screen::pixel_order::bgr8 : screen::pixel_order::rgb8;
 
-	uint32_t *fbp = reinterpret_cast<uint32_t*>(fb->addr);
-	size_t size = fb->size;
-	for (size_t i=0; i < size/4; ++i) {
-		fbp[i] = 0xff;
+	screen scr(fb->addr, fb->horizontal, fb->vertical, order);
+	font fnt;
+
+	screen::pixel_t fg = scr.color(255, 255, 255);
+	screen::pixel_t bg = scr.color(49, 79, 128);
+	scr.fill(bg);
+
+	constexpr int margin = 4;
+
+	int y = margin;
+	char g = 0;
+
+	while (y < scr.height() - margin - fnt.height()) {
+		int x = margin;
+		while (x < scr.width() - margin - fnt.width()) {
+			fnt.draw_glyph(scr, g+' ', fg, bg, x, y);
+			x += fnt.width() + fnt.width() / 4;
+			g = ++g % ('~' - ' ' + 1);
+		}
+		y += fnt.height() + fnt.height() / 4;
 	}
 
 	_syscall_system_log("fb driver done, exiting");

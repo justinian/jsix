@@ -2,9 +2,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 
-class font;
 struct kernel_data;
-class screen;
 class serial_port;
 
 class console
@@ -35,13 +33,9 @@ public:
 
 	void echo();
 
-	void init_screen(screen *s, font *f);
-
 	static console * get();
 
 private:
-	class screen_out;
-	screen_out *m_screen;
 	serial_port *m_serial;
 };
 

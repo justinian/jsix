@@ -21,6 +21,7 @@ struct module {
 };
 
 enum class fb_type : uint16_t {
+	none,
 	rgb8,
 	bgr8
 };

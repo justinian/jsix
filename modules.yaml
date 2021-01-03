@@ -20,7 +20,6 @@ modules:
             - src/kernel/debug.cpp
             - src/kernel/debug.s
             - src/kernel/device_manager.cpp
-            - src/kernel/font.cpp
             - src/kernel/frame_allocator.cpp
             - src/kernel/fs/gpt.cpp
             - src/kernel/gdt.cpp
@@ -44,7 +43,6 @@ modules:
             - src/kernel/page_table.cpp
             - src/kernel/pci.cpp
             - src/kernel/scheduler.cpp
-            - src/kernel/screen.cpp
             - src/kernel/serial.cpp
             - src/kernel/symbol_table.cpp
             - src/kernel/syscall.cpp
@@ -93,7 +91,9 @@ modules:
         deps:
           - libc
         source:
+            - src/drivers/fb/font.cpp
             - src/drivers/fb/main.cpp
+            - src/drivers/fb/screen.cpp
 
     kutil:
         kind: lib

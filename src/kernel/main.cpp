@@ -45,15 +45,14 @@ run_constructors()
 
 extern void __kernel_assert(const char *, unsigned, const char *);
 
-/// TODO: not this. this is awful.
-uintptr_t fb_loc = 0;
-size_t fb_size = 0;
-
 /// Bootstrap the memory managers.
 void memory_initialize_pre_ctors(kernel::args::header *kargs);
 void memory_initialize_post_ctors(kernel::args::header *kargs);
 
 using namespace kernel;
+
+/// TODO: not this. this is awful.
+args::framebuffer *fb = nullptr;
 
 void
 init_console()
@@ -137,8 +136,7 @@ kernel_main(args::header *header)
 	}
 
 	if (header->video.size > 0) {
-		fb_size = header->video.size;
-		fb_loc = header->video.phys_addr;
+		fb = memory::to_virtual<args::framebuffer>(reinterpret_cast<uintptr_t>(&header->video));
 	}
 
 	log::debug(logs::boot, "    jsix header is at: %016lx", header);
