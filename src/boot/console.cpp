@@ -127,7 +127,17 @@ console::pick_mode(uefi::boot_services *bs)
 		m_fb.vertical = gfx_out_proto->mode->info->vertical_resolution;
 		m_fb.horizontal = gfx_out_proto->mode->info->horizontal_resolution;
 		m_fb.scanline = gfx_out_proto->mode->info->pixels_per_scanline;
-		m_fb.type = static_cast<kernel::args::fb_type>(pixmode);
+
+		switch (gfx_out_proto->mode->info->pixel_format) {
+		case uefi::pixel_format::rgb8:
+			m_fb.type = kernel::args::fb_type::rgb8;
+			break;
+		case uefi::pixel_format::bgr8:
+			m_fb.type = kernel::args::fb_type::bgr8;
+			break;
+		default:
+			m_fb.type = kernel::args::fb_type::none;
+		}
 	}
 }
 

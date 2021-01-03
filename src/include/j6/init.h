@@ -19,7 +19,7 @@ struct j6_init_value {
 
 /// Structure defining a framebuffer.
 /// `flags` has the following bits:
-///   0-3:   Pixel layout. 0000: bgr8, 0001: rgb8
+///   0-3:   Pixel layout. 0000: rgb8, 0001: bgr8
 struct j6_init_framebuffer {
 	void* addr;
 	size_t size;

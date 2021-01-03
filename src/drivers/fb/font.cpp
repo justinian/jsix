@@ -1,5 +1,6 @@
-#include "kutil/assert.h"
+#include <assert.h>
 #include "font.h"
+
 
 /* PSF2 header format
  * Taken from the Linux KBD documentation
@@ -27,43 +28,51 @@ struct psf2_header {
 	uint32_t height, width; // max dimensions of glyphs
 };
 
+const uint8_t default_font[] = {
+// xxd -i < font_file.psf > default_font.inc
+#include "default_font.inc"
+};
 
 font::font(void const *data) :
-	m_size(0, 0),
-	m_count(0),
-	m_data(nullptr)
+	m_sizex {0},
+	m_sizey {0},
+	m_count {0},
+	m_data {nullptr}
 {
+	if (!data)
+		data = default_font;
+
 	psf2_header const *psf2 = static_cast<psf2_header const *>(data);
 	for (int i = 0; i < sizeof(magic); ++i) {
-		kassert(psf2->magic[i] == magic[i], "Bad font magic number.");
+		assert(psf2->magic[i] == magic[i] && "Bad font magic number.");
 	}
 
 	m_data = static_cast<uint8_t const *>(data) + psf2->header_size;
-	m_size.x = psf2->width;
-	m_size.y = psf2->height;
+	m_sizex = psf2->width;
+	m_sizey = psf2->height;
 	m_count = psf2->length;
 }
 
 void
 font::draw_glyph(
-		screen *s,
+		screen &s,
 		uint32_t glyph,
 		screen::pixel_t fg,
 		screen::pixel_t bg,
 		unsigned x,
 		unsigned y) const
 {
-	unsigned bwidth = (m_size.x+7)/8;
+	unsigned bwidth = (m_sizex+7)/8;
 	uint8_t const *data = m_data + (glyph * glyph_bytes());
 
-	for (int dy = 0; dy < m_size.y; ++dy) {
+	for (int dy = 0; dy < m_sizey; ++dy) {
 		for (int dx = 0; dx < bwidth; ++dx) {
 			uint8_t byte = data[dy * bwidth + dx];
 			for (int i = 0; i < 8; ++i) {
-				if (dx*8 + i >= m_size.x) continue;
+				if (dx*8 + i >= m_sizex) break;
 				const uint8_t mask = 1 << (7-i);
 				uint32_t c = (byte & mask) ? fg : bg;
-				s->draw_pixel(x + dx*8 + i, y + dy, c);
+				s.draw_pixel(x + dx*8 + i, y + dy, c);
 			}
 		}
 	}
