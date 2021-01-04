@@ -64,7 +64,6 @@ init_console()
 	cons->puts("jsix OS ");
 	cons->set_color(0x08, 0x00);
 	cons->puts(GIT_VERSION " booting...\n");
-	logger_init();
 }
 
 channel *std_out = nullptr;
@@ -112,6 +111,7 @@ kernel_main(args::header *header)
 {
 	kutil::assert_set_callback(__kernel_assert);
 	init_console();
+	logger_init();
 
 	gdt_init();
 	interrupts_init();
@@ -135,8 +135,11 @@ kernel_main(args::header *header)
 		}
 	}
 
+	bool has_video = false;
 	if (header->video.size > 0) {
 		fb = memory::to_virtual<args::framebuffer>(reinterpret_cast<uintptr_t>(&header->video));
+		has_video = true;
+		logger_clear_immediate();
 	}
 
 	log::debug(logs::boot, "    jsix header is at: %016lx", header);
@@ -186,11 +189,12 @@ kernel_main(args::header *header)
 		args::program &prog = header->programs[i];
 		thread *th = sched->load_process(prog.phys_addr, prog.virt_addr, prog.size, prog.entrypoint); 
 		if (i == 2) {
-			th->set_state(thread::state::constant);
+			//th->set_state(thread::state::constant);
 		}
 	}
 
-	sched->create_kernel_task(logger_task, scheduler::max_priority-1, true);
+	if (!has_video)
+		sched->create_kernel_task(logger_task, scheduler::max_priority-1, true);
 	sched->create_kernel_task(stdout_task, scheduler::max_priority-1, true);
 
 	const char stdout_message[] = "Hello on the fake stdout channel\n";

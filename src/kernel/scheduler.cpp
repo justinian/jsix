@@ -19,13 +19,15 @@
 #include "objects/vm_area.h"
 #include "scheduler.h"
 
+// here for the framebuffer hack
+#include "kernel_args.h"
+
 #include "kutil/assert.h"
 
 
 scheduler *scheduler::s_instance = nullptr;
 
-extern uintptr_t fb_loc;
-extern size_t fb_size;
+extern kernel::args::framebuffer *fb;
 
 const uint64_t rflags_noint = 0x002;
 const uint64_t rflags_int = 0x202;
@@ -98,8 +100,15 @@ load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb)
 	kutil::memcpy(message_arg, message, sizeof(message));
 
 	j6_init_framebuffer *fb_desc = push<j6_init_framebuffer>(tcb->rsp3);
-	fb_desc->addr = reinterpret_cast<void*>(0x100000000);
-	fb_desc->size = fb_size;
+	fb_desc->addr = fb ? reinterpret_cast<void*>(0x100000000) : nullptr;
+	fb_desc->size = fb ? fb->size : 0;
+	fb_desc->vertical = fb ? fb->vertical : 0;
+	fb_desc->horizontal = fb ? fb->horizontal : 0;
+	fb_desc->scanline = fb ? fb->scanline : 0;
+	fb_desc->flags = 0;
+
+	if (fb && fb->type == kernel::args::fb_type::bgr8)
+		fb_desc->flags |= 1;
 
 	j6_init_value *initv = push<j6_init_value>(tcb->rsp3);
 	initv->type = j6_init_handle_system;
@@ -131,9 +140,11 @@ load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb)
 	*argc = 1;
 
 	// Crazypants framebuffer part
-	vma = new vm_area_open(fb_size, space, vm_flags::write|vm_flags::mmio);
-	space.add(0x100000000, vma);
-	vma->commit(fb_loc, 0, memory::page_count(fb_size));
+	if (fb) {
+		vma = new vm_area_open(fb->size, space, vm_flags::write|vm_flags::mmio);
+		space.add(0x100000000, vma);
+		vma->commit(fb->phys_addr, 0, memory::page_count(fb->size));
+	}
 
 	th.clear_state(thread::state::loading);
 	return tcb->rsp3;

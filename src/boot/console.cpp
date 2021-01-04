@@ -83,9 +83,14 @@ console::pick_mode(uefi::boot_services *bs)
 	uefi::protos::graphics_output *gfx_out_proto;
 	uefi::guid guid = uefi::protos::graphics_output::guid;
 
-	try_or_raise(
-		bs->locate_protocol(&guid, nullptr, (void **)&gfx_out_proto),
-		L"Failed to find a Graphics Output Protocol handle");
+	m_fb.type = kernel::args::fb_type::none;
+
+	uefi::status has_gop = bs->locate_protocol(&guid, nullptr,
+		(void **)&gfx_out_proto);
+
+	if (has_gop != uefi::status::success)
+		// No video output found, skip it
+		return;
 
 	const uint32_t modes = gfx_out_proto->mode->max_mode;
 	uint32_t best = gfx_out_proto->mode->mode;

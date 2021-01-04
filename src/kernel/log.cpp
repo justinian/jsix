@@ -10,7 +10,7 @@ static uint8_t log_buffer[0x10000];
 // so that we can start log output immediately. Keep its constructor
 // from being called here so as to not overwrite the previous initialization.
 static kutil::no_construct<log::logger> __g_logger_storage;
-static log::logger &g_logger = __g_logger_storage.value;
+log::logger &g_logger = __g_logger_storage.value;
 
 static const uint8_t level_colors[] = {0x07, 0x07, 0x0f, 0x0b, 0x09};
 
@@ -56,4 +56,9 @@ logger_task()
 void logger_init()
 {
 	new (&g_logger) log::logger(log_buffer, sizeof(log_buffer), output_log);
+}
+
+void logger_clear_immediate()
+{
+	g_logger.set_immediate(nullptr);
 }
