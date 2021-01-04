@@ -6,6 +6,7 @@ debug=""
 debugtarget="${build}/jsix.elf"
 flash_name="ovmf_vars"
 gfx="-nographic"
+vga="-vga none"
 kvm=""
 cpu="Broadwell,+pdpe1gb"
 
@@ -22,6 +23,7 @@ for arg in $@; do
 			;;
 		--gfx)
 			gfx=""
+			vga=""
 			;;
 		--kvm)
 			kvm="-enable-kvm"
@@ -72,4 +74,4 @@ exec qemu-system-x86_64 \
 	-cpu "${cpu}" \
 	-M q35 \
 	-no-reboot \
-	$gfx $kvm $debug
+	$gfx $vga $kvm $debug

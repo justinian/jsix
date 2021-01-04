@@ -7,6 +7,8 @@
 #include "objects/thread.h"
 #include "syscalls/helpers.h"
 
+extern log::logger &g_logger;
+
 namespace syscalls {
 
 j6_status_t
@@ -29,9 +31,10 @@ system_noop()
 }
 
 j6_status_t
-system_get_log(j6_handle_t sys, j6_handle_t *log)
+system_get_log(j6_handle_t sys, char *buffer, size_t *size)
 {
-	return j6_err_nyi;
+	*size = g_logger.get_entry(buffer, *size);
+	return j6_status_ok;
 }
 
 j6_status_t
