@@ -25,6 +25,9 @@ for arg in $@; do
 			gfx=""
 			vga=""
 			;;
+		--vga)
+			vga=""
+			;;
 		--kvm)
 			kvm="-enable-kvm"
 			cpu="host"
