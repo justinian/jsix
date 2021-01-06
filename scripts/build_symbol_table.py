@@ -27,11 +27,12 @@ def parse_syms(infile):
         if t not in "tTvVwW": continue
 
         try:
-            addr = int(addr, base=16)
             name = demangle(mangled)
-            syms.append((addr, name))
         except InvalidName:
-            pass
+            continue
+
+        addr = int(addr, base=16)
+        syms.append((addr, name))
 
     return sorted(syms)
 
