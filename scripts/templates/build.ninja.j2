@@ -193,16 +193,12 @@ build $builddir/fatroot/nulldrv.elf : cp $builddir/user/nulldrv.elf
 build $builddir/fatroot/fb.elf : cp $builddir/user/fb.elf
     name = fb driver to FAT image
 
-build $builddir/fatroot/terminal.elf : cp $builddir/user/nulldrv.elf
-    name = terminal driver to FAT image
-
 build ${builddir}/fatroot/symbol_table.dat : makest ${builddir}/jsix.elf
 
 build $builddir/jsix.img : makefat | $
     $builddir/fatroot/symbol_table.dat $
     $builddir/fatroot/nulldrv.elf $
     $builddir/fatroot/fb.elf $
-    $builddir/fatroot/terminal.elf $
     $builddir/fatroot/jsix.elf $
     $builddir/fatroot/efi/boot/bootx64.efi
     name = jsix.img
