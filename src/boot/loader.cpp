@@ -97,12 +97,7 @@ load_program(
 		void *src_start = offset_ptr<void>(data.data, pheader->offset);
 		void *dest_start = offset_ptr<void>(pages, pheader->vaddr - prog_base);
 		bs->copy_mem(dest_start, src_start, pheader->file_size);
-
-		console::print(L"    section %d phys: 0x%lx\r\n", i, pages);
-		console::print(L"    section %d virt: 0x%lx\r\n", i, pheader->vaddr);
 	}
-
-	console::print(L"    entrypoint:     0x%lx\r\n", header->entrypoint);
 
 	program.phys_addr = reinterpret_cast<uintptr_t>(pages);
 	program.size = total_size;
