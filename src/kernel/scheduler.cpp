@@ -116,11 +116,11 @@ load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb)
 
 	initv = push<j6_init_value>(tcb->rsp3);
 	initv->type = j6_init_handle_process;
-	initv->value = static_cast<uint64_t>(proc.add_handle(&proc));
+	initv->value = static_cast<uint64_t>(proc.self_handle());
 
 	initv = push<j6_init_value>(tcb->rsp3);
 	initv->type = j6_init_handle_thread;
-	initv->value = static_cast<uint64_t>(proc.add_handle(&th));
+	initv->value = static_cast<uint64_t>(th.self_handle());
 
 	initv = push<j6_init_value>(tcb->rsp3);
 	initv->type = j6_init_handle_space;

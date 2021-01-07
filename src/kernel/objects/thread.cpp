@@ -26,6 +26,8 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 		setup_kernel_stack();
 	else
 		m_tcb.rsp0 = rsp0;
+
+	m_self_handle = parent.add_handle(this);
 }
 
 thread::~thread()
