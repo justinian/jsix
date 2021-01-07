@@ -73,6 +73,25 @@ console::console(uefi::boot_services *bs, uefi::protos::simple_text_output *out)
 	m_out->set_attribute(uefi::attribute::light_gray);
 	m_out->output_string(L" booting...\r\n\n");
 
+	if (m_fb.type != kernel::args::fb_type::none) {
+		wchar_t const * type = nullptr;
+		switch (m_fb.type) {
+		case kernel::args::fb_type::rgb8:
+			type = L"rgb8";
+			break;
+		case kernel::args::fb_type::bgr8:
+			type = L"bgr8";
+			break;
+		default:
+			type = L"unknown";
+		}
+
+		printf(L"Found framebuffer: %dx%d type %s @0x%x\r\n",
+			m_fb.horizontal, m_fb.vertical, type, m_fb.phys_addr);
+	} else {
+		printf(L"No framebuffer found.\r\n");
+	}
+
 	s_console = this;
 }
 
