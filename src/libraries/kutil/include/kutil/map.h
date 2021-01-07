@@ -45,20 +45,6 @@ struct hash_node
 	inline uint64_t hash() const { return h; }
 };
 
-template <typename V>
-struct hash_node <uint64_t, V>
-{
-	uint64_t key;
-	V val;
-
-	hash_node(hash_node &&o) : key(std::move(o.key)), val(std::move(o.val)) {}
-	hash_node(uint64_t h, uint64_t &&k, V &&v) : key(std::move(k)), val(std::move(v)) {}
-	~hash_node() {}
-
-	inline uint64_t & hash() { return key; }
-	inline uint64_t hash() const { return key; }
-};
-
 /// Base class for hash maps
 template <typename K, typename V>
 class base_map

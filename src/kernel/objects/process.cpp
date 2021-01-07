@@ -21,13 +21,16 @@ process::process() :
 	m_state {state::running}
 {
 	s_processes.append(this);
+
+	j6_handle_t self = add_handle(this);
+	kassert(self == self_handle(), "Process self-handle is not 0");
 }
 
 // The "kernel process"-only constructor
 process::process(page_table *kpml4) :
 	kobject {kobject::type::process},
 	m_space {kpml4},
-	m_next_handle {0},
+	m_next_handle {self_handle()+1},
 	m_state {state::running}
 {
 }
@@ -117,6 +120,7 @@ process::thread_exited(thread *th)
 	kassert(&th->m_parent == this, "Process got thread_exited for non-child!");
 	uint32_t status = th->m_return_code;
 	m_threads.remove_swap(th);
+	remove_handle(th->self_handle());
 	delete th;
 
 	if (m_threads.count() == 0) {

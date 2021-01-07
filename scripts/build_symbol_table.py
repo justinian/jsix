@@ -19,15 +19,19 @@ def parse_syms(infile):
     representing the symbols in the text segment of the binary. Returns
     a list of (address, symbol_name)."""
 
-    from cxxfilt import demangle
+    from cxxfilt import demangle, InvalidName
 
     syms = []
     for line in sys.stdin:
         addr, t, mangled = line.split()
         if t not in "tTvVwW": continue
 
+        try:
+            name = demangle(mangled)
+        except InvalidName:
+            continue
+
         addr = int(addr, base=16)
-        name = demangle(mangled)
         syms.append((addr, name))
 
     return sorted(syms)

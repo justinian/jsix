@@ -8,7 +8,6 @@
 scrollback::scrollback(unsigned lines, unsigned cols, unsigned margin) :
 	m_rows {lines},
 	m_cols {cols},
-	m_start {0},
 	m_count {0},
 	m_margin {margin}
 {
@@ -23,24 +22,20 @@ scrollback::scrollback(unsigned lines, unsigned cols, unsigned margin) :
 void
 scrollback::add_line(const char *line, size_t len)
 {
-	unsigned i = 0;
-	if (m_count < m_rows)
-		i = m_count++;
-	else
-		i = m_start++;
+	unsigned i = m_count++ % m_rows;
 
 	if (len > m_cols)
 		len = m_cols;
 
-	memcpy(m_lines[i % m_rows], line, len);
+	memcpy(m_lines[i], line, len);
 	if (len < m_cols)
-		memset(m_lines[i % m_rows]+len, ' ', m_cols - len);
+		memset(m_lines[i]+len, ' ', m_cols - len);
 }
 
 char *
 scrollback::get_line(unsigned i)
 {
-	return m_lines[(i+m_start)%m_rows];
+	return m_lines[(i+m_count)%m_rows];
 }
 
 void

@@ -68,6 +68,9 @@ public:
 	/// \returns  True if this thread ending has ended the process
 	bool thread_exited(thread *th);
 
+	/// Get the handle for this process to refer to itself
+	inline j6_handle_t self_handle() const { return 0; }
+
 	/// Get the process object that owns kernel threads and the
 	/// kernel address space
 	static process & kernel_process();
