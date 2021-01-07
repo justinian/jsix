@@ -18,6 +18,7 @@ typedef uint64_t j6_signal_t;
 typedef uint64_t j6_tag_t;
 
 #define j6_tag_system_flag    0x8000000000000000
+#define j6_tag_invalid        0x0000000000000000
 
 /// If all high bits except the last 16 are set, then the tag represents
 /// an IRQ.
