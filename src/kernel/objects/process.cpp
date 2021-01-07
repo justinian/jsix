@@ -55,16 +55,13 @@ void
 process::exit(unsigned code)
 {
 	// TODO: make this thread-safe
-	if (m_state != state::running)
-		return;
-	else
-		m_state = state::exited;
+	m_state = state::exited;
+	m_return_code = code;
+	close();
 
 	for (auto *thread : m_threads) {
 		thread->exit(code);
 	}
-	m_return_code = code;
-	close();
 
 	if (this == bsp_cpu_data.p)
 		scheduler::get().schedule();
