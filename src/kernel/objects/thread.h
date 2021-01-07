@@ -141,6 +141,9 @@ public:
 	/// \arg rip  The address to return to, must be user space
 	void add_thunk_user(uintptr_t rip);
 
+	/// Get the handle representing this thread to its process
+	j6_handle_t self_handle() const { return m_self_handle; }
+
 	/// Create the kernel idle thread
 	/// \arg kernel The process object that owns kernel tasks
 	/// \arg pri    The idle thread priority value
@@ -175,4 +178,6 @@ private:
 	uint64_t m_wait_data;
 	j6_status_t m_wait_result;
 	j6_koid_t m_wait_obj;
+
+	j6_handle_t m_self_handle;
 };
