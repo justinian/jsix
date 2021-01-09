@@ -17,23 +17,7 @@ namespace boot {
 size_t ROWS = 0;
 size_t COLS = 0;
 
-static constexpr int level_ok = 0;
-static constexpr int level_warn = 1;
-static constexpr int level_fail = 2;
-
-static const wchar_t *level_tags[] = {
-	L"  ok  ",
-	L" warn ",
-	L"failed"
-};
-static const uefi::attribute level_colors[] = {
-	uefi::attribute::green,
-	uefi::attribute::brown,
-	uefi::attribute::light_red
-};
-
 console *console::s_console = nullptr;
-status_line *status_line::s_current = nullptr;
 
 static const wchar_t digits[] = {u'0', u'1', u'2', u'3', u'4', u'5',
 	u'6', u'7', u'8', u'9', u'a', u'b', u'c', u'd', u'e', u'f'};
@@ -315,121 +299,6 @@ console::print(const wchar_t *fmt, ...)
 
 	va_end(args);
 	return result;
-}
-
-status_line::status_line(const wchar_t *message, const wchar_t *context) :
-	m_level(level_ok)
-{
-	auto out = console::get().m_out;
-	m_line = out->mode->cursor_row;
-	m_depth = (s_current ? 1 + s_current->m_depth : 0);
-
-	int indent = 2 * m_depth;
-	out->set_cursor_position(indent, m_line);
-	out->set_attribute(uefi::attribute::light_gray);
-	out->output_string(message);
-
-	if (context) {
-		out->output_string(L": ");
-		out->output_string(context);
-	}
-
-	out->output_string(L"\r\n");
-
-	m_next = s_current;
-	s_current = this;
-}
-
-status_line::~status_line()
-{
-	if (s_current != this)
-		error::raise(uefi::status::unsupported, L"Destroying non-current status_line");
-
-	finish();
-	if (m_next && m_level > m_next->m_level) {
-		m_next->m_level = m_level;
-		m_next->print_status_tag();
-	}
-	s_current = m_next;
-}
-
-void
-status_line::print_status_tag()
-{
-	auto out = console::get().m_out;
-	int row = out->mode->cursor_row;
-	int col = out->mode->cursor_column;
-
-	uefi::attribute color = level_colors[m_level];
-	const wchar_t *tag = level_tags[m_level];
-
-	out->set_cursor_position(50, m_line);
-
-	out->set_attribute(uefi::attribute::light_gray);
-	out->output_string(L"[");
-	out->set_attribute(color);
-	out->output_string(tag);
-	out->set_attribute(uefi::attribute::light_gray);
-	out->output_string(L"]\r\n");
-
-	out->set_cursor_position(col, row);
-}
-
-void
-status_line::do_warn(const wchar_t *message, const wchar_t *error)
-{
-	auto out = console::get().m_out;
-	int row = out->mode->cursor_row;
-
-	if (m_level < level_warn) {
-		m_level = level_warn;
-		print_status_tag();
-	}
-
-	int indent = 2 + 2 * m_depth;
-	out->set_cursor_position(indent, row);
-	out->set_attribute(uefi::attribute::yellow);
-	out->output_string(message);
-
-	if (error) {
-		out->output_string(L": ");
-		out->output_string(error);
-	}
-
-	out->set_attribute(uefi::attribute::light_gray);
-	out->output_string(L"\r\n");
-}
-
-void
-status_line::do_fail(const wchar_t *message, const wchar_t *error)
-{
-	auto out = console::get().m_out;
-	int row = out->mode->cursor_row;
-
-	if (s_current->m_level < level_fail) {
-		m_level = level_fail;
-		print_status_tag();
-	}
-
-	int indent = 2 + 2 * m_depth;
-	out->set_cursor_position(indent, row);
-	out->set_attribute(uefi::attribute::red);
-	out->output_string(message);
-
-	if (error) {
-		out->output_string(L": ");
-		out->output_string(error);
-	}
-
-	out->set_attribute(uefi::attribute::light_gray);
-	out->output_string(L"\r\n");
-}
-
-void
-status_line::finish()
-{
-	if (m_level <= level_ok)
-		print_status_tag();
 }
 
 } // namespace boot

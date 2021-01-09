@@ -71,6 +71,7 @@ modules:
             - src/boot/loader.cpp
             - src/boot/memory.cpp
             - src/boot/paging.cpp
+            - src/boot/status.cpp
             - src/boot/support.cpp
 
     nulldrv:
