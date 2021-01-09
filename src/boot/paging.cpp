@@ -202,7 +202,7 @@ allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 	try_or_raise(
 		bs->allocate_pages(
 			uefi::allocate_type::any_pages,
-			memory::table_type,
+			uefi::memory_type::loader_data,
 			tables_needed,
 			&addr),
 		L"Error allocating page table pages.");

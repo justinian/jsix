@@ -18,28 +18,6 @@ inline constexpr size_t bytes_to_pages(size_t bytes) {
 	return ((bytes - 1) / page_size) + 1;
 }
 
-/// \defgroup memory_types
-/// Custom UEFI memory type values used for data being passed to the kernel
-/// @{
-
-/// Memory containing the kernel args structure
-constexpr uefi::memory_type args_type =
-	static_cast<uefi::memory_type>(0x80000000);
-
-/// Memory containing any loaded modules to be passed to the kernel
-constexpr uefi::memory_type module_type =
-	static_cast<uefi::memory_type>(0x80000001);
-
-/// Memory containing loaded kernel or program code and data sections
-constexpr uefi::memory_type program_type =
-	static_cast<uefi::memory_type>(0x80000002);
-
-/// Memory containing page tables set up by the loader
-constexpr uefi::memory_type table_type =
-	static_cast<uefi::memory_type>(0x80000003);
-
-/// @}
-
 /// \defgroup pointer_fixup
 /// Memory virtualization pointer fixup functions. Handles changing affected pointers
 /// when calling UEFI's `set_virtual_address_map` function to change the location of

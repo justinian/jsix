@@ -110,6 +110,7 @@ memory_initialize_pre_ctors(args::header *kargs)
 	const size_t count = kargs->map_count;
 	for (unsigned i = 0; i < count; ++i) {
 		// TODO: use entry attributes
+		// TODO: copy anything we need from "pending" memory and free it
 		args::mem_entry &e = entries[i];
 		if (e.type == args::mem_type::free)
 			g_frame_allocator.free(e.start, e.pages);

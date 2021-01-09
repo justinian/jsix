@@ -44,10 +44,7 @@ struct program {
 
 enum class mem_type : uint32_t {
 	free,
-	args,
-	program,
-	module,
-	table,
+	pending,
 	acpi,
 	uefi_runtime,
 	mmio,
