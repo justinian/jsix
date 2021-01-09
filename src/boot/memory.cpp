@@ -7,6 +7,7 @@
 #include "error.h"
 #include "memory.h"
 #include "paging.h"
+#include "status.h"
 
 namespace boot {
 namespace memory {
@@ -43,10 +44,12 @@ memory_type_name(uefi::memory_type t)
 	}
 
 	switch(t) {
+		/*
 		case args_type:		return L"jsix kernel args";
 		case module_type:	return L"jsix bootloader module";
 		case program_type:	return L"jsix kernel or program code";
 		case table_type:	return L"jsix page tables";
+		*/
 		default: return L"Bad Type Value";
 	}
 }
@@ -100,13 +103,14 @@ can_merge(mem_entry &prev, mem_type type, uefi::memory_descriptor *next)
 void
 get_uefi_mappings(efi_mem_map *map, bool allocate, uefi::boot_services *bs)
 {
-	status_line(L"Getting UEFI memory map");
-
+	size_t length = 0;
 	uefi::status status = bs->get_memory_map(
-		&map->length, nullptr, &map->key, &map->size, &map->version);
+		&length, nullptr, &map->key, &map->size, &map->version);
 
 	if (status != uefi::status::buffer_too_small)
 		error::raise(status, L"Error getting memory map size");
+
+	map->length = length;
 
 	if (allocate) {
 		map->length += 10*map->size;
@@ -126,12 +130,12 @@ get_uefi_mappings(efi_mem_map *map, bool allocate, uefi::boot_services *bs)
 efi_mem_map
 build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 {
-	status_line(L"Creating kernel memory map");
+	status_line status {L"Creating kernel memory map"};
 
-	efi_mem_map efi_map;
-	get_uefi_mappings(&efi_map, false, bs);
+	efi_mem_map map;
+	get_uefi_mappings(&map, false, bs);
 
-	size_t map_size = efi_map.num_entries() * sizeof(mem_entry);
+	size_t map_size = map.num_entries() * sizeof(mem_entry);
 
 	kernel::args::mem_entry *kernel_map = nullptr;
 	try_or_raise(
@@ -143,11 +147,11 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 		L"Error allocating kernel memory map module space");
 
 	bs->set_mem(kernel_map, map_size, 0);
-	get_uefi_mappings(&efi_map, true, bs);
+	get_uefi_mappings(&map, true, bs);
 
 	size_t i = 0;
 	bool first = true;
-	for (auto desc : efi_map) {
+	for (auto desc : map) {
 		/*
 		console::print(L"   Range %lx (%lx) %x(%s) [%lu]\r\n",
 			desc->physical_start, desc->attribute, desc->type, memory_type_name(desc->type), desc->number_of_pages);
@@ -187,6 +191,7 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 				type = mem_type::persistent;
 				break;
 
+				/*
 			case args_type:
 				type = mem_type::args;
 				break;
@@ -202,6 +207,7 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 			case table_type:
 				type = mem_type::table;
 				break;
+			*/
 
 			default:
 				error::raise(
@@ -235,7 +241,7 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 	args->mem_map = kernel_map;
 	args->map_count = i;
 
-	return efi_map;
+	return map;
 }
 
 void

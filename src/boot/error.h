@@ -14,48 +14,7 @@ namespace error {
 /// Halt or exit the program with the given error status/message
 [[ noreturn ]] void raise(uefi::status status, const wchar_t *message);
 
-/// Interface for error-handling functors
-class handler
-{
-public:
-	/// Constructor must be called by implementing classes.
-	handler();
-	virtual ~handler();
-
-	/// Interface for implementations of error handling.
-	virtual void handle(uefi::status, const wchar_t*) = 0;
-
-private:
-	friend void raise(uefi::status, const wchar_t *);
-
-	handler *m_next;
-	static handler *s_current;
-};
-
-/// Error handler using UEFI boot services. Integrates with `status_line`
-/// to print formatted error messages to the screen.
-class uefi_handler :
-	public handler
-{
-public:
-	uefi_handler(console &con);
-	virtual ~uefi_handler() {}
-	void handle(uefi::status, const wchar_t*) override;
-
-private:
-	console &m_con;
-};
-
-/// Error handler that doesn't rely on UEFI. Sets status into CPU
-/// registers and then causes a CPU #DE exception.
-class cpu_assert_handler :
-	public handler
-{
-public:
-	cpu_assert_handler();
-	virtual ~cpu_assert_handler() {}
-	void handle(uefi::status, const wchar_t*) override;
-};
+const wchar_t * message(uefi::status status);
 
 } // namespace error
 } // namespace boot

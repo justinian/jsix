@@ -14,6 +14,7 @@
 #include "loader.h"
 #include "memory.h"
 #include "paging.h"
+#include "status.h"
 
 #include "kernel_args.h"
 
@@ -38,7 +39,6 @@ const program_desc program_list[] = {
 	{L"kernel", L"jsix.elf"},
 	{L"null driver", L"nulldrv.elf"},
 	{L"fb driver", L"fb.elf"},
-	//{L"terminal driver", L"terminal.elf"},
 };
 
 /// Change a pointer to point to the higher-half linear-offset version
@@ -57,7 +57,7 @@ allocate_args_structure(
 	size_t max_modules,
 	size_t max_programs)
 {
-	status_line status(L"Setting up kernel args memory");
+	status_line status {L"Setting up kernel args memory"};
 
 	args::header *args = nullptr;
 
@@ -98,13 +98,9 @@ add_module(args::header *args, args::mod_type type, buffer &data)
 /// UEFI is still in control of the machine. (ie, while the loader still
 /// has access to boot services.
 args::header *
-bootloader_main_uefi(
-	uefi::handle image,
-	uefi::system_table *st,
-	console &con)
+uefi_preboot(uefi::handle image, uefi::system_table *st)
 {
-	error::uefi_handler handler(con);
-	status_line status(L"Performing UEFI pre-boot");
+	status_line status {L"Performing UEFI pre-boot"};
 
 	uefi::boot_services *bs = st->boot_services;
 	uefi::runtime_services *rs = st->runtime_services;
@@ -128,8 +124,6 @@ bootloader_main_uefi(
 				memory::module_type);
 	add_module(args, args::mod_type::symbol_table, symbols);
 
-	args->video = con.fb();
-
 	for (auto &desc : program_list) {
 		buffer buf = loader::load_file(disk, desc.name, desc.path);
 		args::program &program = args->programs[args->num_programs++];
@@ -144,35 +138,48 @@ bootloader_main_uefi(
 	return args;
 }
 
+memory::efi_mem_map
+uefi_exit(args::header *args, uefi::handle image, uefi::boot_services *bs)
+{
+	status_line status {L"Exiting UEFI"};
+
+	memory::efi_mem_map map =
+		memory::build_kernel_mem_map(args, bs);
+
+	try_or_raise(
+		bs->exit_boot_services(image, map.key),
+		L"Failed to exit boot services");
+
+	return map;
+}
+
 } // namespace boot
 
 /// The UEFI entrypoint for the loader.
 extern "C" uefi::status
-efi_main(uefi::handle image_handle, uefi::system_table *st)
+efi_main(uefi::handle image, uefi::system_table *st)
 {
 	using namespace boot;
-
-	error::cpu_assert_handler handler;
 	console con(st->boot_services, st->con_out);
 
-	args::header *args =
-		bootloader_main_uefi(image_handle, st, con);
+	args::header *args = uefi_preboot(image, st);
+	memory::efi_mem_map map = uefi_exit(args, image, st->boot_services);
+
+	args->video = con.fb();
+	status_bar status {con.fb()}; // Switch to fb status display
 
 	args::program &kernel = args->programs[0];
 	paging::map_pages(args, kernel.phys_addr, kernel.virt_addr, kernel.size);
 	kernel::entrypoint kentry =
 		reinterpret_cast<kernel::entrypoint>(kernel.entrypoint);
-
-	memory::efi_mem_map map =
-		memory::build_kernel_mem_map(args, st->boot_services);
-
-	try_or_raise(
-		st->boot_services->exit_boot_services(image_handle, map.key),
-		L"Failed to exit boot services");
+	status.next();
 
 	memory::virtualize(args->pml4, map, st->runtime_services);
+	status.next();
+
 	change_pointer(args->pml4);
 	hw::setup_cr4();
+	status.next();
 
 	kentry(args);
 	debug_break();

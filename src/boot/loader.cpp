@@ -8,6 +8,7 @@
 #include "fs.h"
 #include "memory.h"
 #include "paging.h"
+#include "status.h"
 
 namespace args = kernel::args;
 

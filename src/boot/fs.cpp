@@ -8,6 +8,7 @@
 #include "console.h"
 #include "error.h"
 #include "memory.h"
+#include "status.h"
 
 namespace boot {
 namespace fs {

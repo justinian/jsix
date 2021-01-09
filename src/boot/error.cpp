@@ -1,10 +1,10 @@
 #include "error.h"
 #include "console.h"
+#include "kernel_args.h"
+#include "status.h"
 
 namespace boot {
 namespace error {
-
-handler *handler::s_current = nullptr;
 
 struct error_code_desc {
 	uefi::status code;
@@ -20,8 +20,8 @@ struct error_code_desc error_table[] = {
 	{ uefi::status::success, nullptr }
 };
 
-static const wchar_t *
-error_message(uefi::status status)
+const wchar_t *
+message(uefi::status status)
 {
 	int32_t i = -1;
 	while (error_table[++i].name != nullptr) {
@@ -34,55 +34,30 @@ error_message(uefi::status status)
 		return L"Unknown Warning";
 }
 
-[[ noreturn ]] void
-raise(uefi::status status, const wchar_t *message)
-{
-	if (handler::s_current) {
-		handler::s_current->handle(status, message);
-	}
-	while (1) asm("hlt");
-}
-
-handler::handler() :
-	m_next(s_current)
-{
-	s_current = this;
-}
-
-handler::~handler()
-{
-	if (s_current != this)
-		raise(uefi::status::warn_stale_data,
-				L"Non-current error handler destructing");
-	s_current = m_next;
-}
-
-uefi_handler::uefi_handler(console &con) :
-	handler(),
-	m_con(con)
-{
-}
-
-void
-uefi_handler::handle(uefi::status s, const wchar_t *message)
-{
-	status_line::fail(message, error_message(s));
-}
-
-cpu_assert_handler::cpu_assert_handler() : handler() {}
-
-void
-cpu_assert_handler::handle(uefi::status s, const wchar_t *message)
+[[ noreturn ]] static void
+cpu_assert(uefi::status s, const wchar_t *message)
 {
 	asm volatile (
 		"movq $0xeeeeeeebadbadbad, %%r8;"
 		"movq %0, %%r9;"
+		"movq %1, %%r10;"
 		"movq $0, %%rdx;"
 		"divq %%rdx;"
 		:
-		: "r"((uint64_t)s)
-		: "rax", "rdx", "r8", "r9");
+		: "r"((uint64_t)s), "r"(message)
+		: "rax", "rdx", "r8", "r9", "r10");
+	while (1) asm("hlt");
 }
+
+[[ noreturn ]] void
+raise(uefi::status status, const wchar_t *message)
+{
+	if(status_line::fail(message, status))
+		while (1) asm("hlt");
+	else
+		cpu_assert(status, message);
+}
+
 
 } // namespace error
 } // namespace boot

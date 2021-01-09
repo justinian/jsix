@@ -1,6 +1,7 @@
 #include "hardware.h"
 #include "console.h"
 #include "error.h"
+#include "status.h"
 
 namespace boot {
 namespace hw {

@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "paging.h"
 #include "pointer_manipulation.h"
+#include "status.h"
 
 namespace boot {
 namespace paging {
