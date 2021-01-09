@@ -165,6 +165,7 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 
 			case uefi::memory_type::loader_data:
 				type = mem_type::pending;
+				break;
 
 			case uefi::memory_type::runtime_services_code:
 			case uefi::memory_type::runtime_services_data:
