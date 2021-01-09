@@ -39,19 +39,10 @@ static const wchar_t *memory_type_names[] = {
 static const wchar_t *
 memory_type_name(uefi::memory_type t)
 {
-	if (t < uefi::memory_type::max_memory_type) {
+	if (t < uefi::memory_type::max_memory_type)
 		return memory_type_names[static_cast<uint32_t>(t)];
-	}
 
-	switch(t) {
-		/*
-		case args_type:		return L"jsix kernel args";
-		case module_type:	return L"jsix bootloader module";
-		case program_type:	return L"jsix kernel or program code";
-		case table_type:	return L"jsix page tables";
-		*/
-		default: return L"Bad Type Value";
-	}
+	return L"Bad Type Value";
 }
 
 void
@@ -141,7 +132,7 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 	try_or_raise(
 		bs->allocate_pages(
 			uefi::allocate_type::any_pages,
-			module_type,
+			uefi::memory_type::loader_data,
 			bytes_to_pages(map_size),
 			reinterpret_cast<void**>(&kernel_map)),
 		L"Error allocating kernel memory map module space");
@@ -166,11 +157,14 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 				continue;
 
 			case uefi::memory_type::loader_code:
-			case uefi::memory_type::loader_data:
 			case uefi::memory_type::boot_services_code:
 			case uefi::memory_type::boot_services_data:
 			case uefi::memory_type::conventional_memory:
 				type = mem_type::free;
+				break;
+
+			case uefi::memory_type::loader_data:
+				type = mem_type::pending;
 				break;
 
 			case uefi::memory_type::runtime_services_code:
@@ -190,24 +184,6 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 			case uefi::memory_type::persistent_memory:
 				type = mem_type::persistent;
 				break;
-
-				/*
-			case args_type:
-				type = mem_type::args;
-				break;
-
-			case module_type:
-				type = mem_type::module;
-				break;
-
-			case program_type:
-				type = mem_type::program;
-				break;
-
-			case table_type:
-				type = mem_type::table;
-				break;
-			*/
 
 			default:
 				error::raise(
