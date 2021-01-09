@@ -67,7 +67,7 @@ allocate_args_structure(
 		max_programs * sizeof(args::program); // The program structures
 
 	try_or_raise(
-		bs->allocate_pool(memory::args_type, args_size,
+		bs->allocate_pool(uefi::memory_type::loader_data, args_size,
 			reinterpret_cast<void**>(&args)),
 		L"Could not allocate argument memory");
 
@@ -119,9 +119,8 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
 
 	fs::file disk = fs::get_boot_volume(image, bs);
 
-	const uefi::memory_type mod_type = memory::module_type;
 	buffer symbols = loader::load_file(disk, L"symbol table", L"symbol_table.dat",
-				memory::module_type);
+				uefi::memory_type::loader_data);
 	add_module(args, args::mod_type::symbol_table, symbols);
 
 	for (auto &desc : program_list) {

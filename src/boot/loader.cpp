@@ -82,7 +82,7 @@ load_program(
 
 	try_or_raise(
 		bs->allocate_pages(uefi::allocate_type::any_pages,
-			memory::program_type, num_pages, &pages),
+			uefi::memory_type::loader_data, num_pages, &pages),
 		L"Failed allocating space for program");
 
 	bs->set_mem(pages, total_size, 0);
