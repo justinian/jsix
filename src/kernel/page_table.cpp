@@ -181,6 +181,7 @@ page_table::get_table_page()
 	s_page_cache = s_page_cache->next;
 	--s_cache_count;
 
+	kutil::memset(page, 0, memory::frame_size);
 	return reinterpret_cast<page_table*>(page);
 }
 
