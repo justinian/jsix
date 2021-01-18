@@ -60,6 +60,7 @@ main(int argc, const char **argv)
 	screen::pixel_t fg = scr.color(0xb0, 0xb0, 0xb0);
 	screen::pixel_t bg = scr.color(49, 79, 128);
 	scr.fill(bg);
+	scr.update();
 
 	constexpr int margin = 2;
 	const unsigned xstride = (margin + fnt.width());
@@ -85,11 +86,13 @@ main(int argc, const char **argv)
 			scroll.add_line(e->message, eom);
 			if (++pending > pending_threshold) {
 				scroll.render(scr, fnt);
+				scr.update();
 				pending = 0;
 			}
 		} else {
 			if (pending) {
 				scroll.render(scr, fnt);
+				scr.update();
 				pending = 0;
 			}
 		}
