@@ -135,8 +135,7 @@ kernel_main(args::header *header)
 	run_constructors();
 	memory_initialize_post_ctors(header);
 
-	cpu_id cpu;
-	cpu.validate();
+	cpu_validate();
 
 	for (size_t i = 0; i < header->num_modules; ++i) {
 		args::module &mod = header->modules[i];
