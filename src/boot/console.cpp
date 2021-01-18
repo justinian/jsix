@@ -70,8 +70,8 @@ console::console(uefi::boot_services *bs, uefi::protos::simple_text_output *out)
 			type = L"unknown";
 		}
 
-		printf(L"Found framebuffer: %dx%d type %s @0x%x\r\n",
-			m_fb.horizontal, m_fb.vertical, type, m_fb.phys_addr);
+		printf(L"Found framebuffer: %dx%d[%d] type %s @0x%x\r\n",
+			m_fb.horizontal, m_fb.vertical, m_fb.scanline, type, m_fb.phys_addr);
 	} else {
 		printf(L"No framebuffer found.\r\n");
 	}

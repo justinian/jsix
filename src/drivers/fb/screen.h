@@ -19,8 +19,10 @@ public:
 	void fill(pixel_t color);
 	void draw_pixel(unsigned x, unsigned y, pixel_t color);
 
+	void update();
+
 private:
-	pixel_t *m_fb;
+	pixel_t *m_fb, *m_back;
 	pixel_order m_order;
 	unsigned m_resx, m_resy;
 

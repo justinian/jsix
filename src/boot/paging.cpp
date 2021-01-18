@@ -28,7 +28,7 @@ using ::memory::table_entries;
 /// Page table entry flags for entries pointing at a page
 constexpr uint16_t page_flags = 0x103;
 
-// Flags: 0  0 0 0 1  1 0 0 0  0 0 1 1 = 0x0183
+// Flags: 0  0 0 0 1  1 0 0 0  1 0 1 1 = 0x018b
 //        |   IGN  |  | | | |  | | | +- Present
 //        |        |  | | | |  | | +--- Writeable
 //        |        |  | | | |  | +----- Supervisor only
@@ -209,11 +209,14 @@ allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 
 	bs->set_mem(addr, tables_needed*page_size, 0);
 
-	args->pml4 = addr;
+	page_table *pml4 = reinterpret_cast<page_table*>(addr);
+
+	args->pml4 = pml4;
 	args->table_count = tables_needed - 1;
 	args->page_tables = offset_ptr<void>(addr, page_size);
 
-	page_table *pml4 = reinterpret_cast<page_table*>(addr);
+	console::print(L"    First page (pml4) at: 0x%lx\r\n", pml4);
+
 	add_kernel_pds(pml4, args->page_tables, args->table_count);
 	add_offset_mappings(pml4, args->page_tables, args->table_count);
 

@@ -6,6 +6,7 @@ modules:
         output: jsix.elf
         target: host
         deps:
+            - cpu
             - kutil
         includes:
             - src/kernel
@@ -62,6 +63,8 @@ modules:
         kind: exe
         target: boot
         output: boot.efi
+        deps:
+            - cpu
         source:
             - src/boot/main.cpp
             - src/boot/console.cpp
@@ -109,6 +112,14 @@ modules:
             - src/libraries/kutil/logger.cpp
             - src/libraries/kutil/memory.cpp
             - src/libraries/kutil/printf.c
+
+    cpu:
+        kind: lib
+        output: libcpu.a
+        includes:
+            - src/libraries/cpu/include
+        source:
+            - src/libraries/cpu/cpu.cpp
 
 
     libc:

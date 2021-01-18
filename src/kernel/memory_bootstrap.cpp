@@ -9,6 +9,7 @@
 #include "frame_allocator.h"
 #include "io.h"
 #include "log.h"
+#include "msr.h"
 #include "objects/process.h"
 #include "objects/vm_area.h"
 #include "vm_space.h"
@@ -99,6 +100,71 @@ void walk_page_table(
 	}
 }
 */
+
+static void
+log_mtrrs()
+{
+	uint64_t mtrrcap = rdmsr(msr::ia32_mtrrcap);
+	uint64_t mtrrdeftype = rdmsr(msr::ia32_mtrrdeftype);
+	unsigned vcap = mtrrcap & 0xff;
+	log::debug(logs::boot, "MTRRs: vcap=%d %s %s def=%02x %s %s",
+		vcap,
+		(mtrrcap & (1<< 8)) ? "fix" : "",
+		(mtrrcap & (1<<10)) ? "wc" : "",
+		mtrrdeftype & 0xff,
+		(mtrrdeftype & (1<<10)) ? "fe" : "",
+		(mtrrdeftype & (1<<11)) ? "enabled" : ""
+		);
+
+	for (unsigned i = 0; i < vcap; ++i) {
+		uint64_t base = rdmsr(find_mtrr(msr::ia32_mtrrphysbase, i));
+		uint64_t mask = rdmsr(find_mtrr(msr::ia32_mtrrphysmask, i));
+		log::debug(logs::boot, "       vcap[%2d] base:%016llx mask:%016llx type:%02x %s", i,
+			(base & ~0xfffull),
+			(mask & ~0xfffull),
+			(base & 0xff),
+			(mask & (1<<11)) ? "valid" : "");
+ 	}
+
+	msr mtrr_fixed[] = {
+		msr::ia32_mtrrfix64k_00000,
+		msr::ia32_mtrrfix16k_80000,
+		msr::ia32_mtrrfix16k_a0000,
+		msr::ia32_mtrrfix4k_c0000,
+		msr::ia32_mtrrfix4k_c8000,
+		msr::ia32_mtrrfix4k_d0000,
+		msr::ia32_mtrrfix4k_d8000,
+		msr::ia32_mtrrfix4k_e0000,
+		msr::ia32_mtrrfix4k_e8000,
+		msr::ia32_mtrrfix4k_f0000,
+		msr::ia32_mtrrfix4k_f8000,
+	};
+
+	for (int i = 0; i < 11; ++i) {
+		uint64_t v = rdmsr(mtrr_fixed[i]);
+		log::debug(logs::boot, "      fixed[%2d] %02x %02x %02x %02x %02x %02x %02x %02x", i,
+			((v <<  0) & 0xff), ((v <<  8) & 0xff), ((v << 16) & 0xff), ((v << 24) & 0xff),
+			((v << 32) & 0xff), ((v << 40) & 0xff), ((v << 48) & 0xff), ((v << 56) & 0xff));
+	}
+
+	uint64_t pat = rdmsr(msr::ia32_pat);
+	static const char *pat_names[] = {"UC ","WC ","XX ","XX ","WT ","WP ","WB ","UC-"};
+	log::debug(logs::boot, "      PAT: 0:%s 1:%s 2:%s 3:%s 4:%s 5:%s 6:%s 7:%s",
+		pat_names[(pat >> (0*8)) & 7], pat_names[(pat >> (1*8)) & 7],
+		pat_names[(pat >> (2*8)) & 7], pat_names[(pat >> (3*8)) & 7],
+		pat_names[(pat >> (4*8)) & 7], pat_names[(pat >> (5*8)) & 7],
+		pat_names[(pat >> (6*8)) & 7], pat_names[(pat >> (7*8)) & 7]);
+}
+
+void
+setup_pat()
+{
+	uint64_t pat = rdmsr(msr::ia32_pat);
+	pat = (pat & 0x00ffffffffffffffull) | (0x01ull << 56); // set PAT 7 to WC
+	wrmsr(msr::ia32_pat, pat);
+	log_mtrrs();
+}
+
 
 void
 memory_initialize_pre_ctors(args::header *kargs)

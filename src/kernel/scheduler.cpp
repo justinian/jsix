@@ -141,7 +141,7 @@ load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb)
 
 	// Crazypants framebuffer part
 	if (fb) {
-		vma = new vm_area_open(fb->size, space, vm_flags::write|vm_flags::mmio);
+		vma = new vm_area_open(fb->size, space, vm_flags::write|vm_flags::mmio|vm_flags::write_combine);
 		space.add(0x100000000, vma);
 		vma->commit(fb->phys_addr, 0, memory::page_count(fb->size));
 	}
