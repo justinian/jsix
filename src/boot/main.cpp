@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include "console.h"
+#include "cpu/cpu.h"
 #include "error.h"
 #include "fs.h"
 #include "hardware.h"
@@ -94,6 +95,28 @@ add_module(args::header *args, args::mod_type type, buffer &data)
 	m.size = data.size;
 }
 
+/// Check that all required cpu features are supported
+void
+check_cpu_supported()
+{
+	status_line status {L"Checking CPU features"};
+
+	cpu::cpu_id cpu;
+	uint64_t missing = cpu.missing();
+	if (missing) {
+#define CPU_FEATURE_OPT(...)
+#define CPU_FEATURE_REQ(name, ...) \
+		if (!cpu.has_feature(cpu::feature::name)) { \
+			status::fail(L"CPU required feature " L ## #name, uefi::status::unsupported); \
+		}
+#include "cpu/features.inc"
+#undef CPU_FEATURE_REQ
+#undef CPU_FEATURE_OPT
+
+		error::raise(uefi::status::unsupported, L"CPU not supported");
+	}
+}
+
 /// The main procedure for the portion of the loader that runs while
 /// UEFI is still in control of the machine. (ie, while the loader still
 /// has access to boot services.
@@ -160,6 +183,7 @@ efi_main(uefi::handle image, uefi::system_table *st)
 {
 	using namespace boot;
 	console con(st->boot_services, st->con_out);
+	check_cpu_supported();
 
 	args::header *args = uefi_preboot(image, st);
 	memory::efi_mem_map map = uefi_exit(args, image, st->boot_services);
