@@ -33,19 +33,10 @@ extern "C" {
 	void (*__ctors_end)(void);
 }
 
-void
-run_constructors()
-{
-	void (**p)(void) = &__ctors;
-	while (p < &__ctors_end) {
-		void (*ctor)(void) = *p++;
-		ctor();
-	}
-}
-
 extern void __kernel_assert(const char *, unsigned, const char *);
 
 /// Bootstrap the memory managers.
+void setup_pat();
 void memory_initialize_pre_ctors(kernel::args::header *kargs);
 void memory_initialize_post_ctors(kernel::args::header *kargs);
 
@@ -64,6 +55,16 @@ init_console()
 	cons->puts("jsix OS ");
 	cons->set_color(0x08, 0x00);
 	cons->puts(GIT_VERSION " booting...\n");
+}
+
+void
+run_constructors()
+{
+	void (**p)(void) = &__ctors;
+	while (p < &__ctors_end) {
+		void (*ctor)(void) = *p++;
+		ctor();
+	}
 }
 
 channel *std_out = nullptr;
@@ -110,8 +111,22 @@ void
 kernel_main(args::header *header)
 {
 	kutil::assert_set_callback(__kernel_assert);
+
 	init_console();
 	logger_init();
+
+	setup_pat();
+
+	bool has_video = false;
+	if (header->video.size > 0) {
+		has_video = true;
+		fb = memory::to_virtual<args::framebuffer>(reinterpret_cast<uintptr_t>(&header->video));
+
+		const args::framebuffer &video = header->video;
+		log::debug(logs::boot, "Framebuffer: %dx%d[%d] type %s @ %016llx",
+			video.horizontal, video.vertical, video.scanline, video.type, video.phys_addr);
+		logger_clear_immediate();
+	}
 
 	gdt_init();
 	interrupts_init();
@@ -135,13 +150,6 @@ kernel_main(args::header *header)
 		}
 	}
 
-	bool has_video = false;
-	if (header->video.size > 0) {
-		fb = memory::to_virtual<args::framebuffer>(reinterpret_cast<uintptr_t>(&header->video));
-		has_video = true;
-		logger_clear_immediate();
-	}
-
 	log::debug(logs::boot, "    jsix header is at: %016lx", header);
 	log::debug(logs::boot, "     Memory map is at: %016lx", header->mem_map);
 	log::debug(logs::boot, "ACPI root table is at: %016lx", header->acpi_table);
@@ -152,7 +160,6 @@ kernel_main(args::header *header)
 
 	interrupts_enable();
 	devices.init_drivers();
-
 	devices.get_lapic()->calibrate_timer();
 
 	/*

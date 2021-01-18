@@ -29,6 +29,7 @@ enum class vm_flags : uint32_t
 	huge_pages      = 0x00000200,
 
 	mmio            = 0x00010000,
+	write_combine   = 0x00020000,
 
 	user_mask       = 0x0000ffff  ///< flags allowed via syscall
 };
