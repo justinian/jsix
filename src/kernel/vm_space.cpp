@@ -170,7 +170,8 @@ vm_space::page_in(const vm_area &vma, uintptr_t offset, uintptr_t phys, size_t c
 	page_table::flag flags =
 		page_table::flag::present |
 		(m_kernel ? page_table::flag::none : page_table::flag::user) |
-		((vma.flags() && vm_flags::write) ? page_table::flag::write : page_table::flag::none);
+		((vma.flags() && vm_flags::write) ? page_table::flag::write : page_table::flag::none) |
+		((vma.flags() && vm_flags::write_combine) ? page_table::flag::wc : page_table::flag::none);
 
 	page_table::iterator it {virt, m_pml4};
 

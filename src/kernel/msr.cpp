@@ -1,5 +1,11 @@
 #include "msr.h"
 
+msr
+find_mtrr(msr type, unsigned index)
+{
+	return static_cast<msr>(static_cast<uint32_t>(type) + (2 * index));
+}
+
 uint64_t
 rdmsr(msr addr)
 {

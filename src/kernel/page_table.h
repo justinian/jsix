@@ -21,14 +21,21 @@ struct page_table
 		present   = 0x0001, /// Entry is present in the table
 		write     = 0x0002, /// Section may be written
 		user      = 0x0004, /// User-accessible
-		mtrr0     = 0x0008, /// MTRR selector bit 0
-		mtrr1     = 0x0010, /// MTRR selector bit 1
+		pat0      = 0x0008, /// PAT selector bit 0
+		pat1      = 0x0010, /// PAT selector bit 1
 		accessed  = 0x0020, /// Entry has been accessed
 		dirty     = 0x0040, /// Page has been written to
 		page      = 0x0080, /// Entry is a large page
-		pte_mtrr2 = 0x0080, /// MTRR selector bit 2 on PT entries
+		pat2      = 0x0080, /// PAT selector bit 2 on PT entries
 		global    = 0x0100, /// Entry is not PCID-specific
-		mtrr2     = 0x1000  /// MTRR selector bit 2 on PD and PDP entries
+		pat2_lg   = 0x1000, /// PAT selector bit 2 on large/huge pages
+
+		wb    = none,
+		wt    = pat0,
+		uc_   = pat1,
+		uc    = pat0 | pat1,
+		wc    = pat0 | pat1 | pat2,
+		wc_lg = pat0 | pat1 | pat2_lg,
 	};
 
 	/// Helper for getting the next level value
