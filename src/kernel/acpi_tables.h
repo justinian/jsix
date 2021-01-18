@@ -198,3 +198,14 @@ struct acpi_hpet
 	uint8_t attributes;
 } __attribute__ ((packed));
 
+struct acpi_bgrt
+{
+	TABLE_HEADER('BGRT');
+	uint16_t version;
+	uint8_t status;
+	uint8_t type;
+	uintptr_t address;
+	uint32_t offset_x;
+	uint32_t offset_y;
+} __attribute__ ((packed));
+
