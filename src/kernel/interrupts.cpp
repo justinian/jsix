@@ -292,8 +292,8 @@ irq_handler(cpu_state *regs)
 		cons->printf("\nReceived unknown IRQ: %d (vec %d)\n",
 				irq, regs->interrupt);
 		cons->set_color();
+
 		print_regs(*regs);
-		_halt();
 	}
 
 	*reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
