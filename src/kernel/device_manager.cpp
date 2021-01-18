@@ -313,6 +313,13 @@ device_manager::probe_pci()
 	}
 }
 
+static uint64_t
+fake_clock_source(void*)
+{
+	static uint64_t value = 0;
+	return value++;
+}
+
 void
 device_manager::init_drivers()
 {
@@ -331,18 +338,20 @@ device_manager::init_drivers()
 		ahcid.register_device(&device);
 	}
 	*/
+	clock *master_clock = nullptr;
 	if (m_hpets.count() > 0) {
 		hpet &h = m_hpets[0];
 		h.enable();
 
 		// becomes the singleton
-		clock *master_clock = new clock(h.rate(), hpet_clock_source, &h);
-		kassert(master_clock, "Failed to allocate master clock");
+		master_clock = new clock(h.rate(), hpet_clock_source, &h);
 		log::info(logs::clock, "Created master clock using HPET 0: Rate %d", h.rate());
 	} else {
-		//TODO: APIC clock?
-		kassert(0, "No HPET master clock");
+		//TODO: Other clocks, APIC clock?
+		master_clock = new clock(5000, fake_clock_source, nullptr);
 	}
+
+	kassert(master_clock, "Failed to allocate master clock");
 }
 
 bool
