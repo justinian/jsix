@@ -215,6 +215,8 @@ allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 	args->table_count = tables_needed - 1;
 	args->page_tables = offset_ptr<void>(addr, page_size);
 
+	console::print(L"    First page (pml4) at: 0x%lx\r\n", pml4);
+
 	add_kernel_pds(pml4, args->page_tables, args->table_count);
 	add_offset_mappings(pml4, args->page_tables, args->table_count);
 
