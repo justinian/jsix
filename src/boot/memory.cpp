@@ -36,6 +36,15 @@ static const wchar_t *memory_type_names[] = {
 	L"persistent memory"
 };
 
+static const wchar_t *kernel_memory_type_names[] = {
+	L"free",
+	L"pending",
+	L"acpi",
+	L"uefi_runtime",
+	L"mmio",
+	L"persistent"
+};
+
 static const wchar_t *
 memory_type_name(uefi::memory_type t)
 {
@@ -43,6 +52,12 @@ memory_type_name(uefi::memory_type t)
 		return memory_type_names[static_cast<uint32_t>(t)];
 
 	return L"Bad Type Value";
+}
+
+static const wchar_t *
+kernel_memory_type_name(kernel::args::mem_type t)
+{
+	return kernel_memory_type_names[static_cast<uint32_t>(t)];
 }
 
 void
@@ -144,6 +159,7 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 	bool first = true;
 	for (auto desc : map) {
 		/*
+		// EFI map dump
 		console::print(L"   Range %lx (%lx) %x(%s) [%lu]\r\n",
 			desc->physical_start, desc->attribute, desc->type, memory_type_name(desc->type), desc->number_of_pages);
 		*/
@@ -216,6 +232,15 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 	// Give just the actually-set entries in the header
 	args->mem_map = kernel_map;
 	args->map_count = i;
+
+	/*
+	// kernel map dump
+	for (unsigned i = 0; i < args->map_count; ++i) {
+		const kernel::args::mem_entry &e = kernel_map[i];
+		console::print(L"   Range %lx (%lx) %x(%s) [%lu]\r\n",
+			e.start, e.attr, e.type, kernel_memory_type_name(e.type), e.pages);
+	}
+	*/
 
 	return map;
 }
