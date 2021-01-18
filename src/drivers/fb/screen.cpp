@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <string.h>
 #include "screen.h"
 
 screen::screen(void *addr, unsigned hres, unsigned vres, pixel_order order) :
@@ -6,6 +8,7 @@ screen::screen(void *addr, unsigned hres, unsigned vres, pixel_order order) :
 	m_resx(hres),
 	m_resy(vres)
 {
+	m_back = reinterpret_cast<pixel_t*>(malloc(hres*vres*sizeof(pixel_t)));
 }
 
 screen::pixel_t
@@ -31,11 +34,17 @@ screen::fill(pixel_t color)
 {
 	const size_t len = m_resx * m_resy;
 	for (size_t i = 0; i < len; ++i)
-		m_fb[i] = color;
+		m_back[i] = color;
 }
 
 void
 screen::draw_pixel(unsigned x, unsigned y, pixel_t color)
 {
-	m_fb[x + y * m_resx] = color;
+	m_back[x + y * m_resx] = color;
+}
+
+void
+screen::update()
+{
+	memcpy(m_fb, m_back, m_resx*m_resy*sizeof(pixel_t));
 }
