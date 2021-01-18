@@ -63,7 +63,7 @@ void irq4_callback(void *)
 
 
 device_manager::device_manager() :
-	m_lapic(0)
+	m_lapic(nullptr)
 {
 	m_irqs.ensure_capacity(32);
 	m_irqs.set_size(16);
@@ -236,12 +236,14 @@ device_manager::load_apic(const acpi_apic *apic)
 		p += length;
 	}
 
+	/*
 	for (uint8_t i = 0; i < m_ioapics[0].get_num_gsi(); ++i) {
 		switch (i) {
 			case 2: break;
 			default: m_ioapics[0].mask(i, false);
 		}
 	}
+	*/
 
 	m_lapic->enable();
 }
