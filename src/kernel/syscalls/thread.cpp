@@ -15,7 +15,7 @@ thread_create(void *rip, j6_handle_t *handle)
 
 	thread *child = p.create_thread();
 	child->add_thunk_user(reinterpret_cast<uintptr_t>(rip));
-	*handle = p.self_handle();
+	*handle = child->self_handle();
 	child->clear_state(thread::state::loading);
 	child->set_state(thread::state::ready);
 
