@@ -36,7 +36,7 @@ endpoint_receive(j6_handle_t handle, j6_tag_t *tag, size_t *len, void *data)
 	if (!e) return j6_err_invalid_arg;
 
 	j6_tag_t out_tag = j6_tag_invalid;
-	size_t out_len = 0;
+	size_t out_len = *len;
 	j6_status_t s = e->receive(&out_tag, &out_len, data);
 	*tag = out_tag;
 	*len = out_len;
@@ -57,7 +57,7 @@ endpoint_sendrecv(j6_handle_t handle, j6_tag_t *tag, size_t *len, void *data)
 		return status;
 
 	j6_tag_t out_tag = j6_tag_invalid;
-	size_t out_len = 0;
+	size_t out_len = *len;
 	j6_status_t s = e->receive(&out_tag, &out_len, data);
 	*tag = out_tag;
 	*len = out_len;
