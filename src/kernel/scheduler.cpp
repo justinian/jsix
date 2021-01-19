@@ -112,7 +112,7 @@ load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb)
 
 	j6_init_value *initv = push<j6_init_value>(tcb->rsp3);
 	initv->type = j6_init_handle_system;
-	initv->value = static_cast<uint64_t>(proc.add_handle(system::get()));
+	initv->value = static_cast<uint64_t>(proc.add_handle(&system::get()));
 
 	initv = push<j6_init_value>(tcb->rsp3);
 	initv->type = j6_init_handle_process;

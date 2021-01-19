@@ -5,6 +5,7 @@
 #include "log.h"
 #include "objects/endpoint.h"
 #include "objects/thread.h"
+#include "objects/system.h"
 #include "syscalls/helpers.h"
 
 extern log::logger &g_logger;
@@ -33,8 +34,15 @@ system_noop()
 j6_status_t
 system_get_log(j6_handle_t sys, char *buffer, size_t *size)
 {
+	if (!size || (*size && !buffer))
+		return j6_err_invalid_arg;
+
+	size_t orig_size = *size;
 	*size = g_logger.get_entry(buffer, *size);
-	return j6_status_ok;
+	if (!g_logger.has_log())
+		system::get().deassert_signal(j6_signal_system_has_log);
+
+	return (*size > orig_size) ? j6_err_insufficient : j6_status_ok;
 }
 
 j6_status_t

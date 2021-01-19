@@ -1,8 +1,10 @@
+#include "j6/signals.h"
 #include "kutil/memory.h"
 #include "kutil/no_construct.h"
 #include "console.h"
 #include "log.h"
-#include "scheduler.h"
+#include "objects/system.h"
+#include "objects/thread.h"
 
 static uint8_t log_buffer[0x10000];
 
@@ -26,29 +28,54 @@ output_log(log::area_t area, log::level severity, const char *message)
 	cons->set_color();
 }
 
+static void
+log_flush()
+{
+	system &sys = system::get();
+	sys.assert_signal(j6_signal_system_has_log);
+}
+
 void
 logger_task()
 {
-	uint8_t buffer[257];
-	auto *ent = reinterpret_cast<log::logger::entry *>(buffer);
 	auto *cons = console::get();
 
 	log::info(logs::task, "Starting kernel logger task");
 	g_logger.set_immediate(nullptr);
+	g_logger.set_flush(log_flush);
 
-	scheduler &s = scheduler::get();
+	thread &self = thread::current();
+	system &sys = system::get();
+
+	size_t buffer_size = 1;
+	uint8_t *buffer = nullptr;
 
 	while (true) {
-		if(g_logger.get_entry(buffer, sizeof(buffer))) {
+		size_t size = g_logger.get_entry(buffer, buffer_size);
+		if (size > buffer_size) {
+			while (size > buffer_size) buffer_size *= 2;
+			kutil::kfree(buffer);
+			buffer = reinterpret_cast<uint8_t*>(kutil::kalloc(buffer_size));
+			kassert(buffer, "Could not allocate logger task buffer");
+			continue;
+		}
+
+		if(size) {
+			auto *ent = reinterpret_cast<log::logger::entry *>(buffer);
 			buffer[ent->bytes] = 0;
+
 			cons->set_color(level_colors[static_cast<int>(ent->severity)]);
 			cons->printf("%7s %5s: %s\n",
 				g_logger.area_name(ent->area),
 				g_logger.level_name(ent->severity),
 				ent->message);
 			cons->set_color();
-		} else {
-			s.schedule();
+		}
+
+		if (!g_logger.has_log()) {
+			sys.deassert_signal(j6_signal_system_has_log);
+			sys.add_blocked_thread(&self);
+			self.wait_on_signals(&sys, j6_signal_system_has_log);
 		}
 	}
 }

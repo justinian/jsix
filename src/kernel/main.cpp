@@ -200,7 +200,7 @@ kernel_main(args::header *header)
 	}
 
 	if (!has_video)
-		sched->create_kernel_task(logger_task, scheduler::max_priority-1, true);
+		sched->create_kernel_task(logger_task, scheduler::max_priority/2, true);
 	sched->create_kernel_task(stdout_task, scheduler::max_priority-1, true);
 
 	const char stdout_message[] = "Hello on the fake stdout channel\n";

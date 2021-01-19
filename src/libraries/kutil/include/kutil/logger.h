@@ -19,17 +19,20 @@ class logger
 {
 public:
 	/// Callback type for immediate-mode logging
-	typedef void (*immediate)(area_t, level, const char *);
+	typedef void (*immediate_cb)(area_t, level, const char *);
+
+	/// Callback type for log flushing
+	typedef void (*flush_cb)();
 
 	/// Default constructor. Creates a logger without a backing store.
 	/// \arg output  Immediate-mode logging output function
-	logger(immediate output = nullptr);
+	logger(immediate_cb output = nullptr);
 
 	/// Constructor. Logs are written to the given buffer.
 	/// \arg buffer  Buffer to which logs are written
 	/// \arg size    Size of `buffer`, in bytes
 	/// \arg output  Immediate-mode logging output function
-	logger(uint8_t *buffer, size_t size, immediate output = nullptr);
+	logger(uint8_t *buffer, size_t size, immediate_cb output = nullptr);
 
 	/// Register a log area for future use.
 	/// \arg area      The key for the new area
@@ -38,7 +41,10 @@ public:
 	void register_area(area_t area, const char *name, level verbosity);
 
 	/// Register an immediate-mode log callback
-	inline void set_immediate(immediate cb) { m_immediate = cb; }
+	inline void set_immediate(immediate_cb cb) { m_immediate = cb; }
+
+	/// Register a flush callback
+	inline void set_flush(flush_cb cb) { m_flush = cb; }
 
 	/// Get the default logger.
 	inline logger & get() { return *s_log; }
@@ -77,8 +83,12 @@ public:
 	/// Get the next log entry from the buffer
 	/// \arg buffer  The buffer to copy the log message into
 	/// \arg size    Size of the passed-in buffer, in bytes
-	/// \returns     Number of bytes copied into the buffer
+	/// \returns     The size of the log entry (if larger than the
+	///              buffer, then no data was copied)
 	size_t get_entry(void *buffer, size_t size);
+
+	/// Get whether there is currently data in the log buffer
+	inline bool has_log() const { return m_buffer.size(); }
 
 private:
 	friend void debug(area_t area, const char *fmt, ...);
@@ -95,7 +105,8 @@ private:
 	static const unsigned num_areas = 1 << (sizeof(area_t) * 8);
 	uint8_t m_levels[num_areas / 2];
 	const char *m_names[num_areas];
-	immediate m_immediate;
+	immediate_cb m_immediate;
+	flush_cb m_flush;
 
 	uint8_t m_sequence;
 

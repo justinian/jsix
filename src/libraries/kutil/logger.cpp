@@ -21,9 +21,10 @@ using kutil::memcpy;
 logger *logger::s_log = nullptr;
 const char *logger::s_level_names[] = {"", "debug", "info", "warn", "error", "fatal"};
 
-logger::logger(logger::immediate output) :
+logger::logger(logger::immediate_cb output) :
 	m_buffer(nullptr, 0),
 	m_immediate(output),
+	m_flush(nullptr),
 	m_sequence(0)
 {
 	memset(&m_levels, 0, sizeof(m_levels));
@@ -31,9 +32,10 @@ logger::logger(logger::immediate output) :
 	s_log = this;
 }
 
-logger::logger(uint8_t *buffer, size_t size, logger::immediate output) :
+logger::logger(uint8_t *buffer, size_t size, logger::immediate_cb output) :
 	m_buffer(buffer, size),
 	m_immediate(output),
+	m_flush(nullptr),
 	m_sequence(0)
 {
 	memset(&m_levels, 0, sizeof(m_levels));
@@ -107,6 +109,9 @@ logger::output(level severity, area_t area, const char *fmt, va_list args)
 
 	memcpy(out, buffer, n);
 	m_buffer.commit(n);
+
+	if (m_flush)
+		m_flush();
 }
 
 size_t
@@ -114,7 +119,6 @@ logger::get_entry(void *buffer, size_t size)
 {
 	void *out;
 	size_t out_size = m_buffer.get_block(&out);
-	entry *ent = reinterpret_cast<entry *>(out);
 	if (out_size == 0 || out == 0)
 		return 0;
 
@@ -122,13 +126,13 @@ logger::get_entry(void *buffer, size_t size)
 	if (out_size < sizeof(entry))
 		return 0;
 
-	kassert(size >= ent->bytes, "Didn't pass a big enough buffer");
-	if (size < ent->bytes)
-		return 0;
+	entry *ent = reinterpret_cast<entry *>(out);
+	if (size >= out_size) {
+		memcpy(buffer, out, ent->bytes);
+		m_buffer.consume(ent->bytes);
+	}
 
-	memcpy(buffer, out, ent->bytes);
-	m_buffer.consume(ent->bytes);
-	return ent->bytes;
+	return out_size;
 }
 
 #define LOG_LEVEL_FUNCTION(name) \

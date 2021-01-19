@@ -10,7 +10,7 @@ class system :
 public:
 	static constexpr kobject::type type = kobject::type::event;
 
-	inline static system * get() { return &s_instance; }
+	inline static system & get() { return s_instance; }
 
 private:
 	static system s_instance;
