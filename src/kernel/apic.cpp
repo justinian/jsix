@@ -68,7 +68,7 @@ lapic::calibrate_timer()
 	set_divisor(1);
 	apic_write(m_base, lapic_timer_init, initial);
 
-	uint64_t us = 200000;
+	uint64_t us = 20000;
 	clock::get().spinwait(us);
 
 	uint32_t remaining = apic_read(m_base, lapic_timer_cur);
