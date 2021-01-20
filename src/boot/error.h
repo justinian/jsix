@@ -12,7 +12,7 @@ class console;
 namespace error {
 
 /// Halt or exit the program with the given error status/message
-[[ noreturn ]] void raise(uefi::status status, const wchar_t *message);
+[[ noreturn ]] void raise(uefi::status status, const wchar_t *message, size_t line = 0);
 
 const wchar_t * message(uefi::status status);
 
@@ -28,6 +28,6 @@ void debug_break();
 #define try_or_raise(s, m) \
 	do { \
 		uefi::status _s = (s); \
-		if (uefi::is_error(_s)) ::boot::error::raise(_s, (m)); \
+		if (uefi::is_error(_s)) ::boot::error::raise(_s, (m), __LINE__); \
 	} while(0)
 

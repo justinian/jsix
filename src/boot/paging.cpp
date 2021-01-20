@@ -118,7 +118,7 @@ private:
 
 		if (!(parent_ent & 1)) {
 			if (!m_cache_count--)
-				error::raise(uefi::status::out_of_resources, L"Page table cache empty");
+				error::raise(uefi::status::out_of_resources, L"Page table cache empty", 0x7ab1e5);
 
 			page_table *table = reinterpret_cast<page_table*>(m_page_cache);
 			m_page_cache = offset_ptr<void>(m_page_cache, page_size);

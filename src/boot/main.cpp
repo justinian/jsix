@@ -163,7 +163,7 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
 memory::efi_mem_map
 uefi_exit(args::header *args, uefi::handle image, uefi::boot_services *bs)
 {
-	status_line status {L"Exiting UEFI"};
+	status_line status {L"Exiting UEFI", nullptr, false};
 
 	memory::efi_mem_map map =
 		memory::build_kernel_mem_map(args, bs);

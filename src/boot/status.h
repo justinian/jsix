@@ -17,6 +17,8 @@ namespace boot {
 class status
 {
 public:
+	status(bool fails_clean = true) : m_fails_clean(fails_clean) {}
+
 	virtual void do_warn(const wchar_t *message, uefi::status status) = 0;
 	virtual void do_fail(const wchar_t *message, uefi::status status) = 0;
 
@@ -28,7 +30,7 @@ public:
 	inline static bool warn(const wchar_t *message, uefi::status status = uefi::status::success) {
 		if (!s_current) return false;
 		s_current->do_warn(message, status);
-		return true;
+		return s_current->m_fails_clean;
 	}
 
 	/// Set the state to error, and print a message. If the state is already at
@@ -39,12 +41,15 @@ public:
 	inline static bool fail(const wchar_t *message, uefi::status status) {
 		if (!s_current) return false;
 		s_current->do_fail(message, status);
-		return true;
+		return s_current->m_fails_clean;
 	}
 
 protected:
 	static status *s_current;
 	static unsigned s_current_type;
+
+private:
+	bool m_fails_clean;
 };
 
 /// Scoped status line reporter. Prints a message and an "OK" if no errors
@@ -59,7 +64,11 @@ public:
 	/// Constructor.
 	/// \arg message  Description of the operation in progress
 	/// \arg context  If non-null, printed after `message` and a colon
-	status_line(const wchar_t *message, const wchar_t *context = nullptr);
+	/// \arg fails_clean If true, this object can handle printing failure
+	status_line(
+		const wchar_t *message,
+		const wchar_t *context = nullptr,
+		bool fails_clean = true);
 	~status_line();
 
 	virtual void do_warn(const wchar_t *message, uefi::status status) override;

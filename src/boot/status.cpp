@@ -30,7 +30,8 @@ status *status::s_current = nullptr;
 unsigned status::s_current_type = 0;
 unsigned status_bar::s_count = 0;
 
-status_line::status_line(const wchar_t *message, const wchar_t *context) :
+status_line::status_line(const wchar_t *message, const wchar_t *context, bool fails_clean) :
+	status(fails_clean),
 	m_level(level_ok),
 	m_depth(0),
 	m_outer(nullptr)
@@ -148,6 +149,7 @@ status_line::do_fail(const wchar_t *message, uefi::status status)
 
 
 status_bar::status_bar(kernel::args::framebuffer const &fb) :
+	status(fb.size),
 	m_outer(nullptr)
 {
 	m_size = (fb.vertical / num_boxes) - 1;

@@ -35,27 +35,28 @@ message(uefi::status status)
 }
 
 [[ noreturn ]] static void
-cpu_assert(uefi::status s, const wchar_t *message)
+cpu_assert(uefi::status s, const wchar_t *message, size_t line)
 {
 	asm volatile (
 		"movq $0xeeeeeeebadbadbad, %%r8;"
 		"movq %0, %%r9;"
 		"movq %1, %%r10;"
+		"movq %2, %%r11;"
 		"movq $0, %%rdx;"
 		"divq %%rdx;"
 		:
-		: "r"((uint64_t)s), "r"(message)
+		: "r"((uint64_t)s), "r"(message), "r"(line)
 		: "rax", "rdx", "r8", "r9", "r10");
 	while (1) asm("hlt");
 }
 
 [[ noreturn ]] void
-raise(uefi::status status, const wchar_t *message)
+raise(uefi::status status, const wchar_t *message, size_t line)
 {
 	if(status_line::fail(message, status))
 		while (1) asm("hlt");
 	else
-		cpu_assert(status, message);
+		cpu_assert(status, message, line);
 }
 
 
