@@ -243,7 +243,7 @@ scheduler::quantum(int priority)
 void
 scheduler::start()
 {
-	log::info(logs::task, "Starting scheduler.");
+	log::info(logs::sched, "Starting scheduler.");
 	wrmsr(msr::ia32_gs_base, reinterpret_cast<uintptr_t>(&bsp_cpu_data));
 	m_apic->enable_timer(isr::isrTimer, false);
 	m_apic->reset_timer(10);
@@ -285,7 +285,7 @@ void scheduler::prune(uint64_t now)
 				delete &p;
 		} else {
 			m_blocked.remove(remove);
-			log::debug(logs::task, "Prune: readying unblocked thread %llx", th->koid());
+			log::debug(logs::sched, "Prune: readying unblocked thread %llx", th->koid());
 			m_runlists[remove->priority].push_back(remove);
 		}
 	}
@@ -315,7 +315,7 @@ scheduler::check_promotions(uint64_t now)
 				tcb->priority -= 1;
 				tcb->time_left = quantum(tcb->priority);
 				m_runlists[tcb->priority].push_back(tcb);
-				log::debug(logs::task, "Scheduler promoting thread %llx, priority %d",
+				log::info(logs::sched, "Scheduler promoting thread %llx, priority %d",
 						th->koid(), tcb->priority);
 			}
 		}
@@ -337,7 +337,7 @@ scheduler::schedule()
 		if (priority < max_priority && !constant) {
 			// Process used its whole timeslice, demote it
 			++m_current->priority;
-			log::debug(logs::task, "Scheduler  demoting thread %llx, priority %d",
+			log::info(logs::sched, "Scheduler  demoting thread %llx, priority %d",
 					th->koid(), m_current->priority);
 		}
 		m_current->time_left = quantum(m_current->priority);
@@ -379,11 +379,11 @@ scheduler::schedule()
 		bsp_cpu_data.p = &next_thread->parent();
 		m_current = next;
 
-		log::debug(logs::task, "Scheduler switching threads %llx->%llx",
+		log::debug(logs::sched, "Scheduler switching threads %llx->%llx",
 				th->koid(), next_thread->koid());
-		log::debug(logs::task, "    priority %d time left %d @ %lld.",
+		log::debug(logs::sched, "    priority %d time left %d @ %lld.",
 				m_current->priority, m_current->time_left, m_clock);
-		log::debug(logs::task, "    PML4 %llx", m_current->pml4);
+		log::debug(logs::sched, "    PML4 %llx", m_current->pml4);
 
 		task_switch(m_current);
 	}
