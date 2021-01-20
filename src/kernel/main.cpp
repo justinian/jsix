@@ -192,8 +192,8 @@ kernel_main(args::header *header)
 
 	// Skip program 0, which is the kernel itself
 	for (size_t i = 1; i < header->num_programs; ++i) {
-		args::program &prog = header->programs[i];
-		thread *th = sched->load_process(prog.phys_addr, prog.virt_addr, prog.size, prog.entrypoint); 
+		args::program *prog = memory::to_virtual(&header->programs[i]);
+		thread *th = sched->load_process(*prog);
 		if (i == 2) {
 			//th->set_state(thread::state::constant);
 		}

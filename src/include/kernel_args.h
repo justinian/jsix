@@ -35,11 +35,26 @@ struct framebuffer {
 	fb_type type;
 };
 
-struct program {
+enum class section_flags : uint32_t {
+	none    = 0,
+	execute = 1,
+	write   = 2,
+	read    = 4,
+};
+
+struct program_section {
 	uintptr_t phys_addr;
 	uintptr_t virt_addr;
+	uint32_t size;
+	section_flags type;
+};
+
+struct program {
 	uintptr_t entrypoint;
-	size_t size;
+	uintptr_t base;
+	size_t total_size;
+	size_t num_sections;
+	program_section sections[3];
 };
 
 enum class mem_type : uint32_t {

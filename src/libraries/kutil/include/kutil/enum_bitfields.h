@@ -131,10 +131,13 @@ operator ! (E rhs)
 }
 
 template <typename E>
-constexpr typename std::enable_if<is_enum_bitfield<E>::value,bool>::type
+constexpr bool
 bitfield_has(E set, E flag)
 {
-	return (set & flag) == flag;
+	return
+		(static_cast<typename std::underlying_type<E>::type>(set) &
+		 static_cast<typename std::underlying_type<E>::type>(flag)) ==
+		 static_cast<typename std::underlying_type<E>::type>(flag);
 }
 
 // Overload the logical-and operator to be 'bitwise-and, bool-cast'

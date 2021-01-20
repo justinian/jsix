@@ -58,6 +58,11 @@ namespace memory {
 		return reinterpret_cast<T*>(a|page_offset);
 	}
 
+	/// Convert a physical address to a virtual one (in the offset-mapped area)
+	template <typename T> T * to_virtual(T *p) {
+		return to_virtual<T>(reinterpret_cast<uintptr_t>(p));
+	}
+
 	/// Get the number of pages needed for a given number of bytes.
 	/// \arg bytes  The number of bytes desired
 	/// \returns    The number of pages needed to contain the desired bytes

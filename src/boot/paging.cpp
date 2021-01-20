@@ -15,7 +15,7 @@ using memory::page_size;
 using ::memory::pml4e_kernel;
 using ::memory::table_entries;
 
-// Flags: 0 0 0 1  0 0 0 0  0 0 1 1 = 0x0103
+// Flags: 0 0 0 1  0 0 0 0  0 0 0 1 = 0x0101
 //         IGN  |  | | | |  | | | +- Present
 //              |  | | | |  | | +--- Writeable
 //              |  | | | |  | +----- Usermode access (supervisor only)
@@ -26,7 +26,7 @@ using ::memory::table_entries;
 //              |  +---------------- PAT (determining memory type for page)
 //              +------------------- Global
 /// Page table entry flags for entries pointing at a page
-constexpr uint16_t page_flags = 0x103;
+constexpr uint64_t page_flags = 0x101;
 
 // Flags: 0  0 0 0 1  1 0 0 0  1 0 1 1 = 0x018b
 //        |   IGN  |  | | | |  | | | +- Present
@@ -40,7 +40,7 @@ constexpr uint16_t page_flags = 0x103;
 //        |        +------------------- Global
 //        +---------------------------- PAT (determining memory type for page)
 /// Page table entry flags for entries pointing at a huge page
-constexpr uint16_t huge_page_flags = 0x183;
+constexpr uint64_t huge_page_flags = 0x18b;
 
 // Flags: 0 0 0 0  0 0 0 0  0 0 1 1 = 0x0003
 //        IGNORED  | | | |  | | | +- Present
@@ -52,7 +52,7 @@ constexpr uint16_t huge_page_flags = 0x183;
 //                 | +-------------- Ignored
 //                 +---------------- Reserved 0 (Table pointer, not page)
 /// Page table entry flags for entries pointing at another table
-constexpr uint16_t table_flags = 0x003;
+constexpr uint64_t table_flags = 0x003;
 
 /// Iterator over page table entries.
 template <unsigned D = 4>
@@ -191,7 +191,7 @@ allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 	status_line status(L"Allocating initial page tables");
 
 	static constexpr size_t pd_tables = 256;   // number of pages for kernelspace PDs
-	static constexpr size_t extra_tables = 49; // number of extra pages
+	static constexpr size_t extra_tables = 64; // number of extra pages
 
 	// number of pages for kernelspace PDs + PML4
 	static constexpr size_t kernel_tables = pd_tables + 1;
@@ -223,23 +223,39 @@ allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 	console::print(L"    Set up initial mappings, %d spare tables.\r\n", args->table_count);
 }
 
+template <typename E>
+constexpr bool has_flag(E set, E flag) {
+	return
+		(static_cast<uint64_t>(set) & static_cast<uint64_t>(flag)) ==
+		 static_cast<uint64_t>(flag);
+}
+
 void
-map_pages(
+map_section(
 	kernel::args::header *args,
-	uintptr_t phys, uintptr_t virt,
-	size_t size)
+	const kernel::args::program_section &section)
 {
 	paging::page_table *pml4 =
 		reinterpret_cast<paging::page_table*>(args->pml4);
 
-	size_t pages = memory::bytes_to_pages(size);
+	size_t pages = memory::bytes_to_pages(section.size);
 	page_entry_iterator<4> iterator{
-		virt, pml4,
+		section.virt_addr, pml4,
 		args->page_tables,
 		args->table_count};
 
+	using kernel::args::section_flags;
+
+	uint64_t flags = page_flags;
+	if (!has_flag(section.type, section_flags::execute))
+		flags |= (1ull << 63); // set NX bit
+
+	if (has_flag(section.type, section_flags::write))
+		flags |= 2;
+
+	uintptr_t phys = section.phys_addr;
 	while (true) {
-		*iterator = phys | page_flags;
+		*iterator = phys | flags;
 		if (--pages == 0)
 			break;
 

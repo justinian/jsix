@@ -192,16 +192,20 @@ efi_main(uefi::handle image, uefi::system_table *st)
 	status_bar status {con.fb()}; // Switch to fb status display
 
 	args::program &kernel = args->programs[0];
-	paging::map_pages(args, kernel.phys_addr, kernel.virt_addr, kernel.size);
+	for (auto &section : kernel.sections)
+		if (section.size)
+			paging::map_section(args, section);
+
 	kernel::entrypoint kentry =
 		reinterpret_cast<kernel::entrypoint>(kernel.entrypoint);
 	status.next();
 
+
+	hw::setup_control_regs();
 	memory::virtualize(args->pml4, map, st->runtime_services);
 	status.next();
 
 	change_pointer(args->pml4);
-	hw::setup_cr4();
 	status.next();
 
 	kentry(args);

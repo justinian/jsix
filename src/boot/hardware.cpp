@@ -37,8 +37,25 @@ find_acpi_table(uefi::system_table *st)
 	return reinterpret_cast<void*>(acpi1_table);
 }
 
+static uint64_t
+rdmsr(uint32_t addr)
+{
+	uint32_t low, high;
+	__asm__ __volatile__ ("rdmsr" : "=a"(low), "=d"(high) : "c"(addr));
+	return (static_cast<uint64_t>(high) << 32) | low;
+}
+
+static void
+wrmsr(uint32_t addr, uint64_t value)
+{
+	uint32_t low = value & 0xffffffff;
+	uint32_t high = value >> 32;
+	__asm__ __volatile__ ("wrmsr" :: "c"(addr), "a"(low), "d"(high));
+}
+
+
 void
-setup_cr4()
+setup_control_regs()
 {
 	uint64_t cr4 = 0;
 	asm volatile ( "mov %%cr4, %0" : "=r" (cr4) );
@@ -49,6 +66,15 @@ setup_cr4()
 		0x020000 | // Enable PCIDs
 		0;
 	asm volatile ( "mov %0, %%cr4" :: "r" (cr4) );
+
+	// Set up IA32_EFER
+	constexpr uint32_t IA32_EFER = 0xC0000080;
+	uint64_t efer = rdmsr(IA32_EFER);
+	efer |=
+		0x0001 | // Enable SYSCALL
+		0x0800 | // Enable NX bit
+		0;
+	wrmsr(IA32_EFER, efer);
 }
 
 } // namespace hw

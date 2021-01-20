@@ -87,6 +87,9 @@ load_program(
 
 	bs->set_mem(pages, total_size, 0);
 
+	program.base = prog_base;
+	program.total_size = total_size;
+	program.num_sections = 0;
 	for (int i = 0; i < header->ph_num; ++i) {
 		ptrdiff_t offset = header->ph_offset + i * header->ph_entsize;
 		const elf::program_header *pheader =
@@ -95,14 +98,18 @@ load_program(
 		if (pheader->type != elf::PT_LOAD)
 			continue;
 
+		args::program_section &section = program.sections[program.num_sections++];
+
 		void *src_start = offset_ptr<void>(data.data, pheader->offset);
 		void *dest_start = offset_ptr<void>(pages, pheader->vaddr - prog_base);
+
 		bs->copy_mem(dest_start, src_start, pheader->file_size);
+		section.phys_addr = reinterpret_cast<uintptr_t>(dest_start);
+		section.virt_addr = pheader->vaddr;
+		section.size = pheader->mem_size;
+		section.type = static_cast<args::section_flags>(pheader->flags);
 	}
 
-	program.phys_addr = reinterpret_cast<uintptr_t>(pages);
-	program.size = total_size;
-	program.virt_addr = prog_base;
 	program.entrypoint = header->entrypoint;
 }
 

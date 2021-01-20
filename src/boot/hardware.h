@@ -13,8 +13,8 @@ namespace hw {
 /// significant bit set to 1.
 void * find_acpi_table(uefi::system_table *st);
 
-/// Enable CPU options in CR4 for the kernel starting state.
-void setup_cr4();
+/// Enable CPU options in CR4 etc for the kernel starting state.
+void setup_control_regs();
 
 } // namespace hw
 } // namespace boot

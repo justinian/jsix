@@ -34,7 +34,7 @@ const uint64_t rflags_int = 0x202;
 
 extern "C" {
 	void preloaded_process_init();
-	uintptr_t load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb);
+	uintptr_t load_process_image(const kernel::args::program*);
 };
 
 extern uint64_t idle_stack_end;
@@ -76,20 +76,28 @@ inline T * push(uintptr_t &rsp, size_t size = sizeof(T)) {
 }
 
 uintptr_t
-load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb)
+load_process_image(const kernel::args::program *program)
 {
 	using memory::page_align_down;
 	using memory::page_align_up;
+	using kernel::args::section_flags;
 
 	// We're now in the process space for this process, allocate memory for the
 	// process code and load it
 	process &proc = process::current();
 	thread &th = thread::current();
+	TCB *tcb = th.tcb();
 	vm_space &space = proc.space();
 
-	vm_area *vma = new vm_area_open(bytes, space, vm_flags::zero|vm_flags::write);
-	space.add(virt, vma);
-	vma->commit(phys, 0, memory::page_count(bytes));
+	for (const auto &sect : program->sections) {
+		vm_flags flags =
+			(bitfield_has(sect.type, section_flags::execute) ? vm_flags::exec : vm_flags::none) |
+			(bitfield_has(sect.type, section_flags::write) ? vm_flags::write : vm_flags::none);
+
+		vm_area *vma = new vm_area_open(sect.size, space, flags);
+		space.add(sect.virt_addr, vma);
+		vma->commit(sect.phys_addr, 0, memory::page_count(sect.size));
+	}
 
 	// double zero stack sentinel
 	*push<uint64_t>(tcb->rsp3) = 0;
@@ -141,7 +149,8 @@ load_process_image(uintptr_t phys, uintptr_t virt, size_t bytes, TCB *tcb)
 
 	// Crazypants framebuffer part
 	if (fb) {
-		vma = new vm_area_open(fb->size, space, vm_flags::write|vm_flags::mmio|vm_flags::write_combine);
+		vm_area *vma = new vm_area_open(fb->size, space,
+				vm_flags::write|vm_flags::mmio|vm_flags::write_combine);
 		space.add(0x100000000, vma);
 		vma->commit(fb->phys_addr, 0, memory::page_count(fb->size));
 	}
@@ -167,7 +176,7 @@ scheduler::create_process(bool user)
 }
 
 thread *
-scheduler::load_process(uintptr_t phys, uintptr_t virt, size_t size, uintptr_t entry)
+scheduler::load_process(kernel::args::program &program)
 {
 
 	uint16_t kcs = (1 << 3) | 0; // Kernel CS is GDT entry 1, ring 0
@@ -180,23 +189,20 @@ scheduler::load_process(uintptr_t phys, uintptr_t virt, size_t size, uintptr_t e
 	auto *tcb = th->tcb();
 
 	// Create an initial kernel stack space
-	uintptr_t *stack = reinterpret_cast<uintptr_t *>(tcb->rsp0) - 9;
+	uintptr_t *stack = reinterpret_cast<uintptr_t *>(tcb->rsp0) - 6;
 
 	// Pass args to preloaded_process_init on the stack
-	stack[0] = reinterpret_cast<uintptr_t>(phys);
-	stack[1] = reinterpret_cast<uintptr_t>(virt);
-	stack[2] = reinterpret_cast<uintptr_t>(size);
-	stack[3] = reinterpret_cast<uintptr_t>(tcb);
+	stack[0] = reinterpret_cast<uintptr_t>(&program);
 
 	tcb->rsp = reinterpret_cast<uintptr_t>(stack);
 	th->add_thunk_kernel(reinterpret_cast<uintptr_t>(preloaded_process_init));
 
 	// Arguments for iret - rip will be pushed on before these
-	stack[4] = reinterpret_cast<uintptr_t>(entry);
-	stack[5] = cs;
-	stack[6] = rflags_int | (3 << 12);
-	stack[7] = process::stacks_top;
-	stack[8] = ss;
+	stack[1] = reinterpret_cast<uintptr_t>(program.entrypoint);
+	stack[2] = cs;
+	stack[3] = rflags_int | (3 << 12);
+	stack[4] = process::stacks_top;
+	stack[5] = ss;
 
 	tcb->rsp3 = process::stacks_top;
 

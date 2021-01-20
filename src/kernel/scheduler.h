@@ -5,6 +5,11 @@
 #include <stdint.h>
 #include "objects/thread.h"
 
+namespace kernel {
+namespace args {
+	struct program;
+}}
+
 class lapic;
 class process;
 struct page_table;
@@ -41,12 +46,9 @@ public:
 	scheduler(lapic *apic);
 
 	/// Create a new process from a program image in memory.
-	/// \arg phys  Physical address of the loaded program image
-	/// \arg virt  Virtual address of the loaded program image
-	/// \arg size  Size of the program image, in bytes
-	/// \arg entry Virtual address of the program entrypoint
-	/// \returns   The main thread of the loaded process
-	thread * load_process(uintptr_t phys, uintptr_t virt, size_t size, uintptr_t entry);
+	/// \arg program  The descriptor of the pogram in memory
+	/// \returns      The main thread of the loaded process
+	thread * load_process(kernel::args::program &program);
 
 	/// Create a new kernel task
 	/// \arg proc     Function to run as a kernel task
