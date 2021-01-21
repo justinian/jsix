@@ -28,22 +28,28 @@ vma_create_map(j6_handle_t *handle, size_t size, uintptr_t base, uint32_t flags)
 }
 
 j6_status_t
-vma_map(j6_handle_t handle, uintptr_t base)
+vma_map(j6_handle_t handle, j6_handle_t proc, uintptr_t base)
 {
 	vm_area *a = get_handle<vm_area>(handle);
 	if (!a) return j6_err_invalid_arg;
 
-	process::current().space().add(base, a);
+	process *p = get_handle<process>(proc);
+	if (!p) return j6_err_invalid_arg;
+
+	p->space().add(base, a);
 	return j6_status_ok;
 }
 
 j6_status_t
-vma_unmap(j6_handle_t handle)
+vma_unmap(j6_handle_t handle, j6_handle_t proc)
 {
 	vm_area *a = get_handle<vm_area>(handle);
 	if (!a) return j6_err_invalid_arg;
 
-	process::current().space().remove(a);
+	process *p = get_handle<process>(proc);
+	if (!p) return j6_err_invalid_arg;
+
+	p->space().remove(a);
 	return j6_status_ok;
 }
 

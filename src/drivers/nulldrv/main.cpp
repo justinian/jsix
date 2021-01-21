@@ -101,8 +101,13 @@ main(int argc, const char **argv)
 	_syscall_system_log(message);
 
 	_syscall_system_log("main thread waiting on child");
-
 	result = _syscall_object_wait(child, -1ull, &out);
+	if (result != j6_status_ok)
+		return result;
+
+	_syscall_system_log("main thread creating a new process");
+	j6_handle_t child_proc = j6_handle_invalid;
+	result = _syscall_process_create(&child_proc);
 	if (result != j6_status_ok)
 		return result;
 

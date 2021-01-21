@@ -3,8 +3,23 @@
 
 #include "log.h"
 #include "objects/process.h"
+#include "syscalls/helpers.h"
 
 namespace syscalls {
+
+j6_status_t
+process_create(j6_handle_t *handle)
+{
+	process *child = construct_handle<process>(handle);
+	log::debug(logs::syscall, "Process %llx created", child->koid());
+	return j6_status_ok;
+}
+
+j6_status_t
+process_start(j6_handle_t *handle, uintptr_t entrypoint)
+{
+	return j6_err_nyi;
+}
 
 j6_status_t
 process_exit(int64_t status)
