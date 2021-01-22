@@ -14,8 +14,10 @@
 namespace uefi {
 namespace bs_impl {
 	using allocate_pages = status (*)(allocate_type, memory_type, size_t, void**);
+	using free_pages = status (*)(void*, size_t);
 	using get_memory_map = status (*)(size_t*, memory_descriptor*, size_t*, size_t*, uint32_t*);
 	using allocate_pool = status (*)(memory_type, uint64_t, void**);
+	using free_pool = status (*)(void*);
 	using handle_protocol = status (*)(handle, const guid*, void**);
 	using create_event = status (*)(evt, tpl, event_notify, void*, event*);
 	using exit_boot_services = status (*)(handle, size_t);
@@ -35,10 +37,10 @@ struct boot_services {
 
 	// Memory Services
 	bs_impl::allocate_pages allocate_pages;
-	void *free_pages;
+	bs_impl::free_pages free_pages;
 	bs_impl::get_memory_map get_memory_map;
 	bs_impl::allocate_pool allocate_pool;
-	void *free_pool;
+	bs_impl::free_pool free_pool;
 
 	// Event & Timer Services
 	bs_impl::create_event create_event;

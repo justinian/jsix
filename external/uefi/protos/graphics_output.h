@@ -17,6 +17,7 @@ struct graphics_output
 {
     static constexpr uefi::guid guid{ 0x9042a9de,0x23dc,0x4a38,{0x96,0xfb,0x7a,0xde,0xd0,0x80,0x51,0x6a} };
 
+
     inline uefi::status query_mode(uint32_t mode_number, uint64_t * size_of_info, uefi::graphics_output_mode_info ** info) {
         return _query_mode(this, mode_number, size_of_info, info);
     }

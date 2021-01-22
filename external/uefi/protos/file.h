@@ -14,7 +14,7 @@ struct file;
 
 struct file
 {
-    
+
 
     inline uefi::status open(file ** new_handle, const wchar_t * file_name, file_mode open_mode, file_attr attributes) {
         return _open(this, new_handle, file_name, open_mode, attributes);

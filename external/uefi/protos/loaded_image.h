@@ -18,6 +18,7 @@ struct loaded_image
 {
     static constexpr uefi::guid guid{ 0x5b1b31a1,0x9562,0x11d2,{0x8e,0x3f,0x00,0xa0,0xc9,0x69,0x72,0x3b} };
 
+
     inline uefi::status unload(uefi::handle image_handle) {
         return _unload(image_handle);
     }
