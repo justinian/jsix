@@ -13,6 +13,7 @@ CPU_FEATURE_REQ(pat,        0x00000001, 0, edx, 16)
 CPU_FEATURE_REQ(fxsr,       0x00000001, 0, edx, 24)
 
 CPU_FEATURE_OPT(fsgsbase,   0x00000007, 0, ebx,  0)
+CPU_FEATURE_OPT(bmi1,       0x00000007, 0, ebx,  3)
 CPU_FEATURE_OPT(invpcid,    0x00000007, 0, ebx, 10)
 
 CPU_FEATURE_OPT(pku,        0x00000007, 0, ecx,  3)

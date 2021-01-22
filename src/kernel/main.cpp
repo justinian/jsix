@@ -37,8 +37,8 @@ extern void __kernel_assert(const char *, unsigned, const char *);
 
 /// Bootstrap the memory managers.
 void setup_pat();
-void memory_initialize_pre_ctors(kernel::args::header *kargs);
-void memory_initialize_post_ctors(kernel::args::header *kargs);
+void memory_initialize_pre_ctors(kernel::args::header &kargs);
+void memory_initialize_post_ctors(kernel::args::header &kargs);
 
 using namespace kernel;
 
@@ -92,9 +92,9 @@ kernel_main(args::header *header)
 	gdt_init();
 	interrupts_init();
 
-	memory_initialize_pre_ctors(header);
+	memory_initialize_pre_ctors(*header);
 	run_constructors();
-	memory_initialize_post_ctors(header);
+	memory_initialize_post_ctors(*header);
 
 	for (size_t i = 0; i < header->num_modules; ++i) {
 		args::module &mod = header->modules[i];

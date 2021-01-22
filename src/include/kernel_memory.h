@@ -35,10 +35,16 @@ namespace memory {
 	constexpr uintptr_t stacks_start = heap_start - kernel_max_stacks;
 
 	/// Max size of kernel buffers area
-	constexpr size_t kernel_max_buffers = 0x10000000000ull; // 1TiB
+	constexpr size_t kernel_max_buffers = 0x8000000000ull; // 512GiB
 
 	/// Start of kernel buffers
 	constexpr uintptr_t buffers_start = stacks_start - kernel_max_buffers;
+
+	/// Max size of kernel bitmap area
+	constexpr size_t kernel_max_bitmap = 0x8000000000ull; // 512GiB
+
+	/// Start of kernel bitmap
+	constexpr uintptr_t bitmap_start = buffers_start - kernel_max_bitmap;
 
 	/// First kernel space PML4 entry
 	constexpr unsigned pml4e_kernel = 256;

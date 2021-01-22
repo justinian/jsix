@@ -55,7 +55,7 @@ console::console(uefi::boot_services *bs, uefi::protos::simple_text_output *out)
 	m_out->output_string(GIT_VERSION_WIDE);
 
 	m_out->set_attribute(uefi::attribute::light_gray);
-	m_out->output_string(L" booting...\r\n\n");
+	m_out->output_string(L" booting...\r\n");
 
 	if (m_fb.type != kernel::args::fb_type::none) {
 		wchar_t const * type = nullptr;

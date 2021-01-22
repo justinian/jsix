@@ -75,6 +75,18 @@ struct mem_entry
 	uint32_t attr;
 };
 
+constexpr size_t frames_per_block = 64 * 64 * 64;
+
+struct frame_block
+{
+	uintptr_t base;
+	uint32_t count;
+	uint32_t attrs;
+	uint64_t map1;
+	uint64_t map2[64];
+	uint64_t *bitmap;
+};
+
 enum class boot_flags : uint16_t {
 	none  = 0x0000,
 	debug = 0x0001
@@ -88,6 +100,7 @@ struct header {
 	void *pml4;
 	void *page_tables;
 	size_t table_count;
+	size_t table_pages;
 
 	program *programs;
 	size_t num_programs;
@@ -97,6 +110,10 @@ struct header {
 
 	mem_entry *mem_map;
 	size_t map_count;
+
+	frame_block *frame_blocks;
+	size_t frame_block_count;
+	size_t frame_block_pages;
 
 	void *runtime_services;
 	void *acpi_table;

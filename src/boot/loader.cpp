@@ -27,7 +27,7 @@ load_file(
 	fs::file file = disk.open(path);
 	buffer b = file.load(type);
 
-	console::print(L"    Loaded at: 0x%lx, %d bytes\r\n", b.data, b.size);
+	//console::print(L"    Loaded at: 0x%lx, %d bytes\r\n", b.data, b.size);
 	return b;
 }
 

@@ -191,10 +191,13 @@ efi_main(uefi::handle image, uefi::system_table *st)
 	args->video = con.fb();
 	status_bar status {con.fb()}; // Switch to fb status display
 
+	// Map the kernel to the appropriate address
 	args::program &kernel = args->programs[0];
 	for (auto &section : kernel.sections)
 		if (section.size)
 			paging::map_section(args, section);
+
+	memory::fix_frame_blocks(args);
 
 	kernel::entrypoint kentry =
 		reinterpret_cast<kernel::entrypoint>(kernel.entrypoint);

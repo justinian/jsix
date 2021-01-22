@@ -212,6 +212,7 @@ allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 	page_table *pml4 = reinterpret_cast<page_table*>(addr);
 
 	args->pml4 = pml4;
+	args->table_pages = tables_needed;
 	args->table_count = tables_needed - 1;
 	args->page_tables = offset_ptr<void>(addr, page_size);
 
@@ -220,7 +221,7 @@ allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
 	add_kernel_pds(pml4, args->page_tables, args->table_count);
 	add_offset_mappings(pml4, args->page_tables, args->table_count);
 
-	console::print(L"    Set up initial mappings, %d spare tables.\r\n", args->table_count);
+	//console::print(L"    Set up initial mappings, %d spare tables.\r\n", args->table_count);
 }
 
 template <typename E>
@@ -231,37 +232,54 @@ constexpr bool has_flag(E set, E flag) {
 }
 
 void
-map_section(
+map_pages(
 	kernel::args::header *args,
-	const kernel::args::program_section &section)
+	uintptr_t phys, uintptr_t virt,
+	size_t count, bool write_flag, bool exe_flag)
 {
+	if (!count)
+		return;
+
 	paging::page_table *pml4 =
 		reinterpret_cast<paging::page_table*>(args->pml4);
 
-	size_t pages = memory::bytes_to_pages(section.size);
 	page_entry_iterator<4> iterator{
-		section.virt_addr, pml4,
+		virt, pml4,
 		args->page_tables,
 		args->table_count};
 
-	using kernel::args::section_flags;
-
 	uint64_t flags = page_flags;
-	if (!has_flag(section.type, section_flags::execute))
+	if (!exe_flag)
 		flags |= (1ull << 63); // set NX bit
-
-	if (has_flag(section.type, section_flags::write))
+	if (write_flag)
 		flags |= 2;
 
-	uintptr_t phys = section.phys_addr;
 	while (true) {
 		*iterator = phys | flags;
-		if (--pages == 0)
+		if (--count == 0)
 			break;
 
 		iterator.increment();
 		phys += page_size;
 	}
+}
+
+void
+map_section(
+	kernel::args::header *args,
+	const kernel::args::program_section &section)
+{
+	using kernel::args::section_flags;
+
+	size_t pages = memory::bytes_to_pages(section.size);
+
+	map_pages(
+		args,
+		section.phys_addr,
+		section.virt_addr,
+		pages,
+		has_flag(section.type, section_flags::write),
+		has_flag(section.type, section_flags::execute));
 }
 
 

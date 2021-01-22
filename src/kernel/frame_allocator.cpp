@@ -2,20 +2,11 @@
 #include "kutil/assert.h"
 #include "kutil/memory.h"
 #include "frame_allocator.h"
+#include "kernel_args.h"
+#include "kernel_memory.h"
+#include "log.h"
 
 using memory::frame_size;
-using memory::page_offset;
-using frame_block_node = kutil::list_node<frame_block>;
-
-int
-frame_block::compare(const frame_block &rhs) const
-{
-	if (address < rhs.address)
-		return -1;
-	else if (address > rhs.address)
-		return 1;
-	return 0;
-}
 
 
 frame_allocator &
@@ -25,54 +16,142 @@ frame_allocator::get()
 	return g_frame_allocator;
 }
 
-frame_allocator::frame_allocator() {}
+frame_allocator::frame_allocator(kernel::args::frame_block *frames, size_t count) :
+	m_blocks(frames),
+	m_count(count)
+{
+}
+
+inline unsigned
+bsf(uint64_t v)
+{
+	asm ("tzcntq %q0, %q1" : "=r"(v) : "r"(v) : "cc");
+	return v;
+}
 
 size_t
 frame_allocator::allocate(size_t count, uintptr_t *address)
 {
-	kassert(!m_free.empty(), "frame_allocator::pop_frames ran out of free frames!");
-	if (m_free.empty())
-		return 0;
+	for (long i = m_count - 1; i >= 0; ++i) {
+		frame_block &block = m_blocks[i];
 
-	auto *first = m_free.front();
+		if (!block.map1)
+			continue;
 
-	if (count >= first->count) {
-		*address = first->address;
-		m_free.remove(first);
-		return first->count;
-	} else {
-		first->count -= count;
-		*address = first->address + (first->count * frame_size);
+		// Tree walk to find the first available page
+		unsigned o1 = bsf(block.map1);
+
+		uint64_t m2 = block.map2[o1];
+		unsigned o2 = bsf(m2);
+
+		uint64_t m3 = block.bitmap[(o1 << 6) + o2];
+		unsigned o3 = bsf(m3);
+
+		unsigned frame = (o1 << 12) + (o2 << 6) + o3;
+
+		// See how many contiguous pages are here
+		unsigned n = bsf(~m3 >> o3);
+		if (n > count)
+			n = count;
+
+		*address = block.base + frame * frame_size;
+
+		// Clear the bits to mark these pages allocated
+		m3 &= ~(((1 << n) - 1) << o3);
+		block.bitmap[(o1 << 6) + o2] = m3;
+		if (!m3) {
+			// if that was it for this group, clear the next level bit
+			m2 &= ~(1 << o2);
+			block.map2[o1] = m2;
+
+			if (!m2) {
+				// if that was cleared too, update the top level
+				block.map1 &= ~(1 << o1);
+			}
+		}
+
 		return count;
 	}
-}
 
-inline uintptr_t end(frame_block *node) { return node->address + node->count * frame_size; }
+	kassert(false, "frame_allocator ran out of free frames!");
+	return 0;
+}
 
 void
 frame_allocator::free(uintptr_t address, size_t count)
 {
 	kassert(address % frame_size == 0, "Trying to free a non page-aligned frame!");
 
-	frame_block_node *node =
-		reinterpret_cast<frame_block_node*>(address + page_offset);
+	if (!count)
+		return;
 
-	kutil::memset(node, 0, sizeof(frame_block_node));
-	node->address = address;
-	node->count = count;
+	for (long i = 0; i < m_count; ++i) {
+		frame_block &block = m_blocks[i];
+		uintptr_t end = block.base + block.count * frame_size;
 
-	m_free.sorted_insert(node);
+		if (address < block.base || address >= end)
+			continue;
 
-	frame_block_node *next = node->next();
-	if (next && end(node) == next->address) {
-		node->count += next->count;
-		m_free.remove(next);
+		uint64_t frame = (address - block.base) >> 12;
+		unsigned o1 = (frame >> 12) & 0x3f;
+		unsigned o2 = (frame >> 6) & 0x3f;
+		unsigned o3 = frame & 0x3f;
+
+		while (count--) {
+			block.map1 |= (1 << o1);
+			block.map2[o1] |= (1 << o2);
+			block.bitmap[o2] |= (1 << o3);
+			if (++o3 == 64) {
+				o3 = 0;
+				if (++o2 == 64) {
+					o2 = 0;
+					++o1;
+					kassert(o1 < 64, "Tried to free pages past the end of a block");
+				}
+			}
+		}
 	}
+}
 
-	frame_block_node *prev = node->prev();
-	if (prev && end(prev) == address) {
-		prev->count += node->count;
-		m_free.remove(node);
+void
+frame_allocator::used(uintptr_t address, size_t count)
+{
+	kassert(address % frame_size == 0, "Trying to mark a non page-aligned frame!");
+
+	if (!count)
+		return;
+
+	for (long i = 0; i < m_count; ++i) {
+		frame_block &block = m_blocks[i];
+		uintptr_t end = block.base + block.count * frame_size;
+
+		if (address < block.base || address >= end)
+			continue;
+
+		uint64_t frame = (address - block.base) >> 12;
+		unsigned o1 = (frame >> 12) & 0x3f;
+		unsigned o2 = (frame >> 6) & 0x3f;
+		unsigned o3 = frame & 0x3f;
+
+		while (count--) {
+			block.bitmap[o2] &= ~(1 << o3);
+			if (!block.bitmap[o2]) {
+				block.map2[o1] &= ~(1 << o2);
+
+				if (!block.map2[o1]) {
+					block.map1 &= ~(1 << o1);
+				}
+			}
+
+			if (++o3 == 64) {
+				o3 = 0;
+				if (++o2 == 64) {
+					o2 = 0;
+					++o1;
+					kassert(o1 < 64, "Tried to mark pages past the end of a block");
+				}
+			}
+		}
 	}
 }
 

@@ -41,12 +41,13 @@ struct efi_mem_map
 	using iterator = offset_iterator<desc>;
 
 	size_t length;     ///< Total length of the map data
+	size_t total;      ///< Total allocated space for map data
 	size_t size;       ///< Size of an entry in the array
 	size_t key;        ///< Key for detecting changes
 	uint32_t version;  ///< Version of the `memory_descriptor` struct
 	desc *entries;     ///< The array of UEFI descriptors
 
-	efi_mem_map() : length(0), size(0), key(0), version(0), entries(nullptr) {}
+	efi_mem_map() : length(0), total(0), size(0), key(0), version(0), entries(nullptr) {}
 
 	/// Get the count of entries in the array
 	inline size_t num_entries() const { return length / size; }
@@ -61,6 +62,14 @@ struct efi_mem_map
 /// Add the kernel's memory map as a module to the kernel args.
 /// \returns  The uefi memory map used to build the kernel map
 efi_mem_map build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs);
+
+/// Create the kernel frame allocation maps
+void build_kernel_frame_blocks(
+		const kernel::args::mem_entry *map, size_t nent,
+		kernel::args::header *args, uefi::boot_services *bs);
+
+/// Map the frame allocation maps to the right spot and fix up pointers
+void fix_frame_blocks(kernel::args::header *args);
 
 /// Activate the given memory mappings. Sets the given page tables live as well
 /// as informs UEFI runtime services of the new mappings.

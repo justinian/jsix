@@ -38,6 +38,14 @@ void allocate_tables(
 /// tables in the current PML4.
 void add_current_mappings(page_table *new_pml4);
 
+/// Map physical memory pages to virtual addresses in the given page tables.
+/// \arg args    The kernel args header, used for the page table cache and pml4
+/// \arg section The program section to load
+void map_pages(
+	kernel::args::header *args,
+	uintptr_t phys, uintptr_t virt,
+	size_t count, bool write_flag, bool exe_flag);
+
 /// Map a program section in physical memory to its virtual address in the
 /// given page tables.
 /// \arg args    The kernel args header, used for the page table cache and pml4
