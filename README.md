@@ -1,3 +1,5 @@
+![jsix](assets/jsix.svg)
+
 # jsix: A hobby operating system
 
 **jsix** is the hobby operating system that I am currently building. It's far
