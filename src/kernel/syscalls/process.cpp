@@ -22,7 +22,20 @@ process_start(j6_handle_t *handle, uintptr_t entrypoint)
 }
 
 j6_status_t
-process_exit(int64_t status)
+process_kill(j6_handle_t handle)
+{
+	process &p = process::current();
+	process *c = get_handle<process>(handle);
+	if (!c) return j6_err_invalid_arg;
+
+	log::debug(logs::syscall, "Process %llx killed by process %llx", c->koid(), p.koid());
+	c->exit(-1u);
+
+	return j6_status_ok;
+}
+
+j6_status_t
+process_exit(int32_t status)
 {
 	process &p = process::current();
 	log::debug(logs::syscall, "Process %llx exiting with code %d", p.koid(), status);

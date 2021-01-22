@@ -34,7 +34,7 @@ public:
 
 	/// Terminate this process.
 	/// \arg code   The return code to exit with.
-	void exit(unsigned code);
+	void exit(int32_t code);
 
 	/// Update internal bookkeeping about threads.
 	void update();
@@ -84,7 +84,7 @@ private:
 	// This constructor is called by create_kernel_process
 	process(page_table *kpml4);
 
-	uint32_t m_return_code;
+	int32_t m_return_code;
 
 	vm_space m_space;
 

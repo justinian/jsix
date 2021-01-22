@@ -131,7 +131,7 @@ public:
 
 	/// Terminate this thread.
 	/// \arg code   The return code to exit with.
-	void exit(unsigned code);
+	void exit(int32_t code);
 
 	/// Add a stack header that returns to the given address in kernel space.
 	/// \arg rip  The address to return to, must be kernel space
@@ -173,7 +173,7 @@ private:
 	wait_type m_wait_type;
 	// There should be 1 byte of padding here
 
-	uint32_t m_return_code;
+	int32_t m_return_code;
 
 	uint64_t m_wait_data;
 	j6_status_t m_wait_result;

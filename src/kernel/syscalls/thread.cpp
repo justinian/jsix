@@ -26,7 +26,7 @@ thread_create(void *rip, j6_handle_t *handle)
 }
 
 j6_status_t
-thread_exit(int64_t status)
+thread_exit(int32_t status)
 {
 	thread &th = thread::current();
 	log::debug(logs::syscall, "Thread %llx exiting with code %d", th.koid(), status);

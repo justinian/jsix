@@ -52,7 +52,7 @@ process::create_kernel_process(page_table *pml4)
 }
 
 void
-process::exit(unsigned code)
+process::exit(int32_t code)
 {
 	// TODO: make this thread-safe
 	m_state = state::exited;

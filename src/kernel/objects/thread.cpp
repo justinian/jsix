@@ -136,7 +136,7 @@ thread::wake_on_result(kobject *obj, j6_status_t result)
 }
 
 void
-thread::exit(uint32_t code)
+thread::exit(int32_t code)
 {
 	m_return_code = code;
 	set_state(state::exited);

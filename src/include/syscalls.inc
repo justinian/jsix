@@ -10,10 +10,11 @@ SYSCALL(0x0b, object_close,      j6_handle_t)
 
 SYSCALL(0x10, process_create,    j6_handle_t *)
 SYSCALL(0x11, process_start,     j6_handle_t *, uintptr_t)
-SYSCALL(0x17, process_exit,      int64_t)
+SYSCALL(0x11, process_kill,      j6_handle_t)
+SYSCALL(0x17, process_exit,      int32_t)
 
 SYSCALL(0x18, thread_create,     void *, j6_handle_t *)
-SYSCALL(0x19, thread_exit,       int64_t)
+SYSCALL(0x19, thread_exit,       int32_t)
 SYSCALL(0x1a, thread_pause,      void)
 SYSCALL(0x1b, thread_sleep,      uint64_t)
 
