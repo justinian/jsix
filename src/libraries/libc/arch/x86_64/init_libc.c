@@ -28,8 +28,9 @@ _init_libc(uint64_t *rsp)
 	__initv = (struct j6_init_value *)rsp;
 
 	for (unsigned i = 0; i < __initc; ++i) {
-		if (__initv[i].type == j6_init_handle_system) {
-			__handle_sys = __initv[i].value;
+		if (__initv[i].type == j6_init_handle_other &&
+			__initv[i].handle.type == j6_object_type_system) {
+			__handle_sys = __initv[i].handle.handle;
 			break;
 		}
 	}

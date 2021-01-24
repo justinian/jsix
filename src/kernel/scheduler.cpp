@@ -119,27 +119,26 @@ load_process_image(const kernel::args::program *program)
 		fb_desc->flags |= 1;
 
 	j6_init_value *initv = push<j6_init_value>(tcb->rsp3);
-	initv->type = j6_init_handle_system;
-	initv->value = static_cast<uint64_t>(proc.add_handle(&system::get()));
+	initv->type = j6_init_handle_other;
+	initv->handle.type = j6_object_type_system;
+	initv->handle.handle = proc.add_handle(&system::get());
 
 	initv = push<j6_init_value>(tcb->rsp3);
-	initv->type = j6_init_handle_process;
-	initv->value = static_cast<uint64_t>(proc.self_handle());
+	initv->type = j6_init_handle_self;
+	initv->handle.type = j6_object_type_process;
+	initv->handle.handle = proc.self_handle();
 
 	initv = push<j6_init_value>(tcb->rsp3);
-	initv->type = j6_init_handle_thread;
-	initv->value = static_cast<uint64_t>(th.self_handle());
-
-	initv = push<j6_init_value>(tcb->rsp3);
-	initv->type = j6_init_handle_space;
-	//initv->value = static_cast<uint64_t>(proc.add_handle(&space));
+	initv->type = j6_init_handle_self;
+	initv->handle.type = j6_object_type_thread;
+	initv->handle.handle = th.self_handle();
 
 	initv = push<j6_init_value>(tcb->rsp3);
 	initv->type = j6_init_desc_framebuffer;
-	initv->value = reinterpret_cast<uint64_t>(fb_desc);
+	initv->data = fb_desc;
 
 	uint64_t *initc = push<uint64_t>(tcb->rsp3);
-	*initc = 5;
+	*initc = 4;
 
 	char **argv0 = push<char*>(tcb->rsp3);
 	*argv0 = message_arg;

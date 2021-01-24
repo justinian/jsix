@@ -36,15 +36,10 @@ typedef uint64_t j6_handle_t;
 #define j6_handle_id_mask 0xffffffffull
 #define j6_handle_invalid 0xffffffffull
 
-/// A process' initial data structure for communicating with the system
-struct j6_process_init
-{
-	j6_handle_t process;
-	j6_handle_t handles[3];
-};
+enum j6_object_type {
+#define OBJECT_TYPE( name, val ) j6_object_type_ ## name = val,
+#include "j6/object_types.inc"
+#undef OBJECT_TYPE
 
-/// A thread's initial data structure
-struct j6_thread_init
-{
-	j6_handle_t thread;
+	j6_object_type_max
 };

@@ -16,17 +16,9 @@ public:
 	/// Types of kernel objects.
 	enum class type : uint16_t
 	{
-		none,
-		system,
-
-		event,
-		channel,
-		endpoint,
-
-		vma,
-
-		process,
-		thread,
+#define OBJECT_TYPE( name, val ) name = val,
+#include "j6/object_types.inc"
+#undef OBJECT_TYPE
 
 		max
 	};

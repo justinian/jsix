@@ -41,7 +41,7 @@ main(int argc, const char **argv)
 	j6_init_framebuffer *fb = nullptr;
 	for (unsigned i = 0; i < initc; ++i) {
 		if (initv[i].type == j6_init_desc_framebuffer) {
-			fb = reinterpret_cast<j6_init_framebuffer*>(initv[i].value);
+			fb = reinterpret_cast<j6_init_framebuffer*>(initv[i].data);
 			break;
 		}
 	}

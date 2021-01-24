@@ -9,7 +9,7 @@ SYSCALL(0x0a, object_signal,     j6_handle_t, j6_signal_t)
 SYSCALL(0x0b, object_close,      j6_handle_t)
 
 SYSCALL(0x10, process_create,    j6_handle_t *)
-SYSCALL(0x11, process_start,     j6_handle_t *, uintptr_t)
+SYSCALL(0x11, process_start,     j6_handle_t, uintptr_t, j6_handle_t *, size_t)
 SYSCALL(0x11, process_kill,      j6_handle_t)
 SYSCALL(0x17, process_exit,      int32_t)
 

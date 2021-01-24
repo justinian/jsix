@@ -15,7 +15,6 @@ extern j6_handle_t __handle_sys;
 j6_handle_t endp = j6_handle_invalid;
 
 extern "C" {
-	void _init_libc(j6_process_init *);
 	int main(int, const char **);
 }
 
