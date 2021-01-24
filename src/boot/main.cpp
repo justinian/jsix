@@ -152,11 +152,6 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
 		loader::load_program(program, desc.name, buf, bs);
 	}
 
-	for (unsigned i = 0; i < args->num_modules; ++i) {
-		args::module &mod = args->modules[i];
-		change_pointer(mod.location);
-	}
-
 	return args;
 }
 

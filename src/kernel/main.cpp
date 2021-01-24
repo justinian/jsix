@@ -98,9 +98,11 @@ kernel_main(args::header *header)
 
 	for (size_t i = 0; i < header->num_modules; ++i) {
 		args::module &mod = header->modules[i];
+		void *virt = memory::to_virtual<void>(mod.location);
+
 		switch (mod.type) {
 		case args::mod_type::symbol_table:
-			new symbol_table {mod.location, mod.size};
+			new symbol_table {virt, mod.size};
 			break;
 
 		default:
