@@ -11,7 +11,7 @@ j6_status_t
 process_create(j6_handle_t *handle)
 {
 	process *child = construct_handle<process>(handle);
-	log::debug(logs::syscall, "Process %llx created", child->koid());
+	log::debug(logs::task, "Process %llx created", child->koid());
 	return j6_status_ok;
 }
 
@@ -38,7 +38,7 @@ process_kill(j6_handle_t handle)
 	process *c = get_handle<process>(handle);
 	if (!c) return j6_err_invalid_arg;
 
-	log::debug(logs::syscall, "Process %llx killed by process %llx", c->koid(), p.koid());
+	log::debug(logs::task, "Process %llx killed by process %llx", c->koid(), p.koid());
 	c->exit(-1u);
 
 	return j6_status_ok;
@@ -48,11 +48,11 @@ j6_status_t
 process_exit(int32_t status)
 {
 	process &p = process::current();
-	log::debug(logs::syscall, "Process %llx exiting with code %d", p.koid(), status);
+	log::debug(logs::task, "Process %llx exiting with code %d", p.koid(), status);
 
 	p.exit(status);
 
-	log::error(logs::syscall, "returned to exit syscall");
+	log::error(logs::task, "returned to exit syscall");
 	return j6_err_unexpected;
 }
 

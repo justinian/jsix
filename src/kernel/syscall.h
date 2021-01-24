@@ -7,7 +7,7 @@ struct cpu_state;
 
 enum class syscall : uint64_t
 {
-#define SYSCALL(id, name, result, ...) name = id,
+#define SYSCALL(id, name, ...) name = id,
 #include "syscalls.inc"
 #undef SYSCALL
 
