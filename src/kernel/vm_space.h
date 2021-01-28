@@ -79,6 +79,13 @@ public:
 		fetch    = 0x10
 	};
 
+	/// Allocate pages into virtual memory. May allocate less than requested.
+	/// \arg virt  The virtual address at which to allocate
+	/// \arg count The number of pages to allocate
+	/// \arg phys  [out] The physical address of the pages allocated
+	/// \returns   The number of pages actually allocated
+	size_t allocate(uintptr_t virt, size_t count, uintptr_t *phys);
+
 	/// Handle a page fault.
 	/// \arg addr  Address which caused the fault
 	/// \arg ft    Flags from the interrupt about the kind of fault

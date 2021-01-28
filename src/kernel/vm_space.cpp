@@ -256,31 +256,40 @@ vm_space::initialize_tcb(TCB &tcb)
 		~memory::page_offset;
 }
 
+size_t
+vm_space::allocate(uintptr_t virt, size_t count, uintptr_t *phys)
+{
+	uintptr_t base = 0;
+	vm_area *area = get(virt, &base);
+
+	uintptr_t offset = (virt & ~0xfffull) - base;
+	if (!area || !area->allowed(offset))
+		return 0;
+
+	uintptr_t addr = 0;
+	size_t n = frame_allocator::get().allocate(count, &addr);
+
+	void *mem = memory::to_virtual<void>(addr);
+	if (area->flags() && vm_flags::zero)
+		kutil::memset(mem, 0, count * memory::frame_size);
+
+	area->commit(addr, offset, 1);
+	if (phys)
+		*phys = addr;
+
+	return n;
+}
+
 bool
 vm_space::handle_fault(uintptr_t addr, fault_type fault)
 {
-	uintptr_t page = addr & ~0xfffull;
-
 	// TODO: Handle more fult types
 	if (fault && fault_type::present)
 		return false;
 
-	uintptr_t base = 0;
-	vm_area *area = get(addr, &base);
-
-	if (!area || !area->allowed(page-base))
-		return false;
-
-	uintptr_t phys = 0;
-	size_t n = frame_allocator::get().allocate(1, &phys);
+	size_t n = allocate(addr, 1, nullptr);
 	kassert(n, "Failed to allocate a new page during page fault");
-
-	if (area->flags() && vm_flags::zero)
-		kutil::memset(memory::to_virtual<void>(phys), 0, memory::frame_size);
-
-	uintptr_t offset = page - base;
-	area->commit(phys, offset, 1);
-	return true;
+	return n;
 }
 
 size_t
