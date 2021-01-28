@@ -137,9 +137,12 @@ public:
 	/// \arg rip  The address to return to, must be kernel space
 	void add_thunk_kernel(uintptr_t rip);
 
-	/// Add a stack header that returns to the given address in user space.
-	/// \arg rip  The address to return to, must be user space
-	void add_thunk_user(uintptr_t rip);
+	/// Add a stack header that returns to the given address in user space
+	/// via a function in kernel space.
+	/// \arg rip3  The user space address to return to
+	/// \arg rip0  The kernel function to pass through, optional
+	/// \arg flags Extra RFLAGS values to set, optional
+	void add_thunk_user(uintptr_t rip3, uintptr_t rip0 = 0, uint64_t flags = 0);
 
 	/// Get the handle representing this thread to its process
 	j6_handle_t self_handle() const { return m_self_handle; }

@@ -106,7 +106,9 @@ process::create_thread(uint8_t priority, bool user)
 				vm_flags::zero|vm_flags::write);
 		m_space.add(stack_top - stack_size, vma);
 
-		th->tcb()->rsp3 = stack_top;
+		// Space for null frame - because the page gets zeroed on
+		// allocation, just pointing rsp here does the trick
+		th->tcb()->rsp3 = stack_top - 2 * sizeof(uint64_t);
 	}
 
 	m_threads.append(th);

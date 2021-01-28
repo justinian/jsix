@@ -1,16 +1,20 @@
 #include <utility>
 
 #include "kernel_args.h"
+#include "j6/init.h"
 
 #include "kutil/assert.h"
 #include "kutil/heap_allocator.h"
 #include "kutil/no_construct.h"
 
+#include "device_manager.h"
 #include "frame_allocator.h"
 #include "io.h"
 #include "log.h"
 #include "msr.h"
 #include "objects/process.h"
+#include "objects/thread.h"
+#include "objects/system.h"
 #include "objects/vm_area.h"
 #include "vm_space.h"
 
@@ -19,6 +23,8 @@ using memory::kernel_max_heap;
 
 using namespace kernel;
 
+extern "C" void initialize_main_thread();
+extern "C" uintptr_t initialize_main_user_stack();
 
 // These objects are initialized _before_ global constructors are called,
 // so we don't want them to have global constructors at all, lest they
@@ -178,3 +184,99 @@ setup_pat()
 }
 
 
+process *
+load_simple_process(args::program &program)
+{
+	using kernel::args::section_flags;
+
+	process *p = new process;
+	vm_space &space = p->space();
+
+	for (const auto &sect : program.sections) {
+		vm_flags flags =
+			(bitfield_has(sect.type, section_flags::execute) ? vm_flags::exec : vm_flags::none) |
+			(bitfield_has(sect.type, section_flags::write) ? vm_flags::write : vm_flags::none);
+
+		vm_area *vma = new vm_area_fixed(sect.size, flags);
+		space.add(sect.virt_addr, vma);
+		vma->commit(sect.phys_addr, 0, memory::page_count(sect.size));
+	}
+
+	uint64_t iopl = (3ull << 12);
+	uintptr_t trampoline = reinterpret_cast<uintptr_t>(initialize_main_thread);
+
+	thread *main = p->create_thread();
+	main->add_thunk_user(program.entrypoint, trampoline, iopl);
+	main->set_state(thread::state::ready);
+
+	return p;
+}
+
+template <typename T>
+inline T * push(uintptr_t &rsp, size_t size = sizeof(T)) {
+	rsp -= size;
+	T *p = reinterpret_cast<T*>(rsp);
+	rsp &= ~(sizeof(uint64_t)-1); // Align the stack
+	return p;
+}
+
+uintptr_t
+initialize_main_user_stack()
+{
+	process &proc = process::current();
+	thread &th = thread::current();
+	TCB *tcb = th.tcb();
+
+	const char message[] = "Hello from the kernel!";
+	char *message_arg = push<char>(tcb->rsp3, sizeof(message));
+	kutil::memcpy(message_arg, message, sizeof(message));
+
+	extern args::framebuffer *fb;
+	j6_init_framebuffer *fb_desc = push<j6_init_framebuffer>(tcb->rsp3);
+	fb_desc->addr = fb ? reinterpret_cast<void*>(0x100000000) : nullptr;
+	fb_desc->size = fb ? fb->size : 0;
+	fb_desc->vertical = fb ? fb->vertical : 0;
+	fb_desc->horizontal = fb ? fb->horizontal : 0;
+	fb_desc->scanline = fb ? fb->scanline : 0;
+	fb_desc->flags = 0;
+
+	if (fb && fb->type == kernel::args::fb_type::bgr8)
+		fb_desc->flags |= 1;
+
+	unsigned n = 0;
+
+	j6_init_value *initv = push<j6_init_value>(tcb->rsp3);
+	initv->type = j6_init_handle_other;
+	initv->handle.type = j6_object_type_system;
+	initv->handle.handle = proc.add_handle(&system::get());
+	++n;
+
+	initv = push<j6_init_value>(tcb->rsp3);
+	initv->type = j6_init_handle_self;
+	initv->handle.type = j6_object_type_process;
+	initv->handle.handle = proc.self_handle();
+	++n;
+
+	initv = push<j6_init_value>(tcb->rsp3);
+	initv->type = j6_init_handle_self;
+	initv->handle.type = j6_object_type_thread;
+	initv->handle.handle = th.self_handle();
+	++n;
+
+	initv = push<j6_init_value>(tcb->rsp3);
+	initv->type = j6_init_desc_framebuffer;
+	initv->data = fb_desc;
+	++n;
+
+	uint64_t *initc = push<uint64_t>(tcb->rsp3);
+	*initc = n;
+
+	char **argv0 = push<char*>(tcb->rsp3);
+	*argv0 = message_arg;
+
+	uint64_t *argc = push<uint64_t>(tcb->rsp3);
+	*argc = 1;
+
+	th.clear_state(thread::state::loading);
+	return tcb->rsp3;
+}

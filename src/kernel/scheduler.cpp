@@ -7,6 +7,7 @@
 #include "console.h"
 #include "cpu.h"
 #include "debug.h"
+#include "device_manager.h"
 #include "gdt.h"
 #include "interrupts.h"
 #include "io.h"
@@ -31,11 +32,6 @@ extern kernel::args::framebuffer *fb;
 
 const uint64_t rflags_noint = 0x002;
 const uint64_t rflags_int = 0x202;
-
-extern "C" {
-	void preloaded_process_init();
-	uintptr_t load_process_image(const kernel::args::program*);
-};
 
 extern uint64_t idle_stack_end;
 
@@ -75,141 +71,17 @@ inline T * push(uintptr_t &rsp, size_t size = sizeof(T)) {
 	return p;
 }
 
-uintptr_t
-load_process_image(const kernel::args::program *program)
-{
-	using memory::page_align_down;
-	using memory::page_align_up;
-	using kernel::args::section_flags;
-
-	// We're now in the process space for this process, allocate memory for the
-	// process code and load it
-	process &proc = process::current();
-	thread &th = thread::current();
-	TCB *tcb = th.tcb();
-	vm_space &space = proc.space();
-
-	for (const auto &sect : program->sections) {
-		vm_flags flags =
-			(bitfield_has(sect.type, section_flags::execute) ? vm_flags::exec : vm_flags::none) |
-			(bitfield_has(sect.type, section_flags::write) ? vm_flags::write : vm_flags::none);
-
-		vm_area *vma = new vm_area_open(sect.size, space, flags);
-		space.add(sect.virt_addr, vma);
-		vma->commit(sect.phys_addr, 0, memory::page_count(sect.size));
-	}
-
-	// double zero stack sentinel
-	*push<uint64_t>(tcb->rsp3) = 0;
-	*push<uint64_t>(tcb->rsp3) = 0;
-
-	const char message[] = "Hello from the kernel!";
-	char *message_arg = push<char>(tcb->rsp3, sizeof(message));
-	kutil::memcpy(message_arg, message, sizeof(message));
-
-	j6_init_framebuffer *fb_desc = push<j6_init_framebuffer>(tcb->rsp3);
-	fb_desc->addr = fb ? reinterpret_cast<void*>(0x100000000) : nullptr;
-	fb_desc->size = fb ? fb->size : 0;
-	fb_desc->vertical = fb ? fb->vertical : 0;
-	fb_desc->horizontal = fb ? fb->horizontal : 0;
-	fb_desc->scanline = fb ? fb->scanline : 0;
-	fb_desc->flags = 0;
-
-	if (fb && fb->type == kernel::args::fb_type::bgr8)
-		fb_desc->flags |= 1;
-
-	j6_init_value *initv = push<j6_init_value>(tcb->rsp3);
-	initv->type = j6_init_handle_other;
-	initv->handle.type = j6_object_type_system;
-	initv->handle.handle = proc.add_handle(&system::get());
-
-	initv = push<j6_init_value>(tcb->rsp3);
-	initv->type = j6_init_handle_self;
-	initv->handle.type = j6_object_type_process;
-	initv->handle.handle = proc.self_handle();
-
-	initv = push<j6_init_value>(tcb->rsp3);
-	initv->type = j6_init_handle_self;
-	initv->handle.type = j6_object_type_thread;
-	initv->handle.handle = th.self_handle();
-
-	initv = push<j6_init_value>(tcb->rsp3);
-	initv->type = j6_init_desc_framebuffer;
-	initv->data = fb_desc;
-
-	uint64_t *initc = push<uint64_t>(tcb->rsp3);
-	*initc = 4;
-
-	char **argv0 = push<char*>(tcb->rsp3);
-	*argv0 = message_arg;
-
-	uint64_t *argc = push<uint64_t>(tcb->rsp3);
-	*argc = 1;
-
-	// Crazypants framebuffer part
-	if (fb) {
-		vm_area *vma = new vm_area_open(fb->size, space,
-				vm_flags::write|vm_flags::mmio|vm_flags::write_combine);
-		space.add(0x100000000, vma);
-		vma->commit(fb->phys_addr, 0, memory::page_count(fb->size));
-	}
-
-	th.clear_state(thread::state::loading);
-	return tcb->rsp3;
-}
-
 thread *
 scheduler::create_process(bool user)
 {
 	process *p = new process;
 	thread *th = p->create_thread(default_priority, user);
 
-	auto *tcb = th->tcb();
-	tcb->time_left = quantum(default_priority);
-
+	TCB *tcb = th->tcb();
 	log::debug(logs::task, "Creating thread %llx, priority %d, time slice %d",
 			th->koid(), tcb->priority, tcb->time_left);
 
 	th->set_state(thread::state::ready);
-	return th;
-}
-
-thread *
-scheduler::load_process(kernel::args::program &program)
-{
-
-	uint16_t kcs = (1 << 3) | 0; // Kernel CS is GDT entry 1, ring 0
-	uint16_t cs = (5 << 3) | 3;  // User CS is GDT entry 5, ring 3
-
-	uint16_t kss = (2 << 3) | 0; // Kernel SS is GDT entry 2, ring 0
-	uint16_t ss = (4 << 3) | 3;  // User SS is GDT entry 4, ring 3
-
-	thread* th = create_process(true);
-	auto *tcb = th->tcb();
-
-	// Create an initial kernel stack space
-	uintptr_t *stack = reinterpret_cast<uintptr_t *>(tcb->rsp0) - 6;
-
-	// Pass args to preloaded_process_init on the stack
-	stack[0] = reinterpret_cast<uintptr_t>(&program);
-
-	tcb->rsp = reinterpret_cast<uintptr_t>(stack);
-	th->add_thunk_kernel(reinterpret_cast<uintptr_t>(preloaded_process_init));
-
-	// Arguments for iret - rip will be pushed on before these
-	stack[1] = reinterpret_cast<uintptr_t>(program.entrypoint);
-	stack[2] = cs;
-	stack[3] = rflags_int | (3 << 12);
-	stack[4] = process::stacks_top;
-	stack[5] = ss;
-
-	tcb->rsp3 = process::stacks_top;
-
-	log::debug(logs::task, "Loading thread %llx  pri %d", th->koid(), tcb->priority);
-	log::debug(logs::task, "     RSP  %016lx", tcb->rsp);
-	log::debug(logs::task, "     RSP0 %016lx", tcb->rsp0);
-	log::debug(logs::task, "     PML4 %016lx", tcb->pml4);
-
 	return th;
 }
 
@@ -246,6 +118,14 @@ scheduler::start()
 	wrmsr(msr::ia32_gs_base, reinterpret_cast<uintptr_t>(&bsp_cpu_data));
 	m_apic->enable_timer(isr::isrTimer, false);
 	m_apic->reset_timer(10);
+}
+
+void
+scheduler::add_thread(TCB *t)
+{
+	m_blocked.push_back(static_cast<tcb_node*>(t));
+	t->time_left = quantum(t->priority);
+
 }
 
 void scheduler::prune(uint64_t now)

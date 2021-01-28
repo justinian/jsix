@@ -12,7 +12,6 @@ extern syscall_registry
 extern syscall_invalid
 
 global syscall_handler_prelude
-global syscall_handler_prelude.return
 syscall_handler_prelude:
 	swapgs
 	mov [gs:CPU_DATA.rsp3], rsp
@@ -55,7 +54,8 @@ syscall_handler_prelude:
 
 	inc qword [rel __counter_syscall_sysret]
 
-.return:
+global kernel_to_user_trampoline
+kernel_to_user_trampoline:
 	pop r15
 	pop r14
 	pop r13

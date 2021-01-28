@@ -60,7 +60,7 @@ public:
 			bool constant = false);
 
 	/// Get the quantum for a given priority.
-	uint32_t quantum(int priority);
+	static uint32_t quantum(int priority);
 
 	/// Start the scheduler working. This may involve starting
 	/// timer interrupts or other preemption methods.
@@ -73,7 +73,9 @@ public:
 	/// \returns  A pointer to the current thread's TCB
 	inline TCB * current() { return m_current; }
 
-	inline void add_thread(TCB *t) { m_blocked.push_back(static_cast<tcb_node*>(t)); }
+	/// Start scheduling a new thread.
+	/// \arg t  The new thread's TCB
+	void add_thread(TCB *t);
 
 	/// Get a reference to the system scheduler
 	/// \returns  A reference to the global system scheduler

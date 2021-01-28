@@ -16,7 +16,7 @@ public:
 	constexpr static uintptr_t stacks_top = 0x0000800000000000;
 
 	/// Size of userspace thread stacks
-	constexpr static size_t stack_size = 0x4000;
+	constexpr static size_t stack_size = 0x4000000; // 64MiB
 
 	/// Value that represents default priority
 	constexpr static uint8_t default_priority = 0xff;

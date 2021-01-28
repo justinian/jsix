@@ -35,12 +35,13 @@ extern "C" {
 
 extern void __kernel_assert(const char *, unsigned, const char *);
 
+using namespace kernel;
+
 /// Bootstrap the memory managers.
 void setup_pat();
-void memory_initialize_pre_ctors(kernel::args::header &kargs);
-void memory_initialize_post_ctors(kernel::args::header &kargs);
-
-using namespace kernel;
+void memory_initialize_pre_ctors(args::header &kargs);
+void memory_initialize_post_ctors(args::header &kargs);
+process * load_simple_process(args::program &program);
 
 /// TODO: not this. this is awful.
 args::framebuffer *fb = nullptr;
@@ -150,13 +151,8 @@ kernel_main(args::header *header)
 	scheduler *sched = new scheduler(devices.get_lapic());
 
 	// Skip program 0, which is the kernel itself
-	for (size_t i = 1; i < header->num_programs; ++i) {
-		args::program *prog = memory::to_virtual(&header->programs[i]);
-		thread *th = sched->load_process(*prog);
-		if (i == 2) {
-			//th->set_state(thread::state::constant);
-		}
-	}
+	for (unsigned i = 1; i < header->num_programs; ++i)
+		load_simple_process(header->programs[i]);
 
 	if (!has_video)
 		sched->create_kernel_task(logger_task, scheduler::max_priority/2, true);
