@@ -108,6 +108,26 @@ private:
 };
 
 
+/// A shareable but non-allocatable memory area (like mmio)
+class vm_area_fixed :
+	public vm_area
+{
+public:
+	/// Constructor.
+	/// \arg size  Initial virtual size of the memory area
+	/// \arg flags Flags for this memory area
+	vm_area_fixed(size_t size, vm_flags flags = vm_flags::none);
+	virtual ~vm_area_fixed();
+
+	virtual bool allowed(uintptr_t offset) const override { return false; }
+	virtual vm_mapper & mapper() override { return m_mapper; }
+	virtual const vm_mapper & mapper() const override { return m_mapper; }
+
+private:
+	vm_mapper_multi m_mapper;
+};
+
+
 /// Area that allows open allocation (eg, kernel heap)
 class vm_area_open :
 	public vm_area

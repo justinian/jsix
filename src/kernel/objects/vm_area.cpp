@@ -53,6 +53,17 @@ vm_area_shared::~vm_area_shared()
 }
 
 
+vm_area_fixed::vm_area_fixed(size_t size, vm_flags flags) :
+	m_mapper {*this},
+	vm_area {size, flags}
+{
+}
+
+vm_area_fixed::~vm_area_fixed()
+{
+}
+
+
 vm_area_open::vm_area_open(size_t size, vm_space &space, vm_flags flags) :
 	m_mapper(*this, space),
 	vm_area(size, flags)
