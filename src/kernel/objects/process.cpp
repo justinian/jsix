@@ -93,7 +93,7 @@ process::update()
 thread *
 process::create_thread(uint8_t priority, bool user)
 {
-	if (priority == default_pri)
+	if (priority == default_priority)
 		priority = scheduler::default_priority;
 
 	thread *th = new thread(*this, priority);
@@ -122,6 +122,8 @@ process::thread_exited(thread *th)
 	m_threads.remove_swap(th);
 	remove_handle(th->self_handle());
 	delete th;
+
+	// TODO: delete the thread's stack VMA
 
 	if (m_threads.count() == 0) {
 		exit(status);

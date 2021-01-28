@@ -19,7 +19,7 @@ public:
 	constexpr static size_t stack_size = 0x4000;
 
 	/// Value that represents default priority
-	constexpr static uint8_t default_pri = 0xff;
+	constexpr static uint8_t default_priority = 0xff;
 
 	/// Constructor.
 	process();
@@ -46,7 +46,7 @@ public:
 	/// \args priority  The new thread's scheduling priority
 	/// \args user      If true, create a userspace stack for this thread
 	/// \returns        The newly created thread object
-	thread * create_thread(uint8_t priorty = default_pri, bool user = true);
+	thread * create_thread(uint8_t priorty = default_priority, bool user = true);
 
 	/// Start tracking an object with a handle.
 	/// \args obj  The object this handle refers to
