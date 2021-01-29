@@ -9,7 +9,7 @@ namespace logs {
 #define LOG(name, lvl) \
 	const log::area_t name = #name ## _h; \
 	const char * name ## _name = #name;
-#include "log_areas.inc"
+#include "j6/tables/log_areas.inc"
 #undef LOG
 }
 
@@ -44,7 +44,7 @@ logger::logger(uint8_t *buffer, size_t size, logger::immediate_cb output) :
 
 #define LOG(name, lvl) \
 	register_area(logs::name, logs::name ## _name, log::level::lvl);
-#include "log_areas.inc"
+#include "j6/tables/log_areas.inc"
 #undef LOG
 }
 

@@ -8,7 +8,7 @@ struct cpu_state;
 enum class syscall : uint64_t
 {
 #define SYSCALL(id, name, ...) name = id,
-#include "syscalls.inc"
+#include "j6/tables/syscalls.inc"
 #undef SYSCALL
 
 	// Maximum syscall id. If you change this, also change
@@ -21,6 +21,6 @@ void syscall_enable();
 namespace syscalls
 {
 #define SYSCALL(id, name, ...) j6_status_t name (__VA_ARGS__);
-#include "syscalls.inc"
+#include "j6/tables/syscalls.inc"
 #undef SYSCALL
 }

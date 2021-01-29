@@ -1,4 +1,3 @@
-%include "push_all.inc"
 %include "tasking.inc"
 
 ; Make sure to keep MAX_SYSCALLS in sync with

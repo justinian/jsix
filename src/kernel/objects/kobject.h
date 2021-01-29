@@ -17,7 +17,7 @@ public:
 	enum class type : uint16_t
 	{
 #define OBJECT_TYPE( name, val ) name = val,
-#include "j6/object_types.inc"
+#include "j6/tables/object_types.inc"
 #undef OBJECT_TYPE
 
 		max

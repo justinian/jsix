@@ -126,7 +126,7 @@ void fatal(area_t area, const char *fmt, ...);
 
 namespace logs {
 #define LOG(name, lvl) extern const log::area_t name;
-#include "log_areas.inc"
+#include "j6/tables/log_areas.inc"
 #undef LOG
 } // namespace logs
 

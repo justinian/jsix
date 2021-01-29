@@ -25,4 +25,4 @@
 %define SYSCALL(n, name, a, b, c, d) SYSCALL name, n
 %define SYSCALL(n, name, a, b, c, d, e) SYSCALL name, n
 
-%include "syscalls.inc"
+%include "j6/tables/syscalls.inc"

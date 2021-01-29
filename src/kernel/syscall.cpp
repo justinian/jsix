@@ -69,7 +69,7 @@ syscall_enable()
 	syscall_names[id] = #name; \
 	static_assert( id <= num_calls, "Syscall " #name " has id > syscall::MAX" ); \
 	log::debug(logs::syscall, "Enabling syscall 0x%02x as " #name , id);
-#include "syscalls.inc"
+#include "j6/tables/syscalls.inc"
 #undef SYSCALL
 }
 
