@@ -120,12 +120,22 @@ modules:
         source:
             - src/libraries/cpu/cpu.cpp
 
+    j6:
+      kind: lib
+      output: libj6.a
+      includes:
+        - src/libraries/j6/include
+      target: user
+      source:
+        - src/libraries/j6/syscalls.s
 
     libc:
         kind: lib
         output: libc.a
         includes:
           - src/libraries/libc/include
+        deps:
+            - j6
         target: user
         defines:
             - DISABLE_SSE
@@ -144,7 +154,6 @@ modules:
             - src/libraries/libc/arch/x86_64/_Exit.s
             - src/libraries/libc/arch/x86_64/crt0.s
             - src/libraries/libc/arch/x86_64/init_libc.c
-            - src/libraries/libc/arch/x86_64/syscalls.s
             - src/libraries/libc/ctype/isalnum.c
             - src/libraries/libc/ctype/isalpha.c
             - src/libraries/libc/ctype/isblank.c

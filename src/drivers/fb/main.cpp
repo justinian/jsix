@@ -5,9 +5,8 @@
 #include "j6/init.h"
 #include "j6/errors.h"
 #include "j6/signals.h"
+#include "j6/syscalls.h"
 #include "j6/types.h"
-
-#include <j6libc/syscalls.h>
 
 #include "font.h"
 #include "screen.h"
@@ -32,7 +31,7 @@ struct entry
 int
 main(int argc, const char **argv)
 {
-	_syscall_system_log("fb driver starting");
+	j6_system_log("fb driver starting");
 
 	size_t initc = 0;
 	j6_init_value *initv = nullptr;
@@ -47,7 +46,7 @@ main(int argc, const char **argv)
 	}
 
 	if (!fb || fb->addr == nullptr) {
-		_syscall_system_log("fb driver didn't find a framebuffer, exiting");
+		j6_system_log("fb driver didn't find a framebuffer, exiting");
 		return 1;
 	}
 
@@ -76,7 +75,7 @@ main(int argc, const char **argv)
 	char message_buffer[256];
 	while (true) {
 		size_t size = sizeof(message_buffer);
-		_syscall_system_get_log(__handle_sys, message_buffer, &size);
+		j6_system_get_log(__handle_sys, message_buffer, &size);
 		if (size != 0) {
 			entry *e = reinterpret_cast<entry*>(&message_buffer);
 
@@ -99,7 +98,7 @@ main(int argc, const char **argv)
 	}
 
 
-	_syscall_system_log("fb driver done, exiting");
+	j6_system_log("fb driver done, exiting");
 	return 0;
 }
 

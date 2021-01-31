@@ -1,6 +1,6 @@
 %macro SYSCALL 2
-	global _syscall_%1
-	_syscall_%1:
+	global j6_%1
+	j6_%1:
 		push rbp
 		mov rbp, rsp
 

@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-#define SYSCALL(n, name, ...) j6_status_t _syscall_ ## name (__VA_ARGS__);
+#define SYSCALL(n, name, ...) j6_status_t j6_ ## name (__VA_ARGS__);
 #include "j6/tables/syscalls.inc"
 #undef SYSCALL
 

@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <j6/errors.h>
-#include <j6libc/syscalls.h>
+#include <j6/syscalls.h>
 //void *sbrk(intptr_t) __attribute__ ((weak));
 
 static j6_handle_t __core_handle = 0;
@@ -19,7 +19,7 @@ void *sbrk(intptr_t i)
 		if (i < 0)
 			return (void*)-1;
 
-		j6_status_t result = _syscall_vma_create_map(&__core_handle, i, __core_base, 1);
+		j6_status_t result = j6_vma_create_map(&__core_handle, i, __core_base, 1);
 		if (result != j6_status_ok)
 			return (void*)-1;
 
@@ -28,7 +28,7 @@ void *sbrk(intptr_t i)
 	}
 
 	size_t new_size = __core_size + i;
-	j6_status_t result = _syscall_vma_resize(__core_handle, &new_size);
+	j6_status_t result = j6_vma_resize(__core_handle, &new_size);
 	if (result != j6_status_ok)
 		return (void*)-1;
 
