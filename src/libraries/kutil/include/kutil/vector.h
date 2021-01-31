@@ -15,6 +15,7 @@ class vector
 {
 	using count_t = S;
 	static constexpr count_t min_capacity = 4;
+	static constexpr count_t cap_mask = static_cast<S>(-1) >> 1;
 
 public:
 	/// Default constructor. Creates an empty vector with no capacity.
@@ -60,7 +61,7 @@ public:
 	/// static storage.
 	vector(T *data, count_t size, count_t capacity) :
 		m_size(size),
-		m_capacity(capacity),
+		m_capacity(capacity | ~cap_mask),
 		m_elements(&data[0])
 	{
 	}
@@ -69,12 +70,18 @@ public:
 	~vector()
 	{
 		while (m_size) remove();
-		kfree(m_elements);
+
+		bool was_static = m_capacity & ~cap_mask;
+		if (!was_static)
+			kfree(m_elements);
 	}
 
 	/// Get the size of the array.
-	/// \returns  The number of elements in the array
 	inline count_t count() const { return m_size; }
+
+	/// Get the capacity of the array. This is the amount of space
+	/// actually allocated.
+	inline count_t capacity() const { return m_capacity & cap_mask; }
 
 	/// Access an element in the array.
 	inline T & operator[] (count_t i) { return m_elements[i]; }
@@ -83,19 +90,15 @@ public:
 	inline const T & operator[] (count_t i) const { return m_elements[i]; }
 
 	/// Get a pointer to the beginning for iteration.
-	/// \returns  A pointer to the beginning of the array
 	T * begin() { return m_elements; }
 
 	/// Get a pointer to the beginning for iteration.
-	/// \returns  A pointer to the beginning of the array
 	const T * begin() const { return m_elements; }
 
 	/// Get a pointer to the end for iteration.
-	/// \returns  A pointer to the end of the array
 	T * end() { return m_elements + m_size; }
 
 	/// Get a pointer to the end for iteration.
-	/// \returns  A pointer to the end of the array
 	const T * end() const { return m_elements + m_size; }
 
 	/// Add an item onto the array by copying it.
@@ -255,7 +258,7 @@ public:
 	/// \arg size  Size of the array
 	void ensure_capacity(count_t size)
 	{
-		if (m_capacity >= size) return;
+		if (capacity() >= size) return;
 		count_t capacity = (1 << log2(size));
 		if (capacity < min_capacity)
 			capacity = min_capacity;
@@ -267,6 +270,7 @@ public:
 	/// \arg capacity  Number of elements to allocate
 	void set_capacity(count_t capacity)
 	{
+		bool was_static = m_capacity & ~cap_mask;
 		T *new_array = reinterpret_cast<T*>(kalloc(capacity * sizeof(T)));
 		count_t size = capacity > m_size ? m_size : capacity;
 
@@ -276,7 +280,8 @@ public:
 		m_size = size;
 		m_capacity = capacity;
 
-		kfree(m_elements);
+		if (!was_static)
+			kfree(m_elements);
 		m_elements = new_array;
 	}
 

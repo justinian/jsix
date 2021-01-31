@@ -23,11 +23,11 @@ public:
 	/// \arg length  The amount of memory to allocate, in bytes
 	/// \returns     A pointer to the allocated memory, or nullptr if
 	///              allocation failed.
-	virtual void * allocate(size_t length);
+	void * allocate(size_t length);
 
 	/// Free a previous allocation.
 	/// \arg p  A pointer previously retuned by allocate()
-	virtual void free(void *p);
+	void free(void *p);
 
 	/// Minimum block size is (2^min_order). Must be at least 6.
 	static const unsigned min_order = 6;
@@ -52,8 +52,8 @@ protected:
 	/// \returns    A detached block of the given order
 	mem_header * pop_free(unsigned order);
 
-	uintptr_t m_next;
-	size_t m_size;
+	uintptr_t m_start, m_end;
+	size_t m_blocks;
 	mem_header *m_free[max_order - min_order + 1];
 	size_t m_allocated_size;
 

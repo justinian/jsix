@@ -62,10 +62,13 @@ private:
 };
 
 
-heap_allocator::heap_allocator() : m_next(0), m_size(0) {}
+heap_allocator::heap_allocator() : m_start {0}, m_end {0} {}
 
 heap_allocator::heap_allocator(uintptr_t start, size_t size) :
-	m_next(start), m_size(size), m_allocated_size(0)
+	m_start {start},
+	m_end {start+size},
+	m_blocks {0},
+	m_allocated_size {0}
 {
 	kutil::memset(m_free, 0, sizeof(m_free));
 }
@@ -96,6 +99,11 @@ void
 heap_allocator::free(void *p)
 {
 	if (!p) return;
+
+	static constexpr uintptr_t bad_mask = (1 << min_order) - 1;
+	uintptr_t addr = reinterpret_cast<uintptr_t>(p);
+	kassert(addr >= m_start && addr < m_end && !(addr & bad_mask),
+		"Attempt to free non-heap pointer");
 
 	mem_header *header = reinterpret_cast<mem_header *>(p);
 	header -= 1; // p points after the header
@@ -133,12 +141,12 @@ heap_allocator::ensure_block(unsigned order)
 
 	if (order == max_order) {
 		size_t bytes = (1 << max_order);
-		if (bytes <= m_size) {
-			mem_header *next = reinterpret_cast<mem_header *>(m_next);
-			new (next) mem_header(nullptr, nullptr, order);
-			get_free(order) = next;
-			m_next += bytes;
-			m_size -= bytes;
+		uintptr_t next = m_start + m_blocks * bytes;
+		if (next + bytes <= m_end) {
+			mem_header *nextp = reinterpret_cast<mem_header *>(next);
+			new (nextp) mem_header(nullptr, nullptr, order);
+			get_free(order) = nextp;
+			++m_blocks;
 		}
 	} else {
 		mem_header *orig = pop_free(order + 1);

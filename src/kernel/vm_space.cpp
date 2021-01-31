@@ -7,7 +7,8 @@
 #include "vm_space.h"
 
 // The initial memory for the array of areas for the kernel space
-static uint64_t kernel_areas[16];
+constexpr size_t num_kernel_areas = 8;
+static uint64_t kernel_areas[num_kernel_areas * 2];
 
 int
 vm_space::area::compare(const vm_space::area &o) const
@@ -28,7 +29,7 @@ vm_space::area::operator==(const vm_space::area &o) const
 vm_space::vm_space(page_table *p) :
 	m_kernel {true},
 	m_pml4 {p},
-	m_areas {reinterpret_cast<vm_space::area*>(kernel_areas), 0, 8}
+	m_areas {reinterpret_cast<vm_space::area*>(kernel_areas), 0, num_kernel_areas}
 {}
 
 vm_space::vm_space() :
