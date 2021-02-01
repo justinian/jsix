@@ -276,7 +276,7 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 	for (auto desc : map) {
 		/*
 		// EFI map dump
-		console::print(L"   Range %lx (%lx) %x(%s) [%lu]\r\n",
+		console::print(L"   eRange %lx (%lx) %x(%s) [%lu]\r\n",
 			desc->physical_start, desc->attribute, desc->type, memory_type_name(desc->type), desc->number_of_pages);
 		*/
 
@@ -323,18 +323,19 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 		// TODO: validate uefi's map is sorted
 		if (first) {
 			first = false;
-			kernel_map[nent].start = desc->physical_start;
-			kernel_map[nent].pages = desc->number_of_pages;
-			kernel_map[nent].type = type;
-			kernel_map[nent].attr = (desc->attribute & 0xffffffff);
+			mem_entry &ent = kernel_map[nent++];
+			ent.start = desc->physical_start;
+			ent.pages = desc->number_of_pages;
+			ent.type = type;
+			ent.attr = (desc->attribute & 0xffffffff);
 			continue;
 		}
 
-		mem_entry &prev = kernel_map[nent];
+		mem_entry &prev = kernel_map[nent - 1];
 		if (can_merge(prev, type, desc)) {
 			prev.pages += desc->number_of_pages;
 		} else {
-			mem_entry &next = kernel_map[++nent];
+			mem_entry &next = kernel_map[nent++];
 			next.start = desc->physical_start;
 			next.pages = desc->number_of_pages;
 			next.type = type;
@@ -350,7 +351,7 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 	// kernel map dump
 	for (unsigned i = 0; i < nent; ++i) {
 		const kernel::args::mem_entry &e = kernel_map[i];
-		console::print(L"   Range %lx (%lx) %x(%s) [%lu]\r\n",
+		console::print(L"   kRange %lx (%lx) %x(%s) [%lu]\r\n",
 			e.start, e.attr, e.type, kernel_memory_type_name(e.type), e.pages);
 	}
 	*/
