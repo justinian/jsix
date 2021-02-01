@@ -35,20 +35,20 @@ kutil::heap_allocator &g_kernel_heap = __g_kernel_heap_storage.value;
 static kutil::no_construct<frame_allocator> __g_frame_allocator_storage;
 frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
 
-static kutil::no_construct<vm_area_open> __g_kernel_heap_area_storage;
-vm_area_open &g_kernel_heap_area = __g_kernel_heap_area_storage.value;
+static kutil::no_construct<vm_area_untracked> __g_kernel_heap_area_storage;
+vm_area_untracked &g_kernel_heap_area = __g_kernel_heap_area_storage.value;
 
-vm_area_buffers g_kernel_stacks {
+vm_area_guarded g_kernel_stacks {
+	memory::stacks_start,
+	memory::kernel_stack_pages,
 	memory::kernel_max_stacks,
-	vm_space::kernel_space(),
-	vm_flags::write,
-	memory::kernel_stack_pages};
+	vm_flags::write};
 
-vm_area_buffers g_kernel_buffers {
+vm_area_guarded g_kernel_buffers {
+	memory::buffers_start,
+	memory::kernel_buffer_pages,
 	memory::kernel_max_buffers,
-	vm_space::kernel_space(),
-	vm_flags::write,
-	memory::kernel_buffer_pages};
+	vm_flags::write};
 
 void * operator new(size_t size)           { return g_kernel_heap.allocate(size); }
 void * operator new [] (size_t size)       { return g_kernel_heap.allocate(size); }
@@ -101,7 +101,7 @@ memory_initialize_pre_ctors(args::header &kargs)
 	vm_space &vm = kp->space();
 
 	vm_area *heap = new (&g_kernel_heap_area)
-		vm_area_open(kernel_max_heap, vm, vm_flags::write);
+		vm_area_untracked(kernel_max_heap, vm_flags::write);
 
 	vm.add(heap_start, heap);
 }
@@ -197,9 +197,8 @@ load_simple_process(args::program &program)
 			(bitfield_has(sect.type, section_flags::execute) ? vm_flags::exec : vm_flags::none) |
 			(bitfield_has(sect.type, section_flags::write) ? vm_flags::write : vm_flags::none);
 
-		vm_area *vma = new vm_area_fixed(sect.size, flags);
+		vm_area *vma = new vm_area_fixed(sect.phys_addr, sect.size, flags);
 		space.add(sect.virt_addr, vma);
-		vma->commit(sect.phys_addr, 0, memory::page_count(sect.size));
 	}
 
 	uint64_t iopl = (3ull << 12);

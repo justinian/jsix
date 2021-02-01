@@ -105,7 +105,7 @@ public:
 	static size_t copy(vm_space &source, vm_space &dest, void *from, void *to, size_t length);
 
 private:
-	friend class vm_mapper_single;
+	friend class vm_area;
 	friend class vm_mapper_multi;
 
 	/// Find a given VMA in this address space

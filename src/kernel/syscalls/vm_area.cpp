@@ -14,7 +14,7 @@ j6_status_t
 vma_create(j6_handle_t *handle, size_t size, uint32_t flags)
 {
 	vm_flags f = vm_flags::user_mask & flags;
-	construct_handle<vm_area_shared>(handle, size, f);
+	construct_handle<vm_area_open>(handle, size, f);
 	return j6_status_ok;
 }
 
@@ -22,7 +22,7 @@ j6_status_t
 vma_create_map(j6_handle_t *handle, size_t size, uintptr_t base, uint32_t flags)
 {
 	vm_flags f = vm_flags::user_mask & flags;
-	vm_area *a = construct_handle<vm_area_shared>(handle, size, f);
+	vm_area *a = construct_handle<vm_area_open>(handle, size, f);
 	process::current().space().add(base, a);
 	return j6_status_ok;
 }

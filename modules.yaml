@@ -41,6 +41,7 @@ modules:
             - src/kernel/objects/system.cpp
             - src/kernel/objects/vm_area.cpp
             - src/kernel/page_table.cpp
+            - src/kernel/page_tree.cpp
             - src/kernel/pci.cpp
             - src/kernel/scheduler.cpp
             - src/kernel/serial.cpp
@@ -55,7 +56,6 @@ modules:
             - src/kernel/syscalls/thread.cpp
             - src/kernel/syscalls/vm_area.cpp
             - src/kernel/task.s
-            - src/kernel/vm_mapper.cpp
             - src/kernel/vm_space.cpp
 
     boot:

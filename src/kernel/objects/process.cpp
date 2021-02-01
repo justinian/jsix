@@ -102,8 +102,8 @@ process::create_thread(uint8_t priority, bool user)
 	if (user) {
 		uintptr_t stack_top = stacks_top - (m_threads.count() * stack_size);
 
-		vm_area *vma = new vm_area_open(stack_size, m_space,
-				vm_flags::zero|vm_flags::write);
+		vm_flags flags = vm_flags::zero|vm_flags::write;
+		vm_area *vma = new vm_area_open(stack_size, flags);
 		m_space.add(stack_top - stack_size, vma);
 
 		// Space for null frame - because the page gets zeroed on

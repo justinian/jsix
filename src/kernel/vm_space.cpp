@@ -45,15 +45,15 @@ vm_space::vm_space() :
 
 vm_space::~vm_space()
 {
-	for (auto &a : m_areas)
-		a.area->mapper().remove(this);
+	for (auto &a : m_areas) {
+		bool free = a.area->remove_from(this);
+		clear(*a.area, 0, memory::page_count(a.area->size()), free);
+		a.area->handle_release();
+	}
 
 	kassert(!is_kernel(), "Kernel vm_space destructor!");
-
-	vm_space &kernel = kernel_space();
-
 	if (active())
-		kernel.activate();
+		kernel_space().activate();
 
 	// All VMAs have been removed by now, so just
 	// free all remaining pages and tables
@@ -71,7 +71,7 @@ vm_space::add(uintptr_t base, vm_area *area)
 {
 	//TODO: check for collisions
 	m_areas.sorted_insert({base, area});
-	area->mapper().add(this);
+	area->add_to(this);
 	area->handle_retain();
 	return true;
 }
@@ -81,8 +81,9 @@ vm_space::remove(vm_area *area)
 {
 	for (auto &a : m_areas) {
 		if (a.area == area) {
+			bool free = area->remove_from(this);
+			clear(*area, 0, memory::page_count(area->size()), free);
 			m_areas.remove(a);
-			area->mapper().remove(this);
 			area->handle_release();
 			return true;
 		}
@@ -257,30 +258,6 @@ vm_space::initialize_tcb(TCB &tcb)
 		~memory::page_offset;
 }
 
-size_t
-vm_space::allocate(uintptr_t virt, size_t count, uintptr_t *phys)
-{
-	uintptr_t base = 0;
-	vm_area *area = get(virt, &base);
-
-	uintptr_t offset = (virt & ~0xfffull) - base;
-	if (!area || !area->allowed(offset))
-		return 0;
-
-	uintptr_t addr = 0;
-	size_t n = frame_allocator::get().allocate(count, &addr);
-
-	void *mem = memory::to_virtual<void>(addr);
-	if (area->flags() && vm_flags::zero)
-		kutil::memset(mem, 0, count * memory::frame_size);
-
-	area->commit(addr, offset, 1);
-	if (phys)
-		*phys = addr;
-
-	return n;
-}
-
 bool
 vm_space::handle_fault(uintptr_t addr, fault_type fault)
 {
@@ -288,9 +265,22 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
 	if (fault && fault_type::present)
 		return false;
 
-	size_t n = allocate(addr, 1, nullptr);
-	kassert(n, "Failed to allocate a new page during page fault");
-	return n;
+	uintptr_t base = 0;
+	vm_area *area = get(addr, &base);
+	if (!area)
+		return false;
+
+	uintptr_t offset = (addr & ~0xfffull) - base;
+	uintptr_t phys_page = 0;
+	if (!area->get_page(offset, phys_page))
+		return false;
+
+	void *mem = memory::to_virtual<void>(phys_page);
+	if (area->flags() && vm_flags::zero)
+		kutil::memset(mem, 0, memory::frame_size);
+
+	page_in(*area, offset, phys_page, 1);
+	return true;
 }
 
 size_t

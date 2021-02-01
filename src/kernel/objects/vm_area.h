@@ -11,8 +11,8 @@
 
 #include "kernel_memory.h"
 #include "objects/kobject.h"
-#include "vm_mapper.h"
 
+class page_tree;
 class vm_space;
 
 enum class vm_flags : uint32_t
@@ -55,156 +55,131 @@ public:
 	/// Get the flags set for this area
 	inline vm_flags flags() const { return m_flags; }
 
+	/// Track that this area was added to a vm_space
+	/// \arg space  The space to add this area to
+	/// \returns    False if this area cannot be added
+	virtual bool add_to(vm_space *space);
+
+	/// Track that this area was removed frm a vm_space
+	/// \arg space  The space that is removing this area
+	/// \returns    True if the removing space should free the pages
+	///             mapped for this area
+	virtual bool remove_from(vm_space *space);
+
 	/// Change the virtual size of the memory area. This may cause
 	/// deallocation if the new size is smaller than the current size.
 	/// Note that if resizing is unsuccessful, the previous size will
 	/// be returned.
 	/// \arg size  The desired new virtual size
 	/// \returns   The new virtual size
-	size_t resize(size_t size);
+	virtual size_t resize(size_t size);
 
-	/// Get the mapper object that maps this area to address spaces
-	virtual vm_mapper & mapper() = 0;
-	virtual const vm_mapper & mapper() const = 0;
-
-	/// Check whether allocation at the given offset is allowed
-	virtual bool allowed(uintptr_t offset) const { return true; }
-
-	/// Commit contiguous physical pages to this area
-	/// \arg phys   The physical address of the first page
-	/// \arg offset The offset from the start of this area these pages represent
-	/// \arg count  The number of pages
-	virtual void commit(uintptr_t phys, uintptr_t offset, size_t count);
-
-	/// Uncommit physical pages from this area
-	/// \arg offset The offset from the start of this area these pages represent
-	/// \arg count  The number of pages
-	virtual void uncommit(uintptr_t offset, size_t count);
+	/// Get the physical page for the given offset
+	/// \arg offset The offset into the VMA
+	/// \arg phys   [out] Receives the physical page address, if any
+	/// \returns    True if there should be a page at the given offset
+	virtual bool get_page(uintptr_t offset, uintptr_t &phys) = 0;
 
 protected:
 	virtual void on_no_handles() override;
+	bool can_resize(size_t size);
 
 	size_t m_size;
 	vm_flags m_flags;
+	kutil::vector<vm_space*> m_spaces;
+
+	// Initial static space for m_spaces - most areas will never grow
+	// beyond this size, so avoid allocations
+	static constexpr size_t static_size = 2;
+	vm_space *m_vector_static[static_size];
 };
 
 
-/// The standard, sharable, user-controllable VMA type
-class vm_area_shared :
-	public vm_area
-{
-public:
-	/// Constructor.
-	/// \arg size  Initial virtual size of the memory area
-	/// \arg flags Flags for this memory area
-	vm_area_shared(size_t size, vm_flags flags = vm_flags::none);
-	virtual ~vm_area_shared();
-
-	virtual vm_mapper & mapper() override { return m_mapper; }
-	virtual const vm_mapper & mapper() const override { return m_mapper; }
-
-private:
-	vm_mapper_multi m_mapper;
-};
-
-
-/// A shareable but non-allocatable memory area (like mmio)
+/// A shareable but non-allocatable memory area of contiguous physical
+/// addresses (like mmio)
 class vm_area_fixed :
 	public vm_area
 {
 public:
 	/// Constructor.
-	/// \arg size  Initial virtual size of the memory area
+	/// \arg start Starting physical address of this area
+	/// \arg size  Size of the physical memory area
 	/// \arg flags Flags for this memory area
-	vm_area_fixed(size_t size, vm_flags flags = vm_flags::none);
+	vm_area_fixed(uintptr_t start, size_t size, vm_flags flags = vm_flags::none);
 	virtual ~vm_area_fixed();
 
-	virtual bool allowed(uintptr_t offset) const override { return false; }
-	virtual vm_mapper & mapper() override { return m_mapper; }
-	virtual const vm_mapper & mapper() const override { return m_mapper; }
+	virtual size_t resize(size_t size) override;
+	virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
 
 private:
-	vm_mapper_multi m_mapper;
+	uintptr_t m_start;
 };
 
 
-/// Area that allows open allocation (eg, kernel heap)
+/// Area that allows open allocation
 class vm_area_open :
 	public vm_area
 {
 public:
 	/// Constructor.
 	/// \arg size  Initial virtual size of the memory area
-	/// \arg space The address space this area belongs to
 	/// \arg flags Flags for this memory area
-	vm_area_open(size_t size, vm_space &space, vm_flags flags);
+	vm_area_open(size_t size, vm_flags flags);
 
-	virtual vm_mapper & mapper() override { return m_mapper; }
-	virtual const vm_mapper & mapper() const override { return m_mapper; }
-
-	virtual void commit(uintptr_t phys, uintptr_t offset, size_t count) override;
-	virtual void uncommit(uintptr_t offset, size_t count) override;
+	virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
 
 private:
-	vm_mapper_single m_mapper;
+	page_tree *m_mapped;
 };
 
 
-/// Area split into standard-sized segments
-class vm_area_buffers :
-	public vm_area
-{
-public:
-	/// Constructor.
-	/// \arg size      Initial virtual size of the memory area
-	/// \arg space     The address space this area belongs to
-	/// \arg flags     Flags for this memory area
-	/// \arg buf_pages Pages in an individual buffer
-	vm_area_buffers(
-		size_t size,
-		vm_space &space,
-		vm_flags flags,
-		size_t buf_pages);
-
-	/// Get an available stack address
-	uintptr_t get_buffer();
-
-	/// Return a buffer address to the available pool
-	void return_buffer(uintptr_t addr);
-
-	virtual vm_mapper & mapper() override { return m_mapper; }
-	virtual const vm_mapper & mapper() const override { return m_mapper; }
-
-	virtual bool allowed(uintptr_t offset) const override;
-	virtual void commit(uintptr_t phys, uintptr_t offset, size_t count) override;
-	virtual void uncommit(uintptr_t offset, size_t count) override;
-
-private:
-	vm_mapper_single m_mapper;
-	kutil::vector<uintptr_t> m_cache;
-	size_t m_pages;
-	uintptr_t m_next;
-};
-
-
-/// Area backed by an external source (like a loaded program)
-class vm_area_backed :
+/// Area that does not track its allocations and thus cannot be shared
+class vm_area_untracked :
 	public vm_area
 {
 public:
 	/// Constructor.
 	/// \arg size  Initial virtual size of the memory area
 	/// \arg flags Flags for this memory area
-	vm_area_backed(size_t size, vm_flags flags);
+	vm_area_untracked(size_t size, vm_flags flags);
+	virtual ~vm_area_untracked();
 
-	virtual vm_mapper & mapper() override { return m_mapper; }
-	virtual const vm_mapper & mapper() const override { return m_mapper; }
+	virtual bool add_to(vm_space *space) override;
+	virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
+};
 
-	virtual void commit(uintptr_t phys, uintptr_t offset, size_t count) override;
-	virtual void uncommit(uintptr_t offset, size_t count) override;
+
+/// Area split into standard-sized segments, separated by guard pages.
+/// Based on vm_area_untracked, can not be shared.
+class vm_area_guarded :
+	public vm_area_untracked
+{
+public:
+	/// Constructor.
+	/// \arg start     Initial address where this area is mapped
+	/// \arg sec_pages Pages in an individual section
+	/// \arg size      Initial virtual size of the memory area
+	/// \arg flags     Flags for this memory area
+	vm_area_guarded(
+		uintptr_t start,
+		size_t sec_pages,
+		size_t size,
+		vm_flags flags);
+
+	/// Get an available section in this area
+	uintptr_t get_section();
+
+	/// Return a section address to the available pool
+	void return_section(uintptr_t addr);
+
+	virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
 
 private:
-	vm_mapper_multi m_mapper;
+	kutil::vector<uintptr_t> m_cache;
+	uintptr_t m_start;
+	size_t m_pages;
+	uintptr_t m_next;
 };
+
 
 IS_BITFIELD(vm_flags);
