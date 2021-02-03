@@ -100,9 +100,8 @@ heap_allocator::free(void *p)
 {
 	if (!p) return;
 
-	static constexpr uintptr_t bad_mask = (1 << min_order) - 1;
 	uintptr_t addr = reinterpret_cast<uintptr_t>(p);
-	kassert(addr >= m_start && addr < m_end && !(addr & bad_mask),
+	kassert(addr >= m_start && addr < m_end,
 		"Attempt to free non-heap pointer");
 
 	mem_header *header = reinterpret_cast<mem_header *>(p);
