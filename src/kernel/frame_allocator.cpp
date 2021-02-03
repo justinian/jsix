@@ -70,7 +70,7 @@ frame_allocator::allocate(size_t count, uintptr_t *address)
 			}
 		}
 
-		return count;
+		return n;
 	}
 
 	kassert(false, "frame_allocator ran out of free frames!");
