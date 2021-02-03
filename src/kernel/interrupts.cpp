@@ -28,13 +28,11 @@ extern "C" {
 	void isr_handler(cpu_state*);
 	void irq_handler(cpu_state*);
 
-#define ISR(i, name)     extern void name ();
-#define EISR(i, name)    extern void name ();
-#define UISR(i, name)    extern void name ();
+#define ISR(i, s, name)     extern void name ();
+#define EISR(i, s, name)    extern void name ();
 #define IRQ(i, q, name)  extern void name ();
 #include "interrupt_isrs.inc"
 #undef IRQ
-#undef UISR
 #undef EISR
 #undef ISR
 }
@@ -50,13 +48,11 @@ uint8_t
 get_irq(unsigned vector)
 {
 	switch (vector) {
-#define ISR(i, name)
-#define EISR(i, name)
-#define UISR(i, name)
+#define ISR(i, s, name)
+#define EISR(i, s, name)
 #define IRQ(i, q, name) case i : return q;
 #include "interrupt_isrs.inc"
 #undef IRQ
-#undef UISR
 #undef EISR
 #undef ISR
 
@@ -87,13 +83,11 @@ disable_legacy_pic()
 void
 interrupts_init()
 {
-#define ISR(i, name)     idt_set_entry(i, reinterpret_cast<uint64_t>(& name), 0x08, 0x8e);
-#define EISR(i, name)    idt_set_entry(i, reinterpret_cast<uint64_t>(& name), 0x08, 0x8e);
-#define UISR(i, name)    idt_set_entry(i, reinterpret_cast<uint64_t>(& name), 0x08, 0xee);
+#define ISR(i, s, name)     idt_set_entry(i, reinterpret_cast<uint64_t>(& name), 0x08, 0x8e);
+#define EISR(i, s, name)    idt_set_entry(i, reinterpret_cast<uint64_t>(& name), 0x08, 0x8e);
 #define IRQ(i, q, name)  idt_set_entry(i, reinterpret_cast<uint64_t>(& name), 0x08, 0x8e);
 #include "interrupt_isrs.inc"
 #undef IRQ
-#undef UISR
 #undef EISR
 #undef ISR
 
@@ -106,8 +100,10 @@ void
 isr_handler(cpu_state *regs)
 {
 	console *cons = console::get();
+	uint8_t vector = regs->interrupt & 0xff;
+	ist_decrement(vector);
 
-	switch (static_cast<isr>(regs->interrupt & 0xff)) {
+	switch (static_cast<isr>(vector)) {
 
 	case isr::isrDebug: {
 			cons->set_color(11);
@@ -279,6 +275,7 @@ isr_handler(cpu_state *regs)
 		print_stacktrace(2);
 		_halt();
 	}
+	ist_increment(vector);
 	*reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
 }
 

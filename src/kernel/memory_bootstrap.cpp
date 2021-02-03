@@ -9,6 +9,7 @@
 
 #include "device_manager.h"
 #include "frame_allocator.h"
+#include "gdt.h"
 #include "io.h"
 #include "log.h"
 #include "msr.h"
@@ -117,6 +118,29 @@ memory_initialize_post_ctors(args::header &kargs)
 		reinterpret_cast<uintptr_t>(kargs.page_tables),
 		kargs.table_count);
 
+	using memory::frame_size;
+	using memory::kernel_stack_pages;
+	constexpr size_t stack_size = kernel_stack_pages * frame_size;
+
+	for (int ist = 1; ist <= 3; ++ist) {
+		uintptr_t bottom = g_kernel_stacks.get_section();
+		log::debug(logs::boot, "Installing IST%d stack at %llx", ist, bottom);
+
+		// Pre-realize and xerothese stacks, they're no good
+		// if they page fault
+		kutil::memset(reinterpret_cast<void*>(bottom), 0, stack_size);
+
+		// Skip two entries to be the null frame
+		tss_set_ist(ist, bottom + stack_size - 2 * sizeof(uintptr_t));
+	}
+
+#define ISR(i, s, name)   if (s) { idt_set_ist(i, s); }
+#define EISR(i, s, name)  if (s) { idt_set_ist(i, s); }
+#define IRQ(i, q, name)
+#include "interrupt_isrs.inc"
+#undef IRQ
+#undef EISR
+#undef ISR
 }
 
 static void

@@ -17,7 +17,7 @@ namespace memory {
 	constexpr uintptr_t page_offset = 0xffffc00000000000ull;
 
 	/// Max number of pages for a kernel stack
-	constexpr unsigned kernel_stack_pages = 4;
+	constexpr unsigned kernel_stack_pages = 2;
 
 	/// Max number of pages for a kernel buffer
 	constexpr unsigned kernel_buffer_pages = 16;

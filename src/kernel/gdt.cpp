@@ -4,6 +4,7 @@
 #include "kutil/enum_bitfields.h"
 #include "kutil/memory.h"
 #include "console.h"
+#include "kernel_memory.h"
 #include "log.h"
 
 
@@ -136,17 +137,53 @@ idt_set_entry(uint8_t i, uint64_t addr, uint16_t selector, uint8_t flags)
 }
 
 void
-tss_set_stack(int ring, uintptr_t rsp)
+tss_set_stack(unsigned ring, uintptr_t rsp)
 {
 	kassert(ring < 3, "Bad ring passed to tss_set_stack.");
 	g_tss.rsp[ring] = rsp;
 }
 
 uintptr_t
-tss_get_stack(int ring)
+tss_get_stack(unsigned ring)
 {
 	kassert(ring < 3, "Bad ring passed to tss_get_stack.");
 	return g_tss.rsp[ring];
+}
+
+void
+idt_set_ist(unsigned i, unsigned ist)
+{
+	g_idt_table[i].ist = ist;
+}
+
+void
+tss_set_ist(unsigned ist, uintptr_t rsp)
+{
+	kassert(ist > 0 && ist < 7, "Bad ist passed to tss_set_ist.");
+	g_tss.ist[ist] = rsp;
+}
+
+void
+ist_increment(unsigned i)
+{
+	uint8_t ist = g_idt_table[i].ist;
+	if (ist)
+		g_tss.ist[ist] += memory::frame_size;
+}
+
+void
+ist_decrement(unsigned i)
+{
+	uint8_t ist = g_idt_table[i].ist;
+	if (ist)
+		g_tss.ist[ist] -= memory::frame_size;
+}
+
+uintptr_t
+tss_get_ist(unsigned ist)
+{
+	kassert(ist > 0 && ist < 7, "Bad ist passed to tss_get_ist.");
+	return g_tss.ist[ist];
 }
 
 void
@@ -184,14 +221,14 @@ gdt_init()
 }
 
 void
-gdt_dump(int index)
+gdt_dump(unsigned index)
 {
 	const table_ptr &table = g_gdtr;
 
 	console *cons = console::get();
 
-	int start = 0;
-	int count = (table.limit + 1) / sizeof(gdt_descriptor);
+	unsigned start = 0;
+	unsigned count = (table.limit + 1) / sizeof(gdt_descriptor);
 	if (index != -1) {
 		start = index;
 		count = 1;
@@ -240,13 +277,13 @@ gdt_dump(int index)
 }
 
 void
-idt_dump(int index)
+idt_dump(unsigned index)
 {
 	const table_ptr &table = g_idtr;
 
 
-	int start = 0;
-	int count = (table.limit + 1) / sizeof(idt_descriptor);
+	unsigned start = 0;
+	unsigned count = (table.limit + 1) / sizeof(idt_descriptor);
 	if (index != -1) {
 		start = index;
 		count = 1;

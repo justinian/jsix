@@ -53,9 +53,8 @@ isr_handler_return:
 		jmp irq_handler_prelude
 %endmacro
 
-%define EISR(i, name)     EMIT_EISR name, i   ; ISR with error code
-%define UISR(i, name)     EMIT_ISR name, i    ; ISR callable from user space
-%define  ISR(i, name)     EMIT_ISR name, i
+%define EISR(i, s, name)     EMIT_EISR name, i   ; ISR with error code
+%define  ISR(i, s, name)     EMIT_ISR name, i
 %define  IRQ(i, q, name)  EMIT_IRQ name, i
 
 section .isrs

@@ -7,13 +7,11 @@
 /// Enum of all defined ISR/IRQ vectors
 enum class isr : uint8_t
 {
-#define ISR(i, name)     name = i,
-#define EISR(i, name)    name = i,
-#define UISR(i, name)    name = i,
+#define ISR(i, s, name)     name = i,
+#define EISR(i, s, name)    name = i,
 #define IRQ(i, q, name)  name = i,
 #include "interrupt_isrs.inc"
 #undef IRQ
-#undef UISR
 #undef EISR
 #undef ISR
 
