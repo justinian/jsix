@@ -127,12 +127,12 @@ logger::get_entry(void *buffer, size_t size)
 		return 0;
 
 	entry *ent = reinterpret_cast<entry *>(out);
-	if (size >= out_size) {
+	if (size >= ent->bytes) {
 		memcpy(buffer, out, ent->bytes);
 		m_buffer.consume(ent->bytes);
 	}
 
-	return out_size;
+	return ent->bytes;
 }
 
 #define LOG_LEVEL_FUNCTION(name) \
