@@ -63,6 +63,7 @@ initialize_main_thread:
 
 	; user rsp is now in rax, put it in the right place for sysret
 	mov [rsp + 0x30], rax
+	mov [gs:CPU_DATA.rsp3], rax
 
 	; the entrypoint should already be on the stack
 	jmp kernel_to_user_trampoline
