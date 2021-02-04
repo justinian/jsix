@@ -17,13 +17,13 @@ kutil::vector<process*> process::s_processes;
 
 process::process() :
 	kobject {kobject::type::process},
-	m_next_handle {0},
+	m_next_handle {1},
 	m_state {state::running}
 {
 	s_processes.append(this);
 
 	j6_handle_t self = add_handle(this);
-	kassert(self == self_handle(), "Process self-handle is not 0");
+	kassert(self == self_handle(), "Process self-handle is not 1");
 }
 
 // The "kernel process"-only constructor
