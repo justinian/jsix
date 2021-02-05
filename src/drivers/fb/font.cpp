@@ -62,6 +62,9 @@ font::draw_glyph(
 		unsigned x,
 		unsigned y) const
 {
+	if (glyph >= m_count)
+		return;
+
 	unsigned bwidth = (m_sizex+7)/8;
 	uint8_t const *data = m_data + (glyph * glyph_bytes());
 

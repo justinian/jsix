@@ -30,6 +30,32 @@ struct entry
 	char message[0];
 };
 
+void
+draw_stuff(screen &scr, font &fnt)
+{
+	screen::pixel_t fg = scr.color(0xb0, 0xb0, 0xb0);
+	screen::pixel_t bg = scr.color(49, 79, 128);
+
+	unsigned h = fnt.height();
+	unsigned w = fnt.width();
+
+	unsigned lines = scr.height()/h;
+	unsigned columns = scr.width()/w;
+
+	for (unsigned y = 0; y < lines; ++y) {
+		for (unsigned x = 0; x < columns; ++x) {
+			char d = (x + y * columns) % 10 + '0';
+			fnt.draw_glyph(scr, d, fg, bg, x*w, y*h);
+		}
+	}
+
+	for (unsigned y = 0; y < scr.height(); ++y) {
+		for (unsigned x = 0; x < scr.width(); x += 61) {
+			scr.draw_pixel(x, y, 0xffffff);
+		}
+	}
+}
+
 int
 main(int argc, const char **argv)
 {
@@ -83,6 +109,10 @@ main(int argc, const char **argv)
 	scr.fill(bg);
 	scr.update();
 
+	draw_stuff(scr, fnt);
+	scr.update();
+
+	/*
 	constexpr int margin = 2;
 	const unsigned xstride = (margin + fnt.width());
 	const unsigned ystride = (margin + fnt.height());
@@ -94,12 +124,26 @@ main(int argc, const char **argv)
 	int pending = 0;
 	constexpr int pending_threshold = 10;
 
-	char message_buffer[256];
+	j6_handle_t sys = __handle_sys;
+	size_t buffer_size = 0;
+	void *message_buffer = nullptr;
+
 	while (true) {
-		size_t size = sizeof(message_buffer);
-		j6_system_get_log(__handle_sys, message_buffer, &size);
-		if (size != 0) {
-			entry *e = reinterpret_cast<entry*>(&message_buffer);
+		size_t size = buffer_size;
+		j6_status_t s = j6_system_get_log(sys, message_buffer, &size);
+
+		if (s == j6_err_insufficient) {
+			free(message_buffer);
+			message_buffer = malloc(size);
+			buffer_size = size;
+			continue;
+		} else if (s != j6_status_ok) {
+			j6_system_log("fb driver got error from get_log, quitting");
+			return s;
+		}
+
+		if (size > 0) {
+			entry *e = reinterpret_cast<entry*>(message_buffer);
 
 			size_t eom = e->bytes - sizeof(entry);
 			e->message[eom] = 0;
@@ -118,7 +162,7 @@ main(int argc, const char **argv)
 			}
 		}
 	}
-
+	*/
 
 	j6_system_log("fb driver done, exiting");
 	return 0;
