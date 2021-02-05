@@ -38,7 +38,7 @@ struct acpi2_rsdp
 	uint32_t rsdt_address;
 
 	uint32_t length;
-	uint64_t xsdt_address;
+	acpi_table_header *xsdt_address;
 	uint8_t checksum20;
 	uint8_t reserved[3];
 } __attribute__ ((packed));
@@ -73,13 +73,20 @@ device_manager::device_manager() :
 	m_irqs[2] = ignore_endpoint;
 }
 
+template <typename T> static const T *
+check_get_table(const acpi_table_header *header)
+{
+	kassert(header && header->validate(T::type_id), "Invalid ACPI table.");
+	return reinterpret_cast<const T *>(header);
+}
+
 void
 device_manager::parse_acpi(const void *root_table)
 {
 	kassert(root_table != 0, "ACPI root table pointer is null.");
 
-	const acpi1_rsdp *acpi1 =
-		reinterpret_cast<const acpi1_rsdp *>(root_table);
+	const acpi1_rsdp *acpi1 = memory::to_virtual(
+		reinterpret_cast<const acpi1_rsdp *>(root_table));
 
 	for (int i = 0; i < sizeof(acpi1->signature); ++i)
 		kassert(acpi1->signature[i] == expected_signature[i],
@@ -96,7 +103,7 @@ device_manager::parse_acpi(const void *root_table)
 	sum = kutil::checksum(acpi2, sizeof(acpi2_rsdp), sizeof(acpi1_rsdp));
 	kassert(sum == 0, "ACPI 2.0 RSDP checksum mismatch.");
 
-	load_xsdt(reinterpret_cast<const acpi_xsdt *>(acpi2->xsdt_address));
+	load_xsdt(memory::to_virtual(acpi2->xsdt_address));
 }
 
 ioapic *
@@ -112,9 +119,9 @@ put_sig(char *into, uint32_t type)
 }
 
 void
-device_manager::load_xsdt(const acpi_xsdt *xsdt)
+device_manager::load_xsdt(const acpi_table_header *header)
 {
-	kassert(xsdt && acpi_validate(xsdt), "Invalid ACPI XSDT.");
+	const auto *xsdt = check_get_table<acpi_xsdt>(header);
 
 	char sig[5] = {0,0,0,0,0};
 	log::info(logs::device, "ACPI 2.0+ tables loading");
@@ -124,7 +131,8 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 
 	size_t num_tables = acpi_table_entries(xsdt, sizeof(void*));
 	for (size_t i = 0; i < num_tables; ++i) {
-		const acpi_table_header *header = xsdt->headers[i];
+		const acpi_table_header *header =
+			memory::to_virtual(xsdt->headers[i]);
 
 		put_sig(sig, header->type);
 		log::debug(logs::device, "  Found table %s", sig);
@@ -133,15 +141,15 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 
 		switch (header->type) {
 		case acpi_apic::type_id:
-			load_apic(reinterpret_cast<const acpi_apic *>(header));
+			load_apic(header);
 			break;
 
 		case acpi_mcfg::type_id:
-			load_mcfg(reinterpret_cast<const acpi_mcfg *>(header));
+			load_mcfg(header);
 			break;
 
 		case acpi_hpet::type_id:
-			load_hpet(reinterpret_cast<const acpi_hpet *>(header));
+			load_hpet(header);
 			break;
 
 		default:
@@ -151,8 +159,10 @@ device_manager::load_xsdt(const acpi_xsdt *xsdt)
 }
 
 void
-device_manager::load_apic(const acpi_apic *apic)
+device_manager::load_apic(const acpi_table_header *header)
 {
+	const auto *apic = check_get_table<acpi_apic>(header);
+
 	uintptr_t local = apic->local_address;
 	m_lapic = new lapic(local, isr::isrSpurious);
 
@@ -249,8 +259,10 @@ device_manager::load_apic(const acpi_apic *apic)
 }
 
 void
-device_manager::load_mcfg(const acpi_mcfg *mcfg)
+device_manager::load_mcfg(const acpi_table_header *header)
 {
+	const auto *mcfg = check_get_table<acpi_mcfg>(header);
+
 	size_t count = acpi_table_entries(mcfg, sizeof(acpi_mcfg_entry));
 	m_pci.set_size(count);
 	m_devices.set_capacity(16);
@@ -271,8 +283,10 @@ device_manager::load_mcfg(const acpi_mcfg *mcfg)
 }
 
 void
-device_manager::load_hpet(const acpi_hpet *hpet)
+device_manager::load_hpet(const acpi_table_header *header)
 {
+	const auto *hpet = check_get_table<acpi_hpet>(header);
+
 	log::debug(logs::device, "  Found HPET device #%3d: base %016lx  pmin %d  attr %02x",
 			hpet->index, hpet->base_address.address, hpet->periodic_min, hpet->attributes);
 

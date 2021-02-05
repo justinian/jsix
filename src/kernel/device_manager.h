@@ -6,10 +6,7 @@
 #include "hpet.h"
 #include "pci.h"
 
-struct acpi_xsdt;
-struct acpi_apic;
-struct acpi_mcfg;
-struct acpi_hpet;
+struct acpi_table_header;
 class block_device;
 class endpoint;
 
@@ -100,19 +97,19 @@ public:
 private:
 	/// Parse the ACPI XSDT and load relevant sub-tables.
 	/// \arg xsdt  Pointer to the XSDT from the firmware
-	void load_xsdt(const acpi_xsdt *xsdt);
+	void load_xsdt(const acpi_table_header *xsdt);
 
 	/// Parse the ACPI MADT and initialize APICs from it.
 	/// \arg apic  Pointer to the MADT from the XSDT
-	void load_apic(const acpi_apic *apic);
+	void load_apic(const acpi_table_header *apic);
 
 	/// Parse the ACPI MCFG and initialize PCIe from it.
 	/// \arg mcfg  Pointer to the MCFG from the XSDT
-	void load_mcfg(const acpi_mcfg *mcfg);
+	void load_mcfg(const acpi_table_header *mcfg);
 
 	/// Parse the ACPI HPET and initialize an HPET from it.
 	/// \arg hpet  Pointer to the HPET from the XSDT
-	void load_hpet(const acpi_hpet *hpet);
+	void load_hpet(const acpi_table_header *hpet);
 
 	/// Probe the PCIe busses and add found devices to our
 	/// device list. The device list is destroyed and rebuilt.

@@ -23,7 +23,7 @@ struct acpi_table_header
 } __attribute__ ((packed));
 
 #define TABLE_HEADER(signature) \
-	static const uint32_t type_id = kutil::byteswap(signature); \
+	static constexpr uint32_t type_id = kutil::byteswap(signature); \
 	acpi_table_header header;
 
 
