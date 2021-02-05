@@ -17,7 +17,6 @@ public:
 
 private:
 	char *m_data;
-	char **m_lines;
 	unsigned m_rows, m_cols;
 	unsigned m_start;
 	unsigned m_count;
