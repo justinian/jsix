@@ -1,6 +1,6 @@
 SYSCALL(0x00, system_log,        const char *)
 SYSCALL(0x01, system_noop,       void)
-SYSCALL(0x02, system_get_log,    j6_handle_t, char *, size_t *)
+SYSCALL(0x02, system_get_log,    j6_handle_t, void *, size_t *)
 SYSCALL(0x03, system_bind_irq,   j6_handle_t, j6_handle_t, unsigned)
 SYSCALL(0x04, system_map_mmio,   j6_handle_t, j6_handle_t *, uintptr_t, size_t, uint32_t)
 

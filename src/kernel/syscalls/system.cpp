@@ -33,7 +33,7 @@ system_noop()
 }
 
 j6_status_t
-system_get_log(j6_handle_t sys, char *buffer, size_t *size)
+system_get_log(j6_handle_t sys, void *buffer, size_t *size)
 {
 	if (!size || (*size && !buffer))
 		return j6_err_invalid_arg;
