@@ -2,13 +2,14 @@
 #include <string.h>
 #include "screen.h"
 
-screen::screen(void *addr, unsigned hres, unsigned vres, pixel_order order) :
-	m_fb(static_cast<pixel_t *>(addr)),
+screen::screen(volatile void *addr, unsigned hres, unsigned vres, unsigned scanline, pixel_order order) :
+	m_fb(static_cast<volatile pixel_t *>(addr)),
 	m_order(order),
+	m_scanline(scanline),
 	m_resx(hres),
 	m_resy(vres)
 {
-	m_back = reinterpret_cast<pixel_t*>(malloc(hres*vres*sizeof(pixel_t)));
+	m_back = reinterpret_cast<pixel_t*>(malloc(scanline*vres*sizeof(pixel_t)));
 }
 
 screen::pixel_t
@@ -46,5 +47,7 @@ screen::draw_pixel(unsigned x, unsigned y, pixel_t color)
 void
 screen::update()
 {
-	memcpy(m_fb, m_back, m_resx*m_resy*sizeof(pixel_t));
+	const size_t len = m_scanline * m_resy * sizeof(pixel_t);
+	asm volatile ( "rep movsb" : :
+		"c"(len), "S"(m_back), "D"(m_fb) );
 }

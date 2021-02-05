@@ -9,7 +9,7 @@ public:
 
 	enum class pixel_order : uint8_t { bgr8, rgb8, };
 
-	screen(void *addr, unsigned hres, unsigned vres, pixel_order order);
+	screen(volatile void *addr, unsigned hres, unsigned vres, unsigned scanline, pixel_order order);
 
 	unsigned width() const { return m_resx; }
 	unsigned height() const { return m_resy; }
@@ -22,8 +22,10 @@ public:
 	void update();
 
 private:
-	pixel_t *m_fb, *m_back;
+	volatile pixel_t *m_fb;
+	pixel_t *m_back;
 	pixel_order m_order;
+	unsigned m_scanline;
 	unsigned m_resx, m_resy;
 
 	screen() = delete;

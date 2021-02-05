@@ -4,6 +4,7 @@
 
 #include "j6/init.h"
 #include "j6/errors.h"
+#include "j6/flags.h"
 #include "j6/signals.h"
 #include "j6/syscalls.h"
 #include "j6/types.h"
@@ -18,6 +19,7 @@ extern "C" {
 }
 
 extern j6_handle_t __handle_sys;
+extern j6_handle_t __handle_self;
 
 struct entry
 {
@@ -45,15 +47,35 @@ main(int argc, const char **argv)
 		}
 	}
 
-	if (!fb || fb->addr == nullptr) {
+	if (!fb || fb->addr == 0) {
 		j6_system_log("fb driver didn't find a framebuffer, exiting");
 		return 1;
+	}
+
+	j6_handle_t fb_handle = j6_handle_invalid;
+	uint32_t flags =
+		j6_vm_flag_write |
+		j6_vm_flag_write_combine;
+	j6_status_t s = j6_system_map_mmio(__handle_sys, &fb_handle, fb->addr, fb->size, flags);
+	if (s != j6_status_ok) {
+		return s;
+	}
+
+	s = j6_vma_map(fb_handle, __handle_self, fb->addr);
+	if (s != j6_status_ok) {
+		return s;
 	}
 
 	const screen::pixel_order order = (fb->flags & 1) ?
 		screen::pixel_order::bgr8 : screen::pixel_order::rgb8;
 
-	screen scr(fb->addr, fb->horizontal, fb->vertical, order);
+	screen scr(
+		reinterpret_cast<void*>(fb->addr),
+		fb->horizontal,
+		fb->vertical,
+		fb->scanline,
+		order);
+
 	font fnt;
 
 	screen::pixel_t fg = scr.color(0xb0, 0xb0, 0xb0);
