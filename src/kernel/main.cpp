@@ -85,8 +85,13 @@ kernel_main(args::header *header)
 		fb = memory::to_virtual<args::framebuffer>(reinterpret_cast<uintptr_t>(&header->video));
 
 		const args::framebuffer &video = header->video;
-		log::debug(logs::boot, "Framebuffer: %dx%d[%d] type %s @ %016llx",
-			video.horizontal, video.vertical, video.scanline, video.type, video.phys_addr);
+		log::debug(logs::boot, "Framebuffer: %dx%d[%d] type %d @ %llx size %llx",
+			video.horizontal,
+			video.vertical,
+			video.scanline,
+			video.type,
+			video.phys_addr,
+			video.size);
 		logger_clear_immediate();
 	}
 

@@ -28,8 +28,6 @@
 
 scheduler *scheduler::s_instance = nullptr;
 
-extern kernel::args::framebuffer *fb;
-
 const uint64_t rflags_noint = 0x002;
 const uint64_t rflags_int = 0x202;
 

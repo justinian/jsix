@@ -254,21 +254,31 @@ initialize_main_user_stack()
 	char *message_arg = push<char>(tcb->rsp3, sizeof(message));
 	kutil::memcpy(message_arg, message, sizeof(message));
 
-	extern args::framebuffer *fb;
-	j6_init_framebuffer *fb_desc = push<j6_init_framebuffer>(tcb->rsp3);
-	fb_desc->addr = fb ? reinterpret_cast<void*>(0x100000000) : nullptr;
-	fb_desc->size = fb ? fb->size : 0;
-	fb_desc->vertical = fb ? fb->vertical : 0;
-	fb_desc->horizontal = fb ? fb->horizontal : 0;
-	fb_desc->scanline = fb ? fb->scanline : 0;
-	fb_desc->flags = 0;
-
-	if (fb && fb->type == kernel::args::fb_type::bgr8)
-		fb_desc->flags |= 1;
-
+	j6_init_value *initv = nullptr;
 	unsigned n = 0;
 
-	j6_init_value *initv = push<j6_init_value>(tcb->rsp3);
+	extern args::framebuffer *fb;
+	if (fb) {
+		j6_init_framebuffer *fb_desc = push<j6_init_framebuffer>(tcb->rsp3);
+		kutil::memset(fb_desc, 0, sizeof(j6_init_framebuffer));
+
+		fb_desc->addr = fb->phys_addr;
+		fb_desc->size = fb->size;
+		fb_desc->vertical = fb->vertical;
+		fb_desc->horizontal = fb->horizontal;
+		fb_desc->scanline = fb->scanline;
+
+		if (fb->type == kernel::args::fb_type::bgr8)
+			fb_desc->flags |= 1;
+
+		initv = push<j6_init_value>(tcb->rsp3);
+		initv->type = j6_init_desc_framebuffer;
+		initv->data = fb_desc;
+		++n;
+	}
+
+
+	initv = push<j6_init_value>(tcb->rsp3);
 	initv->type = j6_init_handle_other;
 	initv->handle.type = j6_object_type_system;
 	initv->handle.handle = proc.add_handle(&system::get());
@@ -284,11 +294,6 @@ initialize_main_user_stack()
 	initv->type = j6_init_handle_self;
 	initv->handle.type = j6_object_type_thread;
 	initv->handle.handle = th.self_handle();
-	++n;
-
-	initv = push<j6_init_value>(tcb->rsp3);
-	initv->type = j6_init_desc_framebuffer;
-	initv->data = fb_desc;
 	++n;
 
 	uint64_t *initc = push<uint64_t>(tcb->rsp3);
