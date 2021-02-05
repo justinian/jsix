@@ -17,20 +17,9 @@ class vm_space;
 
 enum class vm_flags : uint32_t
 {
-	none            = 0x00000000,
-
-	write           = 0x00000001,
-	exec            = 0x00000002,
-
-	zero            = 0x00000010, 
-	contiguous      = 0x00000020,
-
-	large_pages     = 0x00000100,
-	huge_pages      = 0x00000200,
-
-	mmio            = 0x00010000,
-	write_combine   = 0x00020000,
-
+#define VM_FLAG(name, v) name = v,
+#include "j6/tables/vm_flags.inc"
+#undef VM_FLAG
 	user_mask       = 0x0000ffff  ///< flags allowed via syscall
 };
 

@@ -6,6 +6,7 @@
 #include "objects/endpoint.h"
 #include "objects/thread.h"
 #include "objects/system.h"
+#include "objects/vm_area.h"
 #include "syscalls/helpers.h"
 
 extern log::logger &g_logger;
@@ -56,6 +57,18 @@ system_bind_irq(j6_handle_t sys, j6_handle_t endp, unsigned irq)
 		return j6_status_ok;
 
 	return j6_err_invalid_arg;
+}
+
+j6_status_t
+system_map_mmio(j6_handle_t sys, j6_handle_t *vma_handle, uintptr_t phys_addr, size_t size, uint32_t flags)
+{
+	// TODO: check capabilities on sys handle
+	if (!vma_handle) return j6_err_invalid_arg;
+
+	vm_flags vmf = vm_flags::mmio | (static_cast<vm_flags>(flags) & vm_flags::user_mask);
+	construct_handle<vm_area_fixed>(vma_handle, phys_addr, size, vmf);
+
+	return j6_status_ok;
 }
 
 } // namespace syscalls
