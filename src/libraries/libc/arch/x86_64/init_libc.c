@@ -6,6 +6,7 @@ static size_t __initc = 0;
 static struct j6_init_value *__initv = 0;
 
 j6_handle_t __handle_sys = j6_handle_invalid;
+j6_handle_t __handle_self = j6_handle_invalid;
 
 void
 _get_init(size_t *initc, struct j6_init_value **initv)
@@ -31,7 +32,10 @@ _init_libc(uint64_t *rsp)
 		if (__initv[i].type == j6_init_handle_other &&
 			__initv[i].handle.type == j6_object_type_system) {
 			__handle_sys = __initv[i].handle.handle;
-			break;
+		}
+		else if (__initv[i].type == j6_init_handle_self &&
+			__initv[i].handle.type == j6_object_type_process) {
+			__handle_self = __initv[i].handle.handle;
 		}
 	}
 }
