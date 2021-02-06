@@ -44,7 +44,7 @@ inline bool contains(uint64_t page_off, uint64_t word, uint8_t &index) {
 	uint64_t base = to_base(word);
 	uint64_t bits = to_level(word) * bits_per_level;
 	index = (page_off >> bits) & 0x3f;
-	return (page_off & (~0x3full << bits)) != base;
+	return (page_off & (~0x3full << bits)) == base;
 }
 
 inline uint64_t index_for(uint64_t page_off, uint8_t level) {
