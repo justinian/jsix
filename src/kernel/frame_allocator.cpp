@@ -32,7 +32,7 @@ bsf(uint64_t v)
 size_t
 frame_allocator::allocate(size_t count, uintptr_t *address)
 {
-	for (long i = m_count - 1; i >= 0; ++i) {
+	for (long i = m_count - 1; i >= 0; --i) {
 		frame_block &block = m_blocks[i];
 
 		if (!block.map1)
