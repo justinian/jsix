@@ -45,8 +45,12 @@ scrollback::render(screen &scr, font &fnt)
 	const unsigned xstride = (m_margin + fnt.width());
 	const unsigned ystride = (m_margin + fnt.height());
 
+	unsigned start = m_count <= m_rows ? 0 :
+		m_count  % m_rows;
+
 	for (unsigned y = 0; y < m_rows; ++y) {
-		char *line = &m_data[y*m_cols];
+		unsigned i = (start + y) % m_rows;
+		char *line = &m_data[i*m_cols];
 		for (unsigned x = 0; x < m_cols; ++x) {
 			fnt.draw_glyph(scr, line[x], fg, bg, m_margin+x*xstride, m_margin+y*ystride);
 		}

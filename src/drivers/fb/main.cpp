@@ -92,7 +92,7 @@ main(int argc, const char **argv)
 	scrollback scroll(rows, cols);
 
 	int pending = 0;
-	constexpr int pending_threshold = 10;
+	constexpr int pending_threshold = 5;
 
 	j6_handle_t sys = __handle_sys;
 	size_t buffer_size = 0;
@@ -104,7 +104,7 @@ main(int argc, const char **argv)
 
 		if (s == j6_err_insufficient) {
 			free(message_buffer);
-			message_buffer = malloc(size);
+			message_buffer = malloc(size * 2);
 			buffer_size = size;
 			continue;
 		} else if (s != j6_status_ok) {
