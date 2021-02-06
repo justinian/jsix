@@ -94,12 +94,26 @@ main(int argc, const char **argv)
 	int pending = 0;
 	constexpr int pending_threshold = 10;
 
-	char message_buffer[256];
+	j6_handle_t sys = __handle_sys;
+	size_t buffer_size = 0;
+	void *message_buffer = nullptr;
+
 	while (true) {
-		size_t size = sizeof(message_buffer);
-		j6_system_get_log(__handle_sys, message_buffer, &size);
-		if (size != 0) {
-			entry *e = reinterpret_cast<entry*>(&message_buffer);
+		size_t size = buffer_size;
+		j6_status_t s = j6_system_get_log(sys, message_buffer, &size);
+
+		if (s == j6_err_insufficient) {
+			free(message_buffer);
+			message_buffer = malloc(size);
+			buffer_size = size;
+			continue;
+		} else if (s != j6_status_ok) {
+			j6_system_log("fb driver got error from get_log, quitting");
+			return s;
+		}
+
+		if (size > 0) {
+			entry *e = reinterpret_cast<entry*>(message_buffer);
 
 			size_t eom = e->bytes - sizeof(entry);
 			e->message[eom] = 0;
@@ -118,7 +132,6 @@ main(int argc, const char **argv)
 			}
 		}
 	}
-
 
 	j6_system_log("fb driver done, exiting");
 	return 0;
