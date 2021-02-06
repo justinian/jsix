@@ -9,7 +9,8 @@ screen::screen(volatile void *addr, unsigned hres, unsigned vres, unsigned scanl
 	m_resx(hres),
 	m_resy(vres)
 {
-	m_back = reinterpret_cast<pixel_t*>(malloc(scanline*vres*sizeof(pixel_t)));
+	const size_t size = scanline * vres;
+	m_back = reinterpret_cast<pixel_t*>(malloc(size * sizeof(pixel_t)));
 }
 
 screen::pixel_t
@@ -33,15 +34,9 @@ screen::color(uint8_t r, uint8_t g, uint8_t b) const
 void
 screen::fill(pixel_t color)
 {
-	const size_t len = m_resx * m_resy;
-	for (size_t i = 0; i < len; ++i)
-		m_back[i] = color;
-}
-
-void
-screen::draw_pixel(unsigned x, unsigned y, pixel_t color)
-{
-	m_back[x + y * m_resx] = color;
+	const size_t len = m_scanline * m_resy;
+	asm volatile ( "rep stosl" : :
+		"a"(color), "c"(len), "D"(m_back) );
 }
 
 void

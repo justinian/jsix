@@ -17,7 +17,11 @@ public:
 	pixel_t color(uint8_t r, uint8_t g, uint8_t b) const;
 
 	void fill(pixel_t color);
-	void draw_pixel(unsigned x, unsigned y, pixel_t color);
+
+	inline void draw_pixel(unsigned x, unsigned y, pixel_t color) {
+		const size_t index = x + y * m_scanline;
+		m_back[index] = color;
+	}
 
 	void update();
 
