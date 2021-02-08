@@ -1,19 +1,20 @@
+/// \file spinlock.h
+/// Spinlock types and related defintions
+
 #pragma once
-#include <atomic>
 
 namespace kutil {
+namespace spinlock {
 
-
-class spinlock
+/// An MCS based spinlock node
+struct node
 {
-public:
-	spinlock() : m_lock(false) {}
-
-	inline void enter() { while (!m_lock.exchange(true)); }
-	inline void leave() { m_lock.store(false); }
-
-private:
-	std::atomic<bool> m_lock;
+	bool locked;
+	node *next;
 };
 
+void aquire(node *lock, node *waiter);
+void release(node *lock, node *waiter);
+
+} // namespace spinlock
 } // namespace kutil

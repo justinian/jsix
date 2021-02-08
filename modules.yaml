@@ -114,6 +114,7 @@ modules:
             - src/libraries/kutil/logger.cpp
             - src/libraries/kutil/memory.cpp
             - src/libraries/kutil/printf.c
+            - src/libraries/kutil/spinlock.cpp
 
     cpu:
         kind: lib
