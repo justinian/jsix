@@ -17,6 +17,6 @@ void
 clock::spinwait(uint64_t us) const
 {
 	uint64_t when = value() + us;
-	while (value() < when);
+	while (value() < when) asm ("pause");
 }
 
