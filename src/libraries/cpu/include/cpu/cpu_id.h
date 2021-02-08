@@ -1,5 +1,5 @@
 #pragma once
-/// \file cpu.h Definition of required cpu features for jsix
+/// \file cpu_id.h Definition of required cpu features for jsix
 
 #include <stdint.h>
 
@@ -47,6 +47,9 @@ public:
 	/// \arg subleaf  The subleaf selector (initial ECX)
 	/// \returns      A |regs| struct of the values retuned
 	regs get(uint32_t leaf, uint32_t sub = 0) const;
+
+	/// Get the local APIC ID of the current CPU
+	uint8_t local_apic_id() const;
 
 	/// Get the name of the cpu vendor (eg, "GenuineIntel")
 	inline const char * vendor_id() const	{ return m_vendor_id; }

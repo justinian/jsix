@@ -1,6 +1,5 @@
 %include "tasking.inc"
 
-extern g_tss
 global task_switch
 task_switch:
 	push rbp
@@ -18,7 +17,7 @@ task_switch:
 	mov [rax + TCB.rsp], rsp
 
 	; Copy off saved user rsp
-	mov rcx, [gs:CPU_DATA.rsp3]    ; rcx: curretn task's saved user rsp
+	mov rcx, [gs:CPU_DATA.rsp3]    ; rcx: current task's saved user rsp
 	mov [rax + TCB.rsp3], rcx
 
 	; Install next task's TCB
@@ -31,7 +30,7 @@ task_switch:
 	mov rcx, [rdi + TCB.rsp0]      ; rcx: top of next task's kernel stack
 	mov [gs:CPU_DATA.rsp0], rcx
 
-	lea rdx, [rel g_tss]           ; rdx: address of TSS
+	mov rdx, [gs:CPU_DATA.tss]     ; rdx: address of TSS
 	mov [rdx + TSS.rsp0], rcx
 
 	; Update saved user rsp
@@ -67,3 +66,8 @@ initialize_main_thread:
 
 	; the entrypoint should already be on the stack
 	jmp kernel_to_user_trampoline
+
+global _current_gsbase
+_current_gsbase:
+	mov rax, [gs:CPU_DATA.self]
+	ret

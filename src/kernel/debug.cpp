@@ -13,6 +13,7 @@ void
 print_regs(const cpu_state &regs)
 {
 	console *cons = console::get();
+	cpu_data &cpu = current_cpu();
 
 	uint64_t cr2 = 0;
 	__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
@@ -20,8 +21,8 @@ print_regs(const cpu_state &regs)
 	uintptr_t cr3 = 0;
 	__asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (cr3) );
 
-	cons->printf("       process: %llx", bsp_cpu_data.p->koid());
-	cons->printf("   thread: %llx\n", bsp_cpu_data.t->koid());
+	cons->printf("       process: %llx", cpu.process->koid());
+	cons->printf("   thread: %llx\n", cpu.thread->koid());
 
 	print_regL("rax", regs.rax);
 	print_regM("rbx", regs.rbx);
@@ -43,7 +44,7 @@ print_regs(const cpu_state &regs)
 	cons->puts("\n\n");
 	print_regL("rbp", regs.rbp);
 	print_regM("rsp", regs.user_rsp);
-	print_regR("sp0", bsp_cpu_data.rsp0);
+	print_regR("sp0", cpu.rsp0);
 
 	print_regL("rip", regs.rip);
 	print_regM("cr3", cr3);

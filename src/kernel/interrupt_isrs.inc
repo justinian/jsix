@@ -240,6 +240,7 @@ IRQ (0xdf, 0xbf, irqBF)
 ISR (0xe0, 0, isrTimer)
 ISR (0xe1, 0, isrLINT0)
 ISR (0xe2, 0, isrLINT1)
+ISR (0xe3, 0, isrAPICError)
 ISR (0xe4, 0, isrAssert)
 
 ISR (0xef, 0, isrSpurious)

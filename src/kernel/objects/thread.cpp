@@ -9,7 +9,7 @@
 extern "C" void kernel_to_user_trampoline();
 static constexpr j6_signal_t thread_default_signals = 0;
 
-extern vm_area_guarded g_kernel_stacks;
+extern vm_area_guarded &g_kernel_stacks;
 
 thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 	kobject(kobject::type::thread, thread_default_signals),
@@ -43,13 +43,9 @@ thread::from_tcb(TCB *tcb)
 	return reinterpret_cast<thread*>(kutil::offset_pointer(tcb, offset));
 }
 
-thread &
-thread::current()
-{
-	return *bsp_cpu_data.t;
-}
+thread & thread::current() { return *current_cpu().thread; }
 
-inline void schedule_if_current(thread *t) { if (t == bsp_cpu_data.t) scheduler::get().schedule(); }
+inline void schedule_if_current(thread *t) { if (t == current_cpu().thread) scheduler::get().schedule(); }
 
 void
 thread::wait_on_signals(kobject *obj, j6_signal_t signals)

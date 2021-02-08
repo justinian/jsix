@@ -39,11 +39,8 @@ frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
 static kutil::no_construct<vm_area_untracked> __g_kernel_heap_area_storage;
 vm_area_untracked &g_kernel_heap_area = __g_kernel_heap_area_storage.value;
 
-vm_area_guarded g_kernel_stacks {
-	memory::stacks_start,
-	memory::kernel_stack_pages,
-	memory::kernel_max_stacks,
-	vm_flags::write};
+static kutil::no_construct<vm_area_guarded> __g_kernel_stacks_storage;
+vm_area_guarded &g_kernel_stacks = __g_kernel_stacks_storage.value;
 
 vm_area_guarded g_kernel_buffers {
 	memory::buffers_start,
@@ -65,6 +62,11 @@ void
 memory_initialize_pre_ctors(args::header &kargs)
 {
 	using kernel::args::frame_block;
+
+	// Clean out any remaning bootloader page table entries
+	page_table *kpml4 = static_cast<page_table*>(kargs.pml4);
+	for (unsigned i = 0; i < memory::pml4e_kernel; ++i)
+		kpml4->entries[i] = 0;
 
 	new (&g_kernel_heap) kutil::heap_allocator {heap_start, kernel_max_heap};
 
@@ -97,7 +99,6 @@ memory_initialize_pre_ctors(args::header &kargs)
 		}
 	}
 
-	page_table *kpml4 = reinterpret_cast<page_table*>(kargs.pml4);
 	process *kp = process::create_kernel_process(kpml4);
 	vm_space &vm = kp->space();
 
@@ -105,42 +106,24 @@ memory_initialize_pre_ctors(args::header &kargs)
 		vm_area_untracked(kernel_max_heap, vm_flags::write);
 
 	vm.add(heap_start, heap);
+
+	vm_area *stacks = new (&g_kernel_stacks) vm_area_guarded {
+		memory::stacks_start,
+		memory::kernel_stack_pages,
+		memory::kernel_max_stacks,
+		vm_flags::write};
+	vm.add(memory::stacks_start, &g_kernel_stacks);
 }
 
 void
 memory_initialize_post_ctors(args::header &kargs)
 {
 	vm_space &vm = vm_space::kernel_space();
-	vm.add(memory::stacks_start, &g_kernel_stacks);
 	vm.add(memory::buffers_start, &g_kernel_buffers);
 
 	g_frame_allocator.free(
 		reinterpret_cast<uintptr_t>(kargs.page_tables),
 		kargs.table_count);
-
-	using memory::frame_size;
-	using memory::kernel_stack_pages;
-	constexpr size_t stack_size = kernel_stack_pages * frame_size;
-
-	for (int ist = 1; ist <= 3; ++ist) {
-		uintptr_t bottom = g_kernel_stacks.get_section();
-		log::debug(logs::boot, "Installing IST%d stack at %llx", ist, bottom);
-
-		// Pre-realize and xerothese stacks, they're no good
-		// if they page fault
-		kutil::memset(reinterpret_cast<void*>(bottom), 0, stack_size);
-
-		// Skip two entries to be the null frame
-		tss_set_ist(ist, bottom + stack_size - 2 * sizeof(uintptr_t));
-	}
-
-#define ISR(i, s, name)   if (s) { idt_set_ist(i, s); }
-#define EISR(i, s, name)  if (s) { idt_set_ist(i, s); }
-#define IRQ(i, q, name)
-#include "interrupt_isrs.inc"
-#undef IRQ
-#undef EISR
-#undef ISR
 }
 
 static void
@@ -196,15 +179,6 @@ log_mtrrs()
 		pat_names[(pat >> (2*8)) & 7], pat_names[(pat >> (3*8)) & 7],
 		pat_names[(pat >> (4*8)) & 7], pat_names[(pat >> (5*8)) & 7],
 		pat_names[(pat >> (6*8)) & 7], pat_names[(pat >> (7*8)) & 7]);
-}
-
-void
-setup_pat()
-{
-	uint64_t pat = rdmsr(msr::ia32_pat);
-	pat = (pat & 0x00ffffffffffffffull) | (0x01ull << 56); // set PAT 7 to WC
-	wrmsr(msr::ia32_pat, pat);
-	log_mtrrs();
 }
 
 

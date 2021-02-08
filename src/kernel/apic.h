@@ -29,6 +29,27 @@ public:
 	/// \arg spurious  Vector of the spurious interrupt handler
 	lapic(uintptr_t base, isr spurious);
 
+	/// Get the local APIC's ID
+	uint8_t get_id();
+
+	enum class ipi_mode : uint8_t {
+		fixed   = 0,
+		smi     = 2,
+		nmi     = 4,
+		init    = 5,
+		startup = 6,
+	};
+
+	/// Send an inter-processor interrupt.
+	/// \arg mode   The sending mode
+	/// \arg vector The interrupt vector
+	/// \arg dest   The APIC ID of the destination
+	void send_ipi(ipi_mode mode, uint8_t vector, uint8_t dest);
+
+	/// Wait for an IPI to finish sending. This is done automatically
+	/// before sending another IPI with send_ipi().
+	void ipi_wait();
+
 	/// Enable interrupts for the LAPIC timer.
 	/// \arg vector   Interrupt vector the timer should use
 	/// \arg repeat   If false, this timer is one-off, otherwise repeating

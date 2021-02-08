@@ -26,7 +26,7 @@ public:
 
 	/// Get the LAPIC
 	/// \returns An object representing the local APIC
-	lapic * get_lapic() { return m_lapic; }
+	lapic & get_lapic() { return *m_lapic; }
 
 	/// Get an IOAPIC
 	/// \arg i   Index of the requested IOAPIC
@@ -94,6 +94,9 @@ public:
 			&m_hpets[i] : nullptr;
 	}
 
+	/// Get the list of APIC ids for other CPUs
+	inline const kutil::vector<uint8_t> & get_apic_ids() const { return m_apic_ids; }
+
 private:
 	/// Parse the ACPI XSDT and load relevant sub-tables.
 	/// \arg xsdt  Pointer to the XSDT from the firmware
@@ -122,6 +125,7 @@ private:
 	lapic *m_lapic;
 	kutil::vector<ioapic> m_ioapics;
 	kutil::vector<hpet> m_hpets;
+	kutil::vector<uint8_t> m_apic_ids;
 
 	kutil::vector<pci_group> m_pci;
 	kutil::vector<pci_device> m_devices;

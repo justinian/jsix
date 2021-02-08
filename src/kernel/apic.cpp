@@ -6,11 +6,16 @@
 #include "kernel_memory.h"
 #include "log.h"
 
+static constexpr uint16_t lapic_id         = 0x0020;
 static constexpr uint16_t lapic_spurious   = 0x00f0;
+
+static constexpr uint16_t lapic_icr_low    = 0x0300;
+static constexpr uint16_t lapic_icr_high   = 0x0310;
 
 static constexpr uint16_t lapic_lvt_timer  = 0x0320;
 static constexpr uint16_t lapic_lvt_lint0  = 0x0350;
 static constexpr uint16_t lapic_lvt_lint1  = 0x0360;
+static constexpr uint16_t lapic_lvt_error  = 0x0370;
 
 static constexpr uint16_t lapic_timer_init = 0x0380;
 static constexpr uint16_t lapic_timer_cur  = 0x0390;
@@ -25,6 +30,7 @@ apic_read(uint32_t volatile *apic, uint16_t offset)
 static void
 apic_write(uint32_t volatile *apic, uint16_t offset, uint32_t value)
 {
+	log::debug(logs::apic, "LAPIC write: %x = %08lx", offset, value);
 	*(apic + offset/sizeof(uint32_t)) = value;
 }
 
@@ -52,8 +58,36 @@ lapic::lapic(uintptr_t base, isr spurious) :
 	apic(base),
 	m_divisor(0)
 {
+	apic_write(m_base, lapic_lvt_error, static_cast<uint32_t>(isr::isrAPICError));
 	apic_write(m_base, lapic_spurious, static_cast<uint32_t>(spurious));
 	log::info(logs::apic, "LAPIC created, base %lx", m_base);
+}
+
+uint8_t
+lapic::get_id()
+{
+	return static_cast<uint8_t>(apic_read(m_base, lapic_id) >> 24);
+}
+
+void
+lapic::send_ipi(ipi_mode mode, uint8_t vector, uint8_t dest)
+{
+	// Wait until the APIC is ready to send
+	ipi_wait();
+
+	apic_write(m_base, lapic_icr_high, static_cast<uint32_t>(dest) << 24);
+	uint32_t command =
+		static_cast<uint32_t>(vector) |
+		static_cast<uint32_t>(mode) << 8;
+
+	apic_write(m_base, lapic_icr_low, command);
+}
+
+void
+lapic::ipi_wait()
+{
+	while (apic_read(m_base, lapic_icr_low) & (1<<12))
+		asm volatile ("pause" : : : "memory");
 }
 
 void

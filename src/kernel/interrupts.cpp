@@ -8,6 +8,7 @@
 #include "debug.h"
 #include "device_manager.h"
 #include "gdt.h"
+#include "idt.h"
 #include "interrupts.h"
 #include "io.h"
 #include "kernel_memory.h"
@@ -15,6 +16,7 @@
 #include "objects/process.h"
 #include "scheduler.h"
 #include "syscall.h"
+#include "tss.h"
 #include "vm_space.h"
 
 static const uint16_t PIC1 = 0x20;
@@ -22,19 +24,14 @@ static const uint16_t PIC2 = 0xa0;
 
 constexpr uintptr_t apic_eoi_addr = 0xfee000b0 + ::memory::page_offset;
 
+constexpr size_t increment_offset = 0x1000;
+
 extern "C" {
 	void _halt();
 
 	void isr_handler(cpu_state*);
 	void irq_handler(cpu_state*);
 
-#define ISR(i, s, name)     extern void name ();
-#define EISR(i, s, name)    extern void name ();
-#define IRQ(i, q, name)  extern void name ();
-#include "interrupt_isrs.inc"
-#undef IRQ
-#undef EISR
-#undef ISR
 }
 
 isr
@@ -60,7 +57,7 @@ get_irq(unsigned vector)
 	}
 }
 
-static void
+void
 disable_legacy_pic()
 {
 	// Mask all interrupts
@@ -81,27 +78,15 @@ disable_legacy_pic()
 }
 
 void
-interrupts_init()
-{
-#define ISR(i, s, name)     idt_set_entry(i, reinterpret_cast<uint64_t>(& name), 0x08, 0x8e);
-#define EISR(i, s, name)    idt_set_entry(i, reinterpret_cast<uint64_t>(& name), 0x08, 0x8e);
-#define IRQ(i, q, name)  idt_set_entry(i, reinterpret_cast<uint64_t>(& name), 0x08, 0x8e);
-#include "interrupt_isrs.inc"
-#undef IRQ
-#undef EISR
-#undef ISR
-
-	disable_legacy_pic();
-
-	log::info(logs::boot, "Interrupts enabled.");
-}
-
-void
 isr_handler(cpu_state *regs)
 {
 	console *cons = console::get();
 	uint8_t vector = regs->interrupt & 0xff;
-	ist_decrement(vector);
+
+	TSS &tss = TSS::current();
+	uint8_t ist = g_idt.get_ist(vector);
+	if (ist)
+		tss.ist_stack(ist) -= increment_offset;
 
 	switch (static_cast<isr>(vector)) {
 
@@ -150,13 +135,13 @@ isr_handler(cpu_state *regs)
 				switch ((regs->errorcode & 0x07) >> 1) {
 				case 0:
 					cons->printf(" GDT[%x]\n", index);
-					gdt_dump(index);
+					GDT::current().dump(index);
 					break;
 
 				case 1:
 				case 3:
 					cons->printf(" IDT[%x]\n", index);
-					idt_dump(index);
+					g_idt.dump(index);
 					break;
 
 				default:
@@ -275,7 +260,9 @@ isr_handler(cpu_state *regs)
 		print_stacktrace(2);
 		_halt();
 	}
-	ist_increment(vector);
+
+	if (ist)
+		tss.ist_stack(ist) += increment_offset;
 	*reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
 }
 

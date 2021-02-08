@@ -1,58 +1,66 @@
 #pragma once
 /// \file gdt.h
-/// Definitions relating to system descriptor tables: GDT, IDT, TSS
+/// Definitions relating to a CPU's GDT table
 #include <stdint.h>
 
-/// Set up the GDT and TSS, and switch segment registers to point
-/// to them.
-void gdt_init();
+#include "kutil/enum_bitfields.h"
 
-/// Set an entry in the IDT
-/// \arg i         Index in the IDT (vector of the interrupt this handles)
-/// \arg addr      Address of the handler
-/// \arg selector  GDT selector to set when invoking this handler
-/// \arg flags     Descriptor flags to set
-void idt_set_entry(uint8_t i, uint64_t addr, uint16_t selector, uint8_t flags);
+class TSS;
 
-/// Set the stack pointer for a given ring in the TSS
-/// \arg ring  Ring to set for (0-2)
-/// \arg rsp   Stack pointer to set
-void tss_set_stack(unsigned ring, uintptr_t rsp);
+enum class gdt_type : uint8_t
+{
+	accessed	= 0x01,
+	read_write	= 0x02,
+	conforming	= 0x04,
+	execute		= 0x08,
+	system		= 0x10,
+	ring1		= 0x20,
+	ring2		= 0x40,
+	ring3		= 0x60,
+	present		= 0x80
+};
+IS_BITFIELD(gdt_type);
 
-/// Get the stack pointer for a given ring in the TSS
-/// \arg ring  Ring to get (0-2)
-/// \returns   Stack pointers for that ring
-uintptr_t tss_get_stack(unsigned ring);
+class GDT
+{
+public:
+	GDT(TSS *tss);
 
-/// Set the given IDT entry to use the given IST entry
-/// \arg i     Which IDT entry to set
-/// \arg ist   Which IST entry to set (1-7)
-void idt_set_ist(unsigned i, unsigned ist);
+	/// Get the currently running CPU's GDT
+	static GDT & current();
 
-/// Set the stack pointer for a given IST in the TSS
-/// \arg ist   Which IST entry to set (1-7)
-/// \arg rsp   Stack pointer to set
-void tss_set_ist(unsigned ist, uintptr_t rsp);
+	/// Install this GDT to the current CPU
+	void install() const;
 
-/// Increment the stack pointer for the given vector,
-/// if it's using an IST entry
-/// \arg i     Which IDT entry to use
-void ist_increment(unsigned i);
+	/// Get the addrss of the pointer
+	inline const void * pointer() const { return static_cast<const void*>(&m_ptr); }
 
-/// Decrement the stack pointer for the given vector,
-/// if it's using an IST entry
-/// \arg i     Which IDT entry to use
-void ist_decrement(unsigned i);
+	/// Dump debug information about the GDT to the console.
+	/// \arg index  Which entry to print, or -1 for all entries
+	void dump(unsigned index = -1) const;
 
-/// Get the stack pointer for a given IST in the TSS
-/// \arg ring  Which IST entry to get (1-7)
-/// \returns   Stack pointers for that IST entry
-uintptr_t tss_get_ist(unsigned ist);
+private:
+	void set(uint8_t i, uint32_t base, uint64_t limit, bool is64, gdt_type type);
+	void set_tss(TSS *tss);
 
-/// Dump information about the current GDT to the screen
-/// \arg index  Which entry to print, or -1 for all entries
-void gdt_dump(unsigned index = -1);
+	struct descriptor
+	{
+		uint16_t limit_low;
+		uint16_t base_low;
+		uint8_t base_mid;
+		gdt_type type;
+		uint8_t size;
+		uint8_t base_high;
+	} __attribute__ ((packed, align(8)));
 
-/// Dump information about the current IDT to the screen
-/// \arg index  Which entry to print, or -1 for all entries
-void idt_dump(unsigned index = -1);
+	struct ptr
+	{
+		uint16_t limit;
+		descriptor *base;
+	} __attribute__ ((packed, align(4)));
+
+	descriptor m_entries[8];
+	TSS *m_tss;
+
+	ptr m_ptr;
+};

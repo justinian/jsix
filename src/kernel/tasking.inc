@@ -1,14 +1,20 @@
 struc TCB
 .rsp:          resq 1
-.rsp0:		   resq 1
-.rsp3:		   resq 1
+.rsp0:         resq 1
+.rsp3:         resq 1
 .pml4:         resq 1
 endstruc
 
 struc CPU_DATA
+.self:         resq 1
+.id:           resq 1
 .rsp0:         resq 1
 .rsp3:         resq 1
 .tcb:          resq 1
+.thread:       resq 1
+.process:      resq 1
+.tss:          resq 1
+.gdt:          resq 1
 endstruc
 
 struc TSS

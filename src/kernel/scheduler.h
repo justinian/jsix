@@ -10,13 +10,10 @@ namespace args {
 	struct program;
 }}
 
+struct cpu_data;
 class lapic;
 class process;
 struct page_table;
-struct cpu_state;
-
-extern "C" void isr_handler(cpu_state*);
-extern "C" void task_switch(TCB *next);
 
 
 /// The task scheduler
@@ -42,8 +39,8 @@ public:
 	static const uint16_t process_quanta = 10;
 
 	/// Constructor.
-	/// \arg apic  Pointer to the local APIC object
-	scheduler(lapic *apic);
+	/// \arg apic  The local APIC object for this CPU
+	scheduler(lapic &apic);
 
 	/// Create a new process from a program image in memory.
 	/// \arg program  The descriptor of the pogram in memory
@@ -82,7 +79,6 @@ public:
 	static scheduler & get() { return *s_instance; }
 
 private:
-	friend uintptr_t syscall_dispatch(uintptr_t, cpu_state &);
 	friend class process;
 
 	static constexpr uint64_t promote_frequency = 10;
@@ -96,7 +92,7 @@ private:
 	void prune(uint64_t now);
 	void check_promotions(uint64_t now);
 
-	lapic *m_apic;
+	lapic &m_apic;
 
 	uint32_t m_next_pid;
 	uint32_t m_tick_count;

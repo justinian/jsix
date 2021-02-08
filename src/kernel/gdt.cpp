@@ -1,36 +1,80 @@
 #include <stdint.h>
 
 #include "kutil/assert.h"
-#include "kutil/enum_bitfields.h"
 #include "kutil/memory.h"
+#include "kutil/no_construct.h"
 #include "console.h"
-#include "kernel_memory.h"
+#include "cpu.h"
+#include "gdt.h"
 #include "log.h"
+#include "tss.h"
+
+extern "C" void gdt_write(const void *gdt_ptr, uint16_t cs, uint16_t ds, uint16_t tr);
+
+static constexpr uint8_t kern_cs_index   = 1;
+static constexpr uint8_t kern_ss_index   = 2;
+static constexpr uint8_t user_cs32_index = 3;
+static constexpr uint8_t user_ss_index   = 4;
+static constexpr uint8_t user_cs64_index = 5;
+static constexpr uint8_t tss_index       = 6; // Note that this takes TWO GDT entries
+
+// The BSP's GDT is initialized _before_ global constructors are called,
+// so we don't want it to have a global constructor, lest it overwrite
+// the previous initialization.
+static kutil::no_construct<GDT> __g_bsp_gdt_storage;
+GDT &g_bsp_gdt = __g_bsp_gdt_storage.value;
 
 
-enum class gdt_type : uint8_t
+GDT::GDT(TSS *tss) :
+	m_tss(tss)
 {
-	accessed	= 0x01,
-	read_write	= 0x02,
-	conforming	= 0x04,
-	execute		= 0x08,
-	system		= 0x10,
-	ring1		= 0x20,
-	ring2		= 0x40,
-	ring3		= 0x60,
-	present		= 0x80
-};
-IS_BITFIELD(gdt_type);
+	kutil::memset(this, 0, sizeof(GDT));
 
-struct gdt_descriptor
+	m_ptr.limit = sizeof(m_entries) - 1;
+	m_ptr.base = &m_entries[0];
+
+	// Kernel CS/SS - always 64bit
+	set(kern_cs_index, 0, 0xfffff, true, gdt_type::read_write | gdt_type::execute);
+	set(kern_ss_index, 0, 0xfffff, true, gdt_type::read_write);
+
+	// User CS32/SS/CS64 - layout expected by SYSRET
+	set(user_cs32_index, 0, 0xfffff, false, gdt_type::ring3 | gdt_type::read_write | gdt_type::execute);
+	set(user_ss_index,   0, 0xfffff, true,  gdt_type::ring3 | gdt_type::read_write);
+	set(user_cs64_index, 0, 0xfffff, true,  gdt_type::ring3 | gdt_type::read_write | gdt_type::execute);
+
+	set_tss(tss);
+}
+
+GDT &
+GDT::current()
 {
-	uint16_t limit_low;
-	uint16_t base_low;
-	uint8_t base_mid;
-	gdt_type type;
-	uint8_t size;
-	uint8_t base_high;
-} __attribute__ ((packed));
+	cpu_data &cpu = current_cpu();
+	return *cpu.gdt;
+}
+
+void
+GDT::install() const
+{
+	gdt_write(
+		static_cast<const void*>(&m_ptr),
+		kern_cs_index << 3,
+		kern_ss_index << 3,
+		tss_index << 3);
+}
+
+void
+GDT::set(uint8_t i, uint32_t base, uint64_t limit, bool is64, gdt_type type)
+{
+	m_entries[i].limit_low = limit & 0xffff;
+	m_entries[i].size = (limit >> 16) & 0xf;
+	m_entries[i].size |= (is64 ? 0xa0 : 0xc0);
+
+	m_entries[i].base_low = base & 0xffff;
+	m_entries[i].base_mid = (base >> 16) & 0xff;
+	m_entries[i].base_high = (base >> 24) & 0xff;
+
+	m_entries[i].type = type | gdt_type::system | gdt_type::present;
+}
 
 struct tss_descriptor
 {
@@ -44,72 +88,16 @@ struct tss_descriptor
 	uint32_t reserved;
 } __attribute__ ((packed));
 
-struct tss_entry
-{
-	uint32_t reserved0;
-
-	uint64_t rsp[3]; // stack pointers for CPL 0-2
-	uint64_t ist[8]; // ist[0] is reserved
-
-	uint64_t reserved1;
-	uint16_t reserved2;
-	uint16_t iomap_offset;
-} __attribute__ ((packed));
-
-struct idt_descriptor
-{
-	uint16_t base_low;
-	uint16_t selector;
-	uint8_t ist;
-	uint8_t flags;
-	uint16_t base_mid;
-	uint32_t base_high;
-	uint32_t reserved;		// must be zero
-} __attribute__ ((packed));
-
-struct table_ptr
-{
-	uint16_t limit;
-	uint64_t base;
-} __attribute__ ((packed));
-
-
-gdt_descriptor g_gdt_table[10];
-idt_descriptor g_idt_table[256];
-table_ptr g_gdtr;
-table_ptr g_idtr;
-tss_entry g_tss;
-
-
-extern "C" {
-	void idt_write();
-	void idt_load();
-
-	void gdt_write(uint16_t cs, uint16_t ds, uint16_t tr);
-	void gdt_load();
-}
-
 void
-gdt_set_entry(uint8_t i, uint32_t base, uint64_t limit, bool is64, gdt_type type)
-{
-	g_gdt_table[i].limit_low = limit & 0xffff;
-	g_gdt_table[i].size = (limit >> 16) & 0xf;
-	g_gdt_table[i].size |= (is64 ? 0xa0 : 0xc0);
-
-	g_gdt_table[i].base_low = base & 0xffff;
-	g_gdt_table[i].base_mid = (base >> 16) & 0xff;
-	g_gdt_table[i].base_high = (base >> 24) & 0xff;
-
-	g_gdt_table[i].type = type | gdt_type::system | gdt_type::present;
-}
-
-void
-tss_set_entry(uint8_t i, uint64_t base, uint64_t limit)
+GDT::set_tss(TSS *tss)
 {
 	tss_descriptor tssd;
+
+	size_t limit = sizeof(TSS);
 	tssd.limit_low = limit & 0xffff;
 	tssd.size = (limit >> 16) & 0xf;
 
+	uintptr_t base = reinterpret_cast<uintptr_t>(tss);
 	tssd.base_00 = base & 0xffff;
 	tssd.base_16 = (base >> 16) & 0xff;
 	tssd.base_24 = (base >> 24) & 0xff;
@@ -121,123 +109,26 @@ tss_set_entry(uint8_t i, uint64_t base, uint64_t limit)
 		gdt_type::execute |
 		gdt_type::ring3 |
 		gdt_type::present;
-	kutil::memcpy(&g_gdt_table[i], &tssd, sizeof(tss_descriptor));
+
+	kutil::memcpy(&m_entries[tss_index], &tssd, sizeof(tss_descriptor));
 }
 
 void
-idt_set_entry(uint8_t i, uint64_t addr, uint16_t selector, uint8_t flags)
+GDT::dump(unsigned index) const
 {
-	g_idt_table[i].base_low = addr & 0xffff;
-	g_idt_table[i].base_mid = (addr >> 16) & 0xffff;
-	g_idt_table[i].base_high = (addr >> 32) & 0xffffffff;
-	g_idt_table[i].selector = selector;
-	g_idt_table[i].flags = flags;
-	g_idt_table[i].ist = 0;
-	g_idt_table[i].reserved = 0;
-}
-
-void
-tss_set_stack(unsigned ring, uintptr_t rsp)
-{
-	kassert(ring < 3, "Bad ring passed to tss_set_stack.");
-	g_tss.rsp[ring] = rsp;
-}
-
-uintptr_t
-tss_get_stack(unsigned ring)
-{
-	kassert(ring < 3, "Bad ring passed to tss_get_stack.");
-	return g_tss.rsp[ring];
-}
-
-void
-idt_set_ist(unsigned i, unsigned ist)
-{
-	g_idt_table[i].ist = ist;
-}
-
-void
-tss_set_ist(unsigned ist, uintptr_t rsp)
-{
-	kassert(ist > 0 && ist < 7, "Bad ist passed to tss_set_ist.");
-	g_tss.ist[ist] = rsp;
-}
-
-void
-ist_increment(unsigned i)
-{
-	uint8_t ist = g_idt_table[i].ist;
-	if (ist)
-		g_tss.ist[ist] += memory::frame_size;
-}
-
-void
-ist_decrement(unsigned i)
-{
-	uint8_t ist = g_idt_table[i].ist;
-	if (ist)
-		g_tss.ist[ist] -= memory::frame_size;
-}
-
-uintptr_t
-tss_get_ist(unsigned ist)
-{
-	kassert(ist > 0 && ist < 7, "Bad ist passed to tss_get_ist.");
-	return g_tss.ist[ist];
-}
-
-void
-gdt_init()
-{
-	kutil::memset(&g_gdt_table, 0, sizeof(g_gdt_table));
-	kutil::memset(&g_idt_table, 0, sizeof(g_idt_table));
-
-	g_gdtr.limit = sizeof(g_gdt_table) - 1;
-	g_gdtr.base = reinterpret_cast<uint64_t>(&g_gdt_table);
-
-	// Kernel CS/SS - always 64bit
-	gdt_set_entry(1, 0, 0xfffff,  true, gdt_type::read_write | gdt_type::execute);
-	gdt_set_entry(2, 0, 0xfffff,  true, gdt_type::read_write);
-
-	// User CS32/SS/CS64 - layout expected by SYSRET
-	gdt_set_entry(3, 0, 0xfffff,  false, gdt_type::ring3 | gdt_type::read_write | gdt_type::execute);
-	gdt_set_entry(4, 0, 0xfffff,  true, gdt_type::ring3 | gdt_type::read_write);
-	gdt_set_entry(5, 0, 0xfffff,  true, gdt_type::ring3 | gdt_type::read_write | gdt_type::execute);
-
-	kutil::memset(&g_tss, 0, sizeof(tss_entry));
-	g_tss.iomap_offset = sizeof(tss_entry);
-
-	uintptr_t tss_base = reinterpret_cast<uintptr_t>(&g_tss);
-
-	// Note that this takes TWO GDT entries
-	tss_set_entry(6, tss_base, sizeof(tss_entry));
-
-	gdt_write(1 << 3, 2 << 3, 6 << 3);
-
-	g_idtr.limit = sizeof(g_idt_table) - 1;
-	g_idtr.base = reinterpret_cast<uint64_t>(&g_idt_table);
-
-	idt_write();
-}
-
-void
-gdt_dump(unsigned index)
-{
-	const table_ptr &table = g_gdtr;
-
 	console *cons = console::get();
 
 	unsigned start = 0;
-	unsigned count = (table.limit + 1) / sizeof(gdt_descriptor);
+	unsigned count = (m_ptr.limit + 1) / sizeof(descriptor);
 	if (index != -1) {
 		start = index;
 		count = 1;
 	} else {
-		cons->printf("         GDT: loc:%lx size:%d\n", table.base, table.limit+1);
+		cons->printf("         GDT: loc:%lx size:%d\n", m_ptr.base, m_ptr.limit+1);
 	}
 
-	const gdt_descriptor *gdt =
-		reinterpret_cast<const gdt_descriptor *>(table.base);
+	const descriptor *gdt =
+		reinterpret_cast<const descriptor *>(m_ptr.base);
 
 	for (int i = start; i < start+count; ++i) {
 		uint32_t base =
@@ -273,53 +164,5 @@ gdt_dump(unsigned index)
 			(gdt[i].size & 0x80) ? "KB" : " B",
 			(gdt[i].size & 0x60) == 0x20 ? "64" :
 				(gdt[i].size & 0x60) == 0x40 ? "32" : "16");
-	}
-}
-
-void
-idt_dump(unsigned index)
-{
-	const table_ptr &table = g_idtr;
-
-
-	unsigned start = 0;
-	unsigned count = (table.limit + 1) / sizeof(idt_descriptor);
-	if (index != -1) {
-		start = index;
-		count = 1;
-		log::info(logs::boot, "IDT FOR INDEX %02x", index);
-	} else {
-		log::info(logs::boot, "Loaded IDT at: %lx size: %d bytes", table.base, table.limit+1);
-	}
-
-	const idt_descriptor *idt =
-		reinterpret_cast<const idt_descriptor *>(table.base);
-
-	for (int i = start; i < start+count; ++i) {
-		uint64_t base =
-			(static_cast<uint64_t>(idt[i].base_high) << 32) |
-			(static_cast<uint64_t>(idt[i].base_mid)  << 16) |
-			idt[i].base_low;
-
-		char const *type;
-		switch (idt[i].flags & 0xf) {
-			case 0x5: type = " 32tsk "; break;
-			case 0x6: type = " 16int "; break;
-			case 0x7: type = " 16trp "; break;
-			case 0xe: type = " 32int "; break;
-			case 0xf: type = " 32trp "; break;
-			default:  type = " ????? "; break;
-		}
-
-		if (idt[i].flags & 0x80) {
-			log::debug(logs::boot,
-					"   Entry %3d: Base:%lx Sel(rpl %d, ti %d, %3d) IST:%d %s DPL:%d", i, base,
-					(idt[i].selector & 0x3),
-					((idt[i].selector & 0x4) >> 2),
-					(idt[i].selector >> 3),
-					idt[i].ist,
-					type,
-					((idt[i].flags >> 5) & 0x3));
-		}
 	}
 }

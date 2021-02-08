@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "cpu/cpu.h"
+#include "cpu/cpu_id.h"
 
 namespace cpu {
 
@@ -92,6 +92,15 @@ bool
 cpu_id::has_feature(feature feat)
 {
 	return (m_features & (1 << static_cast<uint64_t>(feat))) != 0;
+}
+
+uint8_t
+cpu_id::local_apic_id() const
+{
+	uint32_t eax_unused;
+	uint32_t ebx;
+	__cpuid(1, 0, &eax_unused, &ebx);
+	return static_cast<uint8_t>(ebx >> 24);
 }
 
 }

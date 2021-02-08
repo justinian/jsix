@@ -33,7 +33,9 @@ const uint64_t rflags_int = 0x202;
 
 extern uint64_t idle_stack_end;
 
-scheduler::scheduler(lapic *apic) :
+extern "C" void task_switch(TCB *tcb);
+
+scheduler::scheduler(lapic &apic) :
 	m_apic(apic),
 	m_next_pid(1),
 	m_clock(0),
@@ -55,10 +57,11 @@ scheduler::scheduler(lapic *apic) :
 	m_runlists[max_priority].push_back(tcb);
 	m_current = tcb;
 
-	bsp_cpu_data.rsp0 = tcb->rsp0;
-	bsp_cpu_data.tcb = tcb;
-	bsp_cpu_data.p = kp;
-	bsp_cpu_data.t = idle;
+	cpu_data &cpu = current_cpu();
+	cpu.rsp0 = tcb->rsp0;
+	cpu.tcb = tcb;
+	cpu.process = kp;
+	cpu.thread = idle;
 }
 
 template <typename T>
@@ -113,9 +116,8 @@ void
 scheduler::start()
 {
 	log::info(logs::sched, "Starting scheduler.");
-	wrmsr(msr::ia32_gs_base, reinterpret_cast<uintptr_t>(&bsp_cpu_data));
-	m_apic->enable_timer(isr::isrTimer, false);
-	m_apic->reset_timer(10);
+	m_apic.enable_timer(isr::isrTimer, false);
+	m_apic.reset_timer(10);
 }
 
 void
@@ -205,7 +207,7 @@ void
 scheduler::schedule()
 {
 	uint8_t priority = m_current->priority;
-	uint32_t remaining = m_apic->stop_timer();
+	uint32_t remaining = m_apic.stop_timer();
 	m_current->time_left = remaining;
 	thread *th = thread::from_tcb(m_current);
 	const bool constant = th->has_state(thread::state::constant);
@@ -214,7 +216,7 @@ scheduler::schedule()
 		if (priority < max_priority && !constant) {
 			// Process used its whole timeslice, demote it
 			++m_current->priority;
-			log::info(logs::sched, "Scheduler  demoting thread %llx, priority %d",
+			log::debug(logs::sched, "Scheduler  demoting thread %llx, priority %d",
 					th->koid(), m_current->priority);
 		}
 		m_current->time_left = quantum(m_current->priority);
@@ -247,13 +249,14 @@ scheduler::schedule()
 
 	auto *next = m_runlists[priority].pop_front();
 	next->last_ran = m_clock;
-	m_apic->reset_timer(next->time_left);
+	m_apic.reset_timer(next->time_left);
 
 	if (next != m_current) {
 		thread *next_thread = thread::from_tcb(next);
 
-		bsp_cpu_data.t = next_thread;
-		bsp_cpu_data.p = &next_thread->parent();
+		cpu_data &cpu = current_cpu();
+		cpu.thread = next_thread;
+		cpu.process = &next_thread->parent();
 		m_current = next;
 
 		log::debug(logs::sched, "Scheduler switching threads %llx->%llx",

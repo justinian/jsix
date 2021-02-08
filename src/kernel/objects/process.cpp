@@ -42,7 +42,7 @@ process::~process()
 	s_processes.remove_swap(this);
 }
 
-process & process::current() { return *bsp_cpu_data.p; }
+process & process::current() { return *current_cpu().process; }
 process & process::kernel_process() { return g_kernel_process; }
 
 process *
@@ -63,7 +63,7 @@ process::exit(int32_t code)
 		thread->exit(code);
 	}
 
-	if (this == bsp_cpu_data.p)
+	if (this == current_cpu().process)
 		scheduler::get().schedule();
 }
 

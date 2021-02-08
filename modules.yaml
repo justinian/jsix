@@ -12,6 +12,7 @@ modules:
             - src/kernel
         source:
             - src/kernel/apic.cpp
+            - src/kernel/ap_startup.s
             - src/kernel/assert.cpp
             - src/kernel/boot.s
             - src/kernel/clock.cpp
@@ -24,8 +25,9 @@ modules:
             - src/kernel/frame_allocator.cpp
             - src/kernel/fs/gpt.cpp
             - src/kernel/gdt.cpp
-            - src/kernel/gdt.s
+            - src/kernel/gdtidt.s
             - src/kernel/hpet.cpp
+            - src/kernel/idt.cpp
             - src/kernel/interrupts.cpp
             - src/kernel/interrupts.s
             - src/kernel/io.cpp
@@ -56,6 +58,7 @@ modules:
             - src/kernel/syscalls/thread.cpp
             - src/kernel/syscalls/vm_area.cpp
             - src/kernel/task.s
+            - src/kernel/tss.cpp
             - src/kernel/vm_space.cpp
 
     boot:
@@ -118,7 +121,7 @@ modules:
         includes:
             - src/libraries/cpu/include
         source:
-            - src/libraries/cpu/cpu.cpp
+            - src/libraries/cpu/cpu_id.cpp
 
     j6:
       kind: lib

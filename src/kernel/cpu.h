@@ -2,9 +2,13 @@
 
 #include <stdint.h>
 
+#include "kutil/spinlock.h"
+
+class GDT;
+class process;
 struct TCB;
 class thread;
-class process;
+class TSS;
 
 struct cpu_state
 {
@@ -18,15 +22,34 @@ struct cpu_state
 /// version in 'tasking.inc'
 struct cpu_data
 {
+	cpu_data *self;
+	uint64_t id;
 	uintptr_t rsp0;
 	uintptr_t rsp3;
 	TCB *tcb;
-	thread *t;
-	process *p;
+	thread *thread;
+	process *process;
+	TSS *tss;
+	GDT *gdt;
+
+	// Values from here on don't need to be in the asm version
+	kutil::spinlock::node spinner;
 };
 
-extern cpu_data bsp_cpu_data;
+extern "C" cpu_data * _current_gsbase();
 
-// We already validated the required options in the bootloader,
-// but iterate the options and log about them.
+/// Initialize a CPU and set up its cpu_data structure
+/// \arg bsp  True if the current CPU is the BSP
+void init_cpu(bool bsp);
+
+/// Get the cpu_data struct for the current executing CPU
+inline cpu_data & current_cpu() { return *_current_gsbase(); }
+
+/// Validate the required CPU features are present. Really, the bootloader already
+/// validated the required features, but still iterate the options and log about them.
 void cpu_validate();
+
+/// Set up the running CPU. This sets GDT, IDT, and necessary MSRs as well as creating
+/// the cpu_data structure for this processor.
+/// \arg bsp  True if this CPU is the BSP
+void cpu_initialize(bool bsp);

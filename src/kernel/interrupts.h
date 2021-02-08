@@ -29,6 +29,5 @@ extern "C" {
 	void interrupts_disable();
 }
 
-/// Fill the IDT with our ISRs, and disable the legacy
-/// PIC interrupts.
-void interrupts_init();
+/// Disable the legacy PIC
+void disable_legacy_pic();

@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 #include "console.h"
-#include "cpu/cpu.h"
+#include "cpu/cpu_id.h"
 #include "error.h"
 #include "fs.h"
 #include "hardware.h"
