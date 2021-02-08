@@ -66,9 +66,7 @@ vm_area_fixed::vm_area_fixed(uintptr_t start, size_t size, vm_flags flags) :
 {
 }
 
-vm_area_fixed::~vm_area_fixed()
-{
-}
+vm_area_fixed::~vm_area_fixed() {}
 
 size_t vm_area_fixed::resize(size_t size)
 {
@@ -91,9 +89,7 @@ vm_area_untracked::vm_area_untracked(size_t size, vm_flags flags) :
 {
 }
 
-vm_area_untracked::~vm_area_untracked()
-{
-}
+vm_area_untracked::~vm_area_untracked() {}
 
 bool
 vm_area_untracked::get_page(uintptr_t offset, uintptr_t &phys)
@@ -119,6 +115,8 @@ vm_area_open::vm_area_open(size_t size, vm_flags flags) :
 {
 }
 
+vm_area_open::~vm_area_open() {}
+
 bool
 vm_area_open::get_page(uintptr_t offset, uintptr_t &phys)
 {
@@ -133,6 +131,8 @@ vm_area_guarded::vm_area_guarded(uintptr_t start, size_t buf_pages, size_t size,
 	vm_area_untracked {size, flags}
 {
 }
+
+vm_area_guarded::~vm_area_guarded() {}
 
 uintptr_t
 vm_area_guarded::get_section()

@@ -114,6 +114,7 @@ public:
 	/// \arg size  Initial virtual size of the memory area
 	/// \arg flags Flags for this memory area
 	vm_area_open(size_t size, vm_flags flags);
+	virtual ~vm_area_open();
 
 	virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
 
@@ -154,6 +155,8 @@ public:
 		size_t sec_pages,
 		size_t size,
 		vm_flags flags);
+
+	virtual ~vm_area_guarded();
 
 	/// Get an available section in this area
 	uintptr_t get_section();
