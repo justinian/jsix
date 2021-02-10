@@ -149,6 +149,7 @@ kernel_main(args::header *header)
 		}
 	}
 
+	syscall_initialize();
 
 	device_manager &devices = device_manager::get();
 	devices.parse_acpi(header->acpi_table);
@@ -184,7 +185,6 @@ kernel_main(args::header *header)
 	}
 	*/
 
-	syscall_enable();
 	scheduler *sched = new scheduler(devices.get_lapic());
 
 	// Skip program 0, which is the kernel itself

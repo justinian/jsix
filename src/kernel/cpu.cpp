@@ -11,6 +11,7 @@
 #include "log.h"
 #include "msr.h"
 #include "objects/vm_area.h"
+#include "syscall.h"
 #include "tss.h"
 
 cpu_data g_bsp_cpu_data;
@@ -98,6 +99,8 @@ init_cpu(bool bsp)
 
 		tss->ist_stack(ist) = stack_top;
 	}
+	// Set up the syscall MSRs
+	syscall_enable();
 
 	// Set up the page attributes table
 	uint64_t pat = rdmsr(msr::ia32_pat);
