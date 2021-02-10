@@ -58,15 +58,18 @@ namespace kutil {
 	void kfree(void *p) { return g_kernel_heap.free(p); }
 }
 
+template <typename T>
+uintptr_t
+get_physical_page(T *p) {
+	return memory::page_align_down(reinterpret_cast<uintptr_t>(p));
+}
+
 void
 memory_initialize_pre_ctors(args::header &kargs)
 {
 	using kernel::args::frame_block;
 
-	// Clean out any remaning bootloader page table entries
 	page_table *kpml4 = static_cast<page_table*>(kargs.pml4);
-	for (unsigned i = 0; i < memory::pml4e_kernel; ++i)
-		kpml4->entries[i] = 0;
 
 	new (&g_kernel_heap) kutil::heap_allocator {heap_start, kernel_max_heap};
 
@@ -75,17 +78,21 @@ memory_initialize_pre_ctors(args::header &kargs)
 
 	// Mark all the things the bootloader allocated for us as used
 	g_frame_allocator.used(
-		reinterpret_cast<uintptr_t>(kargs.frame_blocks),
+		get_physical_page(&kargs),
+		memory::page_count(sizeof(kargs)));
+
+	g_frame_allocator.used(
+		get_physical_page(kargs.frame_blocks),
 		kargs.frame_block_pages);
 
 	g_frame_allocator.used(
-		reinterpret_cast<uintptr_t>(kargs.pml4),
+		get_physical_page(kargs.pml4),
 		kargs.table_pages);
 
 	for (unsigned i = 0; i < kargs.num_modules; ++i) {
 		const kernel::args::module &mod = kargs.modules[i];
 		g_frame_allocator.used(
-			reinterpret_cast<uintptr_t>(mod.location),
+			get_physical_page(mod.location),
 			memory::page_count(mod.size));
 	}
 
@@ -113,6 +120,10 @@ memory_initialize_pre_ctors(args::header &kargs)
 		memory::kernel_max_stacks,
 		vm_flags::write};
 	vm.add(memory::stacks_start, &g_kernel_stacks);
+
+	// Clean out any remaning bootloader page table entries
+	for (unsigned i = 0; i < memory::pml4e_kernel; ++i)
+		kpml4->entries[i] = 0;
 }
 
 void
@@ -122,7 +133,7 @@ memory_initialize_post_ctors(args::header &kargs)
 	vm.add(memory::buffers_start, &g_kernel_buffers);
 
 	g_frame_allocator.free(
-		reinterpret_cast<uintptr_t>(kargs.page_tables),
+		get_physical_page(kargs.page_tables),
 		kargs.table_count);
 }
 

@@ -93,6 +93,8 @@ add_module(args::header *args, args::mod_type type, buffer &data)
 	m.type = type;
 	m.location = data.data;
 	m.size = data.size;
+
+	change_pointer(m.location);
 }
 
 /// Check that all required cpu features are supported
@@ -198,12 +200,15 @@ efi_main(uefi::handle image, uefi::system_table *st)
 		reinterpret_cast<kernel::entrypoint>(kernel.entrypoint);
 	status.next();
 
-
 	hw::setup_control_regs();
 	memory::virtualize(args->pml4, map, st->runtime_services);
 	status.next();
 
+	change_pointer(args);
 	change_pointer(args->pml4);
+	change_pointer(args->modules);
+	change_pointer(args->programs);
+
 	status.next();
 
 	kentry(args);

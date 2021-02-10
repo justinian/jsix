@@ -105,7 +105,7 @@ kernel_main(args::header *header)
 	bool has_video = false;
 	if (header->video.size > 0) {
 		has_video = true;
-		fb = memory::to_virtual<args::framebuffer>(reinterpret_cast<uintptr_t>(&header->video));
+		fb = &header->video;
 
 		const args::framebuffer &video = header->video;
 		log::debug(logs::boot, "Framebuffer: %dx%d[%d] type %d @ %llx size %llx",
@@ -143,11 +143,10 @@ kernel_main(args::header *header)
 
 	for (size_t i = 0; i < header->num_modules; ++i) {
 		args::module &mod = header->modules[i];
-		void *virt = memory::to_virtual<void>(mod.location);
 
 		switch (mod.type) {
 		case args::mod_type::symbol_table:
-			new symbol_table {virt, mod.size};
+			new symbol_table {mod.location, mod.size};
 			break;
 
 		default:
