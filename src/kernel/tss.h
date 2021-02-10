@@ -22,6 +22,10 @@ public:
 	/// \returns   A mutable reference to the stack pointer
 	uintptr_t & ist_stack(unsigned ist);
 
+	/// Allocate new stacks for the given IST entries.
+	/// \arg ist_entries  A bitmap of used IST entries
+	void create_ist_stacks(uint8_t ist_entries);
+
 private:
 	uint32_t m_reserved0;
 

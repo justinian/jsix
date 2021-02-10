@@ -38,7 +38,7 @@ ap_startup:
 
 align 8
 	.pml4:  dq 0
-	.stack: dq 0
+	.cpu:   dq 0
 	.ret:   dq 0
 
 align 16
@@ -100,7 +100,8 @@ align 8
 	mov gs, ax
 	mov ss, ax
 
-	mov rax, [BASE + (.stack - ap_startup)]
+	mov rdi, [BASE + (.cpu - ap_startup)]
+	mov rax, [rdi + CPU_DATA.rsp0]
 	mov rsp, rax
 
 	mov rax, [BASE + (.ret - ap_startup)]
@@ -121,8 +122,8 @@ init_ap_trampoline:
 	; rdi is the kernel pml4
 	mov [BASE + (ap_startup.pml4 - ap_startup)], rdi
 
-	; rsi is the stack for this AP
-	mov [BASE + (ap_startup.stack - ap_startup)], rsi
+	; rsi is the cpu data for this AP
+	mov [BASE + (ap_startup.cpu - ap_startup)], rsi
 
 	; rdx is the address to jump to
 	mov [BASE + (ap_startup.ret - ap_startup)], rdx

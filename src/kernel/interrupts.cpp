@@ -83,10 +83,11 @@ isr_handler(cpu_state *regs)
 	console *cons = console::get();
 	uint8_t vector = regs->interrupt & 0xff;
 
-	TSS &tss = TSS::current();
-	uint8_t ist = g_idt.get_ist(vector);
-	if (ist)
-		tss.ist_stack(ist) -= increment_offset;
+	// Clear out the IST for this vector so we just keep using
+	// this stack
+	uint8_t old_ist = IDT::get().get_ist(vector);
+	if (old_ist)
+		IDT::get().set_ist(vector, 0);
 
 	switch (static_cast<isr>(vector)) {
 
@@ -122,6 +123,16 @@ isr_handler(cpu_state *regs)
 		}
 		break;
 
+	case isr::isrDoubleFault:
+		cons->set_color(9);
+		cons->printf("\nDouble Fault:\n");
+
+		cons->set_color();
+		print_regs(*regs);
+		print_stacktrace(2);
+		_halt();
+		break;
+
 	case isr::isrGPFault: {
 			cons->set_color(9);
 			cons->puts("\nGeneral Protection Fault:\n");
@@ -141,7 +152,7 @@ isr_handler(cpu_state *regs)
 				case 1:
 				case 3:
 					cons->printf(" IDT[%x]\n", index);
-					g_idt.dump(index);
+					IDT::get().dump(index);
 					break;
 
 				default:
@@ -261,8 +272,9 @@ isr_handler(cpu_state *regs)
 		_halt();
 	}
 
-	if (ist)
-		tss.ist_stack(ist) += increment_offset;
+	// Return the IST for this vector to what it was
+	if (old_ist)
+		IDT::get().set_ist(vector, old_ist);
 	*reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
 }
 

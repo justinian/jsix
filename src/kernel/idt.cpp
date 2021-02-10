@@ -37,6 +37,12 @@ IDT::IDT()
 #undef ISR
 }
 
+IDT &
+IDT::get()
+{
+	return g_idt;
+}
+
 void
 IDT::install() const
 {
@@ -83,12 +89,6 @@ IDT::set(uint8_t i, void (*handler)(), uint16_t selector, uint8_t flags)
 	m_entries[i].flags = flags;
 	m_entries[i].ist = 0;
 	m_entries[i].reserved = 0;
-}
-
-void
-IDT::set_ist(uint8_t i, uint8_t ist)
-{
-	m_entries[i].ist = ist;
 }
 
 void

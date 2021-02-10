@@ -6,8 +6,6 @@
 class IDT
 {
 public:
-	static constexpr unsigned count = 256;
-
 	IDT();
 
 	/// Install this IDT to the current CPU
@@ -21,10 +19,14 @@ public:
 	/// Get the IST entry used by an entry.
 	/// \arg i   Which IDT entry to look in
 	/// \returns The IST index used by entry i, or 0 for none
-	inline uint8_t get_ist(unsigned i) const {
-		if (i >= count) return 0;
+	inline uint8_t get_ist(uint8_t i) const {
 		return m_entries[i].ist;
 	}
+
+	/// Set the IST entry used by an entry.
+	/// \arg i   Which IDT entry to set
+	/// \arg ist The IST index for entry i, or 0 for none
+	void set_ist(uint8_t i, uint8_t ist) { m_entries[i].ist = ist; }
 
 	/// Get the IST entries that are used by this table, as a bitmap
 	uint8_t used_ist_entries() const;
@@ -33,9 +35,11 @@ public:
 	/// \arg index  Which entry to print, or -1 for all entries
 	void dump(unsigned index = -1) const;
 
+	/// Get the global IDT
+	static IDT & get();
+
 private:
 	void set(uint8_t i, void (*handler)(), uint16_t selector, uint8_t flags);
-	void set_ist(uint8_t i, uint8_t ist);
 
 	struct descriptor
 	{
@@ -57,5 +61,3 @@ private:
 	descriptor m_entries[256];
 	ptr m_ptr;
 };
-
-extern IDT &g_idt;

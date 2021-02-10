@@ -38,9 +38,16 @@ struct cpu_data
 
 extern "C" cpu_data * _current_gsbase();
 
-/// Initialize a CPU and set up its cpu_data structure
-/// \arg bsp  True if the current CPU is the BSP
-void init_cpu(bool bsp);
+/// Set up the running CPU. This sets GDT, IDT, and necessary MSRs as well as creating
+/// the cpu_data structure for this processor.
+/// \arg cpu  The cpu_data structure for this CPU
+/// \arg bsp  True if this CPU is the BSP
+void cpu_init(cpu_data *cpu, bool bsp);
+
+/// Do early (before cpu_init) initialization work. Only needs to be called manually for
+/// the BSP, otherwise cpu_init will call it.
+/// \arg cpu  The cpu_data structure for this CPU
+void cpu_early_init(cpu_data *cpu);
 
 /// Get the cpu_data struct for the current executing CPU
 inline cpu_data & current_cpu() { return *_current_gsbase(); }
@@ -49,7 +56,3 @@ inline cpu_data & current_cpu() { return *_current_gsbase(); }
 /// validated the required features, but still iterate the options and log about them.
 void cpu_validate();
 
-/// Set up the running CPU. This sets GDT, IDT, and necessary MSRs as well as creating
-/// the cpu_data structure for this processor.
-/// \arg bsp  True if this CPU is the BSP
-void cpu_initialize(bool bsp);

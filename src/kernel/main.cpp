@@ -37,9 +37,9 @@ extern "C" {
 	void kernel_main(kernel::args::header *header);
 	void (*__ctors)(void);
 	void (*__ctors_end)(void);
-	void long_ap_startup();
+	void long_ap_startup(cpu_data *cpu);
 	void ap_startup();
-	void init_ap_trampoline(void*, uintptr_t, void (*)());
+	void init_ap_trampoline(void*, cpu_data *, void (*)(cpu_data *));
 }
 
 extern void __kernel_assert(const char *, unsigned, const char *);
@@ -118,22 +118,28 @@ kernel_main(args::header *header)
 		logger_clear_immediate();
 	}
 
+	extern IDT &g_idt;
 	extern TSS &g_bsp_tss;
 	extern GDT &g_bsp_gdt;
-
-	TSS *tss = new (&g_bsp_tss) TSS;
-	GDT *gdt = new (&g_bsp_gdt) GDT {tss};
-	gdt->install();
+	extern cpu_data g_bsp_cpu_data;
 
 	IDT *idt = new (&g_idt) IDT;
-	idt->install();
+
+	cpu_data *cpu = &g_bsp_cpu_data;
+	kutil::memset(cpu, 0, sizeof(cpu_data));
+
+	cpu->self = cpu;
+	cpu->tss = new (&g_bsp_tss) TSS;
+	cpu->gdt = new (&g_bsp_gdt) GDT {cpu->tss};
+	cpu_early_init(cpu);
 
 	disable_legacy_pic();
 
 	memory_initialize_pre_ctors(*header);
-	init_cpu(true);
 	run_constructors();
 	memory_initialize_post_ctors(*header);
+
+	cpu->tss->create_ist_stacks(idt->used_ist_entries());
 
 	for (size_t i = 0; i < header->num_modules; ++i) {
 		args::module &mod = header->modules[i];
@@ -154,11 +160,15 @@ kernel_main(args::header *header)
 	device_manager &devices = device_manager::get();
 	devices.parse_acpi(header->acpi_table);
 
+	// cpu_init relies on the APIC being set up
+	cpu_init(cpu, true);
+
 	devices.init_drivers();
 	devices.get_lapic().calibrate_timer();
 
 	start_aps(header->pml4);
 
+	idt->add_ist_entries();
 	interrupts_enable();
 
 	/*
@@ -216,8 +226,8 @@ start_aps(void *kpml4)
 
 	// Since we're using address space outside kernel space, make sure
 	// the kernel's vm_space is used
-	cpu_data &cpu = current_cpu();
-	cpu.process = &g_kernel_process;
+	cpu_data &bsp = current_cpu();
+	bsp.process = &g_kernel_process;
 
 	// Copy the startup code somwhere the real mode trampoline can run
 	uintptr_t addr = 0x8000; // TODO: find a valid address, rewrite addresses
@@ -229,36 +239,69 @@ start_aps(void *kpml4)
 		reinterpret_cast<void*>(&ap_startup),
 		ap_startup_code_size);
 
-	static constexpr size_t stack_bytes = kernel_stack_pages * frame_size;
+	// AP idle stacks need less room than normal stacks, so pack multiple
+	// into a normal stack area
+	static constexpr size_t idle_stack_bytes = 1024; // 2KiB is generous
+	static constexpr size_t full_stack_bytes = kernel_stack_pages * frame_size;
+	static constexpr size_t idle_stacks_per = full_stack_bytes / idle_stack_bytes;
+
+	uint8_t ist_entries = IDT::get().used_ist_entries();
+
+	size_t free_stack_count = 0;
+	uintptr_t stack_area_start = 0;
 
 	for (uint8_t id : ids) {
 		if (id == apic.get_id()) continue;
-		log::info(logs::boot, "Starting AP %d", id);
 
-		size_t current_count = ap_startup_count;
-		uintptr_t stack_start = g_kernel_stacks.get_section();
-		uintptr_t stack_end = stack_start + stack_bytes - 2 * sizeof(void*);
+		// Set up the CPU data structures
+		TSS *tss = new TSS;
+		GDT *gdt = new GDT {tss};
+		cpu_data *cpu = new cpu_data;
+		kutil::memset(cpu, 0, sizeof(cpu_data));
+		cpu->self = cpu;
+		cpu->gdt = gdt;
+		cpu->tss = tss;
+
+		tss->create_ist_stacks(ist_entries);
+
+		// Set up the CPU's idle task stack
+		if (free_stack_count == 0) {
+			stack_area_start = g_kernel_stacks.get_section();
+			free_stack_count = idle_stacks_per;
+		}
+
+		uintptr_t stack_end = stack_area_start + free_stack_count-- * idle_stack_bytes;
+		stack_end -= 2 * sizeof(void*); // Null frame
 		*reinterpret_cast<uint64_t*>(stack_end) = 0; // pre-fault the page
+		cpu->rsp0 = stack_end;
 
-		init_ap_trampoline(kpml4, stack_end, long_ap_startup);
+		// Set up the trampoline with this CPU's data
+		init_ap_trampoline(kpml4, cpu, long_ap_startup);
 
+		// Kick it off!
+		size_t current_count = ap_startup_count;
+		log::debug(logs::boot, "Starting AP %d: stack %llx", id, stack_end);
 		apic.send_ipi(lapic::ipi_mode::init, 0, id);
 		clk.spinwait(1000);
 
 		apic.send_ipi(lapic::ipi_mode::startup, vector, id);
 		for (unsigned i = 0; i < 20; ++i) {
 			if (ap_startup_count > current_count) break;
-			clk.spinwait(10);
+			clk.spinwait(20);
 		}
 
+		// If the CPU already incremented ap_startup_count, it's done
 		if (ap_startup_count > current_count)
 			continue;
 
+		// Send the second SIPI (intel recommends this)
 		apic.send_ipi(lapic::ipi_mode::startup, vector, id);
 		for (unsigned i = 0; i < 100; ++i) {
 			if (ap_startup_count > current_count) break;
-			clk.spinwait(10);
+			clk.spinwait(100);
 		}
+
+		log::warn(logs::boot, "No response from AP %d within timeout", id);
 	}
 
 	log::info(logs::boot, "%d CPUs running", ap_startup_count);
@@ -266,9 +309,9 @@ start_aps(void *kpml4)
 }
 
 void
-long_ap_startup()
+long_ap_startup(cpu_data *cpu)
 {
-	init_cpu(false);
+	cpu_init(cpu, false);
 	++ap_startup_count;
 
 	while(1) asm("hlt");

@@ -40,65 +40,26 @@ cpu_validate()
 }
 
 void
-init_cpu(bool bsp)
+cpu_early_init(cpu_data *cpu)
 {
-	extern TSS &g_bsp_tss;
-	extern GDT &g_bsp_gdt;
-	extern vm_area_guarded &g_kernel_stacks;
-
-	uint8_t id = 0;
-
-	TSS *tss = nullptr;
-	GDT *gdt = nullptr;
-	cpu_data *cpu = nullptr;
-
-	if (bsp) {
-		gdt = &g_bsp_gdt;
-		tss = &g_bsp_tss;
-		cpu = &g_bsp_cpu_data;
-	} else {
-		g_idt.install();
-
-		tss = new TSS;
-		gdt = new GDT {tss};
-		cpu = new cpu_data;
-
-		gdt->install();
-
-		lapic &apic = device_manager::get().get_lapic();
-		id = apic.get_id();
-	}
-
-	kutil::memset(cpu, 0, sizeof(cpu_data));
-
-	cpu->self = cpu;
-	cpu->id = id;
-	cpu->gdt = gdt;
-	cpu->tss = tss;
+	IDT::get().install();
+	cpu->gdt->install();
 
 	// Install the GS base pointint to the cpu_data
 	wrmsr(msr::ia32_gs_base, reinterpret_cast<uintptr_t>(cpu));
+}
 
-	using memory::frame_size;
-	using memory::kernel_stack_pages;
-	constexpr size_t stack_size = kernel_stack_pages * frame_size;
-
-	uint8_t ist_entries = g_idt.used_ist_entries();
-
-	// Set up the IST stacks
-	for (unsigned ist = 1; ist < 8; ++ist) {
-		if (!(ist_entries & (1 << ist)))
-			continue;
-
-		// Two zero entries at the top for the null frame
-		uintptr_t stack_bottom = g_kernel_stacks.get_section();
-		uintptr_t stack_top = stack_bottom + stack_size - 2 * sizeof(uintptr_t);
-
-		// Pre-realize these stacks, they're no good if they page fault
-		*reinterpret_cast<uint64_t*>(stack_top) = 0;
-
-		tss->ist_stack(ist) = stack_top;
+void
+cpu_init(cpu_data *cpu, bool bsp)
+{
+	if (!bsp) {
+		// The BSP already called cpu_early_init
+		cpu_early_init(cpu);
 	}
+
+	lapic &apic = device_manager::get().get_lapic();
+	cpu->id = apic.get_id();
+
 	// Set up the syscall MSRs
 	syscall_enable();
 
