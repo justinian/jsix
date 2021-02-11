@@ -33,7 +33,7 @@ vm_space::vm_space(page_table *p) :
 {}
 
 vm_space::vm_space() :
-	m_kernel(false)
+	m_kernel {false}
 {
 	m_pml4 = page_table::get_table_page();
 	page_table *kpml4 = kernel_space().m_pml4;
@@ -163,6 +163,7 @@ void
 vm_space::page_in(const vm_area &vma, uintptr_t offset, uintptr_t phys, size_t count)
 {
 	using memory::frame_size;
+	kutil::scoped_lock lock {m_lock};
 
 	uintptr_t base = 0;
 	if (!find_vma(vma, base))
@@ -190,6 +191,7 @@ void
 vm_space::clear(const vm_area &vma, uintptr_t offset, size_t count, bool free)
 {
 	using memory::frame_size;
+	kutil::scoped_lock lock {m_lock};
 
 	uintptr_t base = 0;
 	if (!find_vma(vma, base))

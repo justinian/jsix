@@ -1,6 +1,6 @@
-#include "kernel_memory.h"
 #include "kutil/assert.h"
 #include "kutil/memory.h"
+
 #include "frame_allocator.h"
 #include "kernel_args.h"
 #include "kernel_memory.h"
@@ -17,8 +17,8 @@ frame_allocator::get()
 }
 
 frame_allocator::frame_allocator(kernel::args::frame_block *frames, size_t count) :
-	m_blocks(frames),
-	m_count(count)
+	m_blocks {frames},
+	m_count {count}
 {
 }
 
@@ -32,6 +32,8 @@ bsf(uint64_t v)
 size_t
 frame_allocator::allocate(size_t count, uintptr_t *address)
 {
+	kutil::scoped_lock lock {m_lock};
+
 	for (long i = m_count - 1; i >= 0; --i) {
 		frame_block &block = m_blocks[i];
 
@@ -80,6 +82,8 @@ frame_allocator::allocate(size_t count, uintptr_t *address)
 void
 frame_allocator::free(uintptr_t address, size_t count)
 {
+	kutil::scoped_lock lock {m_lock};
+
 	kassert(address % frame_size == 0, "Trying to free a non page-aligned frame!");
 
 	if (!count)
@@ -116,6 +120,8 @@ frame_allocator::free(uintptr_t address, size_t count)
 void
 frame_allocator::used(uintptr_t address, size_t count)
 {
+	kutil::scoped_lock lock {m_lock};
+
 	kassert(address % frame_size == 0, "Trying to mark a non page-aligned frame!");
 
 	if (!count)

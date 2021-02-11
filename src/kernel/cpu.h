@@ -32,8 +32,6 @@ struct cpu_data
 	TSS *tss;
 	GDT *gdt;
 
-	// Values from here on don't need to be in the asm version
-	kutil::spinlock::node spinner;
 };
 
 extern "C" cpu_data * _current_gsbase();

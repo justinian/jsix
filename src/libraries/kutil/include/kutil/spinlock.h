@@ -4,17 +4,43 @@
 #pragma once
 
 namespace kutil {
-namespace spinlock {
 
-/// An MCS based spinlock node
-struct node
+/// An MCS based spinlock
+class spinlock
 {
-	bool locked;
-	node *next;
+public:
+	spinlock();
+	~spinlock();
+
+	/// A node in the wait queue.
+	struct waiter
+	{
+		bool locked;
+		waiter *next;
+	};
+
+	void acquire(waiter *w);
+	void release(waiter *w);
+
+private:
+	waiter *m_lock;
 };
 
-void aquire(node *lock, node *waiter);
-void release(node *lock, node *waiter);
+/// Scoped lock that owns a spinlock::waiter
+class scoped_lock
+{
+public:
+	inline scoped_lock(spinlock &lock) : m_lock(lock) {
+		m_lock.acquire(&m_waiter);
+	}
 
-} // namespace spinlock
+	inline ~scoped_lock() {
+		m_lock.release(&m_waiter);
+	}
+
+private:
+	spinlock &m_lock;
+	spinlock::waiter m_waiter;
+};
+
 } // namespace kutil

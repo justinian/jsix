@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include "kutil/enum_bitfields.h"
+#include "kutil/spinlock.h"
 #include "kutil/vector.h"
 #include "page_table.h"
 
@@ -127,6 +128,8 @@ private:
 		bool operator==(const struct area &o) const;
 	};
 	kutil::vector<area> m_areas;
+
+	kutil::spinlock m_lock;
 };
 
 IS_BITFIELD(vm_space::fault_type);

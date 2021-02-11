@@ -1,48 +1,49 @@
 #include "kutil/spinlock.h"
 
 namespace kutil {
-namespace spinlock {
 
 static constexpr int memorder = __ATOMIC_SEQ_CST;
 
+spinlock::spinlock() : m_lock {nullptr} {}
+spinlock::~spinlock() {}
+
 void
-aquire(node * &lock, node *waiter)
+spinlock::acquire(waiter *w)
 {
-	waiter->next = nullptr;
-	waiter->locked = true;
+	w->next = nullptr;
+	w->locked = true;
 
 	// Point the lock at this waiter
-	node *prev = __atomic_exchange_n(&lock, waiter, memorder);
+	waiter *prev = __atomic_exchange_n(&m_lock, w, memorder);
 	if (prev) {
 		// If there was a previous waiter, wait for them to
 		// unblock us
-		prev->next = waiter;
-		while (waiter->locked) {
+		prev->next = w;
+		while (w->locked) {
 			asm ("pause");
 		}
 	} else {
-		waiter->locked = false;
+		w->locked = false;
 	}
 }
 
 void
-release(node * &lock, node *waiter)
+spinlock::release(waiter *w)
 {
-	if (!waiter->next) {
+	if (!w->next) {
 		// If we're still the last waiter, we're done
-		if(__atomic_compare_exchange_n(&lock, &waiter, nullptr, false, memorder, memorder))
+		if(__atomic_compare_exchange_n(&m_lock, &w, nullptr, false, memorder, memorder))
 			return;
 	}
 
 	// Wait for the subseqent waiter to tell us who they are
-	while (!waiter->next) {
+	while (!w->next) {
 		asm ("pause");
 	}
 
 	// Unblock the subseqent waiter
-	waiter->next->locked = false;
+	w->next->locked = false;
 }
 
 
-} // namespace spinlock
 } // namespace kutil

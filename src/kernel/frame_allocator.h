@@ -3,6 +3,7 @@
 /// Allocator for physical memory frames
 
 #include <stdint.h>
+#include "kutil/spinlock.h"
 
 namespace kernel {
 namespace args {
@@ -43,7 +44,9 @@ public:
 
 private:
 	frame_block *m_blocks;
-	long m_count;
+	size_t m_count;
+
+	kutil::spinlock m_lock;
 
 	frame_allocator() = delete;
 	frame_allocator(const frame_allocator &) = delete;
