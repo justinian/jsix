@@ -3,8 +3,10 @@
 *.bak
 tags
 jsix.log
+*.out
 *.o
 *.a
 sysroot
 .gdb_history
 .peru
+__pycache__
