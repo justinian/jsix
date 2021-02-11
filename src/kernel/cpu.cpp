@@ -57,9 +57,6 @@ cpu_init(cpu_data *cpu, bool bsp)
 		cpu_early_init(cpu);
 	}
 
-	lapic &apic = device_manager::get().get_lapic();
-	cpu->id = apic.get_id();
-
 	// Set up the syscall MSRs
 	syscall_enable();
 

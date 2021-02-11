@@ -159,7 +159,10 @@ kernel_main(args::header *header)
 	device_manager &devices = device_manager::get();
 	devices.parse_acpi(header->acpi_table);
 
-	// cpu_init relies on the APIC being set up
+	// Need the local APIC to get the BSP's id
+	lapic &apic = device_manager::get().get_lapic();
+	cpu->id = apic.get_id();
+
 	cpu_init(cpu, true);
 
 	devices.init_drivers();
@@ -228,6 +231,8 @@ start_aps(void *kpml4)
 	cpu_data &bsp = current_cpu();
 	bsp.process = &g_kernel_process;
 
+	uint16_t index = bsp.index;
+
 	// Copy the startup code somwhere the real mode trampoline can run
 	uintptr_t addr = 0x8000; // TODO: find a valid address, rewrite addresses
 	uint8_t vector = addr >> 12;
@@ -258,6 +263,8 @@ start_aps(void *kpml4)
 		cpu_data *cpu = new cpu_data;
 		kutil::memset(cpu, 0, sizeof(cpu_data));
 		cpu->self = cpu;
+		cpu->id = id;
+		cpu->index = ++index;
 		cpu->gdt = gdt;
 		cpu->tss = tss;
 
@@ -279,7 +286,7 @@ start_aps(void *kpml4)
 
 		// Kick it off!
 		size_t current_count = ap_startup_count;
-		log::debug(logs::boot, "Starting AP %d: stack %llx", id, stack_end);
+		log::debug(logs::boot, "Starting AP %d: stack %llx", cpu->index, stack_end);
 		apic.send_ipi(lapic::ipi_mode::init, 0, id);
 		clk.spinwait(1000);
 

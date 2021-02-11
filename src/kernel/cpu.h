@@ -23,7 +23,9 @@ struct cpu_state
 struct cpu_data
 {
 	cpu_data *self;
-	uint64_t id;
+	uint16_t id;
+	uint16_t index;
+	uint32_t reserved;
 	uintptr_t rsp0;
 	uintptr_t rsp3;
 	TCB *tcb;

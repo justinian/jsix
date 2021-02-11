@@ -7,7 +7,9 @@ endstruc
 
 struc CPU_DATA
 .self:         resq 1
-.id:           resq 1
+.id:           resw 1
+.index:        resw 1
+.reserved      resd 1
 .rsp0:         resq 1
 .rsp3:         resq 1
 .tcb:          resq 1
