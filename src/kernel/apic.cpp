@@ -70,16 +70,32 @@ lapic::get_id()
 }
 
 void
-lapic::send_ipi(ipi_mode mode, uint8_t vector, uint8_t dest)
+lapic::send_ipi(ipi mode, uint8_t vector, uint8_t dest)
 {
 	// Wait until the APIC is ready to send
 	ipi_wait();
 
-	apic_write(m_base, lapic_icr_high, static_cast<uint32_t>(dest) << 24);
 	uint32_t command =
 		static_cast<uint32_t>(vector) |
-		static_cast<uint32_t>(mode) << 8;
+		static_cast<uint32_t>(mode);
 
+	apic_write(m_base, lapic_icr_high, static_cast<uint32_t>(dest) << 24);
+	apic_write(m_base, lapic_icr_low, command);
+}
+
+void
+lapic::send_ipi_broadcast(ipi mode, bool self, uint8_t vector)
+{
+	// Wait until the APIC is ready to send
+	ipi_wait();
+
+	uint32_t command =
+		static_cast<uint32_t>(vector) |
+		static_cast<uint32_t>(mode) |
+		(self ? 0 : (1 << 18)) |
+		(1 << 19);
+
+	apic_write(m_base, lapic_icr_high, 0);
 	apic_write(m_base, lapic_icr_low, command);
 }
 

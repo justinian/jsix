@@ -3,6 +3,7 @@
 /// Classes to control both local and I/O APICs.
 
 #include <stdint.h>
+#include "kutil/enum_bitfields.h"
 
 enum class isr : uint8_t;
 
@@ -18,6 +19,22 @@ protected:
 	uint32_t *m_base;
 };
 
+enum class ipi : uint32_t
+{
+	// Delivery modes
+	fixed    = 0x0000,
+	smi      = 0x0200,
+	nmi      = 0x0400,
+	init     = 0x0500,
+	startup  = 0x0600,
+
+	// Flags
+	deassert = 0x0000,
+	assert   = 0x4000,
+	edge     = 0x0000, ///< edge-triggered
+	level    = 0x8000, ///< level-triggered
+};
+IS_BITFIELD(ipi);
 
 /// Controller for processor-local APICs
 class lapic :
@@ -32,19 +49,17 @@ public:
 	/// Get the local APIC's ID
 	uint8_t get_id();
 
-	enum class ipi_mode : uint8_t {
-		fixed   = 0,
-		smi     = 2,
-		nmi     = 4,
-		init    = 5,
-		startup = 6,
-	};
-
 	/// Send an inter-processor interrupt.
 	/// \arg mode   The sending mode
 	/// \arg vector The interrupt vector
 	/// \arg dest   The APIC ID of the destination
-	void send_ipi(ipi_mode mode, uint8_t vector, uint8_t dest);
+	void send_ipi(ipi mode, uint8_t vector, uint8_t dest);
+
+	/// Send an inter-processor broadcast interrupt to all other CPUs
+	/// \arg mode   The sending mode
+	/// \arg self   If true, include this CPU in the broadcast
+	/// \arg vector The interrupt vector
+	void send_ipi_broadcast(ipi mode, bool self, uint8_t vector);
 
 	/// Wait for an IPI to finish sending. This is done automatically
 	/// before sending another IPI with send_ipi().

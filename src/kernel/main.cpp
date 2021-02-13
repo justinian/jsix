@@ -254,6 +254,9 @@ start_aps(void *kpml4)
 	size_t free_stack_count = 0;
 	uintptr_t stack_area_start = 0;
 
+	ipi mode = ipi::init | ipi::level | ipi::assert;
+	apic.send_ipi_broadcast(mode, false, 0);
+
 	for (uint8_t id : ids) {
 		if (id == apic.get_id()) continue;
 
@@ -287,10 +290,10 @@ start_aps(void *kpml4)
 		// Kick it off!
 		size_t current_count = ap_startup_count;
 		log::debug(logs::boot, "Starting AP %d: stack %llx", cpu->index, stack_end);
-		apic.send_ipi(lapic::ipi_mode::init, 0, id);
-		clk.spinwait(1000);
 
-		apic.send_ipi(lapic::ipi_mode::startup, vector, id);
+		ipi startup = ipi::startup | ipi::assert;
+
+		apic.send_ipi(startup, vector, id);
 		for (unsigned i = 0; i < 20; ++i) {
 			if (ap_startup_count > current_count) break;
 			clk.spinwait(20);
@@ -301,7 +304,7 @@ start_aps(void *kpml4)
 			continue;
 
 		// Send the second SIPI (intel recommends this)
-		apic.send_ipi(lapic::ipi_mode::startup, vector, id);
+		apic.send_ipi(startup, vector, id);
 		for (unsigned i = 0; i < 100; ++i) {
 			if (ap_startup_count > current_count) break;
 			clk.spinwait(100);

@@ -20,6 +20,7 @@ CR4_OSFXSR     equ (1 << 9)
 CR4_OSCMMEXCPT equ (1 << 10)
 CR4_FSGSBASE   equ (1 << 16)
 CR4_PCIDE      equ (1 << 17)
+CR4_INIT equ CR4_PAE|CR4_PGE
 CR4_VAL equ CR4_DE|CR4_PAE|CR4_MCE|CR4_PGE|CR4_OSFXSR|CR4_OSCMMEXCPT|CR4_FSGSBASE|CR4_PCIDE
 
 EFER_MSR  equ 0xC0000080
@@ -69,7 +70,8 @@ align 4
 	lidt [BASE + (.idtd - ap_startup)]
 
 	; Enter long mode
-	mov eax, CR4_VAL
+	mov eax, cr4
+	or eax, CR4_INIT
 	mov cr4, eax
 
 	mov eax, [BASE + (.pml4 - ap_startup)]
@@ -99,6 +101,8 @@ align 8
 	mov fs, ax
 	mov gs, ax
 	mov ss, ax
+
+	mov eax, CR4_VAL
 
 	mov rdi, [BASE + (.cpu - ap_startup)]
 	mov rax, [rdi + CPU_DATA.rsp0]
