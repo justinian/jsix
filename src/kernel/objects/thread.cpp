@@ -221,7 +221,5 @@ thread::create_idle_thread(process &kernel, uint8_t pri, uintptr_t rsp0)
 	thread *idle = new thread(kernel, pri, rsp0);
 	idle->set_state(state::constant);
 	idle->set_state(state::ready);
-	log::info(logs::task, "Created idle thread as koid %llx", idle->koid());
-
 	return idle;
 }

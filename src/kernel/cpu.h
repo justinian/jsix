@@ -2,9 +2,8 @@
 
 #include <stdint.h>
 
-#include "kutil/spinlock.h"
-
 class GDT;
+class lapic;
 class process;
 struct TCB;
 class thread;
@@ -34,6 +33,9 @@ struct cpu_data
 	TSS *tss;
 	GDT *gdt;
 
+	// Members beyond this point do not appear in
+	// the assembly version
+	lapic *apic;
 };
 
 extern "C" cpu_data * _current_gsbase();
@@ -55,4 +57,3 @@ inline cpu_data & current_cpu() { return *_current_gsbase(); }
 /// Validate the required CPU features are present. Really, the bootloader already
 /// validated the required features, but still iterate the options and log about them.
 void cpu_validate();
-

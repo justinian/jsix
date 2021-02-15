@@ -1,11 +1,10 @@
 #include <stddef.h>
 
+#include "kutil/memory.h"
+
 #include "console.h"
-#include "cpu.h"
 #include "debug.h"
 #include "log.h"
-#include "msr.h"
-#include "scheduler.h"
 #include "syscall.h"
 
 extern "C" {

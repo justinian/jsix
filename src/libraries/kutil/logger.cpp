@@ -91,6 +91,8 @@ logger::output(level severity, area_t area, const char *fmt, va_list args)
 	header->bytes +=
 		vsnprintf(header->message, sizeof(buffer) - sizeof(entry), fmt, args);
 
+	kutil::scoped_lock lock {m_lock};
+
 	if (m_immediate) {
 		buffer[header->bytes] = 0;
 		m_immediate(area, severity, header->message);
@@ -117,6 +119,8 @@ logger::output(level severity, area_t area, const char *fmt, va_list args)
 size_t
 logger::get_entry(void *buffer, size_t size)
 {
+	kutil::scoped_lock lock {m_lock};
+
 	void *out;
 	size_t out_size = m_buffer.get_block(&out);
 	if (out_size == 0 || out == 0)

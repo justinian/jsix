@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "kutil/bip_buffer.h"
+#include "kutil/spinlock.h"
 
 namespace kutil {
 namespace log {
@@ -111,6 +112,7 @@ private:
 	uint8_t m_sequence;
 
 	kutil::bip_buffer m_buffer;
+	kutil::spinlock m_lock;
 
 	static logger *s_log;
 	static const char *s_level_names[static_cast<unsigned>(level::max)];

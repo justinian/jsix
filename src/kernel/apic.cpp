@@ -6,6 +6,8 @@
 #include "kernel_memory.h"
 #include "log.h"
 
+uint64_t lapic::s_ticks_per_us = 0;
+
 static constexpr uint16_t lapic_id         = 0x0020;
 static constexpr uint16_t lapic_spurious   = 0x00f0;
 
@@ -54,12 +56,12 @@ apic::apic(uintptr_t base) :
 }
 
 
-lapic::lapic(uintptr_t base, isr spurious) :
+lapic::lapic(uintptr_t base) :
 	apic(base),
 	m_divisor(0)
 {
 	apic_write(m_base, lapic_lvt_error, static_cast<uint32_t>(isr::isrAPICError));
-	apic_write(m_base, lapic_spurious, static_cast<uint32_t>(spurious));
+	apic_write(m_base, lapic_spurious, static_cast<uint32_t>(isr::isrSpurious));
 	log::info(logs::apic, "LAPIC created, base %lx", m_base);
 }
 
@@ -122,10 +124,10 @@ lapic::calibrate_timer()
 	clock::get().spinwait(us);
 
 	uint32_t remaining = apic_read(m_base, lapic_timer_cur);
-	uint32_t ticks_total = initial - remaining;
-	m_ticks_per_us = ticks_total / us;
+	uint64_t ticks_total = initial - remaining;
+	s_ticks_per_us = ticks_total / us;
 
-	log::info(logs::apic, "APIC timer ticks %d times per microsecond.", m_ticks_per_us);
+	log::info(logs::apic, "APIC timer ticks %d times per microsecond.", s_ticks_per_us);
 
 	interrupts_enable();
 }
@@ -145,7 +147,7 @@ lapic::set_divisor(uint8_t divisor)
 	case  64: divbits = 0x9; break;
 	case 128: divbits = 0xa; break;
 	default:
-		kassert(0, "Invalid divisor passed to lapic::enable_timer");
+		kassert(0, "Invalid divisor passed to lapic::set_divisor");
 	}
 
 	apic_write(m_base, lapic_timer_div, divbits);

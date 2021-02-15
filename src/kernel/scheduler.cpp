@@ -17,6 +17,7 @@
 #include "objects/channel.h"
 #include "objects/process.h"
 #include "objects/system.h"
+#include "objects/thread.h"
 #include "objects/vm_area.h"
 #include "scheduler.h"
 
@@ -25,43 +26,37 @@
 
 #include "kutil/assert.h"
 
-
+extern "C" void task_switch(TCB *tcb);
 scheduler *scheduler::s_instance = nullptr;
 
-const uint64_t rflags_noint = 0x002;
-const uint64_t rflags_int = 0x202;
-
-extern uint64_t idle_stack_end;
-
-extern "C" void task_switch(TCB *tcb);
-
-scheduler::scheduler(lapic &apic) :
-	m_apic(apic),
-	m_next_pid(1),
-	m_clock(0),
-	m_last_promotion(0)
+struct run_queue
 {
-	kassert(!s_instance, "Multiple schedulers created!");
-	s_instance = this;
+	tcb_node *current = nullptr;
+	tcb_list ready[scheduler::num_priorities];
+	tcb_list blocked;
 
-	process *kp = &process::kernel_process();
+	uint64_t last_promotion = 0;
+	uint64_t last_steal = 0;
+	kutil::spinlock lock;
+};
 
-	log::debug(logs::task, "Kernel process koid %llx", kp->koid());
+scheduler::scheduler(unsigned cpus) :
+	m_next_pid {1},
+	m_clock {0}
+{
+	kassert(!s_instance, "Created multiple schedulers!");
+	if (!s_instance)
+		s_instance = this;
 
-	thread *idle = thread::create_idle_thread(*kp, max_priority,
-		reinterpret_cast<uintptr_t>(&idle_stack_end));
+	m_run_queues.set_size(cpus);
+}
 
-	log::debug(logs::task, "Idle thread koid %llx", idle->koid());
-
-	auto *tcb = idle->tcb();
-	m_runlists[max_priority].push_back(tcb);
-	m_current = tcb;
-
-	cpu_data &cpu = current_cpu();
-	cpu.rsp0 = tcb->rsp0;
-	cpu.tcb = tcb;
-	cpu.process = kp;
-	cpu.thread = idle;
+scheduler::~scheduler()
+{
+	// Not truly necessary - if the scheduler is going away, the whole
+	// system is probably going down. But let's be clean.
+	if (s_instance == this)
+		s_instance = nullptr;
 }
 
 template <typename T>
@@ -70,20 +65,6 @@ inline T * push(uintptr_t &rsp, size_t size = sizeof(T)) {
 	T *p = reinterpret_cast<T*>(rsp);
 	rsp &= ~(sizeof(uint64_t)-1); // Align the stack
 	return p;
-}
-
-thread *
-scheduler::create_process(bool user)
-{
-	process *p = new process;
-	thread *th = p->create_thread(default_priority, user);
-
-	TCB *tcb = th->tcb();
-	log::debug(logs::task, "Creating thread %llx, priority %d, time slice %d",
-			th->koid(), tcb->priority, tcb->time_left);
-
-	th->set_state(thread::state::ready);
-	return th;
 }
 
 void
@@ -115,24 +96,42 @@ scheduler::quantum(int priority)
 void
 scheduler::start()
 {
-	log::info(logs::sched, "Starting scheduler.");
-	m_apic.enable_timer(isr::isrTimer, false);
-	m_apic.reset_timer(10);
+	cpu_data &cpu = current_cpu();
+	run_queue &queue = m_run_queues[cpu.index];
+	kutil::scoped_lock lock {queue.lock};
+
+	process *kp = &process::kernel_process();
+	thread *idle = thread::create_idle_thread(*kp, max_priority, cpu.rsp0);
+	log::debug(logs::task, "CPU%02x idle thread koid %llx", cpu.index, idle->koid());
+
+	auto *tcb = idle->tcb();
+	cpu.process = kp;
+	cpu.thread = idle;
+	cpu.tcb = tcb;
+
+	queue.current = tcb;
+
+	log::info(logs::sched, "CPU%02x starting scheduler", cpu.index);
+	cpu.apic->enable_timer(isr::isrTimer, false);
+	cpu.apic->reset_timer(10);
 }
 
 void
 scheduler::add_thread(TCB *t)
 {
-	m_blocked.push_back(static_cast<tcb_node*>(t));
-	t->time_left = quantum(t->priority);
+	cpu_data &cpu = current_cpu();
+	run_queue &queue = m_run_queues[cpu.index];
+	kutil::scoped_lock lock {queue.lock};
 
+	queue.blocked.push_back(static_cast<tcb_node*>(t));
+	t->time_left = quantum(t->priority);
 }
 
-void scheduler::prune(uint64_t now)
+void scheduler::prune(run_queue &queue, uint64_t now)
 {
 	// Find processes that are ready or have exited and
 	// move them to the appropriate lists.
-	auto *tcb = m_blocked.front();
+	auto *tcb = queue.blocked.front();
 	while (tcb) {
 		thread *th = thread::from_tcb(tcb);
 		uint8_t priority = tcb->priority;
@@ -140,7 +139,7 @@ void scheduler::prune(uint64_t now)
 		bool ready = th->has_state(thread::state::ready);
 		bool exited = th->has_state(thread::state::exited);
 		bool constant = th->has_state(thread::state::constant);
-		bool current = tcb == m_current;
+		bool current = tcb == queue.current;
 
 		ready |= th->wake_on_time(now);
 
@@ -155,7 +154,7 @@ void scheduler::prune(uint64_t now)
 			// page tables
 			if (current) continue;
 
-			m_blocked.remove(remove);
+			queue.blocked.remove(remove);
 			process &p = th->parent();
 
 			// thread_exited deletes the thread, and returns true if the process
@@ -163,19 +162,19 @@ void scheduler::prune(uint64_t now)
 			if(!current && p.thread_exited(th))
 				delete &p;
 		} else {
-			m_blocked.remove(remove);
+			queue.blocked.remove(remove);
 			log::debug(logs::sched, "Prune: readying unblocked thread %llx", th->koid());
-			m_runlists[remove->priority].push_back(remove);
+			queue.ready[remove->priority].push_back(remove);
 		}
 	}
 }
 
 void
-scheduler::check_promotions(uint64_t now)
+scheduler::check_promotions(run_queue &queue, uint64_t now)
 {
-	for (auto &pri_list : m_runlists) {
+	for (auto &pri_list : queue.ready) {
 		for (auto *tcb : pri_list) {
-			const thread *th = thread::from_tcb(m_current);
+			const thread *th = thread::from_tcb(queue.current);
 			const bool constant = th->has_state(thread::state::constant);
 			if (constant)
 				continue;
@@ -190,81 +189,145 @@ scheduler::check_promotions(uint64_t now)
 
 			if (stale) {
 				// If the thread is stale, promote it
-				m_runlists[priority].remove(tcb);
+				queue.ready[priority].remove(tcb);
 				tcb->priority -= 1;
 				tcb->time_left = quantum(tcb->priority);
-				m_runlists[tcb->priority].push_back(tcb);
+				queue.ready[tcb->priority].push_back(tcb);
 				log::info(logs::sched, "Scheduler promoting thread %llx, priority %d",
 						th->koid(), tcb->priority);
 			}
 		}
 	}
 
-	m_last_promotion = now;
+	queue.last_promotion = now;
+}
+
+static size_t
+balance_lists(tcb_list &to, tcb_list &from)
+{
+	size_t to_len = to.length();
+	size_t from_len = from.length();
+
+	// Only steal from the rich, don't be Dennis Moore
+	if (from_len <= to_len)
+		return 0;
+
+	size_t steal = (from_len - to_len) / 2;
+	for (size_t i = 0; i < steal; ++i)
+		to.push_front(from.pop_front());
+	return steal;
+}
+
+void
+scheduler::steal_work(cpu_data &cpu)
+{
+	// First grab a scheduler-wide lock to avoid deadlock
+	kutil::scoped_lock steal_lock {m_steal_lock};
+
+	// Lock this cpu's queue for the whole time while we modify it
+	run_queue &my_queue = m_run_queues[cpu.index];
+	kutil::scoped_lock my_queue_lock {my_queue.lock};
+
+	const unsigned count = m_run_queues.count();
+	for (unsigned i = 0; i < count; ++i) {
+		if (i == cpu.index) continue;
+
+		run_queue &other_queue = m_run_queues[i];
+		kutil::scoped_lock other_queue_lock {other_queue.lock};
+
+		size_t stolen = 0;
+
+		// Don't steal from max_priority, that's the idle thread
+		for (unsigned pri = 0; pri < max_priority; ++pri)
+			stolen += balance_lists(my_queue.ready[pri], other_queue.ready[pri]);
+
+		stolen += balance_lists(my_queue.blocked, other_queue.blocked);
+
+		if (stolen)
+			log::debug(logs::sched, "CPU%02x stole %2d tasks from CPU%02x",
+					cpu.index, stolen, i);
+	}
 }
 
 void
 scheduler::schedule()
 {
-	uint8_t priority = m_current->priority;
-	uint32_t remaining = m_apic.stop_timer();
-	m_current->time_left = remaining;
-	thread *th = thread::from_tcb(m_current);
+	cpu_data &cpu = current_cpu();
+	run_queue &queue = m_run_queues[cpu.index];
+	lapic &apic = *cpu.apic;
+	uint32_t remaining = apic.stop_timer();
+
+	if (m_clock - queue.last_steal > steal_frequency) {
+		steal_work(cpu);
+		queue.last_steal = m_clock;
+	}
+
+	// We need to explicitly lock/unlock here instead of
+	// using a scoped lock, because the scope doesn't "end"
+	// for the current thread until it gets scheduled again
+	kutil::spinlock::waiter waiter;
+	queue.lock.acquire(&waiter);
+
+	queue.current->time_left = remaining;
+	thread *th = thread::from_tcb(queue.current);
+	uint8_t priority = queue.current->priority;
 	const bool constant = th->has_state(thread::state::constant);
 
 	if (remaining == 0) {
 		if (priority < max_priority && !constant) {
 			// Process used its whole timeslice, demote it
-			++m_current->priority;
+			++queue.current->priority;
 			log::debug(logs::sched, "Scheduler  demoting thread %llx, priority %d",
-					th->koid(), m_current->priority);
+					th->koid(), queue.current->priority);
 		}
-		m_current->time_left = quantum(m_current->priority);
+		queue.current->time_left = quantum(queue.current->priority);
 	} else if (remaining > 0) {
 		// Process gave up CPU, give it a small bonus to its
 		// remaining timeslice.
 		uint32_t bonus = quantum(priority) >> 4;
-		m_current->time_left += bonus;
+		queue.current->time_left += bonus;
 	}
 
-	m_runlists[priority].remove(m_current);
 	if (th->has_state(thread::state::ready)) {
-		m_runlists[m_current->priority].push_back(m_current);
+		queue.ready[queue.current->priority].push_back(queue.current);
 	} else {
-		m_blocked.push_back(m_current);
+		queue.blocked.push_back(queue.current);
 	}
 
 	clock::get().update();
-	prune(++m_clock);
-	if (m_clock - m_last_promotion > promote_frequency)
-		check_promotions(m_clock);
+	prune(queue, ++m_clock);
+	if (m_clock - queue.last_promotion > promote_frequency)
+		check_promotions(queue, m_clock);
 
 	priority = 0;
-	while (m_runlists[priority].empty()) {
+	while (queue.ready[priority].empty()) {
 		++priority;
 		kassert(priority < num_priorities, "All runlists are empty");
 	}
 
-	m_current->last_ran = m_clock;
+	queue.current->last_ran = m_clock;
 
-	auto *next = m_runlists[priority].pop_front();
+	auto *next = queue.ready[priority].pop_front();
 	next->last_ran = m_clock;
-	m_apic.reset_timer(next->time_left);
+	apic.reset_timer(next->time_left);
 
-	if (next != m_current) {
-		thread *next_thread = thread::from_tcb(next);
-
-		cpu_data &cpu = current_cpu();
-		cpu.thread = next_thread;
-		cpu.process = &next_thread->parent();
-		m_current = next;
-
-		log::debug(logs::sched, "Scheduler switching threads %llx->%llx",
-				th->koid(), next_thread->koid());
-		log::debug(logs::sched, "    priority %d time left %d @ %lld.",
-				m_current->priority, m_current->time_left, m_clock);
-		log::debug(logs::sched, "    PML4 %llx", m_current->pml4);
-
-		task_switch(m_current);
+	if (next == queue.current) {
+		queue.lock.release(&waiter);
+		return;
 	}
+
+	thread *next_thread = thread::from_tcb(next);
+
+	cpu.thread = next_thread;
+	cpu.process = &next_thread->parent();
+	queue.current = next;
+
+	log::debug(logs::sched, "CPU%02x switching threads %llx->%llx",
+			cpu.index, th->koid(), next_thread->koid());
+	log::debug(logs::sched, "    priority %d time left %d @ %lld.",
+			next->priority, next->time_left, m_clock);
+	log::debug(logs::sched, "    PML4 %llx", next->pml4);
+
+	queue.lock.release(&waiter);
+	task_switch(queue.current);
 }

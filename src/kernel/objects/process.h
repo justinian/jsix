@@ -94,6 +94,4 @@ private:
 
 	enum class state : uint8_t { running, exited };
 	state m_state;
-
-	static kutil::vector<process*> s_processes;
 };

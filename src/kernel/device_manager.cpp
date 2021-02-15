@@ -63,7 +63,7 @@ void irq4_callback(void *)
 
 
 device_manager::device_manager() :
-	m_lapic(nullptr)
+	m_lapic_base(0)
 {
 	m_irqs.ensure_capacity(32);
 	m_irqs.set_size(16);
@@ -104,6 +104,26 @@ device_manager::parse_acpi(const void *root_table)
 	kassert(sum == 0, "ACPI 2.0 RSDP checksum mismatch.");
 
 	load_xsdt(memory::to_virtual(acpi2->xsdt_address));
+}
+
+const device_manager::apic_nmi *
+device_manager::get_lapic_nmi(uint8_t id) const
+{
+	for (const auto &nmi : m_nmis) {
+		if (nmi.cpu == 0xff || nmi.cpu == id)
+			return &nmi;
+	}
+
+	return nullptr;
+}
+
+const device_manager::irq_override *
+device_manager::get_irq_override(uint8_t irq) const
+{
+	for (const auto &o : m_overrides)
+		if (o.source == irq) return &o;
+
+	return nullptr;
 }
 
 ioapic *
@@ -163,38 +183,38 @@ device_manager::load_apic(const acpi_table_header *header)
 {
 	const auto *apic = check_get_table<acpi_apic>(header);
 
-	uintptr_t local = apic->local_address;
-	m_lapic = new lapic(local, isr::isrSpurious);
+	m_lapic_base = apic->local_address;
 
 	size_t count = acpi_table_entries(apic, 1);
 	uint8_t const *p = apic->controller_data;
 	uint8_t const *end = p + count;
 
-	// Pass one: count IOAPIC objcts
-	int num_ioapics = 0;
+	// Pass one: count objcts
+	unsigned num_lapics = 0;
+	unsigned num_ioapics = 0;
+	unsigned num_overrides = 0;
+	unsigned num_nmis = 0;
 	while (p < end) {
 		const uint8_t type = p[0];
 		const uint8_t length = p[1];
-		if (type == 1) num_ioapics++;
-		p += length;
-	}
 
-	m_ioapics.set_capacity(num_ioapics);
-
-	// Pass two: set up IOAPIC objcts
-	p = apic->controller_data;
-	while (p < end) {
-		const uint8_t type = p[0];
-		const uint8_t length = p[1];
-		if (type == 1) {
-			uintptr_t base = kutil::read_from<uint32_t>(p+4);
-			uint32_t base_gsr = kutil::read_from<uint32_t>(p+8);
-			m_ioapics.emplace(base, base_gsr);
+		switch (type) {
+		case 0: ++num_lapics; break;
+		case 1: ++num_ioapics; break;
+		case 2: ++num_overrides; break;
+		case 4: ++num_nmis; break;
+		default: break;
 		}
+
 		p += length;
 	}
 
-	// Pass three: configure APIC objects
+	m_apic_ids.set_capacity(num_lapics);
+	m_ioapics.set_capacity(num_ioapics);
+	m_overrides.set_capacity(num_overrides);
+	m_nmis.set_capacity(num_nmis);
+
+	// Pass two: configure objects
 	p = apic->controller_data;
 	while (p < end) {
 		const uint8_t type = p[0];
@@ -205,38 +225,41 @@ device_manager::load_apic(const acpi_table_header *header)
 				uint8_t uid = kutil::read_from<uint8_t>(p+2);
 				uint8_t id = kutil::read_from<uint8_t>(p+3);
 				m_apic_ids.append(id);
+
 				log::debug(logs::device, "    Local APIC uid %x id %x", uid, id);
 			}
 			break;
 
-		case 1: // I/O APIC
+		case 1: { // I/O APIC
+				uintptr_t base = kutil::read_from<uint32_t>(p+4);
+				uint32_t base_gsi = kutil::read_from<uint32_t>(p+8);
+				m_ioapics.emplace(base, base_gsi);
+
+				log::debug(logs::device, "    IO APIC gsi %x base %x", base_gsi, base);
+			}
 			break;
 
 		case 2: { // Interrupt source override
-				uint8_t source = kutil::read_from<uint8_t>(p+3);
-				isr gsi = isr::irq00 + kutil::read_from<uint32_t>(p+4);
-				uint16_t flags = kutil::read_from<uint16_t>(p+8);
+				irq_override o;
+				o.source = kutil::read_from<uint8_t>(p+3);
+				o.gsi = kutil::read_from<uint32_t>(p+4);
+				o.flags = kutil::read_from<uint16_t>(p+8);
+				m_overrides.append(o);
 
 				log::debug(logs::device, "    Intr source override IRQ %d -> %d Pol %d Tri %d",
-						source, gsi, (flags & 0x3), ((flags >> 2) & 0x3));
-
-				// TODO: in a multiple-IOAPIC system this might be elsewhere
-				m_ioapics[0].redirect(source, static_cast<isr>(gsi), flags, true);
+						o.source, o.gsi, (o.flags & 0x3), ((o.flags >> 2) & 0x3));
 			}
 			break;
 
 		case 4: {// LAPIC NMI
-			uint8_t cpu = kutil::read_from<uint8_t>(p + 2);
-			uint8_t num = kutil::read_from<uint8_t>(p + 5);
-			uint16_t flags = kutil::read_from<uint16_t>(p + 3);
+			apic_nmi nmi;
+			nmi.cpu = kutil::read_from<uint8_t>(p + 2);
+			nmi.lint = kutil::read_from<uint8_t>(p + 5);
+			nmi.flags = kutil::read_from<uint16_t>(p + 3);
+			m_nmis.append(nmi);
 
-			log::debug(logs::device, "    LAPIC NMI Proc %d LINT%d Pol %d Tri %d",
-					kutil::read_from<uint8_t>(p+2),
-					kutil::read_from<uint8_t>(p+5),
-					kutil::read_from<uint16_t>(p+3) & 0x3,
-					(kutil::read_from<uint16_t>(p+3) >> 2) & 0x3);
-
-			m_lapic->enable_lint(num, num == 0 ? isr::isrLINT0 : isr::isrLINT1, true, flags);
+			log::debug(logs::device, "    LAPIC NMI Proc %02x LINT%d Pol %d Tri %d",
+					nmi.cpu, nmi.lint, nmi.flags & 0x3, (nmi.flags >> 2) & 0x3);
 			}
 			break;
 
@@ -246,17 +269,6 @@ device_manager::load_apic(const acpi_table_header *header)
 
 		p += length;
 	}
-
-	/*
-	for (uint8_t i = 0; i < m_ioapics[0].get_num_gsi(); ++i) {
-		switch (i) {
-			case 2: break;
-			default: m_ioapics[0].mask(i, false);
-		}
-	}
-	*/
-
-	m_lapic->enable();
 }
 
 void

@@ -13,15 +13,11 @@ static kutil::no_construct<process> __g_kernel_process_storage;
 process &g_kernel_process = __g_kernel_process_storage.value;
 
 
-kutil::vector<process*> process::s_processes;
-
 process::process() :
 	kobject {kobject::type::process},
 	m_next_handle {1},
 	m_state {state::running}
 {
-	s_processes.append(this);
-
 	j6_handle_t self = add_handle(this);
 	kassert(self == self_handle(), "Process self-handle is not 1");
 }
@@ -39,7 +35,6 @@ process::~process()
 {
 	for (auto &it : m_handles)
 		if (it.val) it.val->handle_release();
-	s_processes.remove_swap(this);
 }
 
 process & process::current() { return *current_cpu().process; }

@@ -137,3 +137,13 @@ init_ap_trampoline:
 
 	pop rbp
 	ret
+
+extern long_ap_startup
+global ap_idle
+ap_idle:
+	call long_ap_startup
+	sti
+.hang:
+	hlt
+	jmp .hang
+

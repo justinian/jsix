@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include "kutil/assert.h"
 #include "kutil/memory.h"
-#include "apic.h"
 #include "cpu.h"
 #include "cpu/cpu_id.h"
 #include "device_manager.h"

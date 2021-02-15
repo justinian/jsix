@@ -3,7 +3,8 @@
 /// The task scheduler and related definitions
 
 #include <stdint.h>
-#include "objects/thread.h"
+#include "kutil/spinlock.h"
+#include "kutil/vector.h"
 
 namespace kernel {
 namespace args {
@@ -14,6 +15,7 @@ struct cpu_data;
 class lapic;
 class process;
 struct page_table;
+struct run_queue;
 
 
 /// The task scheduler
@@ -39,8 +41,9 @@ public:
 	static const uint16_t process_quanta = 10;
 
 	/// Constructor.
-	/// \arg apic  The local APIC object for this CPU
-	scheduler(lapic &apic);
+	/// \arg cpus  The number of CPUs to schedule for
+	scheduler(unsigned cpus);
+	~scheduler();
 
 	/// Create a new process from a program image in memory.
 	/// \arg program  The descriptor of the pogram in memory
@@ -66,15 +69,11 @@ public:
 	/// Run the scheduler, possibly switching to a new task
 	void schedule();
 
-	/// Get the current TCB.
-	/// \returns  A pointer to the current thread's TCB
-	inline TCB * current() { return m_current; }
-
 	/// Start scheduling a new thread.
 	/// \arg t  The new thread's TCB
 	void add_thread(TCB *t);
 
-	/// Get a reference to the system scheduler
+	/// Get a reference to the scheduler
 	/// \returns  A reference to the global system scheduler
 	static scheduler & get() { return *s_instance; }
 
@@ -82,30 +81,23 @@ private:
 	friend class process;
 
 	static constexpr uint64_t promote_frequency = 10;
+	static constexpr uint64_t steal_frequency = 10;
 
-	/// Create a new process object. This process will have its pid
-	/// set but nothing else.
-	/// \arg user True if this thread will enter userspace
-	/// \returns  The new process' main thread
-	thread * create_process(bool user);
-
-	void prune(uint64_t now);
-	void check_promotions(uint64_t now);
-
-	lapic &m_apic;
+	void prune(run_queue &queue, uint64_t now);
+	void check_promotions(run_queue &queue, uint64_t now);
+	void steal_work(cpu_data &cpu);
 
 	uint32_t m_next_pid;
 	uint32_t m_tick_count;
 
 	process *m_kernel_process;
-	tcb_node *m_current;
-	tcb_list m_runlists[num_priorities];
-	tcb_list m_blocked;
+
+	kutil::vector<run_queue> m_run_queues;
 
 	// TODO: lol a real clock
 	uint64_t m_clock = 0;
-	uint64_t m_last_promotion;
 
+	kutil::spinlock m_steal_lock;
 	static scheduler *s_instance;
 };
 

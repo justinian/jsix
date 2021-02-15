@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 
+struct cpu_state;
+
 extern "C" {
 	uintptr_t get_rsp();
 	uintptr_t get_rip();

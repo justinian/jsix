@@ -24,10 +24,6 @@ public:
 	/// \returns  A reference to the system device manager
 	static device_manager & get() { return s_instance; }
 
-	/// Get the LAPIC
-	/// \returns An object representing the local APIC
-	lapic & get_lapic() { return *m_lapic; }
-
 	/// Get an IOAPIC
 	/// \arg i   Index of the requested IOAPIC
 	/// \returns An object representing the given IOAPIC if it exists,
@@ -68,6 +64,39 @@ public:
 	/// \returns  True if the interrupt was handled
 	bool dispatch_irq(unsigned irq);
 
+	struct apic_nmi
+	{
+		uint8_t cpu;
+		uint8_t lint;
+		uint16_t flags;
+	};
+
+	struct irq_override
+	{
+		uint8_t source;
+		uint16_t flags;
+		uint32_t gsi;
+	};
+
+	/// Get the list of APIC ids for other CPUs
+	inline const kutil::vector<uint8_t> & get_apic_ids() const { return m_apic_ids; }
+
+	/// Get the LAPIC base address
+	/// \returns The physical base address of the local apic registers
+	uintptr_t get_lapic_base() const { return m_lapic_base; }
+
+	/// Get the NMI mapping for the given local APIC
+	/// \arg id  ID of the local APIC
+	/// \returns apic_nmi structure describing the NMI configuration,
+	///          or null if no configuration was provided
+	const apic_nmi * get_lapic_nmi(uint8_t id) const;
+
+	/// Get the IRQ source override for the given IRQ
+	/// \arg irq  IRQ number (not isr vector)
+	/// \returns  irq_override structure describing that IRQ's
+	///           configuration, or null if no configuration was provided
+	const irq_override * get_irq_override(uint8_t irq) const;
+
 	/// Register the existance of a block device.
 	/// \arg blockdev  Pointer to the block device
 	void register_block_device(block_device *blockdev);
@@ -94,9 +123,6 @@ public:
 			&m_hpets[i] : nullptr;
 	}
 
-	/// Get the list of APIC ids for other CPUs
-	inline const kutil::vector<uint8_t> & get_apic_ids() const { return m_apic_ids; }
-
 private:
 	/// Parse the ACPI XSDT and load relevant sub-tables.
 	/// \arg xsdt  Pointer to the XSDT from the firmware
@@ -122,10 +148,13 @@ private:
 	/// that has no callback.
 	void bad_irq(uint8_t irq);
 
-	lapic *m_lapic;
+	uintptr_t m_lapic_base;
+
 	kutil::vector<ioapic> m_ioapics;
 	kutil::vector<hpet> m_hpets;
 	kutil::vector<uint8_t> m_apic_ids;
+	kutil::vector<apic_nmi> m_nmis;
+	kutil::vector<irq_override> m_overrides;
 
 	kutil::vector<pci_group> m_pci;
 	kutil::vector<pci_device> m_devices;

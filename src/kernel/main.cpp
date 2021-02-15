@@ -39,7 +39,8 @@ extern "C" {
 	void (*__ctors_end)(void);
 	void long_ap_startup(cpu_data *cpu);
 	void ap_startup();
-	void init_ap_trampoline(void*, cpu_data *, void (*)(cpu_data *));
+	void ap_idle();
+	void init_ap_trampoline(void*, cpu_data *, void (*)());
 }
 
 extern void __kernel_assert(const char *, unsigned, const char *);
@@ -47,13 +48,14 @@ extern void __kernel_assert(const char *, unsigned, const char *);
 using namespace kernel;
 
 volatile size_t ap_startup_count;
+static bool scheduler_ready = false;
 
 /// Bootstrap the memory managers.
 void memory_initialize_pre_ctors(args::header &kargs);
 void memory_initialize_post_ctors(args::header &kargs);
 process * load_simple_process(args::program &program);
 
-void start_aps(void *kpml4);
+unsigned start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4);
 
 /// TODO: not this. this is awful.
 args::framebuffer *fb = nullptr;
@@ -122,6 +124,7 @@ kernel_main(args::header *header)
 	extern TSS &g_bsp_tss;
 	extern GDT &g_bsp_gdt;
 	extern cpu_data g_bsp_cpu_data;
+	extern uintptr_t idle_stack_end;
 
 	IDT *idt = new (&g_idt) IDT;
 
@@ -131,6 +134,7 @@ kernel_main(args::header *header)
 	cpu->self = cpu;
 	cpu->tss = new (&g_bsp_tss) TSS;
 	cpu->gdt = new (&g_bsp_gdt) GDT {cpu->tss};
+	cpu->rsp0 = idle_stack_end;
 	cpu_early_init(cpu);
 
 	disable_legacy_pic();
@@ -160,15 +164,21 @@ kernel_main(args::header *header)
 	devices.parse_acpi(header->acpi_table);
 
 	// Need the local APIC to get the BSP's id
-	lapic &apic = device_manager::get().get_lapic();
-	cpu->id = apic.get_id();
+	uintptr_t apic_base = devices.get_lapic_base();
+
+	lapic *apic = new lapic(apic_base);
+	apic->enable();
+
+	cpu->id = apic->get_id();
+	cpu->apic = apic;
 
 	cpu_init(cpu, true);
 
 	devices.init_drivers();
-	devices.get_lapic().calibrate_timer();
+	apic->calibrate_timer();
 
-	start_aps(header->pml4);
+	const auto &apic_ids = devices.get_apic_ids();
+	unsigned num_cpus = start_aps(*apic, apic_ids, header->pml4);
 
 	idt->add_ist_entries();
 	interrupts_enable();
@@ -197,7 +207,8 @@ kernel_main(args::header *header)
 	}
 	*/
 
-	scheduler *sched = new scheduler(devices.get_lapic());
+	scheduler *sched = new scheduler {num_cpus};
+	scheduler_ready = true;
 
 	// Skip program 0, which is the kernel itself
 	for (unsigned i = 1; i < header->num_programs; ++i)
@@ -209,8 +220,8 @@ kernel_main(args::header *header)
 	sched->start();
 }
 
-void
-start_aps(void *kpml4)
+unsigned
+start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4)
 {
 	using memory::frame_size;
 	using memory::kernel_stack_pages;
@@ -220,10 +231,8 @@ start_aps(void *kpml4)
 	extern vm_area_guarded &g_kernel_stacks;
 
 	clock &clk = clock::get();
-	lapic &apic = device_manager::get().get_lapic();
 
 	ap_startup_count = 1; // BSP processor
-	auto &ids = device_manager::get().get_apic_ids();
 	log::info(logs::boot, "Starting %d other CPUs", ids.count() - 1);
 
 	// Since we're using address space outside kernel space, make sure
@@ -245,7 +254,7 @@ start_aps(void *kpml4)
 
 	// AP idle stacks need less room than normal stacks, so pack multiple
 	// into a normal stack area
-	static constexpr size_t idle_stack_bytes = 1024; // 2KiB is generous
+	static constexpr size_t idle_stack_bytes = 2048; // 2KiB is generous
 	static constexpr size_t full_stack_bytes = kernel_stack_pages * frame_size;
 	static constexpr size_t idle_stacks_per = full_stack_bytes / idle_stack_bytes;
 
@@ -258,13 +267,14 @@ start_aps(void *kpml4)
 	apic.send_ipi_broadcast(mode, false, 0);
 
 	for (uint8_t id : ids) {
-		if (id == apic.get_id()) continue;
+		if (id == bsp.id) continue;
 
 		// Set up the CPU data structures
 		TSS *tss = new TSS;
 		GDT *gdt = new GDT {tss};
 		cpu_data *cpu = new cpu_data;
 		kutil::memset(cpu, 0, sizeof(cpu_data));
+
 		cpu->self = cpu;
 		cpu->id = id;
 		cpu->index = ++index;
@@ -285,7 +295,7 @@ start_aps(void *kpml4)
 		cpu->rsp0 = stack_end;
 
 		// Set up the trampoline with this CPU's data
-		init_ap_trampoline(kpml4, cpu, long_ap_startup);
+		init_ap_trampoline(kpml4, cpu, ap_idle);
 
 		// Kick it off!
 		size_t current_count = ap_startup_count;
@@ -315,6 +325,7 @@ start_aps(void *kpml4)
 
 	log::info(logs::boot, "%d CPUs running", ap_startup_count);
 	vm_space::kernel_space().remove(vma);
+	return ap_startup_count;
 }
 
 void
@@ -322,6 +333,12 @@ long_ap_startup(cpu_data *cpu)
 {
 	cpu_init(cpu, false);
 	++ap_startup_count;
+	while (!scheduler_ready) asm ("pause");
 
-	while(1) asm("hlt");
+	uintptr_t apic_base =
+		device_manager::get().get_lapic_base();
+	cpu->apic = new lapic(apic_base);
+	cpu->apic->enable();
+
+	scheduler::get().start();
 }

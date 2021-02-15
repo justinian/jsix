@@ -43,8 +43,7 @@ class lapic :
 public:
 	/// Constructor
 	/// \arg base      Physicl base address of the APIC's MMIO registers
-	/// \arg spurious  Vector of the spurious interrupt handler
-	lapic(uintptr_t base, isr spurious);
+	lapic(uintptr_t base);
 
 	/// Get the local APIC's ID
 	uint8_t get_id();
@@ -93,19 +92,14 @@ public:
 	void calibrate_timer();
 
 private:
-	inline uint64_t ticks_to_us(uint32_t ticks) const {
-		return static_cast<uint64_t>(ticks) / m_ticks_per_us;
-	}
-
-	inline uint64_t us_to_ticks(uint64_t interval) const {
-		return interval * m_ticks_per_us;
-	}
+	inline static uint64_t ticks_to_us(uint64_t ticks)    { return ticks / s_ticks_per_us; }
+	inline static uint64_t us_to_ticks(uint64_t interval) { return interval * s_ticks_per_us; }
 
 	void set_divisor(uint8_t divisor);
 	void set_repeat(bool repeat);
 
 	uint32_t m_divisor;
-	uint32_t m_ticks_per_us;
+	static uint64_t s_ticks_per_us;
 };
 
 
