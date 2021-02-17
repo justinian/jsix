@@ -25,7 +25,7 @@ frame_allocator::frame_allocator(kernel::args::frame_block *frames, size_t count
 inline unsigned
 bsf(uint64_t v)
 {
-	asm ("tzcntq %q0, %q1" : "=r"(v) : "r"(v) : "cc");
+	asm ("tzcntq %q0, %q1" : "=r"(v) : "0"(v) : "cc");
 	return v;
 }
 
