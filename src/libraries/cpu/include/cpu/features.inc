@@ -17,10 +17,15 @@ CPU_FEATURE_OPT(bmi1,       0x00000007, 0, ebx,  3)
 CPU_FEATURE_OPT(invpcid,    0x00000007, 0, ebx, 10)
 
 CPU_FEATURE_OPT(pku,        0x00000007, 0, ecx,  3)
+CPU_FEATURE_OPT(rdpid,      0x00000007, 0, ecx, 22)
 
 CPU_FEATURE_OPT(extapic,    0x80000001, 0, ecx,  3)
 
+CPU_FEATURE_OPT(rdtscp,     0x80000001, 0, edx, 27)
+
 CPU_FEATURE_REQ(syscall,    0x80000001, 0, edx, 11)
 CPU_FEATURE_REQ(pdpe1gb,    0x80000001, 0, edx, 26)
+
+CPU_FEATURE_OPT(invtsc,     0x80000007, 0, edx,  8)
 
 // vim: et
