@@ -9,6 +9,7 @@ gfx="-nographic"
 vga="-vga none"
 kvm=""
 cpu="Broadwell,+pdpe1gb"
+smp=4
 
 for arg in $@; do
 	case "${arg}" in
@@ -70,7 +71,7 @@ exec qemu-system-x86_64 \
 	-monitor telnet:localhost:45454,server,nowait \
 	-serial stdio \
 	-serial telnet:localhost:45455,server,nowait \
-	-smp 4 \
+	-smp "${smp}" \
 	-m 512 \
 	-d mmu,int,guest_errors \
 	-D jsix.log \
