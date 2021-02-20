@@ -62,7 +62,6 @@ lapic::lapic(uintptr_t base) :
 {
 	apic_write(m_base, lapic_lvt_error, static_cast<uint32_t>(isr::isrAPICError));
 	apic_write(m_base, lapic_spurious, static_cast<uint32_t>(isr::isrSpurious));
-	log::info(logs::apic, "LAPIC created, base %lx", m_base);
 }
 
 uint8_t

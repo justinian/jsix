@@ -102,7 +102,6 @@ scheduler::start()
 
 	process *kp = &process::kernel_process();
 	thread *idle = thread::create_idle_thread(*kp, max_priority, cpu.rsp0);
-	log::debug(logs::task, "CPU%02x idle thread koid %llx", cpu.index, idle->koid());
 
 	auto *tcb = idle->tcb();
 	cpu.process = kp;
@@ -111,7 +110,6 @@ scheduler::start()
 
 	queue.current = tcb;
 
-	log::info(logs::sched, "CPU%02x starting scheduler", cpu.index);
 	cpu.apic->enable_timer(isr::isrTimer, false);
 	cpu.apic->reset_timer(10);
 }
