@@ -41,7 +41,7 @@ cpu_validate()
 void
 cpu_early_init(cpu_data *cpu)
 {
-	IDT::get().install();
+	cpu->idt->install();
 	cpu->gdt->install();
 
 	// Install the GS base pointint to the cpu_data
@@ -63,4 +63,6 @@ cpu_init(cpu_data *cpu, bool bsp)
 	uint64_t pat = rdmsr(msr::ia32_pat);
 	pat = (pat & 0x00ffffffffffffffull) | (0x01ull << 56); // set PAT 7 to WC
 	wrmsr(msr::ia32_pat, pat);
+
+	cpu->idt->add_ist_entries();
 }

@@ -1,5 +1,6 @@
 #include "kutil/memory.h"
 #include "kutil/no_construct.h"
+#include "cpu.h"
 #include "idt.h"
 #include "log.h"
 
@@ -15,11 +16,11 @@ extern "C" {
 #undef ISR
 }
 
-// The IDT is initialized _before_ global constructors are called,
+// The BSP's IDT is initialized _before_ global constructors are called,
 // so we don't want it to have a global constructor, lest it overwrite
 // the previous initialization.
-static kutil::no_construct<IDT> __g_idt_storage;
-IDT &g_idt = __g_idt_storage.value;
+static kutil::no_construct<IDT> __g_bsp_idt_storage;
+IDT &g_bsp_idt = __g_bsp_idt_storage.value;
 
 
 IDT::IDT()
@@ -38,9 +39,10 @@ IDT::IDT()
 }
 
 IDT &
-IDT::get()
+IDT::current()
 {
-	return g_idt;
+	cpu_data &cpu = current_cpu();
+	return *cpu.idt;
 }
 
 void

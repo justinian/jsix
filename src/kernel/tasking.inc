@@ -15,6 +15,7 @@ struc CPU_DATA
 .tcb:          resq 1
 .thread:       resq 1
 .process:      resq 1
+.idt:          resq 1
 .tss:          resq 1
 .gdt:          resq 1
 endstruc

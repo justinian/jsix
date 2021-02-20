@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 class GDT;
+class IDT;
 class lapic;
 class process;
 struct TCB;
@@ -30,6 +31,7 @@ struct cpu_data
 	TCB *tcb;
 	thread *thread;
 	process *process;
+	IDT *idt;
 	TSS *tss;
 	GDT *gdt;
 

@@ -85,9 +85,10 @@ isr_handler(cpu_state *regs)
 
 	// Clear out the IST for this vector so we just keep using
 	// this stack
-	uint8_t old_ist = IDT::get().get_ist(vector);
+	IDT &idt = IDT::current();
+	uint8_t old_ist = idt.get_ist(vector);
 	if (old_ist)
-		IDT::get().set_ist(vector, 0);
+		idt.set_ist(vector, 0);
 
 	switch (static_cast<isr>(vector)) {
 
@@ -152,7 +153,7 @@ isr_handler(cpu_state *regs)
 				case 1:
 				case 3:
 					cons->printf(" IDT[%x]\n", index);
-					IDT::get().dump(index);
+					IDT::current().dump(index);
 					break;
 
 				default:
@@ -274,7 +275,7 @@ isr_handler(cpu_state *regs)
 
 	// Return the IST for this vector to what it was
 	if (old_ist)
-		IDT::get().set_ist(vector, old_ist);
+		idt.set_ist(vector, old_ist);
 	*reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
 }
 

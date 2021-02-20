@@ -120,18 +120,18 @@ kernel_main(args::header *header)
 		logger_clear_immediate();
 	}
 
-	extern IDT &g_idt;
+	extern IDT &g_bsp_idt;
 	extern TSS &g_bsp_tss;
 	extern GDT &g_bsp_gdt;
 	extern cpu_data g_bsp_cpu_data;
 	extern uintptr_t idle_stack_end;
 
-	IDT *idt = new (&g_idt) IDT;
 
 	cpu_data *cpu = &g_bsp_cpu_data;
 	kutil::memset(cpu, 0, sizeof(cpu_data));
 
 	cpu->self = cpu;
+	cpu->idt = new (&g_bsp_idt) IDT;
 	cpu->tss = new (&g_bsp_tss) TSS;
 	cpu->gdt = new (&g_bsp_gdt) GDT {cpu->tss};
 	cpu->rsp0 = idle_stack_end;
@@ -143,7 +143,7 @@ kernel_main(args::header *header)
 	run_constructors();
 	memory_initialize_post_ctors(*header);
 
-	cpu->tss->create_ist_stacks(idt->used_ist_entries());
+	cpu->tss->create_ist_stacks(cpu->idt->used_ist_entries());
 
 	for (size_t i = 0; i < header->num_modules; ++i) {
 		args::module &mod = header->modules[i];
@@ -180,7 +180,6 @@ kernel_main(args::header *header)
 	const auto &apic_ids = devices.get_apic_ids();
 	unsigned num_cpus = start_aps(*apic, apic_ids, header->pml4);
 
-	idt->add_ist_entries();
 	interrupts_enable();
 
 	/*
@@ -258,7 +257,7 @@ start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4)
 	static constexpr size_t full_stack_bytes = kernel_stack_pages * frame_size;
 	static constexpr size_t idle_stacks_per = full_stack_bytes / idle_stack_bytes;
 
-	uint8_t ist_entries = IDT::get().used_ist_entries();
+	uint8_t ist_entries = IDT::current().used_ist_entries();
 
 	size_t free_stack_count = 0;
 	uintptr_t stack_area_start = 0;
@@ -270,6 +269,7 @@ start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4)
 		if (id == bsp.id) continue;
 
 		// Set up the CPU data structures
+		IDT *idt = new IDT;
 		TSS *tss = new TSS;
 		GDT *gdt = new GDT {tss};
 		cpu_data *cpu = new cpu_data;
@@ -278,8 +278,9 @@ start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4)
 		cpu->self = cpu;
 		cpu->id = id;
 		cpu->index = ++index;
-		cpu->gdt = gdt;
+		cpu->idt = idt;
 		cpu->tss = tss;
+		cpu->gdt = gdt;
 
 		tss->create_ist_stacks(ist_entries);
 

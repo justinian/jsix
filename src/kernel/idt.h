@@ -8,6 +8,9 @@ class IDT
 public:
 	IDT();
 
+	/// Get the currently running CPU's IDT
+	static IDT & current();
+
 	/// Install this IDT to the current CPU
 	void install() const;
 
@@ -34,9 +37,6 @@ public:
 	/// Dump debug information about the IDT to the console.
 	/// \arg index  Which entry to print, or -1 for all entries
 	void dump(unsigned index = -1) const;
-
-	/// Get the global IDT
-	static IDT & get();
 
 private:
 	void set(uint8_t i, void (*handler)(), uint16_t selector, uint8_t flags);
