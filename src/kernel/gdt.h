@@ -7,20 +7,6 @@
 
 class TSS;
 
-enum class gdt_type : uint8_t
-{
-	accessed	= 0x01,
-	read_write	= 0x02,
-	conforming	= 0x04,
-	execute		= 0x08,
-	system		= 0x10,
-	ring1		= 0x20,
-	ring2		= 0x40,
-	ring3		= 0x60,
-	present		= 0x80
-};
-IS_BITFIELD(gdt_type);
-
 class GDT
 {
 public:
@@ -39,8 +25,21 @@ public:
 	/// \arg index  Which entry to print, or -1 for all entries
 	void dump(unsigned index = -1) const;
 
+	enum class type : uint8_t
+	{
+		accessed	= 0x01,
+		read_write	= 0x02,
+		conforming	= 0x04,
+		execute		= 0x08,
+		system		= 0x10,
+		ring1		= 0x20,
+		ring2		= 0x40,
+		ring3		= 0x60,
+		present		= 0x80
+	};
+
 private:
-	void set(uint8_t i, uint32_t base, uint64_t limit, bool is64, gdt_type type);
+	void set(uint8_t i, uint32_t base, uint64_t limit, bool is64, type t);
 	void set_tss(TSS *tss);
 
 	struct descriptor
@@ -48,7 +47,7 @@ private:
 		uint16_t limit_low;
 		uint16_t base_low;
 		uint8_t base_mid;
-		gdt_type type;
+		type type;
 		uint8_t size;
 		uint8_t base_high;
 	} __attribute__ ((packed, align(8)));
@@ -64,3 +63,5 @@ private:
 
 	ptr m_ptr;
 };
+
+is_bitfield(GDT::type);

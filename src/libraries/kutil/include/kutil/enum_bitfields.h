@@ -2,16 +2,16 @@
 
 #include <type_traits>
 
-template<typename E>
-struct is_enum_bitfield { static constexpr bool value = false; };
+namespace kutil {
+namespace bitfields {
 
-#define IS_BITFIELD(name) \
-	template<> struct ::is_enum_bitfield<name> {static constexpr bool value=true;}
+template <typename E>
+constexpr bool is_enum_bitfield(E) { return false; }
 
 template <typename E>
 struct enum_or_int {
 	static constexpr bool value =
-		std::disjunction< is_enum_bitfield<E>, std::is_integral<E> >::value;
+		is_enum_bitfield(E{}) || std::is_integral<E>::value;
 };
 
 template <typename E, typename F>
@@ -35,115 +35,61 @@ template <> struct integral<long long>          { using type = long long; };
 template <> struct integral<unsigned long long> { using type = unsigned long long; };
 
 template <typename E, typename F>
-constexpr typename std::enable_if<both_enum_or_int<E, F>::value,E>::type
-operator & (E lhs, F rhs)
-{
-	return static_cast<E> (
-		static_cast<typename integral<E>::type>(lhs) &
-		static_cast<typename integral<F>::type>(rhs));
-}
-
-template <typename E, typename F>
-constexpr typename std::enable_if<both_enum_or_int<E, F>::value,E>::type
-operator | (E lhs, F rhs)
-{
-	return static_cast<E> (
-		static_cast<typename integral<E>::type>(lhs) |
-		static_cast<typename integral<F>::type>(rhs));
-}
-
-template <typename E, typename F>
-constexpr typename std::enable_if<both_enum_or_int<E, F>::value,E>::type
-operator ^ (E lhs, F rhs)
-{
-	return static_cast<E> (
-		static_cast<typename integral<E>::type>(lhs) ^
-		static_cast<typename integral<F>::type>(rhs));
-}
-
-template <typename E>
-constexpr typename std::enable_if<is_enum_bitfield<E>::value,E>::type
-operator ~ (E rhs)
-{
-	return static_cast<E>(~static_cast<typename std::underlying_type<E>::type>(rhs));
-}
-
-template <typename E, typename F>
 constexpr typename std::enable_if<both_enum_or_int<E, F>::value,E>::type&
 operator |= (E &lhs, F rhs)
 {
-	lhs = static_cast<E>(
+	return lhs = static_cast<E>(
 		static_cast<typename integral<E>::type>(lhs) |
 		static_cast<typename integral<F>::type>(rhs));
-
-	return lhs;
 }
 
 template <typename E, typename F>
 constexpr typename std::enable_if<both_enum_or_int<E, F>::value,E>::type&
 operator &= (E &lhs, F rhs)
 {
-	lhs = static_cast<E>(
+	return lhs = static_cast<E>(
 		static_cast<typename integral<E>::type>(lhs) &
 		static_cast<typename integral<F>::type>(rhs));
-
-	return lhs;
 }
 
 template <typename E, typename F>
 constexpr typename std::enable_if<both_enum_or_int<E, F>::value,E>::type&
 operator ^= (E &lhs, F rhs)
 {
-	lhs = static_cast<E>(
+	return lhs = static_cast<E>(
 		static_cast<typename integral<E>::type>(lhs) ^
 		static_cast<typename integral<F>::type>(rhs));
-
-	return lhs;
 }
 
 template <typename E, typename F>
-constexpr typename std::enable_if<both_enum_or_int<E, F>::value,E>::type&
-operator -= (E &lhs, F rhs)
-{
-	lhs = static_cast<E>(
-		static_cast<typename integral<E>::type>(lhs) &
-		~static_cast<typename integral<F>::type>(rhs));
-
-	return lhs;
-}
+constexpr typename std::enable_if<both_enum_or_int<E, F>::value,E>::type
+operator & (E lhs, F rhs) { return lhs &= rhs; }
 
 template <typename E, typename F>
-constexpr typename std::enable_if<both_enum_or_int<E, F>::value,E>::type&
-operator += (E &lhs, F rhs)
-{
-	lhs = static_cast<E>(
-		static_cast<typename integral<E>::type>(lhs) |
-		static_cast<typename integral<F>::type>(rhs));
+constexpr typename std::enable_if<both_enum_or_int<E, F>::value,E>::type
+operator | (E lhs, F rhs) { return lhs |= rhs; }
 
-	return lhs;
-}
+template <typename E, typename F>
+constexpr typename std::enable_if<both_enum_or_int<E, F>::value,E>::type
+operator ^ (E lhs, F rhs) { return lhs ^= rhs; }
 
 template <typename E>
-constexpr typename std::enable_if<is_enum_bitfield<E>::value,bool>::type
-operator ! (E rhs)
-{
-	return static_cast<typename std::underlying_type<E>::type>(rhs) == 0;
-}
+constexpr typename std::enable_if<is_enum_bitfield(E{}),E>::type
+operator ~ (E rhs) { return static_cast<E>(~static_cast<typename std::underlying_type<E>::type>(rhs)); }
 
 template <typename E>
-constexpr bool
-bitfield_has(E set, E flag)
-{
-	return
-		(static_cast<typename std::underlying_type<E>::type>(set) &
-		 static_cast<typename std::underlying_type<E>::type>(flag)) ==
-		 static_cast<typename std::underlying_type<E>::type>(flag);
-}
+constexpr typename std::enable_if<is_enum_bitfield(E{}),bool>::type
+operator ! (E rhs) { return static_cast<typename std::underlying_type<E>::type>(rhs) == 0; }
 
-// Overload the logical-and operator to be 'bitwise-and, bool-cast'
+/// Override logical-and to mean 'rhs contains all bits in lhs'
 template <typename E>
-constexpr typename std::enable_if<is_enum_bitfield<E>::value,bool>::type
-operator && (E set, E flag)
-{
-	return (set & flag) == flag;
-}
+constexpr typename std::enable_if<is_enum_bitfield(E{}),bool>::type
+operator && (E rhs, E lhs) { return (rhs & lhs) == lhs; }
+
+} // namespace bitfields
+} // namespace kutil
+
+#define is_bitfield(name) \
+	constexpr bool is_enum_bitfield(name) { return true; } \
+	using namespace kutil::bitfields;
+

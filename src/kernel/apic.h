@@ -19,23 +19,6 @@ protected:
 	uint32_t *m_base;
 };
 
-enum class ipi : uint32_t
-{
-	// Delivery modes
-	fixed    = 0x0000,
-	smi      = 0x0200,
-	nmi      = 0x0400,
-	init     = 0x0500,
-	startup  = 0x0600,
-
-	// Flags
-	deassert = 0x0000,
-	assert   = 0x4000,
-	edge     = 0x0000, ///< edge-triggered
-	level    = 0x8000, ///< level-triggered
-};
-IS_BITFIELD(ipi);
-
 /// Controller for processor-local APICs
 class lapic :
 	public apic
@@ -47,6 +30,22 @@ public:
 
 	/// Get the local APIC's ID
 	uint8_t get_id();
+
+	enum class ipi : uint32_t
+	{
+		// Delivery modes
+		fixed    = 0x0000,
+		smi      = 0x0200,
+		nmi      = 0x0400,
+		init     = 0x0500,
+		startup  = 0x0600,
+
+		// Flags
+		deassert = 0x0000,
+		assert   = 0x4000,
+		edge     = 0x0000, ///< edge-triggered
+		level    = 0x8000, ///< level-triggered
+	};
 
 	/// Send an inter-processor interrupt.
 	/// \arg mode   The sending mode
@@ -144,3 +143,6 @@ private:
 	uint8_t m_id;
 	uint8_t m_version;
 };
+
+is_bitfield(lapic::ipi);
+

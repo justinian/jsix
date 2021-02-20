@@ -84,7 +84,7 @@ enum class acpi_fadt_flags : uint32_t
 	hw_reduced_acpi	= 0x00100000,
 	low_pwr_s0_idle	= 0x00200000
 };
-IS_BITFIELD(acpi_fadt_flags);
+is_bitfield(acpi_fadt_flags);
 
 struct acpi_fadt
 {

@@ -194,4 +194,4 @@ inline bool operator<(page_table::level a, page_table::level b) {
 inline page_table::level& operator++(page_table::level& l) { l = l + 1; return l; }
 inline page_table::level& operator--(page_table::level& l) { l = l - 1; return l; }
 
-IS_BITFIELD(page_table::flag);
+is_bitfield(page_table::flag);

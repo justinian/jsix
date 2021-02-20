@@ -263,7 +263,7 @@ start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4)
 	size_t free_stack_count = 0;
 	uintptr_t stack_area_start = 0;
 
-	ipi mode = ipi::init | ipi::level | ipi::assert;
+	lapic::ipi mode = lapic::ipi::init | lapic::ipi::level | lapic::ipi::assert;
 	apic.send_ipi_broadcast(mode, false, 0);
 
 	for (uint8_t id : ids) {
@@ -301,7 +301,7 @@ start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4)
 		size_t current_count = ap_startup_count;
 		log::debug(logs::boot, "Starting AP %d: stack %llx", cpu->index, stack_end);
 
-		ipi startup = ipi::startup | ipi::assert;
+		lapic::ipi startup = lapic::ipi::startup | lapic::ipi::assert;
 
 		apic.send_ipi(startup, vector, id);
 		for (unsigned i = 0; i < 20; ++i) {

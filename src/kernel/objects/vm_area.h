@@ -174,4 +174,4 @@ private:
 };
 
 
-IS_BITFIELD(vm_flags);
+is_bitfield(vm_flags);

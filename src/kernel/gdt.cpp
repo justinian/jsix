@@ -34,13 +34,13 @@ GDT::GDT(TSS *tss) :
 	m_ptr.base = &m_entries[0];
 
 	// Kernel CS/SS - always 64bit
-	set(kern_cs_index, 0, 0xfffff, true, gdt_type::read_write | gdt_type::execute);
-	set(kern_ss_index, 0, 0xfffff, true, gdt_type::read_write);
+	set(kern_cs_index, 0, 0xfffff, true, type::read_write | type::execute);
+	set(kern_ss_index, 0, 0xfffff, true, type::read_write);
 
 	// User CS32/SS/CS64 - layout expected by SYSRET
-	set(user_cs32_index, 0, 0xfffff, false, gdt_type::ring3 | gdt_type::read_write | gdt_type::execute);
-	set(user_ss_index,   0, 0xfffff, true,  gdt_type::ring3 | gdt_type::read_write);
-	set(user_cs64_index, 0, 0xfffff, true,  gdt_type::ring3 | gdt_type::read_write | gdt_type::execute);
+	set(user_cs32_index, 0, 0xfffff, false, type::ring3 | type::read_write | type::execute);
+	set(user_ss_index,   0, 0xfffff, true,  type::ring3 | type::read_write);
+	set(user_cs64_index, 0, 0xfffff, true,  type::ring3 | type::read_write | type::execute);
 
 	set_tss(tss);
 }
@@ -63,7 +63,7 @@ GDT::install() const
 }
 
 void
-GDT::set(uint8_t i, uint32_t base, uint64_t limit, bool is64, gdt_type type)
+GDT::set(uint8_t i, uint32_t base, uint64_t limit, bool is64, type t)
 {
 	m_entries[i].limit_low = limit & 0xffff;
 	m_entries[i].size = (limit >> 16) & 0xf;
@@ -73,7 +73,7 @@ GDT::set(uint8_t i, uint32_t base, uint64_t limit, bool is64, gdt_type type)
 	m_entries[i].base_mid = (base >> 16) & 0xff;
 	m_entries[i].base_high = (base >> 24) & 0xff;
 
-	m_entries[i].type = type | gdt_type::system | gdt_type::present;
+	m_entries[i].type = t | type::system | type::present;
 }
 
 struct tss_descriptor
@@ -81,7 +81,7 @@ struct tss_descriptor
 	uint16_t limit_low;
 	uint16_t base_00;
 	uint8_t base_16;
-	gdt_type type;
+	GDT::type type;
 	uint8_t size;
 	uint8_t base_24;
 	uint32_t base_32;
@@ -105,10 +105,10 @@ GDT::set_tss(TSS *tss)
 	tssd.reserved = 0;
 
 	tssd.type =
-		gdt_type::accessed |
-		gdt_type::execute |
-		gdt_type::ring3 |
-		gdt_type::present;
+		type::accessed |
+		type::execute |
+		type::ring3 |
+		type::present;
 
 	kutil::memcpy(&m_entries[tss_index], &tssd, sizeof(tss_descriptor));
 }
@@ -141,26 +141,26 @@ GDT::dump(unsigned index) const
 			gdt[i].limit_low;
 
 		cons->printf("          %02d:", i);
-		if (! bitfield_has(gdt[i].type, gdt_type::present)) {
+		if (! (gdt[i].type && type::present)) {
 			cons->puts(" Not Present\n");
 			continue;
 		}
 
 		cons->printf(" Base %08x  limit %05x ", base, limit);
 
-		switch (gdt[i].type & gdt_type::ring3) {
-			case gdt_type::ring3: cons->puts("ring3"); break;
-			case gdt_type::ring2: cons->puts("ring2"); break;
-			case gdt_type::ring1: cons->puts("ring1"); break;
+		switch (gdt[i].type & type::ring3) {
+			case type::ring3: cons->puts("ring3"); break;
+			case type::ring2: cons->puts("ring2"); break;
+			case type::ring1: cons->puts("ring1"); break;
 			default: cons->puts("ring0"); break;
 		}
 
 		cons->printf(" %s %s %s %s %s %s %s\n",
-			bitfield_has(gdt[i].type, gdt_type::accessed) ? "A" : " ",
-			bitfield_has(gdt[i].type, gdt_type::read_write) ? "RW" : "  ",
-			bitfield_has(gdt[i].type, gdt_type::conforming) ? "C" : " ",
-			bitfield_has(gdt[i].type, gdt_type::execute) ? "EX" : "  ",
-			bitfield_has(gdt[i].type, gdt_type::system) ? "S" : " ",
+			(gdt[i].type && type::accessed) ? "A" : " ",
+			(gdt[i].type && type::read_write) ? "RW" : "  ",
+			(gdt[i].type && type::conforming) ? "C" : " ",
+			(gdt[i].type && type::execute) ? "EX" : "  ",
+			(gdt[i].type && type::system) ? "S" : " ",
 			(gdt[i].size & 0x80) ? "KB" : " B",
 			(gdt[i].size & 0x60) == 0x20 ? "64" :
 				(gdt[i].size & 0x60) == 0x40 ? "32" : "16");

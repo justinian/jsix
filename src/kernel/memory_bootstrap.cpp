@@ -24,6 +24,11 @@ using memory::kernel_max_heap;
 
 using namespace kernel;
 
+namespace kernel {
+namespace args {
+	is_bitfield(section_flags);
+}}
+
 extern "C" void initialize_main_thread();
 extern "C" uintptr_t initialize_main_user_stack();
 
@@ -203,8 +208,8 @@ load_simple_process(args::program &program)
 
 	for (const auto &sect : program.sections) {
 		vm_flags flags =
-			(bitfield_has(sect.type, section_flags::execute) ? vm_flags::exec : vm_flags::none) |
-			(bitfield_has(sect.type, section_flags::write) ? vm_flags::write : vm_flags::none);
+			((sect.type && section_flags::execute) ? vm_flags::exec : vm_flags::none) |
+			((sect.type && section_flags::write) ? vm_flags::write : vm_flags::none);
 
 		vm_area *vma = new vm_area_fixed(sect.phys_addr, sect.size, flags);
 		space.add(sect.virt_addr, vma);

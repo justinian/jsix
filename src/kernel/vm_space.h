@@ -132,4 +132,4 @@ private:
 	kutil::spinlock m_lock;
 };
 
-IS_BITFIELD(vm_space::fault_type);
+is_bitfield(vm_space::fault_type);
