@@ -1,0 +1,8 @@
+name = "nulldrv"
+targets = ["user"]
+deps = ["libc"]
+sources = [
+	"io.cpp",
+	"main.cpp",
+	"serial.cpp",
+]

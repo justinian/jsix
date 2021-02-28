@@ -10,24 +10,25 @@ SECTIONS
 	}
 
 	.text ALIGN(4096) : {
-		*(.text)
-		*(.isrs)
+		*(.text*)
+		KEEP(*(.isrs))
 	}
 
 	.data ALIGN(4096) : {
-		 *(.data)
-		 *(.rodata)
+		 *(.data*)
+		 *(.rodata*)
 	}
 
 	.ctors : ALIGN(8) {
 		 __ctors = .;
 		 KEEP(*(.ctors))
+		 KEEP(*(.init_array))
 		 __ctors_end = .;
 	 }
 
 	.bss ALIGN(4096) : {
 		__bss_start = .;
-		*(.bss)
+		*(.bss*)
 		__bss_end = .;
 	}
 

@@ -1,0 +1,65 @@
+
+rule makest
+    description = Making symbol table
+    command = nm $in | ${source_root}/scripts/build_symbol_table.py $out
+
+rule makefat
+    description = Creating $name
+    command = $
+        cp ${source_root}/assets/diskbase.img $out; $
+        mcopy -s -D o -i $out@@1M ${build_root}/fatroot/* ::/
+
+rule strip
+    description = Stripping $name
+    command = $
+        cp $in $out; $
+        objcopy --only-keep-debug $out $out.debug; $
+        strip -g $out; $
+        objcopy --add-gnu-debuglink=$out.debug $out
+
+
+build ${build_root}/ovmf_vars.fd : cp ${source_root}/assets/ovmf/x64/ovmf_vars.fd
+    name = ovmf_vars.fd
+
+build ${build_root}/ovmf_vars_d.fd : cp ${source_root}/assets/ovmf/x64/ovmf_vars_d.fd
+    name = ovmf_vars_d.fd
+
+build ${build_root}/jsix.elf | ${build_root}/jsix.elf.debug : strip ${build_root}/kernel/jsix.elf
+    name = kernel
+
+build ${build_root}/jsix.dump : dump ${build_root}/kernel/jsix.elf
+    name = kernel
+
+build ${build_root}/jsix.elf-gdb.py : cp ${source_root}/assets/debugging/jsix.elf-gdb.py
+    name = kernel debug python scripts
+
+build ${build_root}/fatroot/jsix.elf : cp ${build_root}/jsix.elf
+    name = kernel to FAT image
+
+build ${build_root}/fatroot/efi/boot/bootx64.efi : cp ${build_root}/boot/boot.efi
+    name = bootloader to FAT image
+
+build ${build_root}/fatroot/nulldrv.elf : cp ${build_root}/user/nulldrv.elf
+    name = null driver to FAT image
+
+build ${build_root}/fatroot/fb.elf : cp ${build_root}/user/fb.elf
+    name = fb driver to FAT image
+
+build ${build_root}/fatroot/symbol_table.dat : makest ${build_root}/jsix.elf
+
+build ${build_root}/jsix.img : makefat | $
+    ${build_root}/fatroot/symbol_table.dat $
+    ${build_root}/fatroot/nulldrv.elf $
+    ${build_root}/fatroot/fb.elf $
+    ${build_root}/fatroot/jsix.elf $
+    ${build_root}/fatroot/efi/boot/bootx64.efi
+    name = jsix.img
+
+default $
+    ${build_root}/ovmf_vars.fd $
+    ${build_root}/ovmf_vars_d.fd $
+    ${build_root}/jsix.dump $
+    ${build_root}/jsix.elf-gdb.py $
+    ${build_root}/jsix.img
+
+# vim: ft=ninja et ts=4 sts=4 sw=4

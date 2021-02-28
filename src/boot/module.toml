@@ -1,0 +1,17 @@
+name = "boot"
+kind = "exe"
+output = "boot.efi"
+targets = ["boot"]
+deps = ["cpu"]
+sources = [
+	"main.cpp",
+	"console.cpp",
+	"error.cpp",
+	"fs.cpp",
+	"hardware.cpp",
+	"loader.cpp",
+	"memory.cpp",
+	"paging.cpp",
+	"status.cpp",
+	"support.cpp",
+]

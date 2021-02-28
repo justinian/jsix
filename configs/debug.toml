@@ -1,0 +1,136 @@
+[targets.boot]
+cc = "clang"
+cxx = "clang++"
+ld = "clang++"
+ar = "ar"
+nasm = "nasm"
+objcopy = "objcopy"
+
+ccflags = [
+	"${ccflags}",
+    "-I${source_root}/external",
+    "--target=x86_64-unknown-windows",
+	"-ffreestanding",
+	"-mno-red-zone",
+	"-fshort-wchar",
+	"-fno-omit-frame-pointer",
+	"-ggdb",
+    "-g3",
+    '-DKERNEL_FILENAME=L"jsix.elf"',
+]
+
+cxxflags = [
+	"${cxxflags}",
+    "-fno-exceptions",
+    "-fno-rtti",
+]
+
+ldflags = [
+	"${ldflags}",
+    "--target=x86_64-unknown-windows",
+	"-nostdlib",
+    "-Wl,-entry:efi_main",
+    "-Wl,-subsystem:efi_application",
+    "-fuse-ld=lld-link",
+	"-g"
+]
+
+
+[targets.kernel]
+cc = "clang"
+cxx = "clang++"
+ld = "ld.lld"
+ar = "ar"
+nasm = "nasm"
+objcopy = "objcopy"
+
+asflags = [ 
+	"${asflags}",
+	"-I${source_root}/src/kernel/",
+]
+
+ccflags = [
+	"${ccflags}",
+    "--target=x86_64-unknown-elf",
+	"-I${source_root}/external",
+    "-nostdlib",
+    "-ffreestanding",
+    "-nodefaultlibs",
+    "-fno-builtin",
+    "-mno-sse",
+    "-fno-omit-frame-pointer",
+    "-mno-red-zone",
+    "-g",
+    "-mcmodel=large",
+    "-D__ELF__",
+    "-D__JSIX__",
+    "-isystem${source_root}/sysroot/include",
+    "-isystem${source_root}/src/libraries/libc/include",
+    "--sysroot='${source_root}/sysroot'"
+]
+
+cxxflags = [
+	"${cxxflags}",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-isystem${source_root}/sysroot/include/c++/v1"
+]
+
+ldflags = [
+	"${ldflags}",
+	"-T", "${source_root}/src/arch/x86_64/kernel.ld",
+    "-g",
+    "-nostdlib",
+    "-Bstatic",
+	"-z", "norelro",
+	"-z", "separate-code",
+]
+
+
+[targets.user]
+cc = "clang"
+cxx = "clang++"
+ld = "ld.lld"
+ar = "ar"
+nasm = "nasm"
+objcopy = "objcopy"
+
+asflags = [
+	"${asflags}",
+	"-I${source_root}/src/kernel/",
+]
+
+ccflags = [
+	"${ccflags}",
+    "-nostdlib",
+    "-ffreestanding",
+    "-nodefaultlibs",
+    "-fno-builtin",
+    "-mno-sse",
+    "-fno-omit-frame-pointer",
+    "-mno-red-zone",
+    "-g",
+    "-mcmodel=large",
+    "-D__ELF__",
+    "-D__JSIX__",
+    "-isystem${source_root}/sysroot/include",
+    "-isystem${source_root}/src/libraries/libc/include",
+    "--sysroot='${source_root}/sysroot'"
+]
+
+cxxflags = [
+	"${cxxflags}",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-isystem${source_root}/sysroot/include/c++/v1"
+]
+
+ldflags = [
+	"${ldflags}",
+    "-g",
+    "-nostdlib",
+    "-Bstatic",
+    "--sysroot='${source_root}/sysroot'",
+	"-L", "${source_root}/sysroot/lib",
+	"-z", "separate-code",
+]
