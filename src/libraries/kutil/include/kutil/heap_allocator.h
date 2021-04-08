@@ -3,6 +3,7 @@
 /// A buddy allocator for a memory heap
 
 #include <stddef.h>
+#include "kutil/spinlock.h"
 
 namespace kutil {
 
@@ -56,6 +57,8 @@ protected:
 	size_t m_blocks;
 	mem_header *m_free[max_order - min_order + 1];
 	size_t m_allocated_size;
+
+	spinlock m_lock;
 
 	heap_allocator(const heap_allocator &) = delete;
 };

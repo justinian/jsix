@@ -89,6 +89,8 @@ heap_allocator::allocate(size_t length)
 	if (order > max_order)
 		return nullptr;
 
+	scoped_lock lock {m_lock};
+
 	mem_header *header = pop_free(order);
 	header->set_used(true);
 	m_allocated_size += (1 << order);
@@ -103,6 +105,8 @@ heap_allocator::free(void *p)
 	uintptr_t addr = reinterpret_cast<uintptr_t>(p);
 	kassert(addr >= m_start && addr < m_end,
 		"Attempt to free non-heap pointer");
+
+	scoped_lock lock {m_lock};
 
 	mem_header *header = reinterpret_cast<mem_header *>(p);
 	header -= 1; // p points after the header
