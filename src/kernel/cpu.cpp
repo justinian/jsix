@@ -46,6 +46,10 @@ cpu_early_init(cpu_data *cpu)
 
 	// Install the GS base pointint to the cpu_data
 	wrmsr(msr::ia32_gs_base, reinterpret_cast<uintptr_t>(cpu));
+
+	// Set the initial process as the kernel "process"
+	extern process &g_kernel_process;
+	cpu->process = &g_kernel_process;
 }
 
 void
