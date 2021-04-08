@@ -1,131 +1,126 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-TARGET="x86_64-elf"
-LLVM_BRANCH="release_80"
+set -o errexit
+set -o errtrace
+set -o pipefail
+set -o nounset
 
-TOOLS="clang lld" # lld libunwind libcxxabi libcxx"
-PROJECTS="compiler-rt libcxxabi libcxx libunwind"
-#RUNTIMES="compiler-rt libcxxabi libcxx libunwind"
+function errmsg () {
+    echo "Error: $(caller)"
+    echo "Working directory not cleaned up!"
+}
 
-set -e
+trap errmsg ERR
 
-README=$(realpath "$(dirname $0)/readme_for_prebuilt_sysroots.md")
-SYSROOT=$(realpath "$(dirname $0)/../sysroot")
-WORK=$(realpath "$(dirname $0)/sysroot")
-mkdir -p "${SYSROOT}"
-mkdir -p "${WORK}"
+LLVM_VERSION=11
+J6_TOOLCHAINS="${J6_TOOLCHAINS:-$(realpath ~/.local/lib/jsix)}"
+CHAIN_NAME="llvm-${LLVM_VERSION}"
+LLVM_BRANCH="release/${LLVM_VERSION}.x"
 
-export CC=clang
-export CXX=clang++
+SYSROOT="${J6_TOOLCHAINS}/sysroots/${CHAIN_NAME}"
 
-if [[ ! -d "${WORK}/llvm" ]]; then
-	echo "Downloading LLVM..."
-	git clone -q \
-		--branch "${LLVM_BRANCH}" \
-		--depth 1 \
-		"https://git.llvm.org/git/llvm.git" "${WORK}/llvm"
+ROOT=$(realpath ${1:-$(mktemp -d "sysroot_build.XXX")})
+OUT="${ROOT}/sysroot"
+echo "Working in ${ROOT}"
+
+if [ ! -d "${ROOT}/llvm-project" ]; then
+    echo "* Downloading LLVM ${LLVM_VERSION}"
+
+    git clone -q --depth 1 \
+        --branch "${LLVM_BRANCH}" \
+        "https://github.com/llvm/llvm-project" \
+        "${ROOT}/llvm-project"
 fi
 
-for tool in ${TOOLS}; do
-	if [[ ! -d "${WORK}/llvm/tools/${tool}" ]]; then
-		echo "Downloading ${tool}..."
-		git clone -q \
-			--branch "${LLVM_BRANCH}" \
-			--depth 1 \
-			"https://git.llvm.org/git/${tool}.git" "${WORK}/llvm/tools/${tool}"
-	fi
-done
-
-if [[ ! -d "${WORK}/llvm/tools/clang/tools/extra" ]]; then
-	echo "Downloading clang-tools-extra..."
-	git clone -q \
-		--branch "${LLVM_BRANCH}" \
-		--depth 1 \
-		"https://git.llvm.org/git/clang-tools-extra.git" "${WORK}/llvm/tools/clang/tools/extra"
+if [ -d "${OUT}" ]; then
+    rm -rf "${OUT}"
 fi
+mkdir -p "${OUT}"
 
-for proj in ${PROJECTS}; do
-	if [[ ! -d "${WORK}/llvm/projects/${proj}" ]]; then
-		echo "Downloading ${proj}..."
-		git clone -q \
-			--branch "${LLVM_BRANCH}" \
-			--depth 1 \
-			"https://git.llvm.org/git/${proj}.git" "${WORK}/llvm/projects/${proj}"
-	fi
-done
+## Stage1: build an LLVM toolchain that doesn't rely on the host libraries,
+## compiler, runtime, etc.
 
-for proj in ${RUNTIMES}; do
-	if [[ ! -d "${WORK}/llvm/runtimes/${proj}" ]]; then
-		echo "Downloading ${proj}..."
-		git clone -q \
-			--branch "${LLVM_BRANCH}" \
-			--depth 1 \
-			"https://git.llvm.org/git/${proj}.git" "${WORK}/llvm/runtime/${proj}"
-	fi
-done
+echo "* Configuring stage1"
 
-mkdir -p "${WORK}/build/llvm"
-pushd "${WORK}/build/llvm"
-
-echo "Configuring LLVM..."
-
+mkdir -p "${ROOT}/stage1"
 cmake -G Ninja \
+    -S "${ROOT}/llvm-project/llvm" \
+    -B "${ROOT}/stage1" \
 	-DCLANG_DEFAULT_RTLIB=compiler-rt \
-	-DCLANG_DEFAULT_STD_C=c11 \
-	-DCLANG_DEFAULT_STD_CXX=cxx14 \
 	-DCMAKE_BUILD_TYPE=Release \
 	-DCMAKE_C_COMPILER="clang" \
+	-DCMAKE_C_COMPILER_LAUNCHER=ccache \
 	-DCMAKE_CXX_COMPILER="clang++" \
-	-DCMAKE_CXX_FLAGS="-Wno-unused-parameter -D_LIBCPP_HAS_NO_ALIGNED_ALLOCATION -D_LIBUNWIND_IS_BAREMETAL=1 -U_LIBUNWIND_SUPPORT_DWARF_UNWIND" \
-	-DCMAKE_INSTALL_PREFIX="${SYSROOT}" \
-	-DCMAKE_MAKE_PROGRAM=`which ninja` \
-	-DDEFAULT_SYSROOT="${SYSROOT}" \
-	-DLIBCXX_CXX_ABI=libcxxabi \
-	-DLIBCXX_CXX_ABI_INCLUDE_PATHS="${WORK}/llvm/projects/libcxxabi/include" \
-	-DLIBCXX_CXX_ABI_LIBRARY_PATH=lib \
-	-DLIBCXX_ENABLE_EXPERIMENTAL_LIBRARY=OFF \
-	-DLIBCXX_ENABLE_NEW_DELETE_DEFINITIONS=ON \
-	-DLIBCXX_ENABLE_SHARED=OFF \
-	-DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=ON \
-	-DLIBCXX_ENABLE_THREADS=OFF \
-	-DLIBCXX_INCLUDE_BENCHMARKS=OFF \
-	-DLIBCXX_USE_COMPILER_RT=ON \
-	-DLIBCXXABI_ENABLE_NEW_DELETE_DEFINITIONS=OFF \
-	-DLIBCXXABI_ENABLE_SHARED=OFF \
-	-DLIBCXXABI_ENABLE_STATIC_UNWINDER=ON \
-	-DLIBCXXABI_ENABLE_THREADS=OFF \
-	-DLIBCXXABI_LIBCXX_PATH="${WORK}/llvm/projects/libcxx" \
+	-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+	-DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" \
 	-DLIBCXXABI_USE_COMPILER_RT=ON \
 	-DLIBCXXABI_USE_LLVM_UNWINDER=ON \
-	-DLIBUNWIND_ENABLE_SHARED=OFF \
-	-DLIBUNWIND_ENABLE_THREADS=OFF \
+	-DLIBCXX_CXX_ABI=libcxxabi  \
 	-DLIBUNWIND_USE_COMPILER_RT=ON \
-	-DLLVM_CONFIG_PATH="${SYSROOT}/bin/llvm-config" \
-	-DLLVM_DEFAULT_TARGET_TRIPLE="x86_64-unknown-elf" \
-	-DLLVM_ENABLE_LIBCXX=ON \
-	-DLLVM_ENABLE_LLD=ON \
-	-DLLVM_ENABLE_PIC=OFF \
-	-DLLVM_ENABLE_THREADS=OFF \
-	-DLLVM_INSTALL_BINUTILS_SYMLINKS=ON \
+	-DLLVM_BUILD_TOOLS=OFF \
+	-DLLVM_ENABLE_BINDINGS=OFF \
+	-DLLVM_ENABLE_PROJECTS="clang;lld;libcxx;libcxxabi;libunwind;compiler-rt" \
+	-DLLVM_INCLUDE_BENCHMARKS=OFF \
+	-DLLVM_INCLUDE_EXAMPLES=OFF \
+	-DLLVM_INCLUDE_TESTS=OFF \
+	-DLLVM_INCLUDE_UTILS=OFF \
 	-DLLVM_TARGETS_TO_BUILD="X86" \
-	${WORK}/llvm > cmake_configure.log
+	-DLLVM_USE_LINKER="lld" \
+	2>&1 > "${ROOT}/configure_stage1.log"
 
-#  -DCMAKE_ASM_COMPILER=nasm \
-#  -DCMAKE_LINKER="${SYSROOT}/bin/ld.lld" \
-#  -DCOMPILER_RT_ENABLE_LLD=ON \
-#  -DLIBCXX_ENABLE_LLD=ON \
-#  -DLIBCXX_ENABLE_STATIC_UNWINDER=ON \
-#  -DLIBCXXABI_ENABLE_LLD=ON \
-#  -DLIBUNWIND_ENABLE_LLD=ON \
-#  -DLLVM_ENABLE_PROJECTS="libcxx;libcxxabi;libunwind;compiler-rt" \
-#  -DCOMPILER_RT_BAREMETAL_BUILD=ON \
-#  -DLIBCXXABI_BAREMETAL=ON \
+echo "* Building stage1"
 
-echo "Building LLVM..."
-ninja && ninja install
-ninja cxx cxxabi compiler-rt
-ninja install-compiler-rt install-cxx install-cxxabi
-popd
+ninja -C "${ROOT}/stage1" -v > "${ROOT}/build_stage1.log"
+STAGE1="${ROOT}/stage1/bin"
 
+## Stage2: build the sysroot libraries with the stage1 toolchain
 
-cp "${README}" "${SYSROOT}/README.md"
+echo "* Configuring stage2"
+
+mkdir -p "${ROOT}/stage2"
+cmake -G Ninja \
+    -S "${ROOT}/llvm-project/llvm" \
+    -B "${ROOT}/stage2" \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_C_COMPILER="${STAGE1}/clang" \
+	-DCMAKE_C_COMPILER_LAUNCHER=ccache \
+	-DCMAKE_CXX_COMPILER="${STAGE1}/clang++" \
+	-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+	-DCMAKE_INSTALL_PREFIX="${OUT}" \
+	-DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=${STAGE1}/ld.lld" \
+	-DLIBCXXABI_ENABLE_STATIC_UNWINDER=ON \
+	-DLIBCXXABI_USE_COMPILER_RT=ON \
+	-DLIBCXXABI_USE_LLVM_UNWINDER=ON \
+	-DLIBCXX_CXX_ABI=libcxxabi  \
+	-DLIBCXX_INCLUDE_BENCHMARKS=OFF \
+	-DLIBUNWIND_USE_COMPILER_RT=ON \
+	-DLLVM_DEFAULT_TARGET_TRIPLE="x86_64-unknown-elf" \
+	-DLLVM_ENABLE_BINDINGS=OFF \
+	-DLLVM_ENABLE_LIBCXX=ON \
+	-DLLVM_ENABLE_PROJECTS="libcxx;libcxxabi;libunwind" \
+	-DLLVM_INCLUDE_BENCHMARKS=OFF \
+	-DLLVM_INCLUDE_EXAMPLES=OFF \
+	-DLLVM_INCLUDE_TESTS=OFF \
+	-DLLVM_INCLUDE_TOOLS=OFF \
+	-DLLVM_INCLUDE_UTILS=OFF \
+	-DLLVM_TARGETS_TO_BUILD="X86" \
+	-DLLVM_USE_LINKER="${STAGE1}/ld.lld" \
+	2>&1 > "${ROOT}/configure_stage2.log"
+
+echo "* Building stage2"
+
+ninja -C "${ROOT}/stage2" -v > "${ROOT}/build_stage2.log"
+
+echo "* Installing stage2"
+
+ninja -C "${ROOT}/stage2" -v install/strip > "${ROOT}/install_stage2.log"
+
+echo "* Installing new sysroot"
+
+rm -rf "${SYSROOT}"
+mv "${OUT}" "${SYSROOT}"
+
+echo "* Cleaning up"
+trap - ERR
+rm -rf "${ROOT}"
+echo "Done"
