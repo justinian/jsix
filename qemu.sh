@@ -11,30 +11,43 @@ kvm=""
 cpu="Broadwell,+pdpe1gb"
 smp=4
 
-for arg in $@; do
-	case "${arg}" in
-		--debugboot)
+while true; do
+	case "$1" in
+		-b | --debugboot)
 			debug="-s -S"
 			debugtarget="${build}/boot/boot.efi"
 			flash_name="ovmf_vars_d"
+            shift
 			;;
-		--debug)
+		-d | --debug)
 			debug="-s -S"
 			flash_name="ovmf_vars_d"
+            shift
 			;;
-		--gfx)
+		-g | --gfx)
 			gfx=""
 			vga=""
+            shift
 			;;
-		--vga)
+		-v | --vga)
 			vga=""
+            shift
 			;;
-		--kvm)
+		-k | --kvm)
 			kvm="-enable-kvm"
 			cpu="host"
+            shift
 			;;
+        -c | --cpus)
+            smp=$2
+            shift 2
+            ;;
 		*)
-			build="${arg}"
+            if [ -d "$1" ]; then
+                build="$1"
+                shift
+            fi
+            break
 			;;
 	esac
 done
