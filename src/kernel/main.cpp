@@ -78,7 +78,7 @@ run_constructors()
 	void (**p)(void) = &__ctors;
 	while (p < &__ctors_end) {
 		void (*ctor)(void) = *p++;
-		ctor();
+		if (ctor) ctor();
 	}
 }
 
@@ -125,7 +125,6 @@ kernel_main(args::header *header)
 	extern GDT &g_bsp_gdt;
 	extern cpu_data g_bsp_cpu_data;
 	extern uintptr_t idle_stack_end;
-
 
 	cpu_data *cpu = &g_bsp_cpu_data;
 	kutil::memset(cpu, 0, sizeof(cpu_data));
