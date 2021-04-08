@@ -7,7 +7,6 @@ deps = ["j6"]
 sources = [
 	"arch/x86_64/_Exit.s",
 	"arch/x86_64/crt0.s",
-	"arch/x86_64/init_libc.c",
 	"ctype/isalnum.c",
 	"ctype/isalpha.c",
 	"ctype/isblank.c",

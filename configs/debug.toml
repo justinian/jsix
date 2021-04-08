@@ -64,6 +64,7 @@ ccflags = [
     "-mcmodel=large",
     "-D__ELF__",
     "-D__JSIX__",
+    "-D_LIBCPP_HAS_THREAD_API_EXTERNAL",
     "-isystem${source_root}/sysroot/include",
     "-isystem${source_root}/src/libraries/libc/include",
     "--sysroot='${source_root}/sysroot'"
@@ -113,6 +114,7 @@ ccflags = [
     "-mcmodel=large",
     "-D__ELF__",
     "-D__JSIX__",
+    "-D_LIBCPP_HAS_THREAD_API_EXTERNAL",
     "-isystem${source_root}/sysroot/include",
     "-isystem${source_root}/src/libraries/libc/include",
     "--sysroot='${source_root}/sysroot'"

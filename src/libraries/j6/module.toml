@@ -1,4 +1,4 @@
 name = "j6"
 kind = "lib"
 includes = ["src/libraries/j6/include"]
-sources = ["syscalls.s"]
+sources = ["init.cpp", "syscalls.s"]

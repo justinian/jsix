@@ -8,7 +8,7 @@ static struct j6_init_value *__initv = 0;
 j6_handle_t __handle_sys = j6_handle_invalid;
 j6_handle_t __handle_self = j6_handle_invalid;
 
-void
+extern "C" void
 _get_init(size_t *initc, struct j6_init_value **initv)
 {
 	if (!initc)
@@ -19,8 +19,8 @@ _get_init(size_t *initc, struct j6_init_value **initv)
 		*initv = __initv;
 }
 
-void
-_init_libc(uint64_t *rsp)
+extern "C" void
+_init_libj6(uint64_t *rsp)
 {
 	uint64_t argc = *rsp++;
 	rsp += argc;
