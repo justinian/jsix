@@ -12,10 +12,10 @@
 namespace boot {
 namespace memory {
 
-using mem_entry = kernel::args::mem_entry;
-using mem_type = kernel::args::mem_type;
-using frame_block = kernel::args::frame_block;
-using kernel::args::frames_per_block;
+using mem_entry = kernel::init::mem_entry;
+using mem_type = kernel::init::mem_type;
+using frame_block = kernel::init::frame_block;
+using kernel::init::frames_per_block;
 
 size_t fixup_pointer_index = 0;
 void **fixup_pointers[64];
@@ -57,7 +57,7 @@ memory_type_name(uefi::memory_type t)
 }
 
 static const wchar_t *
-kernel_memory_type_name(kernel::args::mem_type t)
+kernel_memory_type_name(kernel::init::mem_type t)
 {
 	return kernel_memory_type_names[static_cast<uint32_t>(t)];
 }
@@ -146,7 +146,7 @@ inline size_t bitmap_size(size_t frames) { return (frames + 63) / 64; }
 inline size_t num_blocks(size_t frames) { return (frames + (frames_per_block-1)) / frames_per_block; }
 
 void
-build_kernel_frame_blocks(const mem_entry *map, size_t nent, kernel::args::header *args, uefi::boot_services *bs)
+build_kernel_frame_blocks(const mem_entry *map, size_t nent, kernel::init::args *args, uefi::boot_services *bs)
 {
 	status_line status {L"Creating kernel frame accounting map"};
 
@@ -230,7 +230,7 @@ build_kernel_frame_blocks(const mem_entry *map, size_t nent, kernel::args::heade
 }
 
 void
-fix_frame_blocks(kernel::args::header *args)
+fix_frame_blocks(kernel::init::args *args)
 {
 	// Map the frame blocks to the appropriate address
 	paging::map_pages(args,
@@ -250,7 +250,7 @@ fix_frame_blocks(kernel::args::header *args)
 }
 
 efi_mem_map
-build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
+build_kernel_mem_map(kernel::init::args *args, uefi::boot_services *bs)
 {
 	status_line status {L"Creating kernel memory map"};
 
@@ -259,7 +259,7 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 
 	size_t map_size = map.num_entries() * sizeof(mem_entry);
 
-	kernel::args::mem_entry *kernel_map = nullptr;
+	mem_entry *kernel_map = nullptr;
 	try_or_raise(
 		bs->allocate_pages(
 			uefi::allocate_type::any_pages,
@@ -350,7 +350,7 @@ build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs)
 	/*
 	// kernel map dump
 	for (unsigned i = 0; i < nent; ++i) {
-		const kernel::args::mem_entry &e = kernel_map[i];
+		const mem_entry &e = kernel_map[i];
 		console::print(L"   kRange %lx (%lx) %x(%s) [%lu]\r\n",
 			e.start, e.attr, e.type, kernel_memory_type_name(e.type), e.pages);
 	}

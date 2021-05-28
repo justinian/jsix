@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 namespace kernel {
-namespace args {
+namespace init {
 
 constexpr uint32_t magic = 0x600dda7a;
 constexpr uint16_t version = 1;
@@ -92,7 +92,7 @@ enum class boot_flags : uint16_t {
 	debug = 0x0001
 };
 
-struct header {
+struct args {
 	uint32_t magic;
 	uint16_t version;
 	boot_flags flags;
@@ -122,8 +122,8 @@ struct header {
 }
 __attribute__((aligned(alignof(max_align_t))));
 
-} // namespace args
+} // namespace init
 
-using entrypoint = __attribute__((sysv_abi)) void (*)(args::header *);
+using entrypoint = __attribute__((sysv_abi)) void (*)(init::args *);
 
 } // namespace kernel

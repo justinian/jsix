@@ -148,7 +148,7 @@ status_line::do_fail(const wchar_t *message, uefi::status status)
 
 
 
-status_bar::status_bar(kernel::args::framebuffer const &fb) :
+status_bar::status_bar(kernel::init::framebuffer const &fb) :
 	status(fb.size),
 	m_outer(nullptr)
 {
@@ -196,14 +196,14 @@ status_bar::do_fail(const wchar_t *message, uefi::status status)
 static uint32_t
 make_color(uint8_t r, uint8_t g, uint8_t b, uint16_t type)
 {
-	switch (static_cast<kernel::args::fb_type>(type)) {
-	case kernel::args::fb_type::bgr8:
+	switch (static_cast<kernel::init::fb_type>(type)) {
+	case kernel::init::fb_type::bgr8:
 		return
 			(static_cast<uint32_t>(b) <<  0) |
 			(static_cast<uint32_t>(g) <<  8) |
 			(static_cast<uint32_t>(r) << 16);
 
-	case kernel::args::fb_type::rgb8:
+	case kernel::init::fb_type::rgb8:
 		return
 			(static_cast<uint32_t>(r) <<  0) |
 			(static_cast<uint32_t>(g) <<  8) |

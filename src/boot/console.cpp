@@ -57,13 +57,13 @@ console::console(uefi::boot_services *bs, uefi::protos::simple_text_output *out)
 	m_out->set_attribute(uefi::attribute::light_gray);
 	m_out->output_string(L" booting...\r\n");
 
-	if (m_fb.type != kernel::args::fb_type::none) {
+	if (m_fb.type != kernel::init::fb_type::none) {
 		wchar_t const * type = nullptr;
 		switch (m_fb.type) {
-		case kernel::args::fb_type::rgb8:
+		case kernel::init::fb_type::rgb8:
 			type = L"rgb8";
 			break;
-		case kernel::args::fb_type::bgr8:
+		case kernel::init::fb_type::bgr8:
 			type = L"bgr8";
 			break;
 		default:
@@ -86,7 +86,7 @@ console::pick_mode(uefi::boot_services *bs)
 	uefi::protos::graphics_output *gfx_out_proto;
 	uefi::guid guid = uefi::protos::graphics_output::guid;
 
-	m_fb.type = kernel::args::fb_type::none;
+	m_fb.type = kernel::init::fb_type::none;
 
 	uefi::status has_gop = bs->locate_protocol(&guid, nullptr,
 		(void **)&gfx_out_proto);
@@ -138,13 +138,13 @@ console::pick_mode(uefi::boot_services *bs)
 
 		switch (gfx_out_proto->mode->info->pixel_format) {
 		case uefi::pixel_format::rgb8:
-			m_fb.type = kernel::args::fb_type::rgb8;
+			m_fb.type = kernel::init::fb_type::rgb8;
 			break;
 		case uefi::pixel_format::bgr8:
-			m_fb.type = kernel::args::fb_type::bgr8;
+			m_fb.type = kernel::init::fb_type::bgr8;
 			break;
 		default:
-			m_fb.type = kernel::args::fb_type::none;
+			m_fb.type = kernel::init::fb_type::none;
 		}
 	}
 }

@@ -186,7 +186,7 @@ add_current_mappings(page_table *new_pml4)
 }
 
 void
-allocate_tables(kernel::args::header *args, uefi::boot_services *bs)
+allocate_tables(kernel::init::args *args, uefi::boot_services *bs)
 {
 	status_line status(L"Allocating initial page tables");
 
@@ -233,7 +233,7 @@ constexpr bool has_flag(E set, E flag) {
 
 void
 map_pages(
-	kernel::args::header *args,
+	kernel::init::args *args,
 	uintptr_t phys, uintptr_t virt,
 	size_t count, bool write_flag, bool exe_flag)
 {
@@ -266,10 +266,10 @@ map_pages(
 
 void
 map_section(
-	kernel::args::header *args,
-	const kernel::args::program_section &section)
+	kernel::init::args *args,
+	const kernel::init::program_section &section)
 {
-	using kernel::args::section_flags;
+	using kernel::init::section_flags;
 
 	size_t pages = memory::bytes_to_pages(section.size);
 

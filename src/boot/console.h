@@ -14,7 +14,7 @@ namespace boot {
 class console
 {
 public:
-	using framebuffer = kernel::args::framebuffer;
+	using framebuffer = kernel::init::framebuffer;
 
 	console(uefi::boot_services *bs, uefi::protos::simple_text_output *out);
 

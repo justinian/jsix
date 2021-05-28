@@ -61,15 +61,15 @@ struct efi_mem_map
 
 /// Add the kernel's memory map as a module to the kernel args.
 /// \returns  The uefi memory map used to build the kernel map
-efi_mem_map build_kernel_mem_map(kernel::args::header *args, uefi::boot_services *bs);
+efi_mem_map build_kernel_mem_map(kernel::init::args *args, uefi::boot_services *bs);
 
 /// Create the kernel frame allocation maps
 void build_kernel_frame_blocks(
-		const kernel::args::mem_entry *map, size_t nent,
-		kernel::args::header *args, uefi::boot_services *bs);
+		const kernel::init::mem_entry *map, size_t nent,
+		kernel::init::args *args, uefi::boot_services *bs);
 
 /// Map the frame allocation maps to the right spot and fix up pointers
-void fix_frame_blocks(kernel::args::header *args);
+void fix_frame_blocks(kernel::init::args *args);
 
 /// Activate the given memory mappings. Sets the given page tables live as well
 /// as informs UEFI runtime services of the new mappings.

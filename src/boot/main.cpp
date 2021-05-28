@@ -23,7 +23,7 @@ namespace kernel {
 #include "kernel_memory.h"
 }
 
-namespace args = kernel::args;
+namespace init = kernel::init;
 
 namespace boot {
 
@@ -52,7 +52,7 @@ void change_pointer(T *&pointer)
 
 /// Allocate space for kernel args. Allocates enough space from pool
 /// memory for the args header and the module and program headers.
-args::header *
+init::args *
 allocate_args_structure(
 	uefi::boot_services *bs,
 	size_t max_modules,
@@ -60,12 +60,12 @@ allocate_args_structure(
 {
 	status_line status {L"Setting up kernel args memory"};
 
-	args::header *args = nullptr;
+	init::args *args = nullptr;
 
 	size_t args_size =
-		sizeof(args::header) + // The header itself
-		max_modules * sizeof(args::module) +  // The module structures
-		max_programs * sizeof(args::program); // The program structures
+		sizeof(init::args) + // The header itself
+		max_modules * sizeof(init::module) +  // The module structures
+		max_programs * sizeof(init::program); // The program structures
 
 	try_or_raise(
 		bs->allocate_pool(uefi::memory_type::loader_data, args_size,
@@ -75,11 +75,11 @@ allocate_args_structure(
 	bs->set_mem(args, args_size, 0);
 
 	args->modules =
-		reinterpret_cast<args::module*>(args + 1);
+		reinterpret_cast<init::module*>(args + 1);
 	args->num_modules = 0;
 
 	args->programs =
-		reinterpret_cast<args::program*>(args->modules + max_modules);
+		reinterpret_cast<init::program*>(args->modules + max_modules);
 	args->num_programs = 0;
 
 	return args;
@@ -87,9 +87,9 @@ allocate_args_structure(
 
 /// Add a module to the kernel args list
 inline void
-add_module(args::header *args, args::mod_type type, buffer &data)
+add_module(init::args *args, init::mod_type type, buffer &data)
 {
-	args::module &m = args->modules[args->num_modules++];
+	init::module &m = args->modules[args->num_modules++];
 	m.type = type;
 	m.location = data.data;
 	m.size = data.size;
@@ -122,7 +122,7 @@ check_cpu_supported()
 /// The main procedure for the portion of the loader that runs while
 /// UEFI is still in control of the machine. (ie, while the loader still
 /// has access to boot services.
-args::header *
+init::args *
 uefi_preboot(uefi::handle image, uefi::system_table *st)
 {
 	status_line status {L"Performing UEFI pre-boot"};
@@ -131,11 +131,11 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
 	uefi::runtime_services *rs = st->runtime_services;
 	memory::init_pointer_fixup(bs, rs);
 
-	args::header *args =
+	init::args *args =
 		allocate_args_structure(bs, max_modules, max_programs);
 
-	args->magic = args::magic;
-	args->version = args::version;
+	args->magic = init::magic;
+	args->version = init::version;
 	args->runtime_services = rs;
 	args->acpi_table = hw::find_acpi_table(st);
 	paging::allocate_tables(args, bs);
@@ -146,11 +146,11 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
 
 	buffer symbols = loader::load_file(disk, L"symbol table", L"symbol_table.dat",
 				uefi::memory_type::loader_data);
-	add_module(args, args::mod_type::symbol_table, symbols);
+	add_module(args, init::mod_type::symbol_table, symbols);
 
 	for (auto &desc : program_list) {
 		buffer buf = loader::load_file(disk, desc.name, desc.path);
-		args::program &program = args->programs[args->num_programs++];
+		init::program &program = args->programs[args->num_programs++];
 		loader::load_program(program, desc.name, buf, bs);
 	}
 
@@ -158,7 +158,7 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
 }
 
 memory::efi_mem_map
-uefi_exit(args::header *args, uefi::handle image, uefi::boot_services *bs)
+uefi_exit(init::args *args, uefi::handle image, uefi::boot_services *bs)
 {
 	status_line status {L"Exiting UEFI", nullptr, false};
 
@@ -182,14 +182,14 @@ efi_main(uefi::handle image, uefi::system_table *st)
 	console con(st->boot_services, st->con_out);
 	check_cpu_supported();
 
-	args::header *args = uefi_preboot(image, st);
+	init::args *args = uefi_preboot(image, st);
 	memory::efi_mem_map map = uefi_exit(args, image, st->boot_services);
 
 	args->video = con.fb();
 	status_bar status {con.fb()}; // Switch to fb status display
 
 	// Map the kernel to the appropriate address
-	args::program &kernel = args->programs[0];
+	init::program &kernel = args->programs[0];
 	for (auto &section : kernel.sections)
 		if (section.size)
 			paging::map_section(args, section);

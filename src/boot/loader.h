@@ -28,11 +28,12 @@ load_file(
 
 /// Parse and load an ELF file in memory into a loaded image.
 /// \arg program  The program structure to fill
+/// \arg name     The name of the program being loaded
 /// \arg data     Buffer of the ELF file in memory
 /// \arg bs       Boot services
 void
 load_program(
-	kernel::args::program &program,
+	kernel::init::program &program,
 	const wchar_t *name,
 	buffer data,
 	uefi::boot_services *bs);

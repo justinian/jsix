@@ -6,7 +6,7 @@
 #include <uefi/types.h>
 
 namespace kernel {
-namespace args {
+namespace init {
 	class framebuffer;
 }
 }
@@ -92,11 +92,11 @@ class status_bar :
 public:
 	constexpr static unsigned type = 2;
 
-	using framebuffer = kernel::args::framebuffer;
+	using framebuffer = kernel::init::framebuffer;
 
 	/// Constructor.
 	/// \arg fb  The framebuffer descriptor to draw to
-	status_bar(kernel::args::framebuffer const &fb);
+	status_bar(kernel::init::framebuffer const &fb);
 	~status_bar();
 
 	virtual void do_warn(const wchar_t *message, uefi::status status) override;

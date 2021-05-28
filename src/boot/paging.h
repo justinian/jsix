@@ -29,30 +29,36 @@ struct page_table
 /// page tables are pre-filled. All pages are saved as a module in kernel args
 /// and kernel args' `page_table_cache` and `num_free_tables` are updated with
 /// the leftover space.
+/// \arg args    The kernel args struct, used for the page table cache and pml4
 void allocate_tables(
-	kernel::args::header *args,
+	kernel::init::args *args,
 	uefi::boot_services *bs);
 
 /// Copy existing page table entries to a new page table. Does not do a deep
 /// copy - the new PML4 is updated to point to the existing next-level page
 /// tables in the current PML4.
+/// \arg new_pml4  The new PML4 to copy into
 void add_current_mappings(page_table *new_pml4);
 
 /// Map physical memory pages to virtual addresses in the given page tables.
-/// \arg args    The kernel args header, used for the page table cache and pml4
-/// \arg section The program section to load
+/// \arg args       The kernel args struct, used for the page table cache and pml4
+/// \arg phys       The physical address of the pages to map
+/// \arg virt       The virtual address at which to map the pages
+/// \arg count      The number of pages to map
+/// \arg write_flag If true, mark the pages writeable
+/// \arg exe_flag   If true, mark the pages executable
 void map_pages(
-	kernel::args::header *args,
+	kernel::init::args *args,
 	uintptr_t phys, uintptr_t virt,
 	size_t count, bool write_flag, bool exe_flag);
 
 /// Map a program section in physical memory to its virtual address in the
 /// given page tables.
-/// \arg args    The kernel args header, used for the page table cache and pml4
+/// \arg args    The kernel args struct, used for the page table cache and pml4
 /// \arg section The program section to load
 void map_section(
-	kernel::args::header *args,
-	const kernel::args::program_section &section);
+	kernel::init::args *args,
+	const kernel::init::program_section &section);
 
 
 } // namespace paging

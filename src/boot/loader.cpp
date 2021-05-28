@@ -10,7 +10,7 @@
 #include "paging.h"
 #include "status.h"
 
-namespace args = kernel::args;
+namespace init = kernel::init;
 
 namespace boot {
 namespace loader {
@@ -49,7 +49,7 @@ is_elfheader_valid(const elf::header *header)
 
 void
 load_program(
-	args::program &program,
+	init::program &program,
 	const wchar_t *name,
 	buffer data,
 	uefi::boot_services *bs)
@@ -98,7 +98,7 @@ load_program(
 		if (pheader->type != elf::PT_LOAD)
 			continue;
 
-		args::program_section &section = program.sections[program.num_sections++];
+		init::program_section &section = program.sections[program.num_sections++];
 
 		void *src_start = offset_ptr<void>(data.data, pheader->offset);
 		void *dest_start = offset_ptr<void>(pages, pheader->vaddr - prog_base);
@@ -107,7 +107,7 @@ load_program(
 		section.phys_addr = reinterpret_cast<uintptr_t>(dest_start);
 		section.virt_addr = pheader->vaddr;
 		section.size = pheader->mem_size;
-		section.type = static_cast<args::section_flags>(pheader->flags);
+		section.type = static_cast<init::section_flags>(pheader->flags);
 	}
 
 	program.entrypoint = header->entrypoint;

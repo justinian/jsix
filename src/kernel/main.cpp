@@ -34,7 +34,7 @@
 #endif
 
 extern "C" {
-	void kernel_main(kernel::args::header *header);
+	void kernel_main(kernel::init::args *args);
 	void (*__ctors)(void);
 	void (*__ctors_end)(void);
 	void long_ap_startup(cpu_data *cpu);
@@ -51,14 +51,14 @@ volatile size_t ap_startup_count;
 static bool scheduler_ready = false;
 
 /// Bootstrap the memory managers.
-void memory_initialize_pre_ctors(args::header &kargs);
-void memory_initialize_post_ctors(args::header &kargs);
-process * load_simple_process(args::program &program);
+void memory_initialize_pre_ctors(init::args &kargs);
+void memory_initialize_post_ctors(init::args &kargs);
+process * load_simple_process(init::program &program);
 
 unsigned start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4);
 
 /// TODO: not this. this is awful.
-args::framebuffer *fb = nullptr;
+init::framebuffer *fb = nullptr;
 
 void
 init_console()
@@ -83,7 +83,7 @@ run_constructors()
 }
 
 void
-kernel_main(args::header *header)
+kernel_main(init::args *args)
 {
 	kutil::assert_set_callback(__kernel_assert);
 
@@ -92,11 +92,11 @@ kernel_main(args::header *header)
 
 	cpu_validate();
 
-	log::debug(logs::boot, "    jsix header is at: %016lx", header);
-	log::debug(logs::boot, "     Memory map is at: %016lx", header->mem_map);
-	log::debug(logs::boot, "ACPI root table is at: %016lx", header->acpi_table);
-	log::debug(logs::boot, "Runtime service is at: %016lx", header->runtime_services);
-	log::debug(logs::boot, "    Kernel PML4 is at: %016lx", header->pml4);
+	log::debug(logs::boot, "jsix init args are at: %016lx", args);
+	log::debug(logs::boot, "     Memory map is at: %016lx", args->mem_map);
+	log::debug(logs::boot, "ACPI root table is at: %016lx", args->acpi_table);
+	log::debug(logs::boot, "Runtime service is at: %016lx", args->runtime_services);
+	log::debug(logs::boot, "    Kernel PML4 is at: %016lx", args->pml4);
 
 	uint64_t cr0, cr4;
 	asm ("mov %%cr0, %0" : "=r"(cr0));
@@ -105,11 +105,11 @@ kernel_main(args::header *header)
 	log::debug(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx", cr0, cr4, efer);
 
 	bool has_video = false;
-	if (header->video.size > 0) {
+	if (args->video.size > 0) {
 		has_video = true;
-		fb = &header->video;
+		fb = &args->video;
 
-		const args::framebuffer &video = header->video;
+		const init::framebuffer &video = args->video;
 		log::debug(logs::boot, "Framebuffer: %dx%d[%d] type %d @ %llx size %llx",
 			video.horizontal,
 			video.vertical,
@@ -138,17 +138,17 @@ kernel_main(args::header *header)
 
 	disable_legacy_pic();
 
-	memory_initialize_pre_ctors(*header);
+	memory_initialize_pre_ctors(*args);
 	run_constructors();
-	memory_initialize_post_ctors(*header);
+	memory_initialize_post_ctors(*args);
 
 	cpu->tss->create_ist_stacks(cpu->idt->used_ist_entries());
 
-	for (size_t i = 0; i < header->num_modules; ++i) {
-		args::module &mod = header->modules[i];
+	for (size_t i = 0; i < args->num_modules; ++i) {
+		init::module &mod = args->modules[i];
 
 		switch (mod.type) {
-		case args::mod_type::symbol_table:
+		case init::mod_type::symbol_table:
 			new symbol_table {mod.location, mod.size};
 			break;
 
@@ -160,7 +160,7 @@ kernel_main(args::header *header)
 	syscall_initialize();
 
 	device_manager &devices = device_manager::get();
-	devices.parse_acpi(header->acpi_table);
+	devices.parse_acpi(args->acpi_table);
 
 	// Need the local APIC to get the BSP's id
 	uintptr_t apic_base = devices.get_lapic_base();
@@ -177,7 +177,7 @@ kernel_main(args::header *header)
 	apic->calibrate_timer();
 
 	const auto &apic_ids = devices.get_apic_ids();
-	unsigned num_cpus = start_aps(*apic, apic_ids, header->pml4);
+	unsigned num_cpus = start_aps(*apic, apic_ids, args->pml4);
 
 	interrupts_enable();
 
@@ -209,8 +209,8 @@ kernel_main(args::header *header)
 	scheduler_ready = true;
 
 	// Skip program 0, which is the kernel itself
-	for (unsigned i = 1; i < header->num_programs; ++i)
-		load_simple_process(header->programs[i]);
+	for (unsigned i = 1; i < args->num_programs; ++i)
+		load_simple_process(args->programs[i]);
 
 	if (!has_video)
 		sched->create_kernel_task(logger_task, scheduler::max_priority/2, true);

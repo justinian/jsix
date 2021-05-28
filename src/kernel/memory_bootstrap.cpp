@@ -4,6 +4,7 @@
 #include "j6/init.h"
 
 #include "kutil/assert.h"
+#include "kutil/enum_bitfields.h"
 #include "kutil/heap_allocator.h"
 #include "kutil/no_construct.h"
 
@@ -22,12 +23,14 @@
 using memory::heap_start;
 using memory::kernel_max_heap;
 
-using namespace kernel;
-
 namespace kernel {
-namespace args {
-	is_bitfield(section_flags);
+namespace init {
+is_bitfield(section_flags);
 }}
+
+using kernel::init::section_flags;
+
+using namespace kernel;
 
 extern "C" void initialize_main_thread();
 extern "C" uintptr_t initialize_main_user_stack();
@@ -70,9 +73,9 @@ get_physical_page(T *p) {
 }
 
 void
-memory_initialize_pre_ctors(args::header &kargs)
+memory_initialize_pre_ctors(init::args &kargs)
 {
-	using kernel::args::frame_block;
+	using kernel::init::frame_block;
 
 	page_table *kpml4 = static_cast<page_table*>(kargs.pml4);
 
@@ -95,14 +98,14 @@ memory_initialize_pre_ctors(args::header &kargs)
 		kargs.table_pages);
 
 	for (unsigned i = 0; i < kargs.num_modules; ++i) {
-		const kernel::args::module &mod = kargs.modules[i];
+		const kernel::init::module &mod = kargs.modules[i];
 		g_frame_allocator.used(
 			get_physical_page(mod.location),
 			memory::page_count(mod.size));
 	}
 
 	for (unsigned i = 0; i < kargs.num_programs; ++i) {
-		const kernel::args::program &prog = kargs.programs[i];
+		const kernel::init::program &prog = kargs.programs[i];
 		for (auto &sect : prog.sections) {
 			if (!sect.size) continue;
 			g_frame_allocator.used(
@@ -132,7 +135,7 @@ memory_initialize_pre_ctors(args::header &kargs)
 }
 
 void
-memory_initialize_post_ctors(args::header &kargs)
+memory_initialize_post_ctors(init::args &kargs)
 {
 	vm_space &vm = vm_space::kernel_space();
 	vm.add(memory::buffers_start, &g_kernel_buffers);
@@ -199,9 +202,8 @@ log_mtrrs()
 
 
 process *
-load_simple_process(args::program &program)
+load_simple_process(init::program &program)
 {
-	using kernel::args::section_flags;
 
 	process *p = new process;
 	vm_space &space = p->space();
@@ -247,7 +249,7 @@ initialize_main_user_stack()
 	j6_init_value *initv = nullptr;
 	unsigned n = 0;
 
-	extern args::framebuffer *fb;
+	extern init::framebuffer *fb;
 	if (fb) {
 		j6_init_framebuffer *fb_desc = push<j6_init_framebuffer>(tcb->rsp3);
 		kutil::memset(fb_desc, 0, sizeof(j6_init_framebuffer));
@@ -258,7 +260,7 @@ initialize_main_user_stack()
 		fb_desc->horizontal = fb->horizontal;
 		fb_desc->scanline = fb->scanline;
 
-		if (fb->type == kernel::args::fb_type::bgr8)
+		if (fb->type == kernel::init::fb_type::bgr8)
 			fb_desc->flags |= 1;
 
 		initv = push<j6_init_value>(tcb->rsp3);

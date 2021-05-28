@@ -6,7 +6,7 @@
 #include "kutil/spinlock.h"
 
 namespace kernel {
-namespace args {
+namespace init {
 	struct frame_block;
 }}
 
@@ -14,7 +14,7 @@ namespace args {
 class frame_allocator
 {
 public:
-	using frame_block = kernel::args::frame_block;
+	using frame_block = kernel::init::frame_block;
 
 	/// Constructor
 	/// \arg blocks The bootloader-supplied frame bitmap block list

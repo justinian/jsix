@@ -16,7 +16,7 @@ frame_allocator::get()
 	return g_frame_allocator;
 }
 
-frame_allocator::frame_allocator(kernel::args::frame_block *frames, size_t count) :
+frame_allocator::frame_allocator(kernel::init::frame_block *frames, size_t count) :
 	m_blocks {frames},
 	m_count {count}
 {
