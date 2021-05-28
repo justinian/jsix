@@ -1,16 +1,18 @@
-MAGIC	equ  0x600db007			; jsix OS header magic number
+MAGIC	equ  'j6KERNEL'	; jsix kernel header magic number
 
 section .header
-align 4
-global _header
-_header:
-	dd MAGIC			; Kernel header magic
-	dw 1				; Header version 1
-	dw 16				; Kernel header length
-	db VERSION_MAJOR	; Kernel version
-	db VERSION_MINOR
+align 8
+global _kernel_header
+_kernel_header:
+	dq MAGIC            ; Kernel header magic
+	dw 32               ; Kernel header length
+	dw 2                ; Header version 2
+	dw VERSION_MAJOR    ; Kernel version
+	dw VERSION_MINOR
 	dw VERSION_PATCH
+	dw 0                ; reserved
 	dd VERSION_GITSHA
+	dq 0                ; Flags
 
 section .text
 align 16

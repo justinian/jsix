@@ -38,5 +38,13 @@ load_program(
 	buffer data,
 	uefi::boot_services *bs);
 
+/// Verify that a loaded ELF has the j6 kernel header
+/// \arg program  The program to check for a header
+/// \arg bs       Boot services
+void
+verify_kernel_header(
+	kernel::init::program &program,
+	uefi::boot_services *bs);
+
 } // namespace loader
 } // namespace boot

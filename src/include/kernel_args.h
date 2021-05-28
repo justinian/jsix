@@ -7,8 +7,12 @@
 namespace kernel {
 namespace init {
 
-constexpr uint32_t magic = 0x600dda7a;
-constexpr uint16_t version = 1;
+constexpr uint32_t args_magic = 'j6ia'; // "jsix init args"
+constexpr uint16_t args_version = 1;
+
+constexpr uint64_t header_magic = 0x4c454e52454b366aull; // 'j6KERNEL'
+constexpr uint16_t header_version = 2;
+constexpr uint16_t min_header_version = 2;
 
 enum class mod_type : uint32_t {
 	symbol_table
@@ -92,7 +96,8 @@ enum class boot_flags : uint16_t {
 	debug = 0x0001
 };
 
-struct args {
+struct args
+{
 	uint32_t magic;
 	uint16_t version;
 	boot_flags flags;
@@ -122,8 +127,24 @@ struct args {
 }
 __attribute__((aligned(alignof(max_align_t))));
 
-} // namespace init
+struct header
+{
+    uint64_t magic;
+
+    uint16_t length;
+    uint16_t version;
+
+    uint16_t version_major;
+    uint16_t version_minor;
+    uint16_t version_patch;
+    uint16_t reserved;
+
+    uint32_t version_gitsha;
+
+    uint64_t flags;
+};
 
 using entrypoint = __attribute__((sysv_abi)) void (*)(init::args *);
 
+} // namespace init
 } // namespace kernel

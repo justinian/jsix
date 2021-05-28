@@ -92,6 +92,9 @@ kernel_main(init::args *args)
 
 	cpu_validate();
 
+	kassert(args->magic == init::args_magic,
+            "Bad kernel args magic number");
+
 	log::debug(logs::boot, "jsix init args are at: %016lx", args);
 	log::debug(logs::boot, "     Memory map is at: %016lx", args->mem_map);
 	log::debug(logs::boot, "ACPI root table is at: %016lx", args->acpi_table);

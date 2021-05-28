@@ -134,8 +134,8 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
 	init::args *args =
 		allocate_args_structure(bs, max_modules, max_programs);
 
-	args->magic = init::magic;
-	args->version = init::version;
+	args->magic = init::args_magic;
+	args->version = init::args_version;
 	args->runtime_services = rs;
 	args->acpi_table = hw::find_acpi_table(st);
 	paging::allocate_tables(args, bs);
@@ -153,6 +153,9 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
 		init::program &program = args->programs[args->num_programs++];
 		loader::load_program(program, desc.name, buf, bs);
 	}
+
+    // First program *must* be the kernel
+    loader::verify_kernel_header(args->programs[0], bs);
 
 	return args;
 }
@@ -196,8 +199,8 @@ efi_main(uefi::handle image, uefi::system_table *st)
 
 	memory::fix_frame_blocks(args);
 
-	kernel::entrypoint kentry =
-		reinterpret_cast<kernel::entrypoint>(kernel.entrypoint);
+	init::entrypoint kentry =
+		reinterpret_cast<init::entrypoint>(kernel.entrypoint);
 	status.next();
 
 	hw::setup_control_regs();

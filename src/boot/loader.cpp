@@ -113,5 +113,29 @@ load_program(
 	program.entrypoint = header->entrypoint;
 }
 
+void
+verify_kernel_header(
+	init::program &program,
+	uefi::boot_services *bs)
+{
+	status_line status(L"Verifying kernel header");
+
+    const init::header *header =
+        reinterpret_cast<const init::header *>(program.sections[0].phys_addr);
+
+    if (header->magic != init::header_magic)
+        error::raise(uefi::status::load_error, L"Bad kernel magic number");
+
+    if (header->length < sizeof(init::header))
+        error::raise(uefi::status::load_error, L"Bad kernel header length");
+
+    if (header->version < init::min_header_version)
+        error::raise(uefi::status::unsupported, L"Kernel header version not supported");
+
+	console::print(L"    Loaded kernel vserion: %d.%d.%d %lx\r\n",
+            header->version_major, header->version_minor, header->version_patch,
+            header->version_gitsha);
+}
+
 } // namespace loader
 } // namespace boot
