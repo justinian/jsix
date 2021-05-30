@@ -52,7 +52,7 @@ thread_proc()
 int
 main(int argc, const char **argv)
 {
-	j6_handle_t child = j6_handle_invalid;
+	j6_handle_t children[2] = {j6_handle_invalid, j6_handle_invalid};
 	j6_signal_t out = 0;
 
 	j6_system_log("main thread starting");
@@ -76,7 +76,7 @@ main(int argc, const char **argv)
 
 	j6_system_log("main thread created endpoint");
 
-	result = j6_thread_create(reinterpret_cast<void*>(&thread_proc), &child);
+	result = j6_thread_create(reinterpret_cast<void*>(&thread_proc), &children[1]);
 	if (result != j6_status_ok)
 		return result;
 
@@ -98,16 +98,25 @@ main(int argc, const char **argv)
 
 	j6_system_log(message);
 
-	j6_system_log("main thread waiting on child");
-	result = j6_object_wait(child, -1ull, &out);
+	j6_system_log("main thread creating a new process");
+	result = j6_process_create(&children[0]);
 	if (result != j6_status_ok)
 		return result;
 
-	j6_system_log("main thread creating a new process");
-	j6_handle_t child_proc = j6_handle_invalid;
-	result = j6_process_create(&child_proc);
+	j6_system_log("main thread waiting on children");
+
+	j6_handle_t outhandle;
+	result = j6_object_wait_many(children, 2, -1ull, &outhandle, &out);
 	if (result != j6_status_ok)
 		return result;
+
+	if (outhandle == children[1]) {
+		j6_system_log("   ok from child thread");
+	} else if (outhandle == children[0]) {
+		j6_system_log("   ok from child process");
+	} else {
+		j6_system_log("   ... got unknown handle");
+	}
 
 	j6_system_log("main testing irqs");
 

@@ -40,7 +40,7 @@ j6_status_t
 thread_pause()
 {
 	thread &th = thread::current();
-	th.wait_on_signals(&th, -1ull);
+	th.wait_on_signals(-1ull);
 	return j6_status_ok;
 }
 

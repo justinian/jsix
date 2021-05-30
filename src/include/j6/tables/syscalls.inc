@@ -6,8 +6,9 @@ SYSCALL(0x04, system_map_mmio,   j6_handle_t, j6_handle_t *, uintptr_t, size_t, 
 
 SYSCALL(0x08, object_koid,       j6_handle_t, j6_koid_t *)
 SYSCALL(0x09, object_wait,       j6_handle_t, j6_signal_t, j6_signal_t *)
-SYSCALL(0x0a, object_signal,     j6_handle_t, j6_signal_t)
-SYSCALL(0x0b, object_close,      j6_handle_t)
+SYSCALL(0x0a, object_wait_many,  j6_handle_t *, uint32_t, j6_signal_t, j6_handle_t *, j6_signal_t *)
+SYSCALL(0x0b, object_signal,     j6_handle_t, j6_signal_t)
+SYSCALL(0x0c, object_close,      j6_handle_t)
 
 SYSCALL(0x10, process_create,    j6_handle_t *)
 SYSCALL(0x11, process_start,     j6_handle_t, uintptr_t, j6_handle_t *, size_t)

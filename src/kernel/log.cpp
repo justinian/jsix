@@ -75,7 +75,7 @@ logger_task()
 		if (!g_logger.has_log()) {
 			sys.deassert_signal(j6_signal_system_has_log);
 			sys.add_blocked_thread(&self);
-			self.wait_on_signals(&sys, j6_signal_system_has_log);
+			self.wait_on_signals(j6_signal_system_has_log);
 		}
 	}
 }

@@ -48,7 +48,7 @@ thread & thread::current() { return *current_cpu().thread; }
 inline void schedule_if_current(thread *t) { if (t == current_cpu().thread) scheduler::get().schedule(); }
 
 void
-thread::wait_on_signals(kobject *obj, j6_signal_t signals)
+thread::wait_on_signals(j6_signal_t signals)
 {
 	m_wait_type = wait_type::signal;
 	m_wait_data = signals;

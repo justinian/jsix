@@ -74,10 +74,9 @@ public:
 	/// \arg p  The new thread priority
 	inline void set_priority(uint8_t p) { if (!constant()) m_tcb.priority = p; }
 
-	/// Block the thread, waiting on the given object's signals.
-	/// \arg obj     Object to wait on
+	/// Block the thread, waiting an object's signals.
 	/// \arg signals Mask of signals to wait for
-	void wait_on_signals(kobject *obj, j6_signal_t signals);
+	void wait_on_signals(j6_signal_t signals);
 
 	/// Block the thread, waiting for a given clock value
 	/// \arg t  Clock value to wait for
@@ -113,6 +112,9 @@ public:
 
 	/// Get the current blocking opreation's wait data
 	uint64_t get_wait_data() const { return m_wait_data; }
+
+    /// Get the current blocking operation's wait ojbect (as a handle)
+	j6_koid_t get_wait_object() const { return m_wait_obj; }
 
 	inline bool has_state(state s) const {
 		return static_cast<uint8_t>(m_state) & static_cast<uint8_t>(s);

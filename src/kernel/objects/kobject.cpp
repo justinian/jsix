@@ -50,13 +50,11 @@ void
 kobject::notify_signal_observers()
 {
 	size_t i = 0;
-	bool readied = false;
 	while (i < m_blocked_threads.count()) {
 		thread *t = m_blocked_threads[i];
 
 		if (t->wake_on_signals(this, m_signals)) {
 			m_blocked_threads.remove_swap_at(i);
-			readied = true;
 		} else {
 			++i;
 		}
