@@ -11,7 +11,7 @@ void
 spinlock::acquire(waiter *w)
 {
 	w->next = nullptr;
-	w->locked = true;
+	w->blocked = true;
 
 	// Point the lock at this waiter
 	waiter *prev = __atomic_exchange_n(&m_lock, w, memorder);
@@ -19,30 +19,27 @@ spinlock::acquire(waiter *w)
 		// If there was a previous waiter, wait for them to
 		// unblock us
 		prev->next = w;
-		while (w->locked) {
+		while (w->blocked)
 			asm ("pause");
-		}
 	} else {
-		w->locked = false;
+		w->blocked = false;
 	}
 }
 
 void
 spinlock::release(waiter *w)
 {
-	if (!w->next) {
-		// If we're still the last waiter, we're done
-		if(__atomic_compare_exchange_n(&m_lock, &w, nullptr, false, memorder, memorder))
-			return;
-	}
+	// If we're still the last waiter, we're done
+	waiter *expected = w;
+	if(__atomic_compare_exchange_n(&m_lock, &expected, nullptr, false, memorder, memorder))
+		return;
 
 	// Wait for the subseqent waiter to tell us who they are
-	while (!w->next) {
+	while (!w->next)
 		asm ("pause");
-	}
 
 	// Unblock the subseqent waiter
-	w->next->locked = false;
+	w->next->blocked = false;
 }
 
 

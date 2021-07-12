@@ -15,7 +15,7 @@ public:
 	/// A node in the wait queue.
 	struct waiter
 	{
-		bool locked;
+		bool blocked;
 		waiter *next;
 	};
 
