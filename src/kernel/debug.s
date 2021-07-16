@@ -14,6 +14,13 @@ get_caller:
 	mov rax, [rbp+8]
 	ret
 
+global get_grandcaller
+get_grandcaller:
+	; No prelude - don't touch rsp or rbp
+	mov rax, [rbp]
+	mov rax, [rax+8]
+	ret
+
 global get_gsbase
 get_gsbase:
 	rdgsbase rax
