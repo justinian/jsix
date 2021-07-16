@@ -98,17 +98,20 @@ scheduler::start()
 {
 	cpu_data &cpu = current_cpu();
 	run_queue &queue = m_run_queues[cpu.index];
-	kutil::scoped_lock lock {queue.lock};
 
-	process *kp = &process::kernel_process();
-	thread *idle = thread::create_idle_thread(*kp, max_priority, cpu.rsp0);
+	{
+		kutil::scoped_lock lock {queue.lock};
 
-	auto *tcb = idle->tcb();
-	cpu.process = kp;
-	cpu.thread = idle;
-	cpu.tcb = tcb;
+		process *kp = &process::kernel_process();
+		thread *idle = thread::create_idle_thread(*kp, max_priority, cpu.rsp0);
 
-	queue.current = tcb;
+		auto *tcb = idle->tcb();
+		cpu.process = kp;
+		cpu.thread = idle;
+		cpu.tcb = tcb;
+
+		queue.current = tcb;
+	}
 
 	cpu.apic->enable_timer(isr::isrTimer, false);
 	cpu.apic->reset_timer(10);
@@ -219,9 +222,6 @@ balance_lists(tcb_list &to, tcb_list &from)
 void
 scheduler::steal_work(cpu_data &cpu)
 {
-	// First grab a scheduler-wide lock to avoid deadlock
-	kutil::scoped_lock steal_lock {m_steal_lock};
-
 	// Lock this cpu's queue for the whole time while we modify it
 	run_queue &my_queue = m_run_queues[cpu.index];
 	kutil::scoped_lock my_queue_lock {my_queue.lock};
@@ -255,9 +255,12 @@ scheduler::schedule()
 	lapic &apic = *cpu.apic;
 	uint32_t remaining = apic.stop_timer();
 
-	if (m_clock - queue.last_steal > steal_frequency) {
+	// Only one CPU can be stealing at a time
+	if (m_steal_turn == cpu.index &&
+		m_clock - queue.last_steal > steal_frequency) {
 		steal_work(cpu);
 		queue.last_steal = m_clock;
+		m_steal_turn = (m_steal_turn + 1) % m_run_queues.count();
 	}
 
 	// We need to explicitly lock/unlock here instead of

@@ -97,7 +97,7 @@ private:
 	// TODO: lol a real clock
 	uint64_t m_clock = 0;
 
-	kutil::spinlock m_steal_lock;
+	unsigned m_steal_turn = 0;
 	static scheduler *s_instance;
 };
 
