@@ -12,6 +12,7 @@
 #include "kernel_memory.h"
 #include "log.h"
 #include "objects/endpoint.h"
+#include "serial.h"
 
 
 static endpoint * const ignore_endpoint = reinterpret_cast<endpoint*>(-1ull);
@@ -48,17 +49,6 @@ acpi_table_header::validate(uint32_t expected_type) const
 {
 	if (kutil::checksum(this, length) != 0) return false;
 	return !expected_type || (expected_type == type);
-}
-
-void irq2_callback(void *)
-{
-}
-
-void irq4_callback(void *)
-{
-	// TODO: move this to a real serial driver
-	console *cons = console::get();
-	cons->echo();
 }
 
 
@@ -269,6 +259,9 @@ device_manager::load_apic(const acpi_table_header *header)
 
 		p += length;
 	}
+
+	m_ioapics[0].mask(3, false);
+	m_ioapics[0].mask(4, false);
 }
 
 void
@@ -384,6 +377,11 @@ device_manager::init_drivers()
 bool
 device_manager::dispatch_irq(unsigned irq)
 {
+	if (irq == 4) {
+		g_com1.handle_interrupt();
+		return true;
+	}
+
 	if (irq >= m_irqs.count())
 		return false;
 

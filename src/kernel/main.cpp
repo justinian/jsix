@@ -183,6 +183,7 @@ kernel_main(init::args *args)
 	unsigned num_cpus = start_aps(*apic, apic_ids, args->pml4);
 
 	interrupts_enable();
+	g_com1.handle_interrupt();
 
 	/*
 	block_device *disk = devices->get_block_device(0);
