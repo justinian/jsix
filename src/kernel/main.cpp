@@ -147,7 +147,7 @@ kernel_main(init::args *args)
 
 	cpu->tss->create_ist_stacks(cpu->idt->used_ist_entries());
 
-	for (size_t i = 0; i < args->num_modules; ++i) {
+	for (size_t i = 0; i < args->modules.count; ++i) {
 		init::module &mod = args->modules[i];
 
 		switch (mod.type) {
@@ -213,7 +213,7 @@ kernel_main(init::args *args)
 	scheduler_ready = true;
 
 	// Skip program 0, which is the kernel itself
-	for (unsigned i = 1; i < args->num_programs; ++i)
+	for (unsigned i = 1; i < args->programs.count; ++i)
 		load_simple_process(args->programs[i]);
 
 	if (!has_video)

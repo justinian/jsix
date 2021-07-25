@@ -1,34 +1,35 @@
+#include <uefi/boot_services.h>
 #include <uefi/types.h>
 #include <uefi/protos/file.h>
 #include <uefi/protos/file_info.h>
 #include <uefi/protos/loaded_image.h>
 #include <uefi/protos/simple_file_system.h>
 
-#include "fs.h"
+#include "allocator.h"
 #include "console.h"
 #include "error.h"
+#include "fs.h"
 #include "memory.h"
 #include "status.h"
 
 namespace boot {
 namespace fs {
 
-file::file(uefi::protos::file *f, uefi::boot_services *bs) :
-	m_file(f),
-	m_bs(bs)
+using memory::alloc_type;
+
+file::file(uefi::protos::file *f) :
+	m_file(f)
 {
 }
 
 file::file(file &o) :
-	m_file(o.m_file),
-	m_bs(o.m_bs)
+	m_file(o.m_file)
 {
 	o.m_file = nullptr;
 }
 
 file::file(file &&o) :
-	m_file(o.m_file),
-	m_bs(o.m_bs)
+	m_file(o.m_file)
 {
 	o.m_file = nullptr;
 }
@@ -48,11 +49,11 @@ file::open(const wchar_t *path)
 		m_file->open(&fh, path, uefi::file_mode::read, uefi::file_attr::none),
 		L"Could not open relative path to file");
 
-	return file(fh, m_bs);
+	return file(fh);
 }
 
 buffer
-file::load(uefi::memory_type mem_type)
+file::load()
 {
 	uint8_t info_buf[sizeof(uefi::protos::file_info) + 100];
 	size_t size = sizeof(info_buf);
@@ -66,19 +67,14 @@ file::load(uefi::memory_type mem_type)
 		reinterpret_cast<uefi::protos::file_info*>(&info_buf);
 
 	size_t pages = memory::bytes_to_pages(info->file_size);
-	void *data = nullptr;
-	try_or_raise(
-		m_bs->allocate_pages(
-			uefi::allocate_type::any_pages,
-			mem_type, pages, &data),
-		L"Could not allocate pages to load file");
+	void *data = g_alloc.allocate_pages(pages, alloc_type::file);
 
 	size = info->file_size;
 	try_or_raise(
 		m_file->read(&size, data),
 		L"Could not read from file");
 
-	return { .size = size,  .data = data };
+	return { .pointer = data, .count = size };
 }
 
 file
@@ -106,7 +102,7 @@ get_boot_volume(uefi::handle image, uefi::boot_services *bs)
 		fs->open_volume(&f),
 		L"Could not open the boot volume");
 
-	return file(f, bs);
+	return file(f);
 }
 
 } // namespace fs

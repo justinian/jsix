@@ -1,9 +1,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <uefi/types.h>
+#include <uefi/boot_services.h>
 #include <uefi/graphics.h>
 #include <uefi/protos/graphics_output.h>
+#include <uefi/protos/simple_text_output.h>
+#include <uefi/types.h>
 
 #include "console.h"
 #include "error.h"

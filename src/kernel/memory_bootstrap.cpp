@@ -28,6 +28,7 @@ namespace init {
 is_bitfield(section_flags);
 }}
 
+using kernel::init::allocation_register;
 using kernel::init::section_flags;
 
 using namespace kernel;
@@ -82,36 +83,15 @@ memory_initialize_pre_ctors(init::args &kargs)
 	new (&g_kernel_heap) kutil::heap_allocator {heap_start, kernel_max_heap};
 
 	frame_block *blocks = reinterpret_cast<frame_block*>(memory::bitmap_start);
-	new (&g_frame_allocator) frame_allocator {blocks, kargs.frame_block_count};
+	new (&g_frame_allocator) frame_allocator {blocks, kargs.frame_blocks.count};
 
 	// Mark all the things the bootloader allocated for us as used
-	g_frame_allocator.used(
-		get_physical_page(&kargs),
-		memory::page_count(sizeof(kargs)));
-
-	g_frame_allocator.used(
-		get_physical_page(kargs.frame_blocks),
-		kargs.frame_block_pages);
-
-	g_frame_allocator.used(
-		get_physical_page(kargs.pml4),
-		kargs.table_pages);
-
-	for (unsigned i = 0; i < kargs.num_modules; ++i) {
-		const kernel::init::module &mod = kargs.modules[i];
-		g_frame_allocator.used(
-			get_physical_page(mod.location),
-			memory::page_count(mod.size));
-	}
-
-	for (unsigned i = 0; i < kargs.num_programs; ++i) {
-		const kernel::init::program &prog = kargs.programs[i];
-		for (auto &sect : prog.sections) {
-			if (!sect.size) continue;
-			g_frame_allocator.used(
-				sect.phys_addr,
-				memory::page_count(sect.size));
-		}
+	allocation_register *reg = kargs.allocations;
+	while (reg) {
+		for (auto &alloc : reg->entries)
+			if (alloc.type != init::allocation_type::none)
+				g_frame_allocator.used(alloc.address, alloc.count);
+		reg = reg->next;
 	}
 
 	process *kp = process::create_kernel_process(kpml4);
@@ -141,8 +121,8 @@ memory_initialize_post_ctors(init::args &kargs)
 	vm.add(memory::buffers_start, &g_kernel_buffers);
 
 	g_frame_allocator.free(
-		get_physical_page(kargs.page_tables),
-		kargs.table_count);
+		get_physical_page(kargs.page_tables.pointer),
+		kargs.page_tables.count);
 }
 
 static void

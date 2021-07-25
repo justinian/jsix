@@ -30,9 +30,7 @@ struct page_table
 /// and kernel args' `page_table_cache` and `num_free_tables` are updated with
 /// the leftover space.
 /// \arg args    The kernel args struct, used for the page table cache and pml4
-void allocate_tables(
-	kernel::init::args *args,
-	uefi::boot_services *bs);
+void allocate_tables(kernel::init::args *args);
 
 /// Copy existing page table entries to a new page table. Does not do a deep
 /// copy - the new PML4 is updated to point to the existing next-level page

@@ -1,14 +1,18 @@
+#pragma once
 /// \file memory.h
 /// Memory-related constants and functions.
-#pragma once
-#include <uefi/boot_services.h>
-#include <uefi/runtime_services.h>
+
 #include <stdint.h>
-#include "kernel_args.h"
-#include "pointer_manipulation.h"
+
+namespace uefi {
+	struct boot_services;
+	struct runtime_services;
+}
 
 namespace boot {
 namespace memory {
+
+class efi_mem_map;
 
 /// UEFI specifies that pages are always 4 KiB.
 constexpr size_t page_size = 0x1000;
@@ -32,44 +36,6 @@ void init_pointer_fixup(uefi::boot_services *bs, uefi::runtime_services *rs);
 void mark_pointer_fixup(void **p);
 
 /// @}
-
-/// Struct that represents UEFI's memory map. Contains a pointer to the map data
-/// as well as the data on how to read it.
-struct efi_mem_map
-{
-	using desc = uefi::memory_descriptor;
-	using iterator = offset_iterator<desc>;
-
-	size_t length;     ///< Total length of the map data
-	size_t total;      ///< Total allocated space for map data
-	size_t size;       ///< Size of an entry in the array
-	size_t key;        ///< Key for detecting changes
-	uint32_t version;  ///< Version of the `memory_descriptor` struct
-	desc *entries;     ///< The array of UEFI descriptors
-
-	efi_mem_map() : length(0), total(0), size(0), key(0), version(0), entries(nullptr) {}
-
-	/// Get the count of entries in the array
-	inline size_t num_entries() const { return length / size; }
-
-	/// Return an iterator to the beginning of the array
-	iterator begin() { return iterator(entries, size); }
-
-	/// Return an iterator to the end of the array
-	iterator end() { return offset_ptr<desc>(entries, length); }
-};
-
-/// Add the kernel's memory map as a module to the kernel args.
-/// \returns  The uefi memory map used to build the kernel map
-efi_mem_map build_kernel_mem_map(kernel::init::args *args, uefi::boot_services *bs);
-
-/// Create the kernel frame allocation maps
-void build_kernel_frame_blocks(
-		const kernel::init::mem_entry *map, size_t nent,
-		kernel::init::args *args, uefi::boot_services *bs);
-
-/// Map the frame allocation maps to the right spot and fix up pointers
-void fix_frame_blocks(kernel::init::args *args);
 
 /// Activate the given memory mappings. Sets the given page tables live as well
 /// as informs UEFI runtime services of the new mappings.

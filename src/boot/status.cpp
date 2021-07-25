@@ -1,5 +1,6 @@
 #include <uefi/types.h>
 #include <uefi/graphics.h>
+#include <uefi/protos/simple_text_output.h>
 
 #include "console.h"
 #include "error.h"

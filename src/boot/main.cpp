@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "allocator.h"
 #include "console.h"
 #include "cpu/cpu_id.h"
 #include "error.h"
@@ -14,6 +15,7 @@
 #include "hardware.h"
 #include "loader.h"
 #include "memory.h"
+#include "memory_map.h"
 #include "paging.h"
 #include "status.h"
 
@@ -50,49 +52,14 @@ void change_pointer(T *&pointer)
 	pointer = offset_ptr<T>(pointer, kernel::memory::page_offset);
 }
 
-/// Allocate space for kernel args. Allocates enough space from pool
-/// memory for the args header and the module and program headers.
-init::args *
-allocate_args_structure(
-	uefi::boot_services *bs,
-	size_t max_modules,
-	size_t max_programs)
-{
-	status_line status {L"Setting up kernel args memory"};
-
-	init::args *args = nullptr;
-
-	size_t args_size =
-		sizeof(init::args) + // The header itself
-		max_modules * sizeof(init::module) +  // The module structures
-		max_programs * sizeof(init::program); // The program structures
-
-	try_or_raise(
-		bs->allocate_pool(uefi::memory_type::loader_data, args_size,
-			reinterpret_cast<void**>(&args)),
-		L"Could not allocate argument memory");
-
-	bs->set_mem(args, args_size, 0);
-
-	args->modules =
-		reinterpret_cast<init::module*>(args + 1);
-	args->num_modules = 0;
-
-	args->programs =
-		reinterpret_cast<init::program*>(args->modules + max_modules);
-	args->num_programs = 0;
-
-	return args;
-}
-
 /// Add a module to the kernel args list
 inline void
 add_module(init::args *args, init::mod_type type, buffer &data)
 {
-	init::module &m = args->modules[args->num_modules++];
+	init::module &m = args->modules[args->modules.count++];
 	m.type = type;
-	m.location = data.data;
-	m.size = data.size;
+	m.location = data.pointer;
+	m.size = data.count;
 
 	change_pointer(m.location);
 }
@@ -121,7 +88,7 @@ check_cpu_supported()
 
 /// The main procedure for the portion of the loader that runs while
 /// UEFI is still in control of the machine. (ie, while the loader still
-/// has access to boot services.
+/// has access to boot services.)
 init::args *
 uefi_preboot(uefi::handle image, uefi::system_table *st)
 {
@@ -129,33 +96,36 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
 
 	uefi::boot_services *bs = st->boot_services;
 	uefi::runtime_services *rs = st->runtime_services;
+
+	memory::init_allocator(bs);
 	memory::init_pointer_fixup(bs, rs);
 
-	init::args *args =
-		allocate_args_structure(bs, max_modules, max_programs);
+	init::args *args = new init::args;
+	g_alloc.zero(args, sizeof(init::args));
+	args->programs.pointer = new init::program[5];
+	args->modules.pointer = new init::module[5];
 
 	args->magic = init::args_magic;
 	args->version = init::args_version;
 	args->runtime_services = rs;
 	args->acpi_table = hw::find_acpi_table(st);
-	paging::allocate_tables(args, bs);
-
 	memory::mark_pointer_fixup(&args->runtime_services);
+
+	paging::allocate_tables(args);
 
 	fs::file disk = fs::get_boot_volume(image, bs);
 
-	buffer symbols = loader::load_file(disk, L"symbol table", L"symbol_table.dat",
-				uefi::memory_type::loader_data);
+	buffer symbols = loader::load_file(disk, L"symbol table", L"symbol_table.dat");
 	add_module(args, init::mod_type::symbol_table, symbols);
 
 	for (auto &desc : program_list) {
 		buffer buf = loader::load_file(disk, desc.name, desc.path);
-		init::program &program = args->programs[args->num_programs++];
-		loader::load_program(program, desc.name, buf, bs);
+		init::program &program = args->programs[args->programs.count++];
+		loader::load_program(program, desc.name, buf);
 	}
 
     // First program *must* be the kernel
-    loader::verify_kernel_header(args->programs[0], bs);
+    loader::verify_kernel_header(args->programs[0]);
 
 	return args;
 }
@@ -165,9 +135,14 @@ uefi_exit(init::args *args, uefi::handle image, uefi::boot_services *bs)
 {
 	status_line status {L"Exiting UEFI", nullptr, false};
 
-	memory::efi_mem_map map =
-		memory::build_kernel_mem_map(args, bs);
+	memory::efi_mem_map map;
+	map.update(*bs);
 
+	args->mem_map = memory::build_kernel_map(map);
+	args->frame_blocks = memory::build_frame_blocks(args->mem_map);
+	args->allocations = g_alloc.get_register();
+
+	map.update(*bs);
 	try_or_raise(
 		bs->exit_boot_services(image, map.key),
 		L"Failed to exit boot services");
@@ -194,8 +169,7 @@ efi_main(uefi::handle image, uefi::system_table *st)
 	// Map the kernel to the appropriate address
 	init::program &kernel = args->programs[0];
 	for (auto &section : kernel.sections)
-		if (section.size)
-			paging::map_section(args, section);
+		paging::map_section(args, section);
 
 	memory::fix_frame_blocks(args);
 
@@ -209,8 +183,10 @@ efi_main(uefi::handle image, uefi::system_table *st)
 
 	change_pointer(args);
 	change_pointer(args->pml4);
-	change_pointer(args->modules);
-	change_pointer(args->programs);
+	change_pointer(args->modules.pointer);
+	change_pointer(args->programs.pointer);
+	for (auto &program : args->programs)
+		change_pointer(program.sections.pointer);
 
 	status.next();
 

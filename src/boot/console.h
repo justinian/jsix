@@ -3,10 +3,13 @@
 #pragma once
 #include <stdarg.h>
 #include <stddef.h>
-#include <uefi/boot_services.h>
-#include <uefi/protos/simple_text_output.h>
 #include "kernel_args.h"
-#include "types.h"
+
+namespace uefi {
+	struct boot_services;
+namespace protos {
+	struct simple_text_output;
+}}
 
 namespace boot {
 

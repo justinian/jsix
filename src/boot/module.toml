@@ -2,15 +2,17 @@ name = "boot"
 kind = "exe"
 output = "boot.efi"
 targets = ["boot"]
-deps = ["cpu"]
+deps = ["cpu", "kutil"]
 sources = [
-	"main.cpp",
+	"allocator.cpp",
 	"console.cpp",
 	"error.cpp",
 	"fs.cpp",
 	"hardware.cpp",
 	"loader.cpp",
+	"main.cpp",
 	"memory.cpp",
+	"memory_map.cpp",
 	"paging.cpp",
 	"status.cpp",
 	"support.cpp",

@@ -1,0 +1,131 @@
+#include <uefi/boot_services.h>
+#include <uefi/types.h>
+
+#include "kutil/no_construct.h"
+#include "allocator.h"
+#include "error.h"
+#include "kernel_args.h"
+#include "memory.h"
+
+namespace boot {
+
+kutil::no_construct<memory::allocator> __g_alloc_storage;
+memory::allocator &g_alloc = __g_alloc_storage.value;
+
+namespace memory {
+
+using kernel::init::allocation_register;
+using kernel::init::page_allocation;
+
+static_assert(sizeof(allocation_register) == page_size);
+
+
+void
+init_allocator(uefi::boot_services *bs)
+{
+	new (&g_alloc) allocator(*bs);
+}
+
+
+allocator::allocator(uefi::boot_services &bs) :
+	m_bs(bs),
+	m_register(nullptr),
+	m_current(nullptr)
+{}
+
+void
+allocator::add_register()
+{
+	allocation_register *reg = nullptr;
+
+	try_or_raise(
+		m_bs.allocate_pages(uefi::allocate_type::any_pages,
+			uefi::memory_type::loader_data, 1, reinterpret_cast<void**>(&reg)),
+		L"Failed allocating allocation register page");
+
+	m_bs.set_mem(reg, sizeof(allocation_register), 0);
+
+	if (!m_register) {
+		m_register = m_current = reg;
+		return;
+	}
+
+	m_current->next = reg;
+	m_current = reg;
+	return;
+}
+
+void *
+allocator::allocate_pages(size_t count, alloc_type type, bool zero)
+{
+	if (count & ~0xffffffffull) {
+		error::raise(uefi::status::unsupported,
+			L"Cannot allocate more than 16TiB in pages at once.",
+			__LINE__);
+	}
+
+	if (!m_current || m_current->count == 0xff)
+		add_register();
+
+	void *pages = nullptr;
+
+	try_or_raise(
+		m_bs.allocate_pages(uefi::allocate_type::any_pages,
+			uefi::memory_type::loader_data, count, &pages),
+		L"Failed allocating usable pages");
+
+	page_allocation &ent = m_current->entries[m_current->count++];
+	ent.address = reinterpret_cast<uintptr_t>(pages);
+	ent.count = count;
+	ent.type = type;
+
+	if (zero)
+		m_bs.set_mem(pages, count * page_size, 0);
+
+	return pages;
+}
+
+void *
+allocator::allocate(size_t size, bool zero)
+{
+	void *p = nullptr;
+	try_or_raise(
+		m_bs.allocate_pool(uefi::memory_type::loader_data, size, &p),
+		L"Could not allocate pool memory");
+
+	if (zero)
+		m_bs.set_mem(p, size, 0);
+
+	return p;
+}
+
+void
+allocator::free(void *p)
+{
+	try_or_raise(
+		m_bs.free_pool(p),
+		L"Freeing pool memory");
+}
+
+void
+allocator::memset(void *start, size_t size, uint8_t value)
+{
+	m_bs.set_mem(start, size, value);
+}
+
+void
+allocator::copy(void *to, void *from, size_t size)
+{
+	m_bs.copy_mem(to, from, size);
+}
+
+} // namespace memory
+} // namespace boot
+
+
+void * operator new (size_t size, void *p) { return p; }
+void * operator new(size_t size)           { return boot::g_alloc.allocate(size); }
+void * operator new [] (size_t size)       { return boot::g_alloc.allocate(size); }
+void operator delete (void *p) noexcept    { return boot::g_alloc.free(p); }
+void operator delete [] (void *p) noexcept { return boot::g_alloc.free(p); }
+

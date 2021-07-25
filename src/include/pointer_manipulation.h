@@ -2,8 +2,6 @@
 /// Helper functions and types for doing type-safe byte-wise pointer math.
 #pragma once
 
-namespace boot {
-
 /// Return a pointer offset from `input` by `offset` bytes.
 /// \tparam T  Cast the return value to a pointer to `T`
 /// \tparam S  The type pointed to by the `input` pointer
@@ -27,15 +25,17 @@ public:
 
 	T* operator++() { m_t = offset_ptr<T>(m_t, m_off); return m_t; }
 	T* operator++(int) { T* tmp = m_t; operator++(); return tmp; }
-	bool operator==(T* p) { return p == m_t; }
 
-	T* operator*() const { return m_t; }
-	operator T*() const { return m_t; }
+	bool operator==(T* p) { return p == m_t; }
+	bool operator!=(T* p) { return p != m_t; }
+	bool operator==(offset_iterator<T> &i) { return i.m_t == m_t; }
+	bool operator!=(offset_iterator<T> &i) { return i.m_t != m_t; }
+
+	T& operator*() const { return *m_t; }
+	operator T& () const { return *m_t; }
 	T* operator->() const { return m_t; }
 
 private:
 	T* m_t;
 	size_t m_off;
 };
-
-} // namespace boot

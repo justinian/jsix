@@ -3,6 +3,7 @@
 #include <stdalign.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "counted.h"
 
 namespace kernel {
 namespace init {
@@ -55,10 +56,8 @@ struct program_section {
 
 struct program {
 	uintptr_t entrypoint;
-	uintptr_t base;
-	size_t total_size;
-	size_t num_sections;
-	program_section sections[3];
+	uintptr_t phys_base;
+	counted<program_section> sections;
 };
 
 enum class mem_type : uint32_t {
@@ -79,13 +78,56 @@ struct mem_entry
 	uint32_t attr;
 };
 
+enum class allocation_type : uint8_t {
+	none, page_table, mem_map, frame_map, file, program,
+};
+
+/// A single contiguous allocation of pages
+struct page_allocation
+{
+	uintptr_t address;
+	uint32_t count;
+	allocation_type type;
+};
+
+/// A page-sized register of page_allocation entries
+struct allocation_register
+{
+	allocation_register *next;
+	uint8_t count;
+
+	uint8_t reserved0;
+	uint16_t reserved1;
+	uint32_t reserved2;
+
+	page_allocation entries[255];
+};
+
+enum class frame_flags : uint32_t {
+	uncacheable         = 0x00000001,
+	write_combining     = 0x00000002,
+	write_through       = 0x00000004,
+	write_back          = 0x00000008,
+	uncache_exported    = 0x00000010,
+
+	write_protect       = 0x00001000,
+	read_protect        = 0x00002000,
+	exec_protect        = 0x00004000,
+	non_volatile        = 0x00008000,
+
+	read_only           = 0x00020000,
+	earmarked           = 0x00040000,
+	hw_crypto           = 0x00080000,
+};
+
+
 constexpr size_t frames_per_block = 64 * 64 * 64;
 
 struct frame_block
 {
 	uintptr_t base;
 	uint32_t count;
-	uint32_t attrs;
+	frame_flags flags;
 	uint64_t map1;
 	uint64_t map2[64];
 	uint64_t *bitmap;
@@ -103,22 +145,14 @@ struct args
 	boot_flags flags;
 
 	void *pml4;
-	void *page_tables;
-	size_t table_count;
-	size_t table_pages;
+	counted<void> page_tables;
 
-	program *programs;
-	size_t num_programs;
+	counted<program> programs;
+	counted<module> modules;
+	counted<mem_entry> mem_map;
+	counted<frame_block> frame_blocks;
 
-	module *modules;
-	size_t num_modules;
-
-	mem_entry *mem_map;
-	size_t map_count;
-
-	frame_block *frame_blocks;
-	size_t frame_block_count;
-	size_t frame_block_pages;
+	allocation_register *allocations;
 
 	void *runtime_services;
 	void *acpi_table;

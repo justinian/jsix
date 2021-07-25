@@ -34,6 +34,9 @@ int _purecall()
 	::boot::error::raise(uefi::status::unsupported, L"Pure virtual call");
 }
 
-} // extern "C"
+/// Clang can emit calls to atexit() in constructors or destructors, but
+/// those calls don't make sense for a bootloader. Implement an empty stub
+/// to satisfy the linker.
+int atexit(void (*function)(void)) { return 0; }
 
-void operator delete (void *) {}
+} // extern "C"
