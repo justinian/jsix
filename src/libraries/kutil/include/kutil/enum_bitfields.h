@@ -86,6 +86,16 @@ template <typename E>
 constexpr typename std::enable_if<is_enum_bitfield(E{}),bool>::type
 operator && (E rhs, E lhs) { return (rhs & lhs) == lhs; }
 
+/// Generic 'has' for non-marked bitfields
+template <typename E, typename F>
+constexpr bool has(E set, F flags)
+{
+	return
+		(static_cast<typename integral<E>::type>(set) &
+		static_cast<typename integral<F>::type>(flags)) ==
+		static_cast<typename integral<F>::type>(flags);
+}
+
 } // namespace bitfields
 } // namespace kutil
 
