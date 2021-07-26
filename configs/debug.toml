@@ -79,7 +79,7 @@ cxxflags = [
 
 ldflags = [
 	"${ldflags}",
-	"-T", "${source_root}/src/arch/x86_64/kernel.ld",
+	"-T", "${source_root}/src/kernel/kernel.ld",
     "-g",
     "-nostdlib",
     "-Bstatic",

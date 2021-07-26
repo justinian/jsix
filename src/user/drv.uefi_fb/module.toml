@@ -1,0 +1,10 @@
+name = "drv.uefi_fb"
+targets = ["user"]
+deps = ["libc"]
+sources = [
+	"font.cpp",
+	"main.cpp",
+	"screen.cpp",
+	"scrollback.cpp",
+]
+

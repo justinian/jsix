@@ -39,18 +39,18 @@ build ${build_root}/fatroot/jsix.elf : cp ${build_root}/jsix.elf
 build ${build_root}/fatroot/efi/boot/bootx64.efi : cp ${build_root}/boot/boot.efi
     name = bootloader to FAT image
 
-build ${build_root}/fatroot/nulldrv.elf : cp ${build_root}/user/nulldrv.elf
+build ${build_root}/fatroot/testapp.elf : cp ${build_root}/user/testapp.elf
     name = null driver to FAT image
 
-build ${build_root}/fatroot/fb.elf : cp ${build_root}/user/fb.elf
-    name = fb driver to FAT image
+build ${build_root}/fatroot/drv.uefi_fb.elf : cp ${build_root}/user/drv.uefi_fb.elf
+    name = UEFI framebuffer driver to FAT image
 
 build ${build_root}/fatroot/symbol_table.dat : makest ${build_root}/jsix.elf
 
 build ${build_root}/jsix.img : makefat | $
     ${build_root}/fatroot/symbol_table.dat $
-    ${build_root}/fatroot/nulldrv.elf $
-    ${build_root}/fatroot/fb.elf $
+    ${build_root}/fatroot/testapp.elf $
+    ${build_root}/fatroot/drv.uefi_fb.elf $
     ${build_root}/fatroot/jsix.elf $
     ${build_root}/fatroot/efi/boot/bootx64.efi
     name = jsix.img

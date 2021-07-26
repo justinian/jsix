@@ -40,8 +40,8 @@ struct program_desc
 
 const program_desc program_list[] = {
 	{L"kernel", L"jsix.elf"},
-	{L"null driver", L"nulldrv.elf"},
-	{L"fb driver", L"fb.elf"},
+	{L"test application", L"testapp.elf"},
+	{L"UEFI framebuffer driver", L"drv.uefi_fb.elf"},
 };
 
 /// Change a pointer to point to the higher-half linear-offset version
