@@ -57,36 +57,24 @@ load_program(
 	buffer data)
 {
 	status_line status(L"Loading program:", name);
+
 	const elf::header *header = reinterpret_cast<const elf::header*>(data.pointer);
+	uintptr_t program_base = reinterpret_cast<uintptr_t>(data.pointer);
 
 	if (data.count < sizeof(elf::header) || !is_elfheader_valid(header))
 		error::raise(uefi::status::load_error, L"ELF file not valid");
 
 	size_t num_sections = 0;
-	uintptr_t prog_base = uintptr_t(-1);
-	uintptr_t prog_end = 0;
-
 	for (int i = 0; i < header->ph_num; ++i) {
 		ptrdiff_t offset = header->ph_offset + i * header->ph_entsize;
 		const elf::program_header *pheader =
 			offset_ptr<elf::program_header>(data.pointer, offset);
 
-		if (pheader->type != elf::PT_LOAD)
-			continue;
-
-		++num_sections;
-		uintptr_t end = pheader->vaddr + pheader->mem_size;
-		if (pheader->vaddr < prog_base) prog_base = pheader->vaddr;
-		if (end > prog_end) prog_end = end;
+		if (pheader->type == elf::PT_LOAD)
+			++num_sections;
 	}
 
 	init::program_section *sections = new init::program_section [num_sections];
-	program.sections = { .pointer = sections, .count = num_sections };
-
-	size_t total_size = prog_end - prog_base;
-	size_t num_pages = memory::bytes_to_pages(total_size);
-	void *pages = g_alloc.allocate_pages(num_pages, alloc_type::program, true);
-	program.phys_base = reinterpret_cast<uintptr_t>(pages);
 
 	size_t next_section = 0;
 	for (int i = 0; i < header->ph_num; ++i) {
@@ -97,18 +85,26 @@ load_program(
 		if (pheader->type != elf::PT_LOAD)
 			continue;
 
-		init::program_section &section = program.sections[next_section++];
+		init::program_section &section = sections[next_section++];
 
-		void *src_start = offset_ptr<void>(data.pointer, pheader->offset);
-		void *dest_start = offset_ptr<void>(pages, pheader->vaddr - prog_base);
+		size_t page_count = memory::bytes_to_pages(pheader->mem_size);
 
-		g_alloc.copy(dest_start, src_start, pheader->file_size);
-		section.phys_addr = reinterpret_cast<uintptr_t>(dest_start);
+		if (pheader->mem_size > pheader->file_size) {
+			void *pages = g_alloc.allocate_pages(page_count, alloc_type::program, true);
+			void *source = offset_ptr<void>(data.pointer, pheader->offset);
+			g_alloc.copy(pages, source, pheader->file_size);
+			section.phys_addr = reinterpret_cast<uintptr_t>(pages);
+		} else {
+			section.phys_addr = program_base + pheader->offset;
+		}
+
 		section.virt_addr = pheader->vaddr;
 		section.size = pheader->mem_size;
 		section.type = static_cast<init::section_flags>(pheader->flags);
 	}
 
+	program.sections = { .pointer = sections, .count = num_sections };
+	program.phys_base = program_base;
 	program.entrypoint = header->entrypoint;
 }
 
@@ -132,6 +128,12 @@ verify_kernel_header(init::program &program)
 	console::print(L"    Loaded kernel vserion: %d.%d.%d %x\r\n",
             header->version_major, header->version_minor, header->version_patch,
             header->version_gitsha);
+
+	/*
+	for (auto &section : program.sections)
+		console::print(L"    Section: p:0x%lx v:0x%lx fs:0x%x ms:0x%x\r\n",
+			section.phys_addr, section.virt_addr, section.file_size, section.mem_size);
+	*/
 }
 
 } // namespace loader

@@ -184,7 +184,6 @@ log_mtrrs()
 process *
 load_simple_process(init::program &program)
 {
-
 	process *p = new process;
 	vm_space &space = p->space();
 

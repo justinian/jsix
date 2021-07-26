@@ -256,17 +256,14 @@ map_section(
 {
 	using kernel::init::section_flags;
 
-	size_t pages = memory::bytes_to_pages(section.size);
-
 	map_pages(
 		args,
 		section.phys_addr,
 		section.virt_addr,
-		pages,
+		memory::bytes_to_pages(section.size),
 		has_flag(section.type, section_flags::write),
 		has_flag(section.type, section_flags::execute));
 }
-
 
 } // namespace paging
 } // namespace boot
