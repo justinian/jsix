@@ -16,4 +16,5 @@ sources = [
 	"paging.cpp",
 	"status.cpp",
 	"support.cpp",
+	"video.cpp",
 ]

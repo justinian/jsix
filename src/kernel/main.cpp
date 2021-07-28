@@ -57,9 +57,6 @@ process * load_simple_process(init::program &program);
 
 unsigned start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4);
 
-/// TODO: not this. this is awful.
-init::framebuffer *fb = nullptr;
-
 void
 init_console()
 {
@@ -106,22 +103,6 @@ kernel_main(init::args *args)
 	asm ("mov %%cr4, %0" : "=r"(cr4));
 	uint64_t efer = rdmsr(msr::ia32_efer);
 	log::debug(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx", cr0, cr4, efer);
-
-	bool has_video = false;
-	if (args->video.size > 0) {
-		has_video = true;
-		fb = &args->video;
-
-		const init::framebuffer &video = args->video;
-		log::debug(logs::boot, "Framebuffer: %dx%d[%d] type %d @ %llx size %llx",
-			video.horizontal,
-			video.vertical,
-			video.scanline,
-			video.type,
-			video.phys_addr,
-			video.size);
-		logger_clear_immediate();
-	}
 
 	extern IDT &g_bsp_idt;
 	extern TSS &g_bsp_tss;
@@ -216,9 +197,8 @@ kernel_main(init::args *args)
 	for (unsigned i = 1; i < args->programs.count; ++i)
 		load_simple_process(args->programs[i]);
 
-	if (!has_video)
-		sched->create_kernel_task(logger_task, scheduler::max_priority/2, true);
 
+	sched->create_kernel_task(logger_task, scheduler::max_priority/2, true);
 	sched->start();
 }
 

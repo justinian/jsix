@@ -1,9 +1,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <uefi/boot_services.h>
-#include <uefi/graphics.h>
-#include <uefi/protos/graphics_output.h>
 #include <uefi/protos/simple_text_output.h>
 #include <uefi/types.h>
 
@@ -34,22 +31,23 @@ wstrlen(const wchar_t *s)
 }
 
 
-console::console(uefi::boot_services *bs, uefi::protos::simple_text_output *out) :
+console::console(uefi::protos::simple_text_output *out) :
 	m_rows {0},
 	m_cols {0},
-	m_out {out},
-	m_fb {0, 0}
+	m_out {out}
 {
-	pick_mode(bs);
-
 	try_or_raise(
 		m_out->query_mode(m_out->mode->mode, &m_cols, &m_rows),
 		L"Failed to get text output mode.");
-
 	try_or_raise(
 		m_out->clear_screen(),
 		L"Failed to clear screen");
+	s_console = this;
+}
 
+void
+console::announce()
+{
 	m_out->set_attribute(uefi::attribute::light_cyan);
 	m_out->output_string(L"jsix loader ");
 
@@ -58,97 +56,6 @@ console::console(uefi::boot_services *bs, uefi::protos::simple_text_output *out)
 
 	m_out->set_attribute(uefi::attribute::light_gray);
 	m_out->output_string(L" booting...\r\n");
-
-	if (m_fb.type != kernel::init::fb_type::none) {
-		wchar_t const * type = nullptr;
-		switch (m_fb.type) {
-		case kernel::init::fb_type::rgb8:
-			type = L"rgb8";
-			break;
-		case kernel::init::fb_type::bgr8:
-			type = L"bgr8";
-			break;
-		default:
-			type = L"unknown";
-		}
-
-		printf(L"Found framebuffer: %dx%d[%d] type %s @0x%x\r\n",
-			m_fb.horizontal, m_fb.vertical, m_fb.scanline, type, m_fb.phys_addr);
-	} else {
-		printf(L"No framebuffer found.\r\n");
-	}
-
-	s_console = this;
-}
-
-void
-console::pick_mode(uefi::boot_services *bs)
-{
-	uefi::status status;
-	uefi::protos::graphics_output *gfx_out_proto;
-	uefi::guid guid = uefi::protos::graphics_output::guid;
-
-	m_fb.type = kernel::init::fb_type::none;
-
-	uefi::status has_gop = bs->locate_protocol(&guid, nullptr,
-		(void **)&gfx_out_proto);
-
-	if (has_gop != uefi::status::success)
-		// No video output found, skip it
-		return;
-
-	const uint32_t modes = gfx_out_proto->mode->max_mode;
-	uint32_t best = gfx_out_proto->mode->mode;
-
-	uefi::graphics_output_mode_info *info =
-		(uefi::graphics_output_mode_info *)gfx_out_proto->mode;
-
-	uint32_t res = info->horizontal_resolution * info->vertical_resolution;
-	int pixmode = static_cast<int>(info->pixel_format);
-
-	for (uint32_t i = 0; i < modes; ++i) {
-		size_t size = 0;
-
-		try_or_raise(
-			gfx_out_proto->query_mode(i, &size, &info),
-			L"Failed to find a graphics mode the driver claimed to support");
-
-#ifdef MAX_HRES
-		if (info->horizontal_resolution > MAX_HRES) continue;
-#endif
-
-		const uint32_t new_res = info->horizontal_resolution * info->vertical_resolution;
-		int new_pixmode = static_cast<int>(info->pixel_format);
-
-		if (new_pixmode <= pixmode && new_res >= res) {
-			best = i;
-			res = new_res;
-			pixmode = new_pixmode;
-		}
-	}
-
-	try_or_raise(
-		gfx_out_proto->set_mode(best),
-		L"Failed to set graphics mode");
-
-	if (pixmode <= static_cast<int>(uefi::pixel_format::bgr8)) {
-		m_fb.phys_addr = gfx_out_proto->mode->frame_buffer_base;
-		m_fb.size = gfx_out_proto->mode->frame_buffer_size;
-		m_fb.vertical = gfx_out_proto->mode->info->vertical_resolution;
-		m_fb.horizontal = gfx_out_proto->mode->info->horizontal_resolution;
-		m_fb.scanline = gfx_out_proto->mode->info->pixels_per_scanline;
-
-		switch (gfx_out_proto->mode->info->pixel_format) {
-		case uefi::pixel_format::rgb8:
-			m_fb.type = kernel::init::fb_type::rgb8;
-			break;
-		case uefi::pixel_format::bgr8:
-			m_fb.type = kernel::init::fb_type::bgr8;
-			break;
-		default:
-			m_fb.type = kernel::init::fb_type::none;
-		}
-	}
 }
 
 size_t

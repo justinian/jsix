@@ -228,27 +228,6 @@ initialize_main_user_stack()
 	j6_init_value *initv = nullptr;
 	unsigned n = 0;
 
-	extern init::framebuffer *fb;
-	if (fb) {
-		j6_init_framebuffer *fb_desc = push<j6_init_framebuffer>(tcb->rsp3);
-		kutil::memset(fb_desc, 0, sizeof(j6_init_framebuffer));
-
-		fb_desc->addr = fb->phys_addr;
-		fb_desc->size = fb->size;
-		fb_desc->vertical = fb->vertical;
-		fb_desc->horizontal = fb->horizontal;
-		fb_desc->scanline = fb->scanline;
-
-		if (fb->type == kernel::init::fb_type::bgr8)
-			fb_desc->flags |= 1;
-
-		initv = push<j6_init_value>(tcb->rsp3);
-		initv->type = j6_init_desc_framebuffer;
-		initv->data = fb_desc;
-		++n;
-	}
-
-
 	initv = push<j6_init_value>(tcb->rsp3);
 	initv->type = j6_init_handle_other;
 	initv->handle.type = j6_object_type_system;

@@ -5,13 +5,15 @@
 #include <stdint.h>
 #include <uefi/types.h>
 
-namespace kernel {
-namespace init {
-	class framebuffer;
-}
+namespace uefi {
+	struct boot_services;
 }
 
 namespace boot {
+
+namespace video {
+	struct screen;
+}
 
 // Abstract base class for status reporters.
 class status
@@ -92,11 +94,8 @@ class status_bar :
 public:
 	constexpr static unsigned type = 2;
 
-	using framebuffer = kernel::init::framebuffer;
-
 	/// Constructor.
-	/// \arg fb  The framebuffer descriptor to draw to
-	status_bar(kernel::init::framebuffer const &fb);
+	status_bar(video::screen *screen);
 	~status_bar();
 
 	virtual void do_warn(const wchar_t *message, uefi::status status) override;

@@ -4,8 +4,9 @@
 
 #include "console.h"
 #include "error.h"
-#include "kernel_args.h"
+#include "init_args.h"
 #include "status.h"
+#include "video.h"
 
 constexpr int num_boxes = 30;
 
@@ -149,15 +150,15 @@ status_line::do_fail(const wchar_t *message, uefi::status status)
 
 
 
-status_bar::status_bar(kernel::init::framebuffer const &fb) :
-	status(fb.size),
+status_bar::status_bar(video::screen *screen) :
+	status(),
 	m_outer(nullptr)
 {
-	m_size = (fb.vertical / num_boxes) - 1;
-	m_top = fb.vertical - m_size;
-	m_horiz = fb.horizontal;
-	m_fb = reinterpret_cast<uint32_t*>(fb.phys_addr);
-	m_type = static_cast<uint16_t>(fb.type);
+	m_size = (screen->mode.vertical / num_boxes) - 1;
+	m_top = screen->mode.vertical - m_size;
+	m_horiz = screen->mode.horizontal;
+	m_fb = reinterpret_cast<uint32_t*>(screen->framebuffer.pointer);
+	m_type = static_cast<uint16_t>(screen->mode.layout);
 	next();
 
 	if (status::s_current_type == status_bar::type)
@@ -197,14 +198,14 @@ status_bar::do_fail(const wchar_t *message, uefi::status status)
 static uint32_t
 make_color(uint8_t r, uint8_t g, uint8_t b, uint16_t type)
 {
-	switch (static_cast<kernel::init::fb_type>(type)) {
-	case kernel::init::fb_type::bgr8:
+	switch (static_cast<video::layout>(type)) {
+		case video::layout::bgr8:
 		return
 			(static_cast<uint32_t>(b) <<  0) |
 			(static_cast<uint32_t>(g) <<  8) |
 			(static_cast<uint32_t>(r) << 16);
 
-	case kernel::init::fb_type::rgb8:
+		case video::layout::rgb8:
 		return
 			(static_cast<uint32_t>(r) <<  0) |
 			(static_cast<uint32_t>(g) <<  8) |

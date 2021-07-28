@@ -18,6 +18,7 @@
 #include "memory_map.h"
 #include "paging.h"
 #include "status.h"
+#include "video.h"
 
 #include "kernel_args.h"
 
@@ -92,12 +93,12 @@ check_cpu_supported()
 init::args *
 uefi_preboot(uefi::handle image, uefi::system_table *st)
 {
-	status_line status {L"Performing UEFI pre-boot"};
-
 	uefi::boot_services *bs = st->boot_services;
 	uefi::runtime_services *rs = st->runtime_services;
 
-	memory::init_allocator(bs);
+	status_line status {L"Performing UEFI pre-boot"};
+
+	check_cpu_supported();
 	memory::init_pointer_fixup(bs, rs);
 
 	init::args *args = new init::args;
@@ -157,14 +158,18 @@ extern "C" uefi::status
 efi_main(uefi::handle image, uefi::system_table *st)
 {
 	using namespace boot;
-	console con(st->boot_services, st->con_out);
-	check_cpu_supported();
+
+	uefi::boot_services *bs = st->boot_services;
+	console con(st->con_out);
+
+	memory::init_allocator(bs);
+	video::screen *screen = video::pick_mode(bs);
+	con.announce();
 
 	init::args *args = uefi_preboot(image, st);
 	memory::efi_mem_map map = uefi_exit(args, image, st->boot_services);
 
-	args->video = con.fb();
-	status_bar status {con.fb()}; // Switch to fb status display
+	status_bar status {screen}; // Switch to fb status display
 
 	// Map the kernel to the appropriate address
 	init::program &kernel = args->programs[0];
