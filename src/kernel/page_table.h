@@ -3,7 +3,7 @@
 /// Helper structures for dealing with page tables.
 
 #include <stdint.h>
-#include "kutil/enum_bitfields.h"
+#include "enum_bitfields.h"
 #include "kernel_memory.h"
 
 struct free_page_header;

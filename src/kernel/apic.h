@@ -3,7 +3,7 @@
 /// Classes to control both local and I/O APICs.
 
 #include <stdint.h>
-#include "kutil/enum_bitfields.h"
+#include "enum_bitfields.h"
 
 enum class isr : uint8_t;
 

@@ -3,7 +3,7 @@
 /// Definitions relating to a CPU's GDT table
 #include <stdint.h>
 
-#include "kutil/enum_bitfields.h"
+#include "enum_bitfields.h"
 
 class TSS;
 

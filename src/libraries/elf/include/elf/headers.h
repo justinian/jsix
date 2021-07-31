@@ -1,6 +1,6 @@
 #pragma once
 #include <stdint.h>
-#include "kutil/enum_bitfields.h"
+#include "enum_bitfields.h"
 
 namespace elf {
 
@@ -95,4 +95,4 @@ struct section_header
 
 } // namespace elf
 
-IS_BITFIELD(elf::section_flags);
+is_bitfield(elf::section_flags);

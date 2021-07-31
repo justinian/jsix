@@ -5,8 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "enum_bitfields.h"
 #include "j6/signals.h"
-#include "kutil/enum_bitfields.h"
 #include "kutil/vector.h"
 
 #include "kernel_memory.h"

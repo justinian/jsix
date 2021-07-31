@@ -3,8 +3,8 @@
 #include "kernel_args.h"
 #include "j6/init.h"
 
+#include "enum_bitfields.h"
 #include "kutil/assert.h"
-#include "kutil/enum_bitfields.h"
 #include "kutil/heap_allocator.h"
 #include "kutil/no_construct.h"
 

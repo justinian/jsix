@@ -3,7 +3,7 @@
 /// Structure for tracking a range of virtual memory addresses
 
 #include <stdint.h>
-#include "kutil/enum_bitfields.h"
+#include "enum_bitfields.h"
 #include "kutil/spinlock.h"
 #include "kutil/vector.h"
 #include "page_table.h"
