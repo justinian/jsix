@@ -1,0 +1,6 @@
+name = "elf"
+kind = "lib"
+includes = [ "src/libraries/elf/include" ]
+sources = [
+	"file.cpp",
+]

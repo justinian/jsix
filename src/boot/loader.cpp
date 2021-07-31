@@ -3,7 +3,8 @@
 
 #include "allocator.h"
 #include "console.h"
-#include "elf.h"
+#include "elf/file.h"
+#include "elf/headers.h"
 #include "error.h"
 #include "fs.h"
 #include "init_args.h"
@@ -34,21 +35,6 @@ load_file(
 	return b;
 }
 
-
-static bool
-is_elfheader_valid(const elf::header *header)
-{
-	return
-		header->magic[0] == 0x7f &&
-		header->magic[1] == 'E' &&
-		header->magic[2] == 'L' &&
-		header->magic[3] == 'F' &&
-		header->word_size == elf::word_size &&
-		header->endianness == elf::endianness &&
-		header->os_abi == elf::os_abi &&
-		header->machine == elf::machine &&
-		header->header_version == elf::version;
-}
 
 static void
 create_module(buffer data, const program_desc &desc, bool loaded)
@@ -82,55 +68,45 @@ load_program(
 	if (add_module)
 		create_module(data, desc, true);
 
-	const elf::header *header = reinterpret_cast<const elf::header*>(data.pointer);
-	uintptr_t program_base = reinterpret_cast<uintptr_t>(data.pointer);
-
-	if (data.count < sizeof(elf::header) || !is_elfheader_valid(header))
+	elf::file program(data.pointer, data.count);
+	if (!program.valid())
 		error::raise(uefi::status::load_error, L"ELF file not valid");
 
 	size_t num_sections = 0;
-	for (int i = 0; i < header->ph_num; ++i) {
-		ptrdiff_t offset = header->ph_offset + i * header->ph_entsize;
-		const elf::program_header *pheader =
-			offset_ptr<elf::program_header>(data.pointer, offset);
-
-		if (pheader->type == elf::PT_LOAD)
+	for (auto &seg : program.programs()) {
+		if (seg.type == elf::segment_type::load)
 			++num_sections;
 	}
 
 	init::program_section *sections = new init::program_section [num_sections];
 
 	size_t next_section = 0;
-	for (int i = 0; i < header->ph_num; ++i) {
-		ptrdiff_t offset = header->ph_offset + i * header->ph_entsize;
-		const elf::program_header *pheader =
-			offset_ptr<elf::program_header>(data.pointer, offset);
-
-		if (pheader->type != elf::PT_LOAD)
+	for (auto &seg : program.programs()) {
+		if (seg.type != elf::segment_type::load)
 			continue;
 
 		init::program_section &section = sections[next_section++];
 
-		size_t page_count = memory::bytes_to_pages(pheader->mem_size);
+		size_t page_count = memory::bytes_to_pages(seg.mem_size);
 
-		if (pheader->mem_size > pheader->file_size) {
+		if (seg.mem_size > seg.file_size) {
 			void *pages = g_alloc.allocate_pages(page_count, alloc_type::program, true);
-			void *source = offset_ptr<void>(data.pointer, pheader->offset);
-			g_alloc.copy(pages, source, pheader->file_size);
+			void *source = offset_ptr<void>(data.pointer, seg.offset);
+			g_alloc.copy(pages, source, seg.file_size);
 			section.phys_addr = reinterpret_cast<uintptr_t>(pages);
 		} else {
-			section.phys_addr = program_base + pheader->offset;
+			section.phys_addr = program.base() + seg.offset;
 		}
 
-		section.virt_addr = pheader->vaddr;
-		section.size = pheader->mem_size;
-		section.type = static_cast<init::section_flags>(pheader->flags);
+		section.virt_addr = seg.vaddr;
+		section.size = seg.mem_size;
+		section.type = static_cast<init::section_flags>(seg.flags);
 	}
 
 	init::program *prog = new init::program;
 	prog->sections = { .pointer = sections, .count = num_sections };
-	prog->phys_base = program_base;
-	prog->entrypoint = header->entrypoint;
+	prog->phys_base = program.base();
+	prog->entrypoint = program.entrypoint();
 	return prog;
 }
 

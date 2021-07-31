@@ -2,7 +2,7 @@ name = "boot"
 kind = "exe"
 output = "boot.efi"
 targets = ["boot"]
-deps = ["cpu", "kutil"]
+deps = ["cpu", "elf", "kutil"]
 sources = [
 	"allocator.cpp",
 	"console.cpp",
