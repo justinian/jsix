@@ -9,7 +9,6 @@
 
 #include "allocator.h"
 #include "console.h"
-#include "cpu/cpu_id.h"
 #include "error.h"
 #include "fs.h"
 #include "hardware.h"
@@ -30,19 +29,12 @@ namespace init = kernel::init;
 
 namespace boot {
 
-constexpr int max_modules = 5; // Max modules to allocate room for
-constexpr int max_programs = 5; // Max programs to allocate room for
+const loader::program_desc kern_desc = {L"kernel", L"jsix.elf"};
+const loader::program_desc init_desc = {L"init server", L"srv.init.elf"};
+const loader::program_desc fb_driver = {L"UEFI framebuffer driver", L"drv.uefi_fb.elf"};
 
-struct program_desc
-{
-	const wchar_t *name;
-	const wchar_t *path;
-};
-
-const program_desc program_list[] = {
-	{L"kernel", L"jsix.elf"},
+const loader::program_desc extra_programs[] = {
 	{L"test application", L"testapp.elf"},
-	{L"UEFI framebuffer driver", L"drv.uefi_fb.elf"},
 };
 
 /// Change a pointer to point to the higher-half linear-offset version
@@ -51,40 +43,6 @@ template <typename T>
 void change_pointer(T *&pointer)
 {
 	pointer = offset_ptr<T>(pointer, kernel::memory::page_offset);
-}
-
-/// Add a module to the kernel args list
-inline void
-add_module(init::args *args, init::mod_type type, buffer &data)
-{
-	init::module &m = args->modules[args->modules.count++];
-	m.type = type;
-	m.location = data.pointer;
-	m.size = data.count;
-
-	change_pointer(m.location);
-}
-
-/// Check that all required cpu features are supported
-void
-check_cpu_supported()
-{
-	status_line status {L"Checking CPU features"};
-
-	cpu::cpu_id cpu;
-	uint64_t missing = cpu.missing();
-	if (missing) {
-#define CPU_FEATURE_OPT(...)
-#define CPU_FEATURE_REQ(name, ...) \
-		if (!cpu.has_feature(cpu::feature::name)) { \
-			status::fail(L"CPU required feature " L ## #name, uefi::status::unsupported); \
-		}
-#include "cpu/features.inc"
-#undef CPU_FEATURE_REQ
-#undef CPU_FEATURE_OPT
-
-		error::raise(uefi::status::unsupported, L"CPU not supported");
-	}
 }
 
 /// The main procedure for the portion of the loader that runs while
@@ -98,13 +56,11 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
 
 	status_line status {L"Performing UEFI pre-boot"};
 
-	check_cpu_supported();
+	hw::check_cpu_supported();
 	memory::init_pointer_fixup(bs, rs);
 
 	init::args *args = new init::args;
 	g_alloc.zero(args, sizeof(init::args));
-	args->programs.pointer = new init::program[5];
-	args->modules.pointer = new init::module[5];
 
 	args->magic = init::args_magic;
 	args->version = init::args_version;
@@ -114,21 +70,32 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
 
 	paging::allocate_tables(args);
 
+	return args;
+}
+
+/// Load the kernel and other programs from disk
+void
+load_resources(init::args *args, video::screen *screen, uefi::handle image, uefi::boot_services *bs)
+{
+	status_line status {L"Loading programs"};
+
 	fs::file disk = fs::get_boot_volume(image, bs);
 
-	buffer symbols = loader::load_file(disk, L"symbol table", L"symbol_table.dat");
-	add_module(args, init::mod_type::symbol_table, symbols);
-
-	for (auto &desc : program_list) {
-		buffer buf = loader::load_file(disk, desc.name, desc.path);
-		init::program &program = args->programs[args->programs.count++];
-		loader::load_program(program, desc.name, buf);
+	if (screen) {
+		video::make_module(screen);
+		loader::load_module(disk, fb_driver);
 	}
 
-    // First program *must* be the kernel
-    loader::verify_kernel_header(args->programs[0]);
+	args->symbol_table = loader::load_file(disk, {L"symbol table", L"symbol_table.dat"});
 
-	return args;
+	args->kernel = loader::load_program(disk, kern_desc, true);
+	args->init = loader::load_program(disk, init_desc);
+
+	for (auto &desc : extra_programs)
+		loader::load_module(disk, desc);
+
+    loader::verify_kernel_header(*args->kernel);
+
 }
 
 memory::efi_mem_map
@@ -141,7 +108,6 @@ uefi_exit(init::args *args, uefi::handle image, uefi::boot_services *bs)
 
 	args->mem_map = memory::build_kernel_map(map);
 	args->frame_blocks = memory::build_frame_blocks(args->mem_map);
-	args->allocations = g_alloc.get_register();
 
 	map.update(*bs);
 	try_or_raise(
@@ -162,17 +128,24 @@ efi_main(uefi::handle image, uefi::system_table *st)
 	uefi::boot_services *bs = st->boot_services;
 	console con(st->con_out);
 
-	memory::init_allocator(bs);
+	init::allocation_register *allocs = nullptr;
+	init::modules_page *modules = nullptr;
+	memory::allocator::init(allocs, modules, bs);
+
 	video::screen *screen = video::pick_mode(bs);
 	con.announce();
 
 	init::args *args = uefi_preboot(image, st);
+	load_resources(args, screen, image, bs);
 	memory::efi_mem_map map = uefi_exit(args, image, st->boot_services);
+
+	args->allocations = allocs;
+	args->modules = reinterpret_cast<uintptr_t>(modules);
 
 	status_bar status {screen}; // Switch to fb status display
 
 	// Map the kernel to the appropriate address
-	init::program &kernel = args->programs[0];
+	init::program &kernel = *args->kernel;
 	for (auto &section : kernel.sections)
 		paging::map_section(args, section);
 
@@ -180,20 +153,22 @@ efi_main(uefi::handle image, uefi::system_table *st)
 
 	init::entrypoint kentry =
 		reinterpret_cast<init::entrypoint>(kernel.entrypoint);
-	status.next();
+	//status.next();
 
 	hw::setup_control_regs();
 	memory::virtualize(args->pml4, map, st->runtime_services);
-	status.next();
+	//status.next();
 
 	change_pointer(args);
 	change_pointer(args->pml4);
-	change_pointer(args->modules.pointer);
-	change_pointer(args->programs.pointer);
-	for (auto &program : args->programs)
-		change_pointer(program.sections.pointer);
+	change_pointer(args->symbol_table.pointer);
 
-	status.next();
+	change_pointer(args->kernel);
+	change_pointer(args->kernel->sections.pointer);
+	change_pointer(args->init);
+	change_pointer(args->init->sections.pointer);
+
+	//status.next();
 
 	kentry(args);
 	debug_break();

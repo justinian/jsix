@@ -4,6 +4,7 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdint.h>
 
 namespace uefi {
 namespace protos {
@@ -39,5 +40,7 @@ private:
 
 	static console *s_console;
 };
+
+size_t wstrlen(const wchar_t *s);
 
 } // namespace boot

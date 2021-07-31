@@ -26,7 +26,7 @@ struct screen {
 screen * pick_mode(uefi::boot_services *bs);
 
 /// Make an init arg module from the video mode
-void make_module(screen *s, kernel::init::module_framebuffer *mod);
+void make_module(screen *s);
 
 } // namespace video
 } // namespace boot

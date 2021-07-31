@@ -22,7 +22,7 @@ static const wchar_t digits[] = {u'0', u'1', u'2', u'3', u'4', u'5',
 	u'6', u'7', u'8', u'9', u'a', u'b', u'c', u'd', u'e', u'f'};
 
 
-static size_t
+size_t
 wstrlen(const wchar_t *s)
 {
 	size_t count = 0;

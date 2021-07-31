@@ -181,12 +181,13 @@ log_mtrrs()
 }
 
 
-process *
-load_simple_process(init::program &program)
+void
+load_init_server(init::program &program, uintptr_t modules_address)
 {
 	process *p = new process;
-	vm_space &space = p->space();
+	p->add_handle(&system::get());
 
+	vm_space &space = p->space();
 	for (const auto &sect : program.sections) {
 		vm_flags flags =
 			((sect.type && section_flags::execute) ? vm_flags::exec : vm_flags::none) |
@@ -197,64 +198,14 @@ load_simple_process(init::program &program)
 	}
 
 	uint64_t iopl = (3ull << 12);
-	uintptr_t trampoline = reinterpret_cast<uintptr_t>(initialize_main_thread);
 
 	thread *main = p->create_thread();
-	main->add_thunk_user(program.entrypoint, trampoline, iopl);
+	main->add_thunk_user(program.entrypoint, 0, iopl);
 	main->set_state(thread::state::ready);
 
-	return p;
-}
-
-template <typename T>
-inline T * push(uintptr_t &rsp, size_t size = sizeof(T)) {
-	rsp -= size;
-	T *p = reinterpret_cast<T*>(rsp);
-	rsp &= ~(sizeof(uint64_t)-1); // Align the stack
-	return p;
-}
-
-uintptr_t
-initialize_main_user_stack()
-{
-	process &proc = process::current();
-	thread &th = thread::current();
-	TCB *tcb = th.tcb();
-
-	const char message[] = "Hello from the kernel!";
-	char *message_arg = push<char>(tcb->rsp3, sizeof(message));
-	kutil::memcpy(message_arg, message, sizeof(message));
-
-	j6_init_value *initv = nullptr;
-	unsigned n = 0;
-
-	initv = push<j6_init_value>(tcb->rsp3);
-	initv->type = j6_init_handle_other;
-	initv->handle.type = j6_object_type_system;
-	initv->handle.handle = proc.add_handle(&system::get());
-	++n;
-
-	initv = push<j6_init_value>(tcb->rsp3);
-	initv->type = j6_init_handle_self;
-	initv->handle.type = j6_object_type_process;
-	initv->handle.handle = proc.self_handle();
-	++n;
-
-	initv = push<j6_init_value>(tcb->rsp3);
-	initv->type = j6_init_handle_self;
-	initv->handle.type = j6_object_type_thread;
-	initv->handle.handle = th.self_handle();
-	++n;
-
-	uint64_t *initc = push<uint64_t>(tcb->rsp3);
-	*initc = n;
-
-	char **argv0 = push<char*>(tcb->rsp3);
-	*argv0 = message_arg;
-
-	uint64_t *argc = push<uint64_t>(tcb->rsp3);
-	*argc = 1;
-
-	th.clear_state(thread::state::loading);
-	return tcb->rsp3;
+	// Hacky: No process exists to have created a stack for init; it needs to create
+	// its own stack. We take advantage of that to use rsp to pass it the init modules
+	// address.
+	auto *tcb = main->tcb();
+	tcb->rsp3 = modules_address;
 }

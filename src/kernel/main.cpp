@@ -53,7 +53,7 @@ static bool scheduler_ready = false;
 /// Bootstrap the memory managers.
 void memory_initialize_pre_ctors(init::args &kargs);
 void memory_initialize_post_ctors(init::args &kargs);
-process * load_simple_process(init::program &program);
+void load_init_server(init::program &program, uintptr_t modules_address);
 
 unsigned start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4);
 
@@ -128,17 +128,8 @@ kernel_main(init::args *args)
 
 	cpu->tss->create_ist_stacks(cpu->idt->used_ist_entries());
 
-	for (size_t i = 0; i < args->modules.count; ++i) {
-		init::module &mod = args->modules[i];
-
-		switch (mod.type) {
-		case init::mod_type::symbol_table:
-			new symbol_table {mod.location, mod.size};
-			break;
-
-		default:
-			break;
-		}
+	if (args->symbol_table.count) {
+		new symbol_table {args->symbol_table.pointer, args->symbol_table.count};
 	}
 
 	syscall_initialize();
@@ -193,10 +184,8 @@ kernel_main(init::args *args)
 	scheduler *sched = new scheduler {num_cpus};
 	scheduler_ready = true;
 
-	// Skip program 0, which is the kernel itself
-	for (unsigned i = 1; i < args->programs.count; ++i)
-		load_simple_process(args->programs[i]);
-
+	// Load the init server
+	load_init_server(*args->init, args->modules);
 
 	sched->create_kernel_task(logger_task, scheduler::max_priority/2, true);
 	sched->start();

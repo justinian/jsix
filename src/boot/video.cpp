@@ -2,6 +2,7 @@
 #include <uefi/graphics.h>
 #include <uefi/protos/graphics_output.h>
 
+#include "allocator.h"
 #include "console.h"
 #include "error.h"
 #include "init_args.h"
@@ -106,15 +107,15 @@ pick_mode(uefi::boot_services *bs)
 }
 
 void
-make_module(screen *s, module_framebuffer *mod)
+make_module(screen *s)
 {
-	mod->mod_type = module_type::framebuffer;
-	mod->mod_flags = module_flags::none;
-	mod->mod_length = sizeof(module_framebuffer);
-	mod->type = fb_type::uefi; 
+	using kernel::init::module_framebuffer;
+	module_framebuffer *modfb = g_alloc.allocate_module<module_framebuffer>();
+	modfb->mod_type = module_type::framebuffer;
+	modfb->type = fb_type::uefi; 
 
-	mod->framebuffer = s->framebuffer;
-	mod->mode = s->mode;
+	modfb->framebuffer = s->framebuffer;
+	modfb->mode = s->mode;
 }
 
 } // namespace video

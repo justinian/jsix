@@ -6,6 +6,7 @@
 #include "elf.h"
 #include "error.h"
 #include "fs.h"
+#include "init_args.h"
 #include "loader.h"
 #include "memory.h"
 #include "paging.h"
@@ -22,12 +23,11 @@ using memory::alloc_type;
 buffer
 load_file(
 	fs::file &disk,
-	const wchar_t *name,
-	const wchar_t *path)
+	const program_desc &desc)
 {
-	status_line status(L"Loading file", name);
+	status_line status(L"Loading file", desc.path);
 
-	fs::file file = disk.open(path);
+	fs::file file = disk.open(desc.path);
 	buffer b = file.load();
 
 	//console::print(L"    Loaded at: 0x%lx, %d bytes\r\n", b.data, b.size);
@@ -50,13 +50,37 @@ is_elfheader_valid(const elf::header *header)
 		header->header_version == elf::version;
 }
 
-void
-load_program(
-	init::program &program,
-	const wchar_t *name,
-	buffer data)
+static void
+create_module(buffer data, const program_desc &desc, bool loaded)
 {
-	status_line status(L"Loading program:", name);
+	size_t path_len = wstrlen(desc.path);
+	init::module_program *mod = g_alloc.allocate_module<init::module_program>(path_len);
+	mod->mod_type = init::module_type::program;
+	mod->base_address = reinterpret_cast<uintptr_t>(data.pointer);
+	if (loaded)
+		mod->mod_flags = static_cast<init::module_flags>(
+			static_cast<uint8_t>(mod->mod_flags) |
+			static_cast<uint8_t>(init::module_flags::no_load));
+
+	// TODO: support non-ascii path characters and do real utf-16 to utf-8
+	// conversion
+	for (int i = 0; i < path_len; ++i)
+		mod->filename[i] = desc.path[i];
+	mod->filename[path_len] = 0;
+}
+
+init::program *
+load_program(
+	fs::file &disk,
+	const program_desc &desc,
+	bool add_module)
+{
+	status_line status(L"Loading program", desc.name);
+
+	buffer data = load_file(disk, desc);
+
+	if (add_module)
+		create_module(data, desc, true);
 
 	const elf::header *header = reinterpret_cast<const elf::header*>(data.pointer);
 	uintptr_t program_base = reinterpret_cast<uintptr_t>(data.pointer);
@@ -103,9 +127,22 @@ load_program(
 		section.type = static_cast<init::section_flags>(pheader->flags);
 	}
 
-	program.sections = { .pointer = sections, .count = num_sections };
-	program.phys_base = program_base;
-	program.entrypoint = header->entrypoint;
+	init::program *prog = new init::program;
+	prog->sections = { .pointer = sections, .count = num_sections };
+	prog->phys_base = program_base;
+	prog->entrypoint = header->entrypoint;
+	return prog;
+}
+
+void
+load_module(
+	fs::file &disk,
+	const program_desc &desc)
+{
+	status_line status(L"Loading module", desc.name);
+
+	buffer data = load_file(disk, desc);
+	create_module(data, desc, false);
 }
 
 void

@@ -7,32 +7,32 @@ nasm = "nasm"
 objcopy = "objcopy"
 
 ccflags = [
-	"${ccflags}",
+    "${ccflags}",
     "-I${source_root}/external",
     "--target=x86_64-unknown-windows",
-	"-ffreestanding",
-	"-mno-red-zone",
-	"-fshort-wchar",
-	"-fno-omit-frame-pointer",
-	"-ggdb",
+    "-ffreestanding",
+    "-mno-red-zone",
+    "-fshort-wchar",
+    "-fno-omit-frame-pointer",
+    "-ggdb",
     "-g3",
     '-DKERNEL_FILENAME=L"jsix.elf"',
 ]
 
 cxxflags = [
-	"${cxxflags}",
+    "${cxxflags}",
     "-fno-exceptions",
     "-fno-rtti",
 ]
 
 ldflags = [
-	"${ldflags}",
+    "${ldflags}",
     "--target=x86_64-unknown-windows",
-	"-nostdlib",
+    "-nostdlib",
     "-Wl,-entry:efi_main",
     "-Wl,-subsystem:efi_application",
     "-fuse-ld=lld-link",
-	"-g"
+    "-g"
 ]
 
 
@@ -45,14 +45,14 @@ nasm = "nasm"
 objcopy = "objcopy"
 
 asflags = [ 
-	"${asflags}",
-	"-I${source_root}/src/kernel/",
+    "${asflags}",
+    "-I${source_root}/src/kernel/",
 ]
 
 ccflags = [
-	"${ccflags}",
+    "${ccflags}",
     "--target=x86_64-unknown-elf",
-	"-I${source_root}/external",
+    "-I${source_root}/external",
     "-nostdlib",
     "-ffreestanding",
     "-nodefaultlibs",
@@ -64,27 +64,28 @@ ccflags = [
     "-mcmodel=large",
     "-D__ELF__",
     "-D__JSIX__",
-    "-D_LIBCPP_HAS_THREAD_API_EXTERNAL",
     "-isystem${source_root}/sysroot/include",
     "-isystem${source_root}/src/libraries/libc/include",
-    "--sysroot='${source_root}/sysroot'"
+    "--sysroot='${source_root}/sysroot'",
+    "-U__linux",
+    "-U__linux__",
 ]
 
 cxxflags = [
-	"${cxxflags}",
+    "${cxxflags}",
     "-fno-exceptions",
     "-fno-rtti",
     "-isystem${source_root}/sysroot/include/c++/v1"
 ]
 
 ldflags = [
-	"${ldflags}",
-	"-T", "${source_root}/src/kernel/kernel.ld",
+    "${ldflags}",
+    "-T", "${source_root}/src/kernel/kernel.ld",
     "-g",
     "-nostdlib",
     "-Bstatic",
-	"-z", "norelro",
-	"-z", "separate-code",
+    "-z", "norelro",
+    "-z", "separate-code",
 ]
 
 
@@ -97,42 +98,36 @@ nasm = "nasm"
 objcopy = "objcopy"
 
 asflags = [
-	"${asflags}",
-	"-I${source_root}/src/kernel/",
+    "${asflags}",
+    "-I${source_root}/src/kernel/",
 ]
 
 ccflags = [
-	"${ccflags}",
-    "-nostdlib",
-    "-ffreestanding",
-    "-nodefaultlibs",
-    "-fno-builtin",
+    "${ccflags}",
     "-mno-sse",
     "-fno-omit-frame-pointer",
-    "-mno-red-zone",
     "-g",
-    "-mcmodel=large",
     "-D__ELF__",
     "-D__JSIX__",
-    "-D_LIBCPP_HAS_THREAD_API_EXTERNAL",
     "-isystem${source_root}/sysroot/include",
     "-isystem${source_root}/src/libraries/libc/include",
-    "--sysroot='${source_root}/sysroot'"
+    "--sysroot='${source_root}/sysroot'",
+    "-U__linux",
+    "-U__linux__",
 ]
 
 cxxflags = [
-	"${cxxflags}",
+    "${cxxflags}",
     "-fno-exceptions",
     "-fno-rtti",
     "-isystem${source_root}/sysroot/include/c++/v1"
 ]
 
 ldflags = [
-	"${ldflags}",
+    "${ldflags}",
     "-g",
-    "-nostdlib",
     "-Bstatic",
     "--sysroot='${source_root}/sysroot'",
-	"-L", "${source_root}/sysroot/lib",
-	"-z", "separate-code",
+    "-L", "${source_root}/sysroot/lib",
+    "-z", "separate-code",
 ]

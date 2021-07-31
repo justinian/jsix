@@ -15,16 +15,6 @@ constexpr uint64_t header_magic = 0x4c454e52454b366aull; // 'j6KERNEL'
 constexpr uint16_t header_version = 2;
 constexpr uint16_t min_header_version = 2;
 
-enum class mod_type : uint32_t {
-	symbol_table
-};
-
-struct module {
-	void *location;
-	size_t size;
-	mod_type type;
-};
-
 enum class section_flags : uint32_t {
 	none    = 0,
 	execute = 1,
@@ -64,7 +54,7 @@ struct mem_entry
 };
 
 enum class allocation_type : uint8_t {
-	none, page_table, mem_map, frame_map, file, program,
+	none, page_table, mem_map, frame_map, file, program, init_args,
 };
 
 /// A single contiguous allocation of pages
@@ -131,13 +121,14 @@ struct args
 
 	void *pml4;
 	counted<void> page_tables;
-
-	counted<program> programs;
-	counted<module> modules;
 	counted<mem_entry> mem_map;
 	counted<frame_block> frame_blocks;
 
+	program *kernel;
+	program *init;
+	counted<void> symbol_table;
 	allocation_register *allocations;
+	uintptr_t modules;
 
 	void *runtime_services;
 	void *acpi_table;

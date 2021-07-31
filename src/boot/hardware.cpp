@@ -1,6 +1,7 @@
-#include "hardware.h"
 #include "console.h"
+#include "cpu/cpu_id.h"
 #include "error.h"
+#include "hardware.h"
 #include "status.h"
 
 namespace boot {
@@ -53,7 +54,6 @@ wrmsr(uint32_t addr, uint64_t value)
 	__asm__ __volatile__ ("wrmsr" :: "c"(addr), "a"(low), "d"(high));
 }
 
-
 void
 setup_control_regs()
 {
@@ -76,6 +76,28 @@ setup_control_regs()
 		0;
 	wrmsr(IA32_EFER, efer);
 }
+
+void
+check_cpu_supported()
+{
+	status_line status {L"Checking CPU features"};
+
+	cpu::cpu_id cpu;
+	uint64_t missing = cpu.missing();
+	if (missing) {
+#define CPU_FEATURE_OPT(...)
+#define CPU_FEATURE_REQ(name, ...) \
+		if (!cpu.has_feature(cpu::feature::name)) { \
+			status::fail(L"CPU required feature " L ## #name, uefi::status::unsupported); \
+		}
+#include "cpu/features.inc"
+#undef CPU_FEATURE_REQ
+#undef CPU_FEATURE_OPT
+
+		error::raise(uefi::status::unsupported, L"CPU not supported");
+	}
+}
+
 
 } // namespace hw
 } // namespace boot

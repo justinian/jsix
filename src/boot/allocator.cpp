@@ -4,6 +4,7 @@
 #include "kutil/no_construct.h"
 #include "allocator.h"
 #include "error.h"
+#include "init_args.h"
 #include "kernel_args.h"
 #include "memory.h"
 
@@ -15,23 +16,32 @@ memory::allocator &g_alloc = __g_alloc_storage.value;
 namespace memory {
 
 using kernel::init::allocation_register;
+using kernel::init::module;
 using kernel::init::page_allocation;
 
 static_assert(sizeof(allocation_register) == page_size);
 
 
 void
-init_allocator(uefi::boot_services *bs)
+allocator::init(
+		allocation_register *&allocs,
+		modules_page *&modules,
+		uefi::boot_services *bs)
 {
 	new (&g_alloc) allocator(*bs);
+	allocs = g_alloc.m_register;
+	modules = g_alloc.m_modules;
 }
 
 
 allocator::allocator(uefi::boot_services &bs) :
 	m_bs(bs),
 	m_register(nullptr),
-	m_current(nullptr)
-{}
+	m_modules(nullptr)
+{
+	add_register();
+	add_modules();
+}
 
 void
 allocator::add_register()
@@ -45,13 +55,25 @@ allocator::add_register()
 
 	m_bs.set_mem(reg, sizeof(allocation_register), 0);
 
-	if (!m_register) {
-		m_register = m_current = reg;
-		return;
-	}
+	if (m_register)
+		m_register->next = reg;
 
-	m_current->next = reg;
-	m_current = reg;
+	m_register = reg;
+	return;
+}
+
+void
+allocator::add_modules()
+{
+	modules_page *mods = reinterpret_cast<modules_page*>(
+		allocate_pages(1, alloc_type::init_args, true));
+
+	if (m_modules)
+		m_modules->next = reinterpret_cast<uintptr_t>(mods);
+
+	mods->modules = reinterpret_cast<module*>(mods + 1);
+	m_modules = mods;
+	m_next_mod = mods->modules;
 	return;
 }
 
@@ -64,7 +86,7 @@ allocator::allocate_pages(size_t count, alloc_type type, bool zero)
 			__LINE__);
 	}
 
-	if (!m_current || m_current->count == 0xff)
+	if (!m_register || m_register->count == 0xff)
 		add_register();
 
 	void *pages = nullptr;
@@ -74,7 +96,7 @@ allocator::allocate_pages(size_t count, alloc_type type, bool zero)
 			uefi::memory_type::loader_data, count, &pages),
 		L"Failed allocating usable pages");
 
-	page_allocation &ent = m_current->entries[m_current->count++];
+	page_allocation &ent = m_register->entries[m_register->count++];
 	ent.address = reinterpret_cast<uintptr_t>(pages);
 	ent.count = count;
 	ent.type = type;
@@ -83,6 +105,24 @@ allocator::allocate_pages(size_t count, alloc_type type, bool zero)
 		m_bs.set_mem(pages, count * page_size, 0);
 
 	return pages;
+}
+
+module *
+allocator::allocate_module_untyped(size_t size)
+{
+	size_t remaining =
+		reinterpret_cast<uintptr_t>(m_modules) + page_size
+		- reinterpret_cast<uintptr_t>(m_next_mod);
+
+	if (size > remaining)
+		add_modules();
+
+	++m_modules->count;
+	module *m = m_next_mod;
+	m_next_mod = offset_ptr<module>(m_next_mod, size);
+
+	m->mod_length = size;
+	return m;
 }
 
 void *

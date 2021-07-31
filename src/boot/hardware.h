@@ -16,5 +16,8 @@ void * find_acpi_table(uefi::system_table *st);
 /// Enable CPU options in CR4 etc for the kernel starting state.
 void setup_control_regs();
 
+/// Check that all required cpu features are supported
+void check_cpu_supported();
+
 } // namespace hw
 } // namespace boot

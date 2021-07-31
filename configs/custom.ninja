@@ -45,12 +45,16 @@ build ${build_root}/fatroot/testapp.elf : cp ${build_root}/user/testapp.elf
 build ${build_root}/fatroot/drv.uefi_fb.elf : cp ${build_root}/user/drv.uefi_fb.elf
     name = UEFI framebuffer driver to FAT image
 
+build ${build_root}/fatroot/srv.init.elf : cp ${build_root}/user/srv.init.elf
+    name = Init server to FAT image
+
 build ${build_root}/fatroot/symbol_table.dat : makest ${build_root}/jsix.elf
 
 build ${build_root}/jsix.img : makefat | $
     ${build_root}/fatroot/symbol_table.dat $
     ${build_root}/fatroot/testapp.elf $
     ${build_root}/fatroot/drv.uefi_fb.elf $
+    ${build_root}/fatroot/srv.init.elf $
     ${build_root}/fatroot/jsix.elf $
     ${build_root}/fatroot/efi/boot/bootx64.efi
     name = jsix.img

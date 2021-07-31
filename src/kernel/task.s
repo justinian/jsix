@@ -53,20 +53,6 @@ task_switch:
 	pop rbp
 	ret
 
-
-extern initialize_main_user_stack
-extern kernel_to_user_trampoline
-global initialize_main_thread
-initialize_main_thread:
-	call initialize_main_user_stack
-
-	; user rsp is now in rax, put it in the right place for sysret
-	mov [rsp + 0x30], rax
-	mov [gs:CPU_DATA.rsp3], rax
-
-	; the entrypoint should already be on the stack
-	jmp kernel_to_user_trampoline
-
 global _current_gsbase
 _current_gsbase:
 	mov rax, [gs:CPU_DATA.self]

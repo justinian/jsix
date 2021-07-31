@@ -2,6 +2,7 @@
 #include "j6/types.h"
 
 #include "device_manager.h"
+#include "frame_allocator.h"
 #include "log.h"
 #include "objects/endpoint.h"
 #include "objects/thread.h"
@@ -60,12 +61,17 @@ system_bind_irq(j6_handle_t sys, j6_handle_t endp, unsigned irq)
 }
 
 j6_status_t
-system_map_mmio(j6_handle_t sys, j6_handle_t *vma_handle, uintptr_t phys_addr, size_t size, uint32_t flags)
+system_map_phys(j6_handle_t sys, j6_handle_t *vma_handle, uintptr_t phys_addr, size_t size, uint32_t flags)
 {
 	// TODO: check capabilities on sys handle
 	if (!vma_handle) return j6_err_invalid_arg;
 
-	vm_flags vmf = vm_flags::mmio | (static_cast<vm_flags>(flags) & vm_flags::user_mask);
+	// TODO: check to see if frames are already used? How would that collide with
+	// the bootloader's allocated pages already being marked used?
+	if (!(flags & vm_flags::mmio))
+		frame_allocator::get().used(phys_addr, memory::page_count(size));
+
+	vm_flags vmf = (static_cast<vm_flags>(flags) & vm_flags::driver_mask);
 	construct_handle<vm_area_fixed>(vma_handle, phys_addr, size, vmf);
 
 	return j6_status_ok;

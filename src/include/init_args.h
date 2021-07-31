@@ -9,11 +9,19 @@ namespace kernel {
 namespace init {
 
 enum class module_type : uint8_t {
+	none,
 	program,
 	framebuffer,
 };
 
-enum class module_flags : uint8_t { none = 0 };
+enum class module_flags : uint8_t {
+	none      = 0x00,
+
+	/// This module was already handled by the bootloader,
+	/// no action is needed. The module is included for
+	/// informational purposes only.
+	no_load   = 0x01,
+};
 
 struct module
 {
@@ -52,7 +60,7 @@ struct modules_page
 {
 	uint8_t count;
 	module *modules;
-	modules_page *next;
+	uintptr_t next;
 };
 
 } // namespace init

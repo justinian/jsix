@@ -55,8 +55,9 @@ main(int argc, const char **argv)
 	j6_handle_t fb_handle = j6_handle_invalid;
 	uint32_t flags =
 		j6_vm_flag_write |
-		j6_vm_flag_write_combine;
-	j6_status_t s = j6_system_map_mmio(__handle_sys, &fb_handle, fb->addr, fb->size, flags);
+		j6_vm_flag_write_combine |
+		j6_vm_flag_mmio;
+	j6_status_t s = j6_system_map_phys(__handle_sys, &fb_handle, fb->addr, fb->size, flags);
 	if (s != j6_status_ok) {
 		return s;
 	}

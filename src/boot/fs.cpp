@@ -9,6 +9,7 @@
 #include "console.h"
 #include "error.h"
 #include "fs.h"
+#include "kernel_args.h"
 #include "memory.h"
 #include "status.h"
 
