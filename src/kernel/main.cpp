@@ -24,7 +24,6 @@
 #include "objects/vm_area.h"
 #include "scheduler.h"
 #include "serial.h"
-#include "symbol_table.h"
 #include "syscall.h"
 #include "tss.h"
 #include "vm_space.h"
@@ -42,8 +41,6 @@ extern "C" {
 	void ap_idle();
 	void init_ap_trampoline(void*, cpu_data *, void (*)());
 }
-
-extern void __kernel_assert(const char *, unsigned, const char *);
 
 using namespace kernel;
 
@@ -82,7 +79,10 @@ run_constructors()
 void
 kernel_main(init::args *args)
 {
-	kutil::assert_set_callback(__kernel_assert);
+    if (args->panic) {
+        IDT::set_nmi_handler(args->panic->entrypoint);
+        kutil::assert::symbol_table = args->symbol_table | memory::page_offset;
+    }
 
 	init_console();
 	logger_init();
@@ -127,10 +127,6 @@ kernel_main(init::args *args)
 	memory_initialize_post_ctors(*args);
 
 	cpu->tss->create_ist_stacks(cpu->idt->used_ist_entries());
-
-	if (args->symbol_table.count) {
-		new symbol_table {args->symbol_table.pointer, args->symbol_table.count};
-	}
 
 	syscall_initialize();
 

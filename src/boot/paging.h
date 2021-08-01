@@ -50,14 +50,13 @@ void map_pages(
 	uintptr_t phys, uintptr_t virt,
 	size_t count, bool write_flag, bool exe_flag);
 
-/// Map a program section in physical memory to its virtual address in the
-/// given page tables.
+/// Map the sections of a program in physical memory to their virtual memory
+/// addresses in the given page tables.
 /// \arg args    The kernel args struct, used for the page table cache and pml4
-/// \arg section The program section to load
-void map_section(
+/// \arg program The program to load
+void map_program(
 	kernel::init::args *args,
-	const kernel::init::program_section &section);
-
+    kernel::init::program &program);
 
 } // namespace paging
 } // namespace boot

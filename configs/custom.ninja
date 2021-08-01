@@ -1,7 +1,7 @@
 
 rule makest
     description = Making symbol table
-    command = nm $in | ${source_root}/scripts/build_symbol_table.py $out
+    command = nm -n -S --demangle $in | ${source_root}/scripts/build_symbol_table.py $out
 
 rule makefat
     description = Creating $name
@@ -45,6 +45,9 @@ build ${build_root}/fatroot/testapp.elf : cp ${build_root}/user/testapp.elf
 build ${build_root}/fatroot/drv.uefi_fb.elf : cp ${build_root}/user/drv.uefi_fb.elf
     name = UEFI framebuffer driver to FAT image
 
+build ${build_root}/fatroot/panic.serial.elf : cp ${build_root}/kernel/panic.serial.elf
+    name = UEFI framebuffer driver to FAT image
+
 build ${build_root}/fatroot/srv.init.elf : cp ${build_root}/user/srv.init.elf
     name = Init server to FAT image
 
@@ -56,6 +59,7 @@ build ${build_root}/jsix.img : makefat | $
     ${build_root}/fatroot/drv.uefi_fb.elf $
     ${build_root}/fatroot/srv.init.elf $
     ${build_root}/fatroot/jsix.elf $
+    ${build_root}/fatroot/panic.serial.elf $
     ${build_root}/fatroot/efi/boot/bootx64.efi
     name = jsix.img
 

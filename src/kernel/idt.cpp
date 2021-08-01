@@ -8,10 +8,12 @@ extern "C" {
 	void idt_write(const void *idt_ptr);
 
 #define ISR(i, s, name)  extern void name ();
+#define NISR(i, s, name)
 #define EISR(i, s, name) extern void name ();
 #define IRQ(i, q, name)  extern void name ();
 #include "interrupt_isrs.inc"
 #undef IRQ
+#undef NISR
 #undef EISR
 #undef ISR
 }
@@ -21,7 +23,13 @@ extern "C" {
 // the previous initialization.
 static kutil::no_construct<IDT> __g_bsp_idt_storage;
 IDT &g_bsp_idt = __g_bsp_idt_storage.value;
+void (*__nmi_handler)();
 
+void
+IDT::set_nmi_handler(uintptr_t address)
+{
+    __nmi_handler = reinterpret_cast<void(*)()>(address);
+}
 
 IDT::IDT()
 {
@@ -32,7 +40,9 @@ IDT::IDT()
 #define ISR(i, s, name)  set(i, & name, 0x08, 0x8e);
 #define EISR(i, s, name) set(i, & name, 0x08, 0x8e);
 #define IRQ(i, q, name)  set(i, & name, 0x08, 0x8e);
+#define NISR(i, s, name) set(i, __nmi_handler, 0x08, 0x8e);
 #include "interrupt_isrs.inc"
+#undef NISR
 #undef IRQ
 #undef EISR
 #undef ISR
@@ -55,10 +65,12 @@ void
 IDT::add_ist_entries()
 {
 #define ISR(i, s, name)   if (s) { set_ist(i, s); }
+#define NISR(i, s, name)  if (s) { set_ist(i, s); }
 #define EISR(i, s, name)  if (s) { set_ist(i, s); }
 #define IRQ(i, q, name)
 #include "interrupt_isrs.inc"
 #undef IRQ
+#undef NISR
 #undef EISR
 #undef ISR
 }
@@ -66,15 +78,19 @@ IDT::add_ist_entries()
 uint8_t
 IDT::used_ist_entries() const
 {
-	uint8_t entries = 0;
+	constexpr uint8_t entries = 
 
-#define ISR(i, s, name)   if (s) { entries |= (1 << s); }
-#define EISR(i, s, name)  if (s) { entries |= (1 << s); }
+#define ISR(i, s, name)   ((s) ? (1 << s) : 0) |
+#define NISR(i, s, name)  ((s) ? (1 << s) : 0) |
+#define EISR(i, s, name)  ((s) ? (1 << s) : 0) |
 #define IRQ(i, q, name)
 #include "interrupt_isrs.inc"
 #undef IRQ
+#undef NISR
 #undef EISR
 #undef ISR
+
+    0;
 
 	return entries;
 }

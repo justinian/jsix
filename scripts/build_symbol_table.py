@@ -4,37 +4,37 @@
 # is as follows:
 #
 # <num_entires> : 8 bytes
-# <index>       : 16 * N bytes
+# <index>       : 24 * N bytes
 # <name data>   : variable
 #
 # Each index entry has the format
 # <symbol address> : 8 bytes
+# <symbol size>    : 8 bytes
 # <offset of name> : 8 bytes
 #
 # Name offsets are from the start of the symbol table as a whole. (ie,
 # where <num_entries> is located.)
+
+import re
+
+sym_re = re.compile(r'([0-9a-fA-F]{16}) ([0-9a-fA-F]{16}) [tTvVwW] (.*)')
 
 def parse_syms(infile):
     """Take the output of the `nm` command, and parse it into a tuple
     representing the symbols in the text segment of the binary. Returns
     a list of (address, symbol_name)."""
 
-    from cxxfilt import demangle, InvalidName
-
     syms = []
     for line in sys.stdin:
-        addr, t, mangled = line.split()
-        if t not in "tTvVwW": continue
+        match = sym_re.match(line)
+        if not match: continue
 
-        try:
-            name = demangle(mangled)
-        except InvalidName:
-            continue
+        addr = int(match.group(1), base=16)
+        size = int(match.group(2), base=16)
+        name = match.group(3)
+        syms.append([addr, size, name, 0])
 
-        addr = int(addr, base=16)
-        syms.append((addr, name))
-
-    return sorted(syms)
+    return syms
 
 
 def write_table(syms, outfile):
@@ -46,29 +46,26 @@ def write_table(syms, outfile):
     outfile.write(struct.pack("@Q", len(syms)))
     index_pos = outfile.tell()
 
-    outfile.seek(struct.calcsize("@QQ") * len(syms), 1)
+    outfile.seek(struct.calcsize("@QQQ") * len(syms), 1)
     nul = b'\0'
 
-    positions = {}
     for s in syms:
-        addr, name = s
-        positions[addr] = outfile.tell()
-
-        data = name.encode('utf-8')
-        outfile.write(name.encode('utf-8'))
+        s[3] = outfile.tell()
+        outfile.write(s[2].encode('utf-8'))
         outfile.write(nul)
 
     outfile.seek(index_pos)
     for s in syms:
         addr = s[0]
-        pos = positions[addr]
-        outfile.write(struct.pack("@QQ", addr, pos))
+        size = s[1]
+        pos = s[3]
+        outfile.write(struct.pack("@QQQ", addr, size, pos))
 
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <output>")
+        print(f"Usage: nm -n -S --demangle | {sys.argv[0]} <output>")
         sys.exit(1)
 
     outfile = open(sys.argv[1], "wb")

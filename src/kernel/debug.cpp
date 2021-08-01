@@ -4,7 +4,6 @@
 #include "gdt.h"
 #include "objects/process.h"
 #include "objects/thread.h"
-#include "symbol_table.h"
 
 size_t __counter_syscall_enter = 0;
 size_t __counter_syscall_sysret = 0;
@@ -43,7 +42,7 @@ print_regs(const cpu_state &regs)
 
 	cons->puts("\n\n");
 	print_regL("rbp", regs.rbp);
-	print_regM("rsp", regs.user_rsp);
+	print_regM("rsp", regs.rsp);
 	print_regR("sp0", cpu.rsp0);
 
 	print_regL("rip", regs.rip);
@@ -60,40 +59,12 @@ struct frame
 };
 
 void
-print_stacktrace(int skip)
-{
-	console *cons = console::get();
-	symbol_table *syms = symbol_table::get();
-
-	frame *fp = nullptr;
-	int fi = -skip;
-	__asm__ __volatile__ ( "mov %%rbp, %0" : "=r" (fp) );
-
-	while (fp && fp->return_addr) {
-		if (fi++ >= 0) {
-			const symbol_table::entry *e = syms ? syms->find_symbol(fp->return_addr) : nullptr;
-			const char *name = e ? e->name : "";
-			cons->printf("  frame %2d:", fi-1);
-
-			cons->set_color(5);
-			cons->printf(" %016llx", fp->return_addr);
-			cons->set_color();
-
-			cons->set_color(6);
-			cons->printf("  %s\n", name);
-			cons->set_color();
-		}
-		fp = fp->prev;
-	}
-}
-
-void
 print_stack(const cpu_state &regs)
 {
 	console *cons = console::get();
 
 	cons->puts("\nStack:\n");
-	uint64_t sp = regs.user_rsp;
+	uint64_t sp = regs.rsp;
 	while (sp <= regs.rbp) {
 		cons->printf("%016x: %016x\n", sp, *reinterpret_cast<uint64_t *>(sp));
 		sp += sizeof(uint64_t);

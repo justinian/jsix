@@ -2,6 +2,8 @@
 /// Helper functions and types for doing type-safe byte-wise pointer math.
 #pragma once
 
+#include <stdint.h>
+
 /// Return a pointer offset from `input` by `offset` bytes.
 /// \tparam T  Cast the return value to a pointer to `T`
 /// \tparam S  The type pointed to by the `input` pointer

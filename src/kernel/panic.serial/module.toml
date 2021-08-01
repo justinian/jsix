@@ -1,0 +1,16 @@
+name = "panic.serial"
+kind = "exe"
+output = "panic.serial.elf"
+targets = ["kernel"]
+deps = ["kutil", "elf"]
+includes = ["src/kernel/panic.serial", "src/kernel"]
+sources = [
+    "display.cpp",
+    "entry.s",
+    "main.cpp",
+    "serial.cpp",
+    "symbol_table.cpp",
+]
+
+[variables]
+ldflags = ["${ldflags}", "-T", "${source_root}/src/kernel/panic.serial/panic.serial.ld"]

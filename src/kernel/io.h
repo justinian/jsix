@@ -20,4 +20,4 @@ void io_wait(unsigned times = 1);
 
 }
 
-const uint16_t COM1 = 0x03f8;
+constexpr uint16_t COM1 = 0x03f8;

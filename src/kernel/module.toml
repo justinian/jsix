@@ -7,7 +7,6 @@ includes = ["src/kernel"]
 sources = [
     "apic.cpp",
     "ap_startup.s",
-    "assert.cpp",
     "boot.s",
     "clock.cpp",
     "console.cpp",
@@ -40,7 +39,6 @@ sources = [
     "pci.cpp",
     "scheduler.cpp",
     "serial.cpp",
-    "symbol_table.cpp",
     "syscall.cpp",
     "syscall.s",
     "syscalls/channel.cpp",
@@ -54,3 +52,6 @@ sources = [
     "tss.cpp",
     "vm_space.cpp",
 ]
+
+[variables]
+ldflags = ["${ldflags}", "-T", "${source_root}/src/kernel/kernel.ld"]

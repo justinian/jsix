@@ -11,6 +11,10 @@ public:
 	/// Get the currently running CPU's IDT
 	static IDT & current();
 
+    /// Set the global NMI handler. Must happen before creating
+    /// any IDTs.
+    static void set_nmi_handler(uintptr_t address);
+
 	/// Install this IDT to the current CPU
 	void install() const;
 

@@ -47,9 +47,11 @@ get_irq(unsigned vector)
 	switch (vector) {
 #define ISR(i, s, name)
 #define EISR(i, s, name)
+#define NISR(i, s, name)
 #define IRQ(i, q, name) case i : return q;
 #include "interrupt_isrs.inc"
 #undef IRQ
+#undef NISR
 #undef EISR
 #undef ISR
 
@@ -118,7 +120,7 @@ isr_handler(cpu_state *regs)
 			print_regR("dr7", dr);
 
 			print_regL("rip", regs->rip);
-			print_regM("rsp", regs->user_rsp);
+			print_regM("rsp", regs->rsp);
 			print_regM("fla", regs->rflags);
 			_halt();
 		}
@@ -130,7 +132,7 @@ isr_handler(cpu_state *regs)
 
 		cons->set_color();
 		print_regs(*regs);
-		print_stacktrace(2);
+		//print_stacktrace(2);
 		_halt();
 		break;
 
@@ -199,7 +201,7 @@ isr_handler(cpu_state *regs)
 			if (regs->errorcode & 0x10) cons->puts(" ip");
 			cons->puts("\n");
 			print_regs(*regs);
-			print_stacktrace(2);
+			//print_stacktrace(2);
 			_halt();
 		}
 		break;
@@ -219,7 +221,7 @@ isr_handler(cpu_state *regs)
 	case isr::isrAssert: {
 			cons->set_color();
 			print_regs(*regs);
-			print_stacktrace(2);
+			//print_stacktrace(2);
 		}
 		_halt();
 		break;
@@ -269,7 +271,7 @@ isr_handler(cpu_state *regs)
 				regs->interrupt, regs->errorcode);
 
 		print_regs(*regs);
-		print_stacktrace(2);
+		//print_stacktrace(2);
 		_halt();
 	}
 

@@ -17,16 +17,18 @@ _kernel_header:
 section .text
 align 16
 global _kernel_start:function (_kernel_start.end - _kernel_start)
+global _kernel_start.real
 _kernel_start:
+	push rbp     ; Never executed, fake function prelude
+	mov rbp, rsp ; to calm down gdb
+
+.real:
 	cli
 
 	mov rsp, idle_stack_end
-	mov qword [rsp + 0x00], 0 ; signal end of stack with 0 return address
-	mov qword [rsp + 0x08], 0 ; and a few extra entries in case of stack
-	mov qword [rsp + 0x10], 0 ; problems
-	mov qword [rsp + 0x18], 0
-
+	sub rsp, 16
 	mov rbp, rsp
+
 	extern kernel_main
 	call kernel_main
 
@@ -54,4 +56,3 @@ idle_stack_begin:
 
 global idle_stack_end
 idle_stack_end:
-	resq 4

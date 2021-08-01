@@ -1,4 +1,4 @@
-ENTRY(_kernel_start)
+ENTRY(_kernel_start.real)
 SECTIONS
 {
 	. = 0xFFFF800000000000;

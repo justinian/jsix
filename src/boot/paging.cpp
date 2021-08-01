@@ -265,5 +265,14 @@ map_section(
 		has_flag(section.type, section_flags::execute));
 }
 
+void
+map_program(
+	kernel::init::args *args,
+    kernel::init::program &program)
+{
+	for (auto &section : program.sections)
+		paging::map_section(args, section);
+}
+
 } // namespace paging
 } // namespace boot

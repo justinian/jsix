@@ -8,11 +8,13 @@
 enum class isr : uint8_t
 {
 #define ISR(i, s, name)     name = i,
+#define NISR(i, s, name)    name = i,
 #define EISR(i, s, name)    name = i,
 #define IRQ(i, q, name)  name = i,
 #include "interrupt_isrs.inc"
 #undef IRQ
 #undef EISR
+#undef NISR
 #undef ISR
 
 	_zero = 0

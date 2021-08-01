@@ -1,16 +1,10 @@
 #include "kutil/assert.h"
 
 namespace kutil {
+namespace assert {
 
-assert_callback __kernel_assert_p = nullptr;
+uint32_t *apic_icr = reinterpret_cast<uint32_t*>(0xffffc000fee00300);
+uintptr_t symbol_table = 0;
 
-assert_callback
-assert_set_callback(assert_callback f)
-{
-	assert_callback old = __kernel_assert_p;
-	__kernel_assert_p = f;
-	return old;
-}
-
-
+} // namespace assert
 } // namespace kutil

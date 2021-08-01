@@ -33,6 +33,8 @@ const loader::program_desc kern_desc = {L"kernel", L"jsix.elf"};
 const loader::program_desc init_desc = {L"init server", L"srv.init.elf"};
 const loader::program_desc fb_driver = {L"UEFI framebuffer driver", L"drv.uefi_fb.elf"};
 
+const loader::program_desc panic_handler = {L"Serial panic handler", L"panic.serial.elf"};
+
 const loader::program_desc extra_programs[] = {
 	{L"test application", L"testapp.elf"},
 };
@@ -86,16 +88,17 @@ load_resources(init::args *args, video::screen *screen, uefi::handle image, uefi
 		loader::load_module(disk, fb_driver);
 	}
 
-	args->symbol_table = loader::load_file(disk, {L"symbol table", L"symbol_table.dat"});
+    buffer symbol_table = loader::load_file(disk, {L"symbol table", L"symbol_table.dat"});
+	args->symbol_table = reinterpret_cast<uintptr_t>(symbol_table.pointer);
 
 	args->kernel = loader::load_program(disk, kern_desc, true);
 	args->init = loader::load_program(disk, init_desc);
+    args->panic = loader::load_program(disk, panic_handler);
 
 	for (auto &desc : extra_programs)
 		loader::load_module(disk, desc);
 
     loader::verify_kernel_header(*args->kernel);
-
 }
 
 memory::efi_mem_map
@@ -144,15 +147,14 @@ efi_main(uefi::handle image, uefi::system_table *st)
 
 	status_bar status {screen}; // Switch to fb status display
 
-	// Map the kernel to the appropriate address
-	init::program &kernel = *args->kernel;
-	for (auto &section : kernel.sections)
-		paging::map_section(args, section);
+	// Map the kernel and panic handler to the appropriate addresses
+    paging::map_program(args, *args->kernel);
+    paging::map_program(args, *args->panic);
 
 	memory::fix_frame_blocks(args);
 
 	init::entrypoint kentry =
-		reinterpret_cast<init::entrypoint>(kernel.entrypoint);
+		reinterpret_cast<init::entrypoint>(args->kernel->entrypoint);
 	//status.next();
 
 	hw::setup_control_regs();
@@ -161,7 +163,6 @@ efi_main(uefi::handle image, uefi::system_table *st)
 
 	change_pointer(args);
 	change_pointer(args->pml4);
-	change_pointer(args->symbol_table.pointer);
 
 	change_pointer(args->kernel);
 	change_pointer(args->kernel->sections.pointer);

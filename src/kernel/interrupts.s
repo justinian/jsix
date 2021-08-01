@@ -71,7 +71,9 @@ isr_handler_return:
 
 %define EISR(i, s, name)     EMIT_EISR name, i   ; ISR with error code
 %define  ISR(i, s, name)     EMIT_ISR name, i
-%define  IRQ(i, q, name)  EMIT_IRQ name, i
+%define  IRQ(i, q, name)     EMIT_IRQ name, i
+
+%define NISR(i, s, name) ; We don't emit a handler for NMI
 
 section .isrs
 %include "interrupt_isrs.inc"

@@ -126,9 +126,10 @@ struct args
 
 	program *kernel;
 	program *init;
-	counted<void> symbol_table;
+	program *panic;
 	allocation_register *allocations;
 	uintptr_t modules;
+	uintptr_t symbol_table;
 
 	void *runtime_services;
 	void *acpi_table;

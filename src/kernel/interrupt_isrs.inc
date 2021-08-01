@@ -1,6 +1,6 @@
 ISR (0x00, 0, isrDivideByZero)
 ISR (0x01, 0, isrDebug)
-ISR (0x02, 1, isrNMI)
+NISR(0x02, 1, isrNMI)
 ISR (0x03, 0, isrBreakpoint)
 ISR (0x04, 0, isrOverflow)
 ISR (0x05, 0, isrBRE)
