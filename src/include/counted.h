@@ -20,12 +20,19 @@ struct counted
 	inline const T & operator [] (int i) const { return pointer[i]; }
 
 	using iterator = offset_iterator<T>;
+	using const_iterator = const_offset_iterator<T>;
 
 	/// Return an iterator to the beginning of the array
 	inline iterator begin() { return iterator(pointer, sizeof(T)); }
 
 	/// Return an iterator to the end of the array
 	inline iterator end() { return offset_ptr<T>(pointer, sizeof(T)*count); }
+
+	/// Return an iterator to the beginning of the array
+	inline const_iterator begin() const { return const_iterator(pointer, sizeof(T)); }
+
+	/// Return an iterator to the end of the array
+	inline const_iterator end() const { return offset_ptr<const T>(pointer, sizeof(T)*count); }
 };
 
 /// Specialize for `void` which cannot be indexed or iterated
