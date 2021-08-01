@@ -19,7 +19,7 @@ class PrintStackCommand(gdb.Command):
             try:
                 offset = i * 8
                 base_addr = gdb.parse_and_eval(base)
-                value = gdb.parse_and_eval(f"*(uint64_t*)({base} + {offset})")
+                value = gdb.parse_and_eval(f"*(uint64_t*)({base} + 0x{offset:x})")
                 print("{:016x} (+{:04x}): {:016x}".format(int(base_addr) + offset, offset, int(value)))
             except Exception as e:
                 print(e)
@@ -41,17 +41,22 @@ class PrintBacktraceCommand(gdb.Command):
         if len(args) > 1:
             frame = args[1]
 
+        frame = gdb.parse_and_eval(f"{frame}")
+
         for i in range(depth-1, -1, -1):
-            ret = gdb.parse_and_eval(f"*(uint64_t*)({frame} + 8)")
-            frame = gdb.parse_and_eval(f"*(uint64_t*)({frame})")
+            ret = gdb.parse_and_eval(f"*(uint64_t*)({frame} + 0x8)")
 
             name = ""
-            block = gdb.block_for_pc(int(ret))
-            if block:
-                name = block.function or ""
+            try:
+                block = gdb.block_for_pc(int(ret))
+                if block:
+                    name = block.function or ""
+            except RuntimeError:
+                pass
 
-            print("{:016x} {}".format(int(ret), name))
+            print("{:016x}: {:016x} {}".format(int(frame), int(ret), name))
 
+            frame = gdb.parse_and_eval(f"*(uint64_t*)({frame})")
             if frame == 0 or ret == 0:
                 return
 
