@@ -1,6 +1,7 @@
 #include <stdint.h>
 
 #include "kernel_memory.h"
+#include "kutil/printf.h"
 
 #include "apic.h"
 #include "console.h"
@@ -92,87 +93,43 @@ isr_handler(cpu_state *regs)
 	if (old_ist)
 		idt.set_ist(vector, 0);
 
+    char message[200];
+
 	switch (static_cast<isr>(vector)) {
 
-	case isr::isrDebug: {
-			cons->set_color(11);
-			cons->puts("\nDebug Exception:\n");
-			cons->set_color();
-
-			uint64_t dr = 0;
-
-			__asm__ __volatile__ ("mov %%dr0, %0" : "=r"(dr));
-			print_regL("dr0", dr);
-
-			__asm__ __volatile__ ("mov %%dr1, %0" : "=r"(dr));
-			print_regM("dr1", dr);
-
-			__asm__ __volatile__ ("mov %%dr2, %0" : "=r"(dr));
-			print_regM("dr2", dr);
-
-			__asm__ __volatile__ ("mov %%dr3, %0" : "=r"(dr));
-			print_regR("dr3", dr);
-
-			__asm__ __volatile__ ("mov %%dr6, %0" : "=r"(dr));
-			print_regL("dr6", dr);
-
-			__asm__ __volatile__ ("mov %%dr7, %0" : "=r"(dr));
-			print_regR("dr7", dr);
-
-			print_regL("rip", regs->rip);
-			print_regM("rsp", regs->rsp);
-			print_regM("fla", regs->rflags);
-			_halt();
-		}
+	case isr::isrDebug:
+        asm volatile ("mov %%dr0, %%r8" ::: "r8");
+        asm volatile ("mov %%dr1, %%r9" ::: "r9");
+        asm volatile ("mov %%dr2, %%r10" ::: "r10");
+        asm volatile ("mov %%dr3, %%r11" ::: "r11");
+        asm volatile ("mov %%dr4, %%r12" ::: "r12");
+        asm volatile ("mov %%dr5, %%r13" ::: "r13");
+        asm volatile ("mov %%dr6, %%r14" ::: "r14");
+        asm volatile ("mov %%dr7, %%r15" ::: "r15");
+        kassert(false, "Debug exception");
 		break;
 
 	case isr::isrDoubleFault:
-		cons->set_color(9);
-		cons->printf("\nDouble Fault:\n");
-
-		cons->set_color();
-		print_regs(*regs);
-		//print_stacktrace(2);
-		_halt();
+        kassert(false, "Double fault");
 		break;
 
-	case isr::isrGPFault: {
-			cons->set_color(9);
-			cons->puts("\nGeneral Protection Fault:\n");
-			cons->set_color();
-
-			cons->printf("   errorcode: %lx", regs->errorcode);
-			if (regs->errorcode & 0x01) cons->puts(" external");
-
+	case isr::isrGPFault:
+        if (regs->errorcode & 0xfff0) {
 			int index = (regs->errorcode & 0xffff) >> 4;
-			if (index) {
-				switch ((regs->errorcode & 0x07) >> 1) {
-				case 0:
-					cons->printf(" GDT[%x]\n", index);
-					GDT::current().dump(index);
-					break;
+            int ti = (regs->errorcode & 0x07) >> 1;
+            char const *table =
+                (ti & 1) ? "IDT" :
+                (!ti) ? "GDT" :
+                "LDT";
 
-				case 1:
-				case 3:
-					cons->printf(" IDT[%x]\n", index);
-					IDT::current().dump(index);
-					break;
-
-				default:
-					cons->printf(" LDT[%x]??\n", index);
-					break;
-				}
-			} else {
-				cons->putc('\n');
-			}
-			print_regs(*regs);
-			/*
-			print_stacktrace(2);
-			print_stack(*regs);
-			*/
-		}
-		_halt();
-		break;
+            snprintf(message, sizeof(message), "General Protection Fault, error:%lx%s %s[%d]",
+                regs->errorcode, regs->errorcode & 1 ? " external" : "", table, index);
+        } else {
+            snprintf(message, sizeof(message), "General Protection Fault, error:%lx%s",
+                regs->errorcode, regs->errorcode & 1 ? " external" : "");
+        }
+        kassert(false, message);
+        break;
 
 	case isr::isrPageFault: {
 			uintptr_t cr2 = 0;
@@ -189,20 +146,14 @@ isr_handler(cpu_state *regs)
 			if (cr2 && space.handle_fault(cr2, ft))
 				break;
 
-			cons->set_color(11);
-			cons->puts("\nPage Fault:\n");
-			cons->set_color();
-
-			cons->puts("       flags:");
-			if (regs->errorcode & 0x01) cons->puts(" present");
-			if (regs->errorcode & 0x02) cons->puts(" write");
-			if (regs->errorcode & 0x04) cons->puts(" user");
-			if (regs->errorcode & 0x08) cons->puts(" reserved");
-			if (regs->errorcode & 0x10) cons->puts(" ip");
-			cons->puts("\n");
-			print_regs(*regs);
-			//print_stacktrace(2);
-			_halt();
+            snprintf(message, sizeof(message),
+                "Page fault: %016llx%s%s%s%s%s", cr2,
+                (regs->errorcode & 0x01) ? " present" : "",
+                (regs->errorcode & 0x02) ? " write" : "",
+                (regs->errorcode & 0x04) ? " user" : "",
+                (regs->errorcode & 0x08) ? " reserved" : "",
+                (regs->errorcode & 0x10) ? " ip" : "");
+            kassert(false, message);
 		}
 		break;
 
@@ -211,26 +162,8 @@ isr_handler(cpu_state *regs)
 		break;
 
 	case isr::isrLINT0:
-		cons->puts("\nLINT0\n");
-		break;
-
 	case isr::isrLINT1:
-		cons->puts("\nLINT1\n");
 		break;
-
-	case isr::isrAssert: {
-			cons->set_color();
-			print_regs(*regs);
-			//print_stacktrace(2);
-		}
-		_halt();
-		break;
-
-	/*
-	case isr::isrSyscall:
-		syscall_dispatch(regs);
-		break;
-	*/
 
 	case isr::isrSpurious:
 		// No EOI for the spurious interrupt
@@ -262,17 +195,8 @@ isr_handler(cpu_state *regs)
 		break;
 
 	default:
-		cons->set_color(9);
-		cons->printf("\nReceived %02x interrupt:\n",
-				(static_cast<isr>(regs->interrupt)));
-
-		cons->set_color();
-		cons->printf("         ISR: %02lx  ERR: %lx\n\n",
-				regs->interrupt, regs->errorcode);
-
-		print_regs(*regs);
-		//print_stacktrace(2);
-		_halt();
+        snprintf(message, sizeof(message), "Unknown interrupt 0x%x", regs->interrupt);
+        kassert(false, message);
 	}
 
 	// Return the IST for this vector to what it was

@@ -14,6 +14,13 @@ isr_handler_prelude:
 
 	mov rdi, rsp
 	mov rsi, rsp
+
+	mov rax, [rsp + REGS.rip]
+	push rax
+
+	push rbp
+	mov rbp, rsp
+
 	call isr_handler
 	jmp isr_handler_return
 .end:
@@ -30,12 +37,22 @@ irq_handler_prelude:
 
 	mov rdi, rsp
 	mov rsi, rsp
+
+	mov rax, [rsp + REGS.rip]
+	push rax
+
+	push rbp
+	mov rbp, rsp
+
 	call irq_handler
 	; fall through to isr_handler_return
 .end:
 
 global isr_handler_return:function (isr_handler_return.end - isr_handler_return)
 isr_handler_return:
+	pop rbp
+	pop rax ; get rid of the manufactured stack frame
+
 	check_swap_gs
 	pop_all
 

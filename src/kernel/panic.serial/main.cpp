@@ -16,9 +16,6 @@ void panic_handler(
     panic::frame const *fp = nullptr;
 	asm ( "mov %%rbp, %0" : "=r" (fp) );
 
-    // Skip the panic handler itself
-    if (fp) fp = fp->prev;
-
     print_header(com1, message);
     print_callstack(com1, syms, fp);
     print_cpu_state(com1, *regs);
