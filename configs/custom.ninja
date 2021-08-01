@@ -42,10 +42,13 @@ build ${build_root}/fatroot/efi/boot/bootx64.efi : cp ${build_root}/boot/boot.ef
 build ${build_root}/fatroot/testapp.elf : cp ${build_root}/user/testapp.elf
     name = null driver to FAT image
 
-build ${build_root}/fatroot/drv.uefi_fb.elf : cp ${build_root}/user/drv.uefi_fb.elf
-    name = UEFI framebuffer driver to FAT image
+build ${build_root}/panic.serial.elf : strip ${build_root}/kernel/panic.serial.elf
+    name = Serial panic handler
 
-build ${build_root}/fatroot/panic.serial.elf : cp ${build_root}/kernel/panic.serial.elf
+build ${build_root}/fatroot/panic.serial.elf : cp ${build_root}/panic.serial.elf
+    name = Serial panic handler to FAT image
+
+build ${build_root}/fatroot/drv.uefi_fb.elf : cp ${build_root}/user/drv.uefi_fb.elf
     name = UEFI framebuffer driver to FAT image
 
 build ${build_root}/fatroot/srv.init.elf : cp ${build_root}/user/srv.init.elf
