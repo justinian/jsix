@@ -83,8 +83,11 @@ disable_legacy_pic()
 void
 isr_handler(cpu_state *regs)
 {
-	console *cons = console::get();
 	uint8_t vector = regs->interrupt & 0xff;
+    if ((vector & 0xf0) == 0xf0) {
+        *reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
+        return;
+    }
 
 	// Clear out the IST for this vector so we just keep using
 	// this stack
@@ -168,31 +171,6 @@ isr_handler(cpu_state *regs)
 	case isr::isrSpurious:
 		// No EOI for the spurious interrupt
 		return;
-
-	case isr::isrIgnore0:
-	case isr::isrIgnore1:
-	case isr::isrIgnore2:
-	case isr::isrIgnore3:
-	case isr::isrIgnore4:
-	case isr::isrIgnore5:
-	case isr::isrIgnore6:
-	case isr::isrIgnore7:
-		//cons->printf("\nIGNORED: %02x\n", regs->interrupt);
-		outb(PIC1, 0x20);
-		break;
-
-	case isr::isrIgnore8:
-	case isr::isrIgnore9:
-	case isr::isrIgnoreA:
-	case isr::isrIgnoreB:
-	case isr::isrIgnoreC:
-	case isr::isrIgnoreD:
-	case isr::isrIgnoreE:
-	case isr::isrIgnoreF:
-		//cons->printf("\nIGNORED: %02x\n", regs->interrupt);
-		outb(PIC1, 0x20);
-		outb(PIC2, 0x20);
-		break;
 
 	default:
         snprintf(message, sizeof(message), "Unknown interrupt 0x%x", regs->interrupt);
