@@ -21,7 +21,9 @@ enum class isr : uint8_t
 };
 
 /// Helper operator to add an offset to an isr vector
-isr operator+(const isr &lhs, int rhs);
+constexpr isr operator+(const isr &lhs, int rhs) {
+    return static_cast<isr>(static_cast<uint8_t>(lhs) + rhs);
+}
 
 extern "C" {
 	/// Set the CPU interrupt enable flag (sti)

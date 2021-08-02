@@ -3,21 +3,13 @@
 #include "kernel_memory.h"
 #include "kutil/printf.h"
 
-#include "apic.h"
-#include "console.h"
 #include "cpu.h"
-#include "debug.h"
 #include "device_manager.h"
-#include "gdt.h"
 #include "idt.h"
 #include "interrupts.h"
 #include "io.h"
-#include "kernel_memory.h"
-#include "log.h"
 #include "objects/process.h"
 #include "scheduler.h"
-#include "syscall.h"
-#include "tss.h"
 #include "vm_space.h"
 
 static const uint16_t PIC1 = 0x20;
@@ -25,21 +17,9 @@ static const uint16_t PIC2 = 0xa0;
 
 constexpr uintptr_t apic_eoi_addr = 0xfee000b0 + ::memory::page_offset;
 
-constexpr size_t increment_offset = 0x1000;
-
 extern "C" {
-	void _halt();
-
 	void isr_handler(cpu_state*);
 	void irq_handler(cpu_state*);
-
-}
-
-isr
-operator+(const isr &lhs, int rhs)
-{
-	using under_t = std::underlying_type<isr>::type;
-	return static_cast<isr>(static_cast<under_t>(lhs) + rhs);
 }
 
 uint8_t
@@ -186,15 +166,12 @@ isr_handler(cpu_state *regs)
 void
 irq_handler(cpu_state *regs)
 {
-	console *cons = console::get();
 	uint8_t irq = get_irq(regs->interrupt);
 	if (! device_manager::get().dispatch_irq(irq)) {
-		cons->set_color(11);
-		cons->printf("\nReceived unknown IRQ: %d (vec %d)\n",
-				irq, regs->interrupt);
-		cons->set_color();
-
-		print_regs(*regs);
+        char message[100];
+        snprintf(message, sizeof(message),
+            "Unknown IRQ: %d (vec 0x%x)", irq, regs->interrupt);
+        kassert(false, message);
 	}
 
 	*reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
