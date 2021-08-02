@@ -5,8 +5,8 @@
 #include <stdint.h>
 
 namespace uefi {
-	struct boot_services;
-	struct runtime_services;
+    struct boot_services;
+    struct runtime_services;
 }
 
 namespace boot {
@@ -19,7 +19,7 @@ constexpr size_t page_size = 0x1000;
 
 /// Get the number of pages needed to hold `bytes` bytes
 inline constexpr size_t bytes_to_pages(size_t bytes) {
-	return ((bytes - 1) / page_size) + 1;
+    return ((bytes - 1) / page_size) + 1;
 }
 
 /// \defgroup pointer_fixup
@@ -42,9 +42,9 @@ void mark_pointer_fixup(void **p);
 /// \arg pml4  The root page table for the new mappings
 /// \arg map   The UEFI memory map, used to update runtime services
 void virtualize(
-	void *pml4,
-	efi_mem_map &map,
-	uefi::runtime_services *rs);
+    void *pml4,
+    efi_mem_map &map,
+    uefi::runtime_services *rs);
 
 } // namespace boot
 } // namespace memory

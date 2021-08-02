@@ -5,14 +5,14 @@
 #include "objects/kobject.h"
 
 class system :
-	public kobject
+    public kobject
 {
 public:
-	static constexpr kobject::type type = kobject::type::event;
+    static constexpr kobject::type type = kobject::type::event;
 
-	inline static system & get() { return s_instance; }
+    inline static system & get() { return s_instance; }
 
 private:
-	static system s_instance;
-	system() : kobject(type::system) {}
+    static system s_instance;
+    system() : kobject(type::system) {}
 };

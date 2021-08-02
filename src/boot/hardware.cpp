@@ -10,92 +10,92 @@ namespace hw {
 void *
 find_acpi_table(uefi::system_table *st)
 {
-	status_line status(L"Searching for ACPI table");
+    status_line status(L"Searching for ACPI table");
 
-	// Find ACPI tables. Ignore ACPI 1.0 if a 2.0 table is found.
-	uintptr_t acpi1_table = 0;
+    // Find ACPI tables. Ignore ACPI 1.0 if a 2.0 table is found.
+    uintptr_t acpi1_table = 0;
 
-	for (size_t i = 0; i < st->number_of_table_entries; ++i) {
-		uefi::configuration_table *table = &st->configuration_table[i];
+    for (size_t i = 0; i < st->number_of_table_entries; ++i) {
+        uefi::configuration_table *table = &st->configuration_table[i];
 
-		// If we find an ACPI 2.0 table, return it immediately
-		if (table->vendor_guid == uefi::vendor_guids::acpi2)
-			return table->vendor_table;
+        // If we find an ACPI 2.0 table, return it immediately
+        if (table->vendor_guid == uefi::vendor_guids::acpi2)
+            return table->vendor_table;
 
-		if (table->vendor_guid == uefi::vendor_guids::acpi1) {
-			// Mark a v1 table with the LSB high
-			acpi1_table = reinterpret_cast<uintptr_t>(table->vendor_table);
-			acpi1_table |= 1;
-		}
-	}
+        if (table->vendor_guid == uefi::vendor_guids::acpi1) {
+            // Mark a v1 table with the LSB high
+            acpi1_table = reinterpret_cast<uintptr_t>(table->vendor_table);
+            acpi1_table |= 1;
+        }
+    }
 
-	if (!acpi1_table) {
-		error::raise(uefi::status::not_found, L"Could not find ACPI table");
-	} else if (acpi1_table & 1) {
-		status_line::warn(L"Only found ACPI 1.0 table");
-	}
+    if (!acpi1_table) {
+        error::raise(uefi::status::not_found, L"Could not find ACPI table");
+    } else if (acpi1_table & 1) {
+        status_line::warn(L"Only found ACPI 1.0 table");
+    }
 
-	return reinterpret_cast<void*>(acpi1_table);
+    return reinterpret_cast<void*>(acpi1_table);
 }
 
 static uint64_t
 rdmsr(uint32_t addr)
 {
-	uint32_t low, high;
-	__asm__ __volatile__ ("rdmsr" : "=a"(low), "=d"(high) : "c"(addr));
-	return (static_cast<uint64_t>(high) << 32) | low;
+    uint32_t low, high;
+    __asm__ __volatile__ ("rdmsr" : "=a"(low), "=d"(high) : "c"(addr));
+    return (static_cast<uint64_t>(high) << 32) | low;
 }
 
 static void
 wrmsr(uint32_t addr, uint64_t value)
 {
-	uint32_t low = value & 0xffffffff;
-	uint32_t high = value >> 32;
-	__asm__ __volatile__ ("wrmsr" :: "c"(addr), "a"(low), "d"(high));
+    uint32_t low = value & 0xffffffff;
+    uint32_t high = value >> 32;
+    __asm__ __volatile__ ("wrmsr" :: "c"(addr), "a"(low), "d"(high));
 }
 
 void
 setup_control_regs()
 {
-	uint64_t cr4 = 0;
-	asm volatile ( "mov %%cr4, %0" : "=r" (cr4) );
-	cr4 |=
-		0x000080 | // Enable global pages
-		0x000200 | // Enable FXSAVE/FXRSTOR
-		0x010000 | // Enable FSGSBASE
-		0x020000 | // Enable PCIDs
-		0;
-	asm volatile ( "mov %0, %%cr4" :: "r" (cr4) );
+    uint64_t cr4 = 0;
+    asm volatile ( "mov %%cr4, %0" : "=r" (cr4) );
+    cr4 |=
+        0x000080 | // Enable global pages
+        0x000200 | // Enable FXSAVE/FXRSTOR
+        0x010000 | // Enable FSGSBASE
+        0x020000 | // Enable PCIDs
+        0;
+    asm volatile ( "mov %0, %%cr4" :: "r" (cr4) );
 
-	// Set up IA32_EFER
-	constexpr uint32_t IA32_EFER = 0xC0000080;
-	uint64_t efer = rdmsr(IA32_EFER);
-	efer |=
-		0x0001 | // Enable SYSCALL
-		0x0800 | // Enable NX bit
-		0;
-	wrmsr(IA32_EFER, efer);
+    // Set up IA32_EFER
+    constexpr uint32_t IA32_EFER = 0xC0000080;
+    uint64_t efer = rdmsr(IA32_EFER);
+    efer |=
+        0x0001 | // Enable SYSCALL
+        0x0800 | // Enable NX bit
+        0;
+    wrmsr(IA32_EFER, efer);
 }
 
 void
 check_cpu_supported()
 {
-	status_line status {L"Checking CPU features"};
+    status_line status {L"Checking CPU features"};
 
-	cpu::cpu_id cpu;
-	uint64_t missing = cpu.missing();
-	if (missing) {
+    cpu::cpu_id cpu;
+    uint64_t missing = cpu.missing();
+    if (missing) {
 #define CPU_FEATURE_OPT(...)
 #define CPU_FEATURE_REQ(name, ...) \
-		if (!cpu.has_feature(cpu::feature::name)) { \
-			status::fail(L"CPU required feature " L ## #name, uefi::status::unsupported); \
-		}
+        if (!cpu.has_feature(cpu::feature::name)) { \
+            status::fail(L"CPU required feature " L ## #name, uefi::status::unsupported); \
+        }
 #include "cpu/features.inc"
 #undef CPU_FEATURE_REQ
 #undef CPU_FEATURE_OPT
 
-		error::raise(uefi::status::unsupported, L"CPU not supported");
-	}
+        error::raise(uefi::status::unsupported, L"CPU not supported");
+    }
 }
 
 

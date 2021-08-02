@@ -8,9 +8,9 @@ namespace kutil {
 template <typename T>
 union no_construct
 {
-	T value;
-	no_construct() {}
-	~no_construct() {}
+    T value;
+    no_construct() {}
+    ~no_construct() {}
 };
 
 } // namespace kutil

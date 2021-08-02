@@ -6,22 +6,22 @@
 
 namespace kernel {
 namespace init {
-	struct program;
-	struct module;
+    struct program;
+    struct module;
 }}
 
 namespace boot {
 
 namespace fs {
-	class file;
+    class file;
 }
 
 namespace loader {
 
 struct program_desc
 {
-	const wchar_t *name;
-	const wchar_t *path;
+    const wchar_t *name;
+    const wchar_t *path;
 };
 
 /// Load a file from disk into memory.
@@ -29,8 +29,8 @@ struct program_desc
 /// \arg desc  The program descriptor identifying the file
 buffer
 load_file(
-	fs::file &disk,
-	const program_desc &desc);
+    fs::file &disk,
+    const program_desc &desc);
 
 /// Parse and load an ELF file in memory into a loaded image.
 /// \arg disk       The opened UEFI filesystem to load from
@@ -38,17 +38,17 @@ load_file(
 /// \arg add_module Also create a module for this loaded program
 kernel::init::program *
 load_program(
-	fs::file &disk,
-	const program_desc &desc,
-	bool add_module = false);
+    fs::file &disk,
+    const program_desc &desc,
+    bool add_module = false);
 
 /// Load a file from disk into memory, creating an init args module
 /// \arg disk  The opened UEFI filesystem to load from
 /// \arg desc  The program descriptor identifying the file
 void
 load_module(
-	fs::file &disk,
-	const program_desc &desc);
+    fs::file &disk,
+    const program_desc &desc);
 
 /// Verify that a loaded ELF has the j6 kernel header
 /// \arg program  The program to check for a header

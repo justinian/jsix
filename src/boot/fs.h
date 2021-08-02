@@ -6,9 +6,9 @@
 #include "counted.h"
 
 namespace uefi {
-	struct boot_services;
+    struct boot_services;
 namespace protos {
-	struct file;
+    struct file;
 }}
 
 namespace boot {
@@ -18,26 +18,26 @@ namespace fs {
 class file
 {
 public:
-	file(file &&o);
-	file(file &o);
-	~file();
+    file(file &&o);
+    file(file &o);
+    ~file();
 
-	/// Open another file or directory, relative to this one.
-	/// \arg path  Relative path to the target file from this one
-	file open(const wchar_t *path);
+    /// Open another file or directory, relative to this one.
+    /// \arg path  Relative path to the target file from this one
+    file open(const wchar_t *path);
 
-	/// Load the contents of this file into memory.
-	/// \returns       A buffer describing the loaded memory. The
-	///                memory will be page-aligned.
-	buffer load();
+    /// Load the contents of this file into memory.
+    /// \returns       A buffer describing the loaded memory. The
+    ///                memory will be page-aligned.
+    buffer load();
 
 private:
-	friend file get_boot_volume(uefi::handle, uefi::boot_services*);
+    friend file get_boot_volume(uefi::handle, uefi::boot_services*);
 
-	file(uefi::protos::file *f);
+    file(uefi::protos::file *f);
 
-	uefi::protos::file *m_file;
-	uefi::boot_services *m_bs;
+    uefi::protos::file *m_file;
+    uefi::boot_services *m_bs;
 };
 
 /// Get the filesystem this loader was loaded from.

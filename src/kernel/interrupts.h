@@ -17,7 +17,7 @@ enum class isr : uint8_t
 #undef NISR
 #undef ISR
 
-	_zero = 0
+    _zero = 0
 };
 
 /// Helper operator to add an offset to an isr vector
@@ -26,11 +26,11 @@ constexpr isr operator+(const isr &lhs, int rhs) {
 }
 
 extern "C" {
-	/// Set the CPU interrupt enable flag (sti)
-	void interrupts_enable();
+    /// Set the CPU interrupt enable flag (sti)
+    void interrupts_enable();
 
-	/// Set the CPU interrupt disable flag (cli)
-	void interrupts_disable();
+    /// Set the CPU interrupt disable flag (cli)
+    void interrupts_disable();
 }
 
 /// Disable the legacy PIC

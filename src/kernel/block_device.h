@@ -7,5 +7,5 @@
 class block_device
 {
 public:
-	virtual size_t read(size_t offset, size_t length, void *buffer) = 0;
+    virtual size_t read(size_t offset, size_t length, void *buffer) = 0;
 };

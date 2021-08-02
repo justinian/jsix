@@ -13,8 +13,8 @@ class symbol_table;
 
 struct frame
 {
-	frame *prev;
-	uintptr_t return_addr;
+    frame *prev;
+    uintptr_t return_addr;
 };
 
 void print_header(serial_port &out, const char *message);

@@ -16,13 +16,13 @@ symbol_table::symbol_table(const void *data) :
 const char *
 symbol_table::find_symbol(uintptr_t addr) const
 {
-	// TODO: binary search
-	for (auto &e : m_entries) {
-		if (addr >= e.address && addr < e.address + e.size)
+    // TODO: binary search
+    for (auto &e : m_entries) {
+        if (addr >= e.address && addr < e.address + e.size)
             return reinterpret_cast<const char*>(m_data) + e.name;
-	}
+    }
 
-	return nullptr;
+    return nullptr;
 }
 
 } // namespace panic

@@ -40,7 +40,7 @@ void * memcpy(void *dest, const void *src, size_t n);
 template <typename T>
 inline T read_from(const void *p)
 {
-	return *reinterpret_cast<const T *>(p);
+    return *reinterpret_cast<const T *>(p);
 }
 
 /// Get a pointer that's offset from another pointer
@@ -50,7 +50,7 @@ inline T read_from(const void *p)
 template <typename T>
 inline T * offset_pointer(T *p, ptrdiff_t n)
 {
-	return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(p) + n);
+    return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(p) + n);
 }
 
 /// Return a pointer with the given bits masked out
@@ -60,7 +60,7 @@ inline T * offset_pointer(T *p, ptrdiff_t n)
 template <typename T>
 inline T* mask_pointer(T *p, uintptr_t mask)
 {
-	return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(p) & ~mask);
+    return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(p) & ~mask);
 }
 
 /// Do a simple byte-wise checksum of an area of memory.

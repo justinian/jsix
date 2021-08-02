@@ -51,51 +51,51 @@ pid_t waitpid(pid_t, int *, int);
 void _exit(int);
 
 #define START_SUITE(name) \
-	int run_suite_ ##name (void) { \
-		int TEST_RESULTS = 0;
+    int run_suite_ ##name (void) { \
+        int TEST_RESULTS = 0;
 
 #define END_SUITE \
-		return TEST_RESULTS; \
-	}
+        return TEST_RESULTS; \
+    }
 
 #define DECLARE_SUITE(name)  extern int run_suite_ ##name (void)
 #define RUN_TEST(name)  TEST_RESULTS += test__ ##name();
 
 #define START_TEST(name) \
-	int test__ ##name (void) { \
-		int TEST_RESULTS = 0;
+    int test__ ##name (void) { \
+        int TEST_RESULTS = 0;
 
 #define END_TEST \
-		return TEST_RESULTS; \
-	}
+        return TEST_RESULTS; \
+    }
 
 /* TESTCASE() - generic test */
 #define TESTCASE( x ) \
-	do { \
-		pid_t pid = fork(); \
-		if ( !pid ) _exit((x) ? 0 : 0xFF); \
+    do { \
+        pid_t pid = fork(); \
+        if ( !pid ) _exit((x) ? 0 : 0xFF); \
         else { \
-			int __rc = 0; \
-			waitpid(pid, &__rc, 0); \
-			if ( __rc & 0xff00 ) { \
-				TEST_RESULTS += 1; \
-				fprintf( stderr, "FAILED: " __FILE__ ":%s, line %d - %s\n", __func__, __LINE__, #x ); \
-			} \
-		} \
-	} while(0)
+            int __rc = 0; \
+            waitpid(pid, &__rc, 0); \
+            if ( __rc & 0xff00 ) { \
+                TEST_RESULTS += 1; \
+                fprintf( stderr, "FAILED: " __FILE__ ":%s, line %d - %s\n", __func__, __LINE__, #x ); \
+            } \
+        } \
+    } while(0)
 
 /* TESTCASE_REQUIRE() - must-pass test; return early otherwise */
 #define TESTCASE_REQUIRE( x ) \
-	do { \
-		pid_t pid = fork(); \
-		if ( !pid ) _exit((x) ? 0 : 0xFF); \
+    do { \
+        pid_t pid = fork(); \
+        if ( !pid ) _exit((x) ? 0 : 0xFF); \
         else { \
-			int __rc = 0; \
-			waitpid(pid, &__rc, 0); \
-			if ( __rc & 0xff00 ) { \
-				TEST_RESULTS += 1; \
-				fprintf( stderr, "FAILED: " __FILE__ ":%s, line %d - %s\n", __func__, __LINE__, #x ); \
-				return TEST_RESULTS; \
-			} \
-		} \
-	} while(0)
+            int __rc = 0; \
+            waitpid(pid, &__rc, 0); \
+            if ( __rc & 0xff00 ) { \
+                TEST_RESULTS += 1; \
+                fprintf( stderr, "FAILED: " __FILE__ ":%s, line %d - %s\n", __func__, __LINE__, #x ); \
+                return TEST_RESULTS; \
+            } \
+        } \
+    } while(0)

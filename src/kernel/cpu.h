@@ -12,32 +12,32 @@ class TSS;
 
 struct cpu_state
 {
-	uint64_t r15, r14, r13, r12, r11, r10, r9,  r8;
-	uint64_t rdi, rsi, rbp, rbx, rdx, rcx, rax;
-	uint64_t interrupt, errorcode;
-	uint64_t rip, cs, rflags, rsp, ss;
+    uint64_t r15, r14, r13, r12, r11, r10, r9,  r8;
+    uint64_t rdi, rsi, rbp, rbx, rdx, rcx, rax;
+    uint64_t interrupt, errorcode;
+    uint64_t rip, cs, rflags, rsp, ss;
 };
 
 /// Per-cpu state data. If you change this, remember to update the assembly
 /// version in 'tasking.inc'
 struct cpu_data
 {
-	cpu_data *self;
-	uint16_t id;
-	uint16_t index;
-	uint32_t reserved;
-	uintptr_t rsp0;
-	uintptr_t rsp3;
-	TCB *tcb;
-	thread *thread;
-	process *process;
-	IDT *idt;
-	TSS *tss;
-	GDT *gdt;
+    cpu_data *self;
+    uint16_t id;
+    uint16_t index;
+    uint32_t reserved;
+    uintptr_t rsp0;
+    uintptr_t rsp3;
+    TCB *tcb;
+    thread *thread;
+    process *process;
+    IDT *idt;
+    TSS *tss;
+    GDT *gdt;
 
-	// Members beyond this point do not appear in
-	// the assembly version
-	lapic *apic;
+    // Members beyond this point do not appear in
+    // the assembly version
+    lapic *apic;
 };
 
 extern "C" cpu_data * _current_gsbase();

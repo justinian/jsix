@@ -34,11 +34,11 @@ template <> struct integral<unsigned long long> { using type = unsigned long lon
 template <typename T, T v>
 struct integral_constant
 {
-	using value_type = T;
-	using type = integral_constant;
-	static constexpr value_type value = v;
-	constexpr operator value_type() const noexcept { return value; }
-	constexpr value_type operator()() const noexcept { return value; }
+    using value_type = T;
+    using type = integral_constant;
+    static constexpr value_type value = v;
+    constexpr operator value_type() const noexcept { return value; }
+    constexpr value_type operator()() const noexcept { return value; }
 };
 
 using true_type = integral_constant<bool, true>;

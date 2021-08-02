@@ -10,11 +10,11 @@ extern "C" {
 __attribute__ ((__weak__))
 void *memcpy(void *dest, const void *src, size_t n)
 {
-	uint8_t *cdest = reinterpret_cast<uint8_t*>(dest);
-	const uint8_t *csrc = reinterpret_cast<const uint8_t*>(src);
-	for (size_t i = 0; i < n; ++i)
-		cdest[i] = csrc[i];
-	return dest;
+    uint8_t *cdest = reinterpret_cast<uint8_t*>(dest);
+    const uint8_t *csrc = reinterpret_cast<const uint8_t*>(src);
+    for (size_t i = 0; i < n; ++i)
+        cdest[i] = csrc[i];
+    return dest;
 }
 
 /// Basic memset() implementation for clang. Clang requires freestanding code
@@ -23,15 +23,15 @@ void *memcpy(void *dest, const void *src, size_t n)
 __attribute__ ((__weak__))
 void *memset(void *dest, int c, size_t n)
 {
-	uint8_t *cdest = reinterpret_cast<uint8_t*>(dest);
-	for (size_t i = 0; i < n; ++i)
-		cdest[i] = static_cast<uint8_t>(c);
-	return dest;
+    uint8_t *cdest = reinterpret_cast<uint8_t*>(dest);
+    for (size_t i = 0; i < n; ++i)
+        cdest[i] = static_cast<uint8_t>(c);
+    return dest;
 }
 
 int _purecall()
 {
-	::boot::error::raise(uefi::status::unsupported, L"Pure virtual call");
+    ::boot::error::raise(uefi::status::unsupported, L"Pure virtual call");
 }
 
 /// Clang can emit calls to atexit() in constructors or destructors, but

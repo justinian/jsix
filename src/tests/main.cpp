@@ -7,20 +7,20 @@ bool ASSERT_EXPECTED = false;
 bool ASSERT_HAPPENED = false;
 void test_assert(const char *file, unsigned line, const char *message)
 {
-	CAPTURE( file );
-	CAPTURE( line );
-	INFO( message );
-	REQUIRE( ASSERT_EXPECTED );
-	ASSERT_EXPECTED = false;
-	ASSERT_HAPPENED = true;
+    CAPTURE( file );
+    CAPTURE( line );
+    INFO( message );
+    REQUIRE( ASSERT_EXPECTED );
+    ASSERT_EXPECTED = false;
+    ASSERT_HAPPENED = true;
 }
 
 
 int main( int argc, char* argv[] ) {
-	kutil::assert_set_callback(test_assert);
+    kutil::assert_set_callback(test_assert);
 
-	int result = Catch::Session().run( argc, argv );
-	return result;
+    int result = Catch::Session().run( argc, argv );
+    return result;
 }
 
 namespace kutil {

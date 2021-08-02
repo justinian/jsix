@@ -18,14 +18,14 @@ static const uint16_t PIC2 = 0xa0;
 constexpr uintptr_t apic_eoi_addr = 0xfee000b0 + ::memory::page_offset;
 
 extern "C" {
-	void isr_handler(cpu_state*);
-	void irq_handler(cpu_state*);
+    void isr_handler(cpu_state*);
+    void irq_handler(cpu_state*);
 }
 
 uint8_t
 get_irq(unsigned vector)
 {
-	switch (vector) {
+    switch (vector) {
 #define ISR(i, s, name)
 #define EISR(i, s, name)
 #define NISR(i, s, name)
@@ -36,51 +36,51 @@ get_irq(unsigned vector)
 #undef EISR
 #undef ISR
 
-		default: return 0xff;
-	}
+        default: return 0xff;
+    }
 }
 
 void
 disable_legacy_pic()
 {
-	// Mask all interrupts
-	outb(PIC2+1, 0xfc);
-	outb(PIC1+1, 0xff);
+    // Mask all interrupts
+    outb(PIC2+1, 0xfc);
+    outb(PIC1+1, 0xff);
 
-	// Start initialization sequence
-	outb(PIC1, 0x11); io_wait();
-	outb(PIC2, 0x11); io_wait();
+    // Start initialization sequence
+    outb(PIC1, 0x11); io_wait();
+    outb(PIC2, 0x11); io_wait();
 
-	// Remap into ignore ISRs
-	outb(PIC1+1, static_cast<uint8_t>(isr::isrIgnore0)); io_wait();
-	outb(PIC2+1, static_cast<uint8_t>(isr::isrIgnore8)); io_wait();
+    // Remap into ignore ISRs
+    outb(PIC1+1, static_cast<uint8_t>(isr::isrIgnore0)); io_wait();
+    outb(PIC2+1, static_cast<uint8_t>(isr::isrIgnore8)); io_wait();
 
-	// Tell PICs about each other
-	outb(PIC1+1, 0x04); io_wait();
-	outb(PIC2+1, 0x02); io_wait();
+    // Tell PICs about each other
+    outb(PIC1+1, 0x04); io_wait();
+    outb(PIC2+1, 0x02); io_wait();
 }
 
 void
 isr_handler(cpu_state *regs)
 {
-	uint8_t vector = regs->interrupt & 0xff;
+    uint8_t vector = regs->interrupt & 0xff;
     if ((vector & 0xf0) == 0xf0) {
         *reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
         return;
     }
 
-	// Clear out the IST for this vector so we just keep using
-	// this stack
-	IDT &idt = IDT::current();
-	uint8_t old_ist = idt.get_ist(vector);
-	if (old_ist)
-		idt.set_ist(vector, 0);
+    // Clear out the IST for this vector so we just keep using
+    // this stack
+    IDT &idt = IDT::current();
+    uint8_t old_ist = idt.get_ist(vector);
+    if (old_ist)
+        idt.set_ist(vector, 0);
 
     char message[200];
 
-	switch (static_cast<isr>(vector)) {
+    switch (static_cast<isr>(vector)) {
 
-	case isr::isrDebug:
+    case isr::isrDebug:
         asm volatile ("mov %%dr0, %%r8" ::: "r8");
         asm volatile ("mov %%dr1, %%r9" ::: "r9");
         asm volatile ("mov %%dr2, %%r10" ::: "r10");
@@ -90,15 +90,15 @@ isr_handler(cpu_state *regs)
         asm volatile ("mov %%dr6, %%r14" ::: "r14");
         asm volatile ("mov %%dr7, %%r15" ::: "r15");
         kassert(false, "Debug exception");
-		break;
+        break;
 
-	case isr::isrDoubleFault:
+    case isr::isrDoubleFault:
         kassert(false, "Double fault");
-		break;
+        break;
 
-	case isr::isrGPFault:
+    case isr::isrGPFault:
         if (regs->errorcode & 0xfff0) {
-			int index = (regs->errorcode & 0xffff) >> 4;
+            int index = (regs->errorcode & 0xffff) >> 4;
             int ti = (regs->errorcode & 0x07) >> 1;
             char const *table =
                 (ti & 1) ? "IDT" :
@@ -114,20 +114,20 @@ isr_handler(cpu_state *regs)
         kassert(false, message);
         break;
 
-	case isr::isrPageFault: {
-			uintptr_t cr2 = 0;
-			__asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
+    case isr::isrPageFault: {
+            uintptr_t cr2 = 0;
+            __asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
 
-			bool user = cr2 < memory::kernel_offset;
-			vm_space::fault_type ft =
-				static_cast<vm_space::fault_type>(regs->errorcode);
+            bool user = cr2 < memory::kernel_offset;
+            vm_space::fault_type ft =
+                static_cast<vm_space::fault_type>(regs->errorcode);
 
-			vm_space &space = user
-				? process::current().space()
-				: vm_space::kernel_space();
+            vm_space &space = user
+                ? process::current().space()
+                : vm_space::kernel_space();
 
-			if (cr2 && space.handle_fault(cr2, ft))
-				break;
+            if (cr2 && space.handle_fault(cr2, ft))
+                break;
 
             snprintf(message, sizeof(message),
                 "Page fault: %016llx%s%s%s%s%s", cr2,
@@ -137,42 +137,42 @@ isr_handler(cpu_state *regs)
                 (regs->errorcode & 0x08) ? " reserved" : "",
                 (regs->errorcode & 0x10) ? " ip" : "");
             kassert(false, message);
-		}
-		break;
+        }
+        break;
 
-	case isr::isrTimer:
-		scheduler::get().schedule();
-		break;
+    case isr::isrTimer:
+        scheduler::get().schedule();
+        break;
 
-	case isr::isrLINT0:
-	case isr::isrLINT1:
-		break;
+    case isr::isrLINT0:
+    case isr::isrLINT1:
+        break;
 
-	case isr::isrSpurious:
-		// No EOI for the spurious interrupt
-		return;
+    case isr::isrSpurious:
+        // No EOI for the spurious interrupt
+        return;
 
-	default:
+    default:
         snprintf(message, sizeof(message), "Unknown interrupt 0x%x", regs->interrupt);
         kassert(false, message);
-	}
+    }
 
-	// Return the IST for this vector to what it was
-	if (old_ist)
-		idt.set_ist(vector, old_ist);
-	*reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
+    // Return the IST for this vector to what it was
+    if (old_ist)
+        idt.set_ist(vector, old_ist);
+    *reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
 }
 
 void
 irq_handler(cpu_state *regs)
 {
-	uint8_t irq = get_irq(regs->interrupt);
-	if (! device_manager::get().dispatch_irq(irq)) {
+    uint8_t irq = get_irq(regs->interrupt);
+    if (! device_manager::get().dispatch_irq(irq)) {
         char message[100];
         snprintf(message, sizeof(message),
             "Unknown IRQ: %d (vec 0x%x)", irq, regs->interrupt);
         kassert(false, message);
-	}
+    }
 
-	*reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
+    *reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
 }

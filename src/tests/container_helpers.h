@@ -1,13 +1,13 @@
 #pragma once
 
 struct unsortableT {
-	int value;
+    int value;
 };
 
 struct sortableT {
-	int value;
-	int compare(const sortableT &other) const {
-		return value - other.value;
-	}
+    int value;
+    int compare(const sortableT &other) const {
+        return value - other.value;
+    }
 };
 

@@ -6,15 +6,15 @@
 #include "pointer_manipulation.h"
 
 namespace uefi {
-	struct boot_services;
-	struct memory_descriptor;
+    struct boot_services;
+    struct memory_descriptor;
 }
 
 namespace kernel {
 namespace init {
-	struct args;
-	struct frame_block;
-	struct mem_entry;
+    struct args;
+    struct frame_block;
+    struct mem_entry;
 }}
 
 namespace boot {
@@ -24,29 +24,29 @@ namespace memory {
 /// as well as the data on how to read it.
 struct efi_mem_map
 {
-	using desc = uefi::memory_descriptor;
-	using iterator = offset_iterator<desc>;
+    using desc = uefi::memory_descriptor;
+    using iterator = offset_iterator<desc>;
 
-	size_t length;     ///< Total length of the map data
-	size_t total;      ///< Total allocated space for map data
-	size_t size;       ///< Size of an entry in the array
-	size_t key;        ///< Key for detecting changes
-	uint32_t version;  ///< Version of the `memory_descriptor` struct
-	desc *entries;     ///< The array of UEFI descriptors
+    size_t length;     ///< Total length of the map data
+    size_t total;      ///< Total allocated space for map data
+    size_t size;       ///< Size of an entry in the array
+    size_t key;        ///< Key for detecting changes
+    uint32_t version;  ///< Version of the `memory_descriptor` struct
+    desc *entries;     ///< The array of UEFI descriptors
 
-	efi_mem_map() : length(0), total(0), size(0), key(0), version(0), entries(nullptr) {}
+    efi_mem_map() : length(0), total(0), size(0), key(0), version(0), entries(nullptr) {}
 
-	/// Update the map from UEFI
-	void update(uefi::boot_services &bs);
+    /// Update the map from UEFI
+    void update(uefi::boot_services &bs);
 
-	/// Get the count of entries in the array
-	inline size_t num_entries() const { return length / size; }
+    /// Get the count of entries in the array
+    inline size_t num_entries() const { return length / size; }
 
-	/// Return an iterator to the beginning of the array
-	inline iterator begin() { return iterator(entries, size); }
+    /// Return an iterator to the beginning of the array
+    inline iterator begin() { return iterator(entries, size); }
 
-	/// Return an iterator to the end of the array
-	inline iterator end() { return offset_ptr<desc>(entries, length); }
+    /// Return an iterator to the end of the array
+    inline iterator end() { return offset_ptr<desc>(entries, length); }
 };
 
 /// Add the kernel's memory map as a module to the kernel args.

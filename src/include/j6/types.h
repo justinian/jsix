@@ -41,5 +41,5 @@ enum j6_object_type {
 #include "j6/tables/object_types.inc"
 #undef OBJECT_TYPE
 
-	j6_object_type_max
+    j6_object_type_max
 };

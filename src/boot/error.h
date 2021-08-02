@@ -26,8 +26,8 @@ void debug_break();
 /// \arg s  An expression evaluating to a UEFI status
 /// \arg m  The error message to use on failure
 #define try_or_raise(s, m) \
-	do { \
-		uefi::status _s = (s); \
-		if (uefi::is_error(_s)) ::boot::error::raise(_s, (m), __LINE__); \
-	} while(0)
+    do { \
+        uefi::status _s = (s); \
+        if (uefi::is_error(_s)) ::boot::error::raise(_s, (m), __LINE__); \
+    } while(0)
 

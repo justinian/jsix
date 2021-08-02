@@ -1,6 +1,6 @@
 #define SCANF_TEST( expected_rc, input_string, ... ) do { \
-		TEST_RESULTS += DO_TESTSCANF(IMPLFILE, __FILE__, __LINE__, expected_rc, input_string, __VA_ARGS__); \
-	} while (0);
+        TEST_RESULTS += DO_TESTSCANF(IMPLFILE, __FILE__, __LINE__, expected_rc, input_string, __VA_ARGS__); \
+    } while (0);
 
 {
     char buffer[100];

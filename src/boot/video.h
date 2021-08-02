@@ -8,7 +8,7 @@
 #include "init_args.h"
 
 namespace uefi {
-	struct boot_services;
+    struct boot_services;
 }
 
 namespace boot {
@@ -18,8 +18,8 @@ using kernel::init::video_mode;
 using layout = kernel::init::fb_layout;
 
 struct screen {
-	buffer framebuffer;
-	video_mode mode;
+    buffer framebuffer;
+    video_mode mode;
 };
 
 /// Pick the best video mode and set up the screen

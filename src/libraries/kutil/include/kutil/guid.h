@@ -10,7 +10,7 @@ namespace kutil {
 /// A GUID
 struct guid
 {
-	uint64_t a, b;
+    uint64_t a, b;
 };
 
 /// Make a GUID by writing it naturally-ordered in code:
@@ -19,17 +19,17 @@ struct guid
 /// \returns  The guid object
 inline constexpr guid make_guid(uint32_t a, uint16_t b, uint16_t c, uint16_t d, uint64_t e)
 {
-	const uint64_t h =
-		static_cast<uint64_t>(c) << 48 |
-		static_cast<uint64_t>(b) << 32 |
-		a;
+    const uint64_t h =
+        static_cast<uint64_t>(c) << 48 |
+        static_cast<uint64_t>(b) << 32 |
+        a;
 
-	const uint64_t l =
-		static_cast<uint64_t>(byteswap(e & 0xffffffff)) << 32 |
-		(byteswap(e >> 32) & 0xffff0000) |
-		((d << 8) & 0xff00) | ((d >> 8) & 0xff);
+    const uint64_t l =
+        static_cast<uint64_t>(byteswap(e & 0xffffffff)) << 32 |
+        (byteswap(e >> 32) & 0xffff0000) |
+        ((d << 8) & 0xff00) | ((d >> 8) & 0xff);
 
-	return {h, l};
+    return {h, l};
 }
 
 } // namespace kutil

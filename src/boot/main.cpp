@@ -36,7 +36,7 @@ const loader::program_desc fb_driver = {L"UEFI framebuffer driver", L"drv.uefi_f
 const loader::program_desc panic_handler = {L"Serial panic handler", L"panic.serial.elf"};
 
 const loader::program_desc extra_programs[] = {
-	{L"test application", L"testapp.elf"},
+    {L"test application", L"testapp.elf"},
 };
 
 /// Change a pointer to point to the higher-half linear-offset version
@@ -44,7 +44,7 @@ const loader::program_desc extra_programs[] = {
 template <typename T>
 void change_pointer(T *&pointer)
 {
-	pointer = offset_ptr<T>(pointer, kernel::memory::page_offset);
+    pointer = offset_ptr<T>(pointer, kernel::memory::page_offset);
 }
 
 /// The main procedure for the portion of the loader that runs while
@@ -53,50 +53,50 @@ void change_pointer(T *&pointer)
 init::args *
 uefi_preboot(uefi::handle image, uefi::system_table *st)
 {
-	uefi::boot_services *bs = st->boot_services;
-	uefi::runtime_services *rs = st->runtime_services;
+    uefi::boot_services *bs = st->boot_services;
+    uefi::runtime_services *rs = st->runtime_services;
 
-	status_line status {L"Performing UEFI pre-boot"};
+    status_line status {L"Performing UEFI pre-boot"};
 
-	hw::check_cpu_supported();
-	memory::init_pointer_fixup(bs, rs);
+    hw::check_cpu_supported();
+    memory::init_pointer_fixup(bs, rs);
 
-	init::args *args = new init::args;
-	g_alloc.zero(args, sizeof(init::args));
+    init::args *args = new init::args;
+    g_alloc.zero(args, sizeof(init::args));
 
-	args->magic = init::args_magic;
-	args->version = init::args_version;
-	args->runtime_services = rs;
-	args->acpi_table = hw::find_acpi_table(st);
-	memory::mark_pointer_fixup(&args->runtime_services);
+    args->magic = init::args_magic;
+    args->version = init::args_version;
+    args->runtime_services = rs;
+    args->acpi_table = hw::find_acpi_table(st);
+    memory::mark_pointer_fixup(&args->runtime_services);
 
-	paging::allocate_tables(args);
+    paging::allocate_tables(args);
 
-	return args;
+    return args;
 }
 
 /// Load the kernel and other programs from disk
 void
 load_resources(init::args *args, video::screen *screen, uefi::handle image, uefi::boot_services *bs)
 {
-	status_line status {L"Loading programs"};
+    status_line status {L"Loading programs"};
 
-	fs::file disk = fs::get_boot_volume(image, bs);
+    fs::file disk = fs::get_boot_volume(image, bs);
 
-	if (screen) {
-		video::make_module(screen);
-		loader::load_module(disk, fb_driver);
-	}
+    if (screen) {
+        video::make_module(screen);
+        loader::load_module(disk, fb_driver);
+    }
 
     buffer symbol_table = loader::load_file(disk, {L"symbol table", L"symbol_table.dat"});
-	args->symbol_table = reinterpret_cast<uintptr_t>(symbol_table.pointer);
+    args->symbol_table = reinterpret_cast<uintptr_t>(symbol_table.pointer);
 
-	args->kernel = loader::load_program(disk, kern_desc, true);
-	args->init = loader::load_program(disk, init_desc);
+    args->kernel = loader::load_program(disk, kern_desc, true);
+    args->init = loader::load_program(disk, init_desc);
     args->panic = loader::load_program(disk, panic_handler);
 
-	for (auto &desc : extra_programs)
-		loader::load_module(disk, desc);
+    for (auto &desc : extra_programs)
+        loader::load_module(disk, desc);
 
     loader::verify_kernel_header(*args->kernel);
 }
@@ -104,20 +104,20 @@ load_resources(init::args *args, video::screen *screen, uefi::handle image, uefi
 memory::efi_mem_map
 uefi_exit(init::args *args, uefi::handle image, uefi::boot_services *bs)
 {
-	status_line status {L"Exiting UEFI", nullptr, false};
+    status_line status {L"Exiting UEFI", nullptr, false};
 
-	memory::efi_mem_map map;
-	map.update(*bs);
+    memory::efi_mem_map map;
+    map.update(*bs);
 
-	args->mem_map = memory::build_kernel_map(map);
-	args->frame_blocks = memory::build_frame_blocks(args->mem_map);
+    args->mem_map = memory::build_kernel_map(map);
+    args->frame_blocks = memory::build_frame_blocks(args->mem_map);
 
-	map.update(*bs);
-	try_or_raise(
-		bs->exit_boot_services(image, map.key),
-		L"Failed to exit boot services");
+    map.update(*bs);
+    try_or_raise(
+        bs->exit_boot_services(image, map.key),
+        L"Failed to exit boot services");
 
-	return map;
+    return map;
 }
 
 } // namespace boot
@@ -126,53 +126,53 @@ uefi_exit(init::args *args, uefi::handle image, uefi::boot_services *bs)
 extern "C" uefi::status
 efi_main(uefi::handle image, uefi::system_table *st)
 {
-	using namespace boot;
+    using namespace boot;
 
-	uefi::boot_services *bs = st->boot_services;
-	console con(st->con_out);
+    uefi::boot_services *bs = st->boot_services;
+    console con(st->con_out);
 
-	init::allocation_register *allocs = nullptr;
-	init::modules_page *modules = nullptr;
-	memory::allocator::init(allocs, modules, bs);
+    init::allocation_register *allocs = nullptr;
+    init::modules_page *modules = nullptr;
+    memory::allocator::init(allocs, modules, bs);
 
-	video::screen *screen = video::pick_mode(bs);
-	con.announce();
+    video::screen *screen = video::pick_mode(bs);
+    con.announce();
 
-	init::args *args = uefi_preboot(image, st);
-	load_resources(args, screen, image, bs);
-	memory::efi_mem_map map = uefi_exit(args, image, st->boot_services);
+    init::args *args = uefi_preboot(image, st);
+    load_resources(args, screen, image, bs);
+    memory::efi_mem_map map = uefi_exit(args, image, st->boot_services);
 
-	args->allocations = allocs;
-	args->modules = reinterpret_cast<uintptr_t>(modules);
+    args->allocations = allocs;
+    args->modules = reinterpret_cast<uintptr_t>(modules);
 
-	status_bar status {screen}; // Switch to fb status display
+    status_bar status {screen}; // Switch to fb status display
 
-	// Map the kernel and panic handler to the appropriate addresses
+    // Map the kernel and panic handler to the appropriate addresses
     paging::map_program(args, *args->kernel);
     paging::map_program(args, *args->panic);
 
-	memory::fix_frame_blocks(args);
+    memory::fix_frame_blocks(args);
 
-	init::entrypoint kentry =
-		reinterpret_cast<init::entrypoint>(args->kernel->entrypoint);
-	//status.next();
+    init::entrypoint kentry =
+        reinterpret_cast<init::entrypoint>(args->kernel->entrypoint);
+    //status.next();
 
-	hw::setup_control_regs();
-	memory::virtualize(args->pml4, map, st->runtime_services);
-	//status.next();
+    hw::setup_control_regs();
+    memory::virtualize(args->pml4, map, st->runtime_services);
+    //status.next();
 
-	change_pointer(args);
-	change_pointer(args->pml4);
+    change_pointer(args);
+    change_pointer(args->pml4);
 
-	change_pointer(args->kernel);
-	change_pointer(args->kernel->sections.pointer);
-	change_pointer(args->init);
-	change_pointer(args->init->sections.pointer);
+    change_pointer(args->kernel);
+    change_pointer(args->kernel->sections.pointer);
+    change_pointer(args->init);
+    change_pointer(args->init->sections.pointer);
 
-	//status.next();
+    //status.next();
 
-	kentry(args);
-	debug_break();
-	return uefi::status::unsupported;
+    kentry(args);
+    debug_break();
+    return uefi::status::unsupported;
 }
 

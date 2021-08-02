@@ -11,18 +11,18 @@ namespace paging {
 /// Struct to allow easy accessing of a memory page being used as a page table.
 struct page_table
 {
-	uint64_t entries[512];
+    uint64_t entries[512];
 
-	inline page_table * get(int i, uint16_t *flags = nullptr) const {
-		uint64_t entry = entries[i];
-		if ((entry & 1) == 0) return nullptr;
-		if (flags) *flags = entry & 0xfff;
-		return reinterpret_cast<page_table *>(entry & ~0xfffull);
-	}
+    inline page_table * get(int i, uint16_t *flags = nullptr) const {
+        uint64_t entry = entries[i];
+        if ((entry & 1) == 0) return nullptr;
+        if (flags) *flags = entry & 0xfff;
+        return reinterpret_cast<page_table *>(entry & ~0xfffull);
+    }
 
-	inline void set(int i, void *p, uint16_t flags) {
-		entries[i] = reinterpret_cast<uint64_t>(p) | (flags & 0xfff);
-	}
+    inline void set(int i, void *p, uint16_t flags) {
+        entries[i] = reinterpret_cast<uint64_t>(p) | (flags & 0xfff);
+    }
 };
 
 /// Allocate memory to be used for initial page tables. Initial offset-mapped
@@ -46,16 +46,16 @@ void add_current_mappings(page_table *new_pml4);
 /// \arg write_flag If true, mark the pages writeable
 /// \arg exe_flag   If true, mark the pages executable
 void map_pages(
-	kernel::init::args *args,
-	uintptr_t phys, uintptr_t virt,
-	size_t count, bool write_flag, bool exe_flag);
+    kernel::init::args *args,
+    uintptr_t phys, uintptr_t virt,
+    size_t count, bool write_flag, bool exe_flag);
 
 /// Map the sections of a program in physical memory to their virtual memory
 /// addresses in the given page tables.
 /// \arg args    The kernel args struct, used for the page table cache and pml4
 /// \arg program The program to load
 void map_program(
-	kernel::init::args *args,
+    kernel::init::args *args,
     kernel::init::program &program);
 
 } // namespace paging

@@ -9,41 +9,41 @@ constexpr bool is_enum_bitfield(E) { return false; }
 
 template <typename E>
 struct enum_or_int {
-	static constexpr bool value =
-		is_enum_bitfield(E{}) || types::is_integral<E>::value;
+    static constexpr bool value =
+        is_enum_bitfield(E{}) || types::is_integral<E>::value;
 };
 
 template <typename E, typename F>
 struct both_enum_or_int {
-	static constexpr bool value =
-		types::conjunction< enum_or_int<E>, enum_or_int<F> >::value;
+    static constexpr bool value =
+        types::conjunction< enum_or_int<E>, enum_or_int<F> >::value;
 };
 
 template <typename E, typename F>
 constexpr typename types::enable_if<both_enum_or_int<E, F>::value,E>::type&
 operator |= (E &lhs, F rhs)
 {
-	return lhs = static_cast<E>(
-		static_cast<typename types::integral<E>::type>(lhs) |
-		static_cast<typename types::integral<F>::type>(rhs));
+    return lhs = static_cast<E>(
+        static_cast<typename types::integral<E>::type>(lhs) |
+        static_cast<typename types::integral<F>::type>(rhs));
 }
 
 template <typename E, typename F>
 constexpr typename types::enable_if<both_enum_or_int<E, F>::value,E>::type&
 operator &= (E &lhs, F rhs)
 {
-	return lhs = static_cast<E>(
-		static_cast<typename types::integral<E>::type>(lhs) &
-		static_cast<typename types::integral<F>::type>(rhs));
+    return lhs = static_cast<E>(
+        static_cast<typename types::integral<E>::type>(lhs) &
+        static_cast<typename types::integral<F>::type>(rhs));
 }
 
 template <typename E, typename F>
 constexpr typename types::enable_if<both_enum_or_int<E, F>::value,E>::type&
 operator ^= (E &lhs, F rhs)
 {
-	return lhs = static_cast<E>(
-		static_cast<typename types::integral<E>::type>(lhs) ^
-		static_cast<typename types::integral<F>::type>(rhs));
+    return lhs = static_cast<E>(
+        static_cast<typename types::integral<E>::type>(lhs) ^
+        static_cast<typename types::integral<F>::type>(rhs));
 }
 
 template <typename E, typename F>
@@ -75,15 +75,15 @@ operator && (E rhs, E lhs) { return (rhs & lhs) == lhs; }
 template <typename E, typename F>
 constexpr bool has(E set, F flags)
 {
-	return
-		(static_cast<typename types::integral<E>::type>(set) &
-		static_cast<typename types::integral<F>::type>(flags)) ==
-		static_cast<typename types::integral<F>::type>(flags);
+    return
+        (static_cast<typename types::integral<E>::type>(set) &
+        static_cast<typename types::integral<F>::type>(flags)) ==
+        static_cast<typename types::integral<F>::type>(flags);
 }
 
 } // namespace bitfields
 
 #define is_bitfield(name) \
-	constexpr bool is_enum_bitfield(name) { return true; } \
-	using namespace ::bitfields;
+    constexpr bool is_enum_bitfield(name) { return true; } \
+    using namespace ::bitfields;
 

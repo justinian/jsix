@@ -14,7 +14,7 @@ void panic_handler(
     panic::symbol_table syms(symbol_data);
 
     panic::frame const *fp = nullptr;
-	asm ( "mov %%rbp, %0" : "=r" (fp) );
+    asm ( "mov %%rbp, %0" : "=r" (fp) );
 
     print_header(com1, message);
     print_callstack(com1, syms, fp);

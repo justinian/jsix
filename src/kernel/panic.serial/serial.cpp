@@ -21,22 +21,22 @@ inline void outb(uint16_t port, uint8_t val) {
 }
 
 inline uint8_t inb(uint16_t port) {
-	uint8_t val;
-	asm ( "inb %1, %0" : "=a"(val) : "Nd"(port) );
-	return val;
+    uint8_t val;
+    asm ( "inb %1, %0" : "=a"(val) : "Nd"(port) );
+    return val;
 }
 
 
 serial_port::serial_port(uint16_t port) :
-	m_port(port)
+    m_port(port)
 {
-	outb(port + IER, 0x00);  // Disable all interrupts
-	outb(port + LCR, 0x80);  // Enable the Divisor Latch Access Bit
-	outb(port + DLL, 0x01);  // Divisor low byte: 1 (115200 baud)
-	outb(port + DLH, 0x00);  // Divisor high byte
-	outb(port + LCR, 0x03);  // 8-N-1, diable DLAB
- 	outb(port + FCR, 0xe7);  // Clear and enable FIFO, enable 64 byte, 56 byte trigger
-	outb(port + MCR, 0x0b);  // Data terminal ready, Request to send, aux output 2 (irq enable)
+    outb(port + IER, 0x00);  // Disable all interrupts
+    outb(port + LCR, 0x80);  // Enable the Divisor Latch Access Bit
+    outb(port + DLL, 0x01);  // Divisor low byte: 1 (115200 baud)
+    outb(port + DLH, 0x00);  // Divisor high byte
+    outb(port + LCR, 0x03);  // 8-N-1, diable DLAB
+    outb(port + FCR, 0xe7);  // Clear and enable FIFO, enable 64 byte, 56 byte trigger
+    outb(port + MCR, 0x0b);  // Data terminal ready, Request to send, aux output 2 (irq enable)
 }
 
 inline bool read_ready(uint16_t port) { return (inb(port + LSR) & 0x01) != 0; }

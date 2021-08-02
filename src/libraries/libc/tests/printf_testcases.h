@@ -1,6 +1,6 @@
 #define PRINTF_TEST( expected_rc, expected_string, ... ) do { \
-		TEST_RESULTS += DO_TESTPRINTF(IMPLFILE, __FILE__, __LINE__, expected_rc, expected_string, __VA_ARGS__); \
-	} while (0);
+        TEST_RESULTS += DO_TESTPRINTF(IMPLFILE, __FILE__, __LINE__, expected_rc, expected_string, __VA_ARGS__); \
+    } while (0);
 
 
     {

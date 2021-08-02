@@ -7,8 +7,8 @@ namespace boot {
 namespace error {
 
 struct error_code_desc {
-	uefi::status code;
-	const wchar_t *name;
+    uefi::status code;
+    const wchar_t *name;
 };
 
 struct error_code_desc error_table[] = {
@@ -17,46 +17,46 @@ struct error_code_desc error_table[] = {
 #include "uefi/errors.inc"
 #undef STATUS_ERROR
 #undef STATUS_WARNING
-	{ uefi::status::success, nullptr }
+    { uefi::status::success, nullptr }
 };
 
 const wchar_t *
 message(uefi::status status)
 {
-	int32_t i = -1;
-	while (error_table[++i].name != nullptr) {
-		if (error_table[i].code == status) return error_table[i].name;
-	}
+    int32_t i = -1;
+    while (error_table[++i].name != nullptr) {
+        if (error_table[i].code == status) return error_table[i].name;
+    }
 
-	if (uefi::is_error(status))
-		return L"Unknown Error";
-	else
-		return L"Unknown Warning";
+    if (uefi::is_error(status))
+        return L"Unknown Error";
+    else
+        return L"Unknown Warning";
 }
 
 [[ noreturn ]] static void
 cpu_assert(uefi::status s, const wchar_t *message, size_t line)
 {
-	asm volatile (
-		"movq $0xeeeeeeebadbadbad, %%r8;"
-		"movq %0, %%r9;"
-		"movq %1, %%r10;"
-		"movq %2, %%r11;"
-		"movq $0, %%rdx;"
-		"divq %%rdx;"
-		:
-		: "r"((uint64_t)s), "r"(message), "r"(line)
-		: "rax", "rdx", "r8", "r9", "r10");
-	while (1) asm("hlt");
+    asm volatile (
+        "movq $0xeeeeeeebadbadbad, %%r8;"
+        "movq %0, %%r9;"
+        "movq %1, %%r10;"
+        "movq %2, %%r11;"
+        "movq $0, %%rdx;"
+        "divq %%rdx;"
+        :
+        : "r"((uint64_t)s), "r"(message), "r"(line)
+        : "rax", "rdx", "r8", "r9", "r10");
+    while (1) asm("hlt");
 }
 
 [[ noreturn ]] void
 raise(uefi::status status, const wchar_t *message, size_t line)
 {
-	if(status_line::fail(message, status))
-		while (1) asm("hlt");
-	else
-		cpu_assert(status, message, line);
+    if(status_line::fail(message, status))
+        while (1) asm("hlt");
+    else
+        cpu_assert(status, message, line);
 }
 
 
@@ -65,6 +65,6 @@ raise(uefi::status status, const wchar_t *message, size_t line)
 
 void debug_break()
 {
-	volatile int go = 0;
-	while (!go);
+    volatile int go = 0;
+    while (!go);
 }

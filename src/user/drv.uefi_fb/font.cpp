@@ -15,17 +15,17 @@ const static uint8_t unicode_start = 0xfe;
 
 /* bits used in flags */
 enum psf2_flags {
-	psf2_has_unicode = 0x00000001
+    psf2_has_unicode = 0x00000001
 };
 
 struct psf2_header {
-	uint8_t magic[4];
-	uint32_t version;
-	uint32_t header_size;	// offset of bitmaps in file
-	uint32_t flags;
-	uint32_t length;		// number of glyphs
-	uint32_t charsize;		// number of bytes for each character
-	uint32_t height, width; // max dimensions of glyphs
+    uint8_t magic[4];
+    uint32_t version;
+    uint32_t header_size;   // offset of bitmaps in file
+    uint32_t flags;
+    uint32_t length;        // number of glyphs
+    uint32_t charsize;      // number of bytes for each character
+    uint32_t height, width; // max dimensions of glyphs
 };
 
 const uint8_t default_font[] = {
@@ -34,47 +34,47 @@ const uint8_t default_font[] = {
 };
 
 font::font(void const *data) :
-	m_sizex {0},
-	m_sizey {0},
-	m_count {0},
-	m_data {nullptr}
+    m_sizex {0},
+    m_sizey {0},
+    m_count {0},
+    m_data {nullptr}
 {
-	if (!data)
-		data = default_font;
+    if (!data)
+        data = default_font;
 
-	psf2_header const *psf2 = static_cast<psf2_header const *>(data);
-	for (int i = 0; i < sizeof(magic); ++i) {
-		assert(psf2->magic[i] == magic[i] && "Bad font magic number.");
-	}
+    psf2_header const *psf2 = static_cast<psf2_header const *>(data);
+    for (int i = 0; i < sizeof(magic); ++i) {
+        assert(psf2->magic[i] == magic[i] && "Bad font magic number.");
+    }
 
-	m_data = static_cast<uint8_t const *>(data) + psf2->header_size;
-	m_sizex = psf2->width;
-	m_sizey = psf2->height;
-	m_count = psf2->length;
+    m_data = static_cast<uint8_t const *>(data) + psf2->header_size;
+    m_sizex = psf2->width;
+    m_sizey = psf2->height;
+    m_count = psf2->length;
 }
 
 void
 font::draw_glyph(
-		screen &s,
-		uint32_t glyph,
-		screen::pixel_t fg,
-		screen::pixel_t bg,
-		unsigned x,
-		unsigned y) const
+        screen &s,
+        uint32_t glyph,
+        screen::pixel_t fg,
+        screen::pixel_t bg,
+        unsigned x,
+        unsigned y) const
 {
-	unsigned bwidth = (m_sizex+7)/8;
-	uint8_t const *data = m_data + (glyph * glyph_bytes());
+    unsigned bwidth = (m_sizex+7)/8;
+    uint8_t const *data = m_data + (glyph * glyph_bytes());
 
-	for (int dy = 0; dy < m_sizey; ++dy) {
-		for (int dx = 0; dx < bwidth; ++dx) {
-			uint8_t byte = data[dy * bwidth + dx];
-			for (int i = 0; i < 8; ++i) {
-				if (dx*8 + i >= m_sizex) break;
-				const uint8_t mask = 1 << (7-i);
-				uint32_t c = (byte & mask) ? fg : bg;
-				s.draw_pixel(x + dx*8 + i, y + dy, c);
-			}
-		}
-	}
+    for (int dy = 0; dy < m_sizey; ++dy) {
+        for (int dx = 0; dx < bwidth; ++dx) {
+            uint8_t byte = data[dy * bwidth + dx];
+            for (int i = 0; i < 8; ++i) {
+                if (dx*8 + i >= m_sizex) break;
+                const uint8_t mask = 1 << (7-i);
+                uint32_t c = (byte & mask) ? fg : bg;
+                s.draw_pixel(x + dx*8 + i, y + dy, c);
+            }
+        }
+    }
 }
 
