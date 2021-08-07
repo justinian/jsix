@@ -98,31 +98,41 @@ Major tasks still to do:
 ## Building
 
 jsix uses the [Ninja][] build tool, and generates the build files for it with a
-custom tool called [Bonnibel][]. Bonnibel can be installed with [Cargo][], or
-downloaded as a prebuilt binary from its Github repository.
+custom tool called [Bonnibel][]. The build also relies on a custom sysroot,
+which can be downloaded via the [Peru][] tool, or built locally.
 
 [Ninja]:    https://ninja-build.org
-[Bonnibel]: https://github.com/justinian/bonnibel_rs
-[Cargo]:    https://crates.io/crates/bonnibel
+[Bonnibel]: https://github.com/justinian/bonnibel
+[Pery]:     https://github.com/buildinspace/peru
 
 Requrirements:
 
-* bonnibel
+* Bonnibel
 * ninja
-* clang
+* clang & lld
 * nasm
 * mtools
-* curl for downloading the toolchain
+* curl and Peru if downloading the toolchain
 
-### Setting up the cross toolchain
+Both Bonnibel and Peru can be installed via `pip`:
 
-Running `pb sync` will download and unpack the toolchain into `sysroot`. 
+```sh
+pip3 install --user -U bonnibel peru
+```
 
-#### Compiling the toolchain yourself
+### Setting up the sysroot
 
-If you have `clang` and `curl` installed, runing the `scripts/build_sysroot.sh`
-script will download and build a LLVM toolchain configured for building jsix
-host binaries.
+Running `peru sync` will download and unpack the toolchain into `sysroot`. 
+
+#### Compiling the sysroot yourself
+
+If you have CMake installed, runing the `scripts/build_sysroot.sh`
+script will download and build a LLVM toolchain configured for building the
+sysroot, and then build the sysroot with it.
+
+Built sysroots are actually stored in `~/.local/lib/jsix/sysroots` and installed
+in the project dir via symbolic link, so having mulitple jsix working trees or
+switching sysroot versions is easy.
 
 ### Building and running jsix
 
@@ -132,11 +142,16 @@ you have `qemu-system-x86_64` installed, the `qemu.sh` script will to run jsix
 in QEMU `-nographic` mode.
 
 I personally run this either from a real debian amd64 testing/buster machine or
-a windows WSL debian testing/buster installation. The following should be
-enough to set up such a system to build the kernel:
+a windows WSL debian testing/buster installation. After installing
+[the LLVM APT sources][llvm], the following should be enough to set up such a
+system to build the kernel:
 
-    sudo apt install qemu-system-x86 nasm clang-10 mtools curl ninja-build
-    sudo update-alternatives /usr/bin/clang clang /usr/bin/clang-10 1000
-    sudo update-alternatives /usr/bin/clang++ clang++ /usr/bin/clang++-10 1000
-	curl -L -o pb https://github.com/justinian/bonnibel_rs/releases/download/v2.3.0/pb-linux-amd64 && chmod a+x pb
+```sh
+pip3 install --user -U bonnibel peru
+sudo apt install qemu-system-x86 nasm clang-11 lld-11 mtools curl ninja-build
+sudo update-alternatives /usr/bin/clang clang /usr/bin/clang-11 1100
+sudo update-alternatives /usr/bin/clang++ clang++ /usr/bin/clang++-11 1100
+sudo update-alternatives /usr/bin/ld.lld ld.lld /usr/bin/ld.lld-11 1100
+```
 
+[llvm]: https://apt.llvm.org
