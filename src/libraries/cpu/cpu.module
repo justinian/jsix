@@ -1,0 +1,8 @@
+# vim: ft=python
+
+module("cpu",
+    kind = "lib",
+    includes = ["include"],
+    sources = [
+        "cpu_id.cpp",
+    ])

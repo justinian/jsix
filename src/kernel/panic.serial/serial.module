@@ -1,0 +1,16 @@
+# vim: ft=python
+
+panic = module("panic.serial",
+    kind = "exe",
+    output = "panic.serial.elf",
+    targets = [ "kernel" ],
+    deps = [ "kutil", "elf", "kernel" ],
+    sources = [
+        "display.cpp",
+        "entry.s",
+        "main.cpp",
+        "serial.cpp",
+        "symbol_table.cpp",
+    ])
+
+panic.variables['ldflags'] = ["${ldflags}", "-T", "${source_root}/src/kernel/panic.serial/panic.serial.ld"]

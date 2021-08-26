@@ -1,4 +1,0 @@
-name = "cpu"
-kind = "lib"
-includes = ["src/libraries/cpu/include"]
-sources = ["cpu_id.cpp"]

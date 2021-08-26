@@ -1,0 +1,35 @@
+extends = "base"
+
+[variables]
+
+ld = "clang++"
+
+ccflags = [
+    "-I${source_root}/external",
+    "--target=x86_64-unknown-windows",
+    "-ffreestanding",
+    "-mno-red-zone",
+    "-fshort-wchar",
+    "-fno-omit-frame-pointer",
+    "-ggdb",
+    "-g3",
+    '-DKERNEL_FILENAME=L"jsix.elf"',
+]
+
+
+cflags = [
+]
+
+cxxflags = [
+    "-fno-exceptions",
+    "-fno-rtti",
+]
+
+ldflags = [
+    "--target=x86_64-unknown-windows",
+    "-nostdlib",
+    "-Wl,-entry:efi_main",
+    "-Wl,-subsystem:efi_application",
+    "-fuse-ld=lld-link",
+    "-g"
+]

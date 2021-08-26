@@ -10,3 +10,4 @@ sysroot
 .gdb_history
 .peru
 __pycache__
+/venv

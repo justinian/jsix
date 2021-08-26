@@ -1,0 +1,5 @@
+kernel,kernel
+kernel,panic.serial
+user,drv.uefi_fb
+user,testapp
+user,srv.init

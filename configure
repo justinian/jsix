@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+
+def generate(output, config, manifest):
+    from os import makedirs, walk
+    from pathlib import Path
+    from bonnibel.module import Module
+    from bonnibel.project import Project
+
+    root = Path(__file__).parent
+    project = Project(root)
+
+    output = root / output
+    sources = root / "src"
+    manifest = root / manifest
+
+    modules = {}
+    for base, dirs, files in walk(sources):
+        path = Path(base) 
+        for f in files:
+            if f.endswith(".module"):
+                fullpath = path / f
+                
+                def module_init(name, **kwargs):
+                    m = Module(name, fullpath, path, **kwargs)
+                    modules[m.name] = m
+                    return m
+
+                glo = {'module': module_init}
+                code = compile(open(fullpath, 'r').read(), fullpath, "exec")
+
+                loc = {}
+                exec(code, glo, loc)
+
+    Module.update(modules)
+
+    makedirs(output.resolve(), exist_ok=True)
+    project.generate(root, output, modules, config, manifest)
+    for mod in modules.values():
+        mod.generate(output)
+
+if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent / "scripts"))
+
+    from argparse import ArgumentParser
+    from bonnibel import BonnibelError
+
+    p = ArgumentParser(description="Generate jsix build files")
+    p.add_argument("--manifest", "-m", metavar="FILE", default="assets/manifests/default",
+            help="File to use as the system manifest")
+    p.add_argument("--config", "-c", metavar="NAME", default="debug",
+            help="Configuration to build (eg, 'debug' or 'release')")
+    p.add_argument("output", metavar="DIR", default="build", nargs='?',
+            help="Where to create the build root")
+
+    args = p.parse_args()
+
+    try:
+        generate(args.output, args.config, args.manifest)
+
+    except BonnibelError as be:
+        import sys
+        print(f"Error: {be}", file=sys.stderr)
+        sys.exit(1)

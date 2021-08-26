@@ -1,0 +1,10 @@
+# vim: ft=python
+
+module("testapp",
+    targets = [ "user" ],
+    deps = [ "libc" ],
+    sources = [
+        "io.cpp",
+        "main.cpp",
+        "serial.cpp",
+    ])

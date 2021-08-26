@@ -1,0 +1,9 @@
+# vim: ft=python
+
+module("j6",
+    kind = "lib",
+    includes = [ "include" ],
+    sources = [
+        "init.cpp",
+        "syscalls.s",
+    ])

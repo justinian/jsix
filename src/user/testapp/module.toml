@@ -1,8 +1,0 @@
-name = "testapp"
-targets = ["user"]
-deps = ["libc"]
-sources = [
-	"io.cpp",
-	"main.cpp",
-	"serial.cpp",
-]

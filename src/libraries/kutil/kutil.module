@@ -1,0 +1,14 @@
+# vim: ft=python
+
+module("kutil",
+    kind = "lib",
+    includes = [ "include" ],
+    sources = [
+        "assert.cpp",
+        "bip_buffer.cpp",
+        "heap_allocator.cpp",
+        "logger.cpp",
+        "memory.cpp",
+        "printf.c",
+        "spinlock.cpp",
+    ])

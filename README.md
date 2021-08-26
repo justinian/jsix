@@ -97,38 +97,52 @@ Major tasks still to do:
 
 ## Building
 
-jsix uses the [Ninja][] build tool, and generates the build files for it with a
-custom tool called [Bonnibel][]. The build also relies on a custom sysroot,
-which can be downloaded via the [Peru][] tool, or built locally.
+jsix uses the [Ninja][] build tool, and generates the build files for it with
+the `configure` script. The build also relies on a custom sysroot, which can be
+downloaded via the [Peru][] tool, or built locally.
 
 [Ninja]:    https://ninja-build.org
-[Bonnibel]: https://github.com/justinian/bonnibel
-[Pery]:     https://github.com/buildinspace/peru
+[Peru]:     https://github.com/buildinspace/peru
 
-Requrirements:
+Other build dependencies:
 
-* Bonnibel
-* ninja
-* clang & lld
-* nasm
-* mtools
-* curl and Peru if downloading the toolchain
+* [clang][]: the C/C++ compiler
+* [nasm][]: the assembler
+* [lld][]: the linker
+* [mtools][]: for creating the FAT image
+* [curl][]: if using `peru` below to download the sysroot
 
-Both Bonnibel and Peru can be installed via `pip`:
+[clang]:    https://clang.llvm.org
+[nasm]:     https://www.nasm.us
+[lld]:      https://lld.llvm.org
+[mtools]:   https://www.gnu.org/software/mtools/
+[curl]:     https://curl.se
 
-```sh
-pip3 install --user -U bonnibel peru
+The `configure` script has some Python dependencies - these can be installed via
+`pip`, though doing so in a python virtual environment is recommended.
+Installing via `pip` will also install `ninja`.
+
+A Debian 11 (Bullseye) system can be configured with the necessary build
+dependencies by running the following commands from the jsix repository root:
+
+```bash
+sudo apt install clang lld nasm mtools python3-pip python3-venv
+python3 -m venv ./venv
+source venv/bin/activate
+pip install -r requirements.txt
+peru sync
 ```
 
 ### Setting up the sysroot
 
-Running `peru sync` will download and unpack the toolchain into `sysroot`. 
+Running `peru sync` as in the above section will download and unpack the
+toolchain into `sysroot`. 
 
 #### Compiling the sysroot yourself
 
-If you have CMake installed, runing the `scripts/build_sysroot.sh`
-script will download and build a LLVM toolchain configured for building the
-sysroot, and then build the sysroot with it.
+If you have CMake installed, runing the `scripts/build_sysroot.sh` script will
+download and build a LLVM toolchain configured for building the sysroot, and
+then build the sysroot with it.
 
 Built sysroots are actually stored in `~/.local/lib/jsix/sysroots` and installed
 in the project dir via symbolic link, so having mulitple jsix working trees or
@@ -136,22 +150,12 @@ switching sysroot versions is easy.
 
 ### Building and running jsix
 
-Once the toolchain has been set up, running Bonnibel's `pb init` command will
-set up the build configuration, and `pb build` will actually run the build.  If
-you have `qemu-system-x86_64` installed, the `qemu.sh` script will to run jsix
-in QEMU `-nographic` mode.
+Once the toolchain has been set up, running the `./configure` script (see
+`./configure --help` for available options) will set up the build configuration,
+and `ninja -C build` (or wherever you put the build directory) will actually run
+the build. If you have `qemu-system-x86_64` installed, the `qemu.sh` script will
+to run jsix in QEMU `-nographic` mode.
 
-I personally run this either from a real debian amd64 testing/buster machine or
-a windows WSL debian testing/buster installation. After installing
-[the LLVM APT sources][llvm], the following should be enough to set up such a
-system to build the kernel:
-
-```sh
-pip3 install --user -U bonnibel peru
-sudo apt install qemu-system-x86 nasm clang-11 lld-11 mtools curl ninja-build
-sudo update-alternatives /usr/bin/clang clang /usr/bin/clang-11 1100
-sudo update-alternatives /usr/bin/clang++ clang++ /usr/bin/clang++-11 1100
-sudo update-alternatives /usr/bin/ld.lld ld.lld /usr/bin/ld.lld-11 1100
-```
-
-[llvm]: https://apt.llvm.org
+I personally run this either from a real debian amd64 bullseye machine or
+a windows WSL debian bullseye installation. Your mileage may vary with other
+setups and distros.

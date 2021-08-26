@@ -1,0 +1,43 @@
+[variables]
+cc = "clang"
+cxx = "clang++"
+ld = "ld.lld"
+ar = "ar"
+nasm = "nasm"
+objcopy = "objcopy"
+cog = "cog"
+
+ccflags = [
+    "-I${source_root}/src/include",
+    "-I${source_root}/src/include/x86_64",
+    "-fcolor-diagnostics",
+    "-DVERSION_MAJOR=${version_major}",
+    "-DVERSION_MINOR=${version_minor}",
+    "-DVERSION_PATCH=${version_patch}",
+    "-DVERSION_GITSHA=0x${version_sha}",
+    '-DGIT_VERSION=\"${version_major}.${version_minor}.${version_patch}+${version_sha}\"',
+    '-DGIT_VERSION_WIDE=L\"${version_major}.${version_minor}.${version_patch}+${version_sha}\"',
+    "-Wformat=2", "-Winit-self", "-Wfloat-equal", "-Winline", "-Wmissing-format-attribute",
+    "-Wmissing-include-dirs", "-Wswitch", "-Wundef", "-Wdisabled-optimization",
+    "-Wpointer-arith", "-Wno-attributes", "-Wno-sign-compare", "-Wno-multichar",
+    "-Wno-div-by-zero", "-Wno-endif-labels", "-Wno-pragmas", "-Wno-format-extra-args",
+    "-Wno-unused-result", "-Wno-deprecated-declarations", "-Wno-unused-function",
+    "-Wno-address-of-packed-member", "-Wno-invalid-offsetof", "-Werror",
+]
+
+asflags = [
+    "-DVERSION_MAJOR=${version_major}",
+    "-DVERSION_MINOR=${version_minor}",
+    "-DVERSION_PATCH=${version_patch}",
+    "-DVERSION_GITSHA=0x${version_sha}",
+    "-I${source_root}/src/include",
+]
+
+cflags = ["-std=c11"]
+cxxflags = ["-std=c++17"]
+
+cogflags = [
+    "-I", "${source_root}/scripts",
+    "-D", "definitions_path=${source_root}/definitions"
+]
+

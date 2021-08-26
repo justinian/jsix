@@ -1,8 +1,0 @@
-name = "srv.init"
-targets = ["user"]
-deps = ["libc"]
-sources = [
-	"main.cpp",
-	"modules.cpp",
-	"start.s",
-]

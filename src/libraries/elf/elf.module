@@ -1,0 +1,8 @@
+# vim: ft=python
+
+module("elf",
+    kind = "lib",
+    includes = [ "include" ],
+    sources = [
+        "file.cpp",
+    ])
