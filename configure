@@ -6,7 +6,7 @@ def generate(output, config, manifest):
     from bonnibel.module import Module
     from bonnibel.project import Project
 
-    root = Path(__file__).parent
+    root = Path(__file__).parent.resolve()
     project = Project(root)
 
     output = root / output
