@@ -1,3 +1,8 @@
+def resolve(path):
+    if path.startswith('/') or path.startswith('$'):
+        return path
+    from pathlib import Path
+    return str(Path(path).resolve())
 
 class Module:
     __fields = {
@@ -122,6 +127,7 @@ class Module:
 
             if includes:
                 build.variable("ccflags", ["${ccflags}"] + [f"-I{i}" for i in includes])
+                build.variable("asflags", ["${asflags}"] + [f"-I{i}" for i in includes])
 
             if libs:
                 build.variable("libs", ["${libs}"] + libs)
@@ -133,14 +139,14 @@ class Module:
                 source = start
 
                 while source and source.action:
-                    output = source.get_output('${module_dir}')
+                    output = source.output
 
                     if source.action.rule:
                         build.build(
                             rule = source.action.rule,
                             outputs = output.input,
                             inputs = source.input,
-                            implicit = [f'${{source_root}}/{p}' for p in source.deps or tuple()],
+                            implicit = list(map(resolve, source.deps)),
                             variables = {"name": source.name},
                         )
 
@@ -178,4 +184,6 @@ class Module:
 
     def add_input(self, path, **kwargs):
         from .source import Source
-        self.sources.append(Source(self.root, path, **kwargs))
+        s = Source(self.root, path, **kwargs)
+        self.sources.append(s)
+        return str(s.output)

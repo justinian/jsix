@@ -56,14 +56,15 @@ class Source:
         self.__deps = deps
 
     def __str__(self):
-        return "{} {}:{}:{}".format(self.action, self.output, self.name, self.input)
+        return self.input
 
     @property
     def action(self):
         suffix = self.__path.suffix
         return self.Actions.get(suffix)
 
-    def get_output(self, output_root):
+    @property
+    def output(self):
         if not self.action:
             return None
 
@@ -71,7 +72,7 @@ class Source:
         if path is None:
             path = self.action.output_of(self.__path)
 
-        return path and Source(output_root, path)
+        return path and Source("${module_dir}", path)
 
     deps = property(lambda self: self.__deps)
     name = property(lambda self: str(self.__path))
