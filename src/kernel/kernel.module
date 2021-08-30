@@ -14,7 +14,6 @@ kernel = module("kernel",
         "clock.cpp",
         "console.cpp",
         "cpprt.cpp",
-        "cpu.cpp",
         "debug.cpp",
         "debug.s",
         "device_manager.cpp",
@@ -27,7 +26,6 @@ kernel = module("kernel",
         "interrupts.s",
         "io.cpp",
         "log.cpp",
-        "main.cpp",
         "memory_bootstrap.cpp",
         "msr.cpp",
         "objects/channel.cpp",
@@ -42,8 +40,6 @@ kernel = module("kernel",
         "pci.cpp",
         "scheduler.cpp",
         "serial.cpp",
-        "syscall.cpp",
-        "syscall.s",
         "syscalls/channel.cpp",
         "syscalls/endpoint.cpp",
         "syscalls/object.cpp",
@@ -55,5 +51,16 @@ kernel = module("kernel",
         "tss.cpp",
         "vm_space.cpp",
     ])
+
+from glob import glob
+definitions = glob('definitions/**/*.def', recursive=True)
+sysinc = kernel.add_input("syscalls.inc.cog", deps=definitions)
+kernel.add_input("syscall.s", deps=[sysinc])
+
+sysh = kernel.add_input("syscall.h.cog", deps=definitions)
+sysc = kernel.add_input("syscall.cpp.cog", deps=definitions + [sysh])
+
+kernel.add_input("main.cpp", deps=[sysh])
+kernel.add_input("cpu.cpp", deps=[sysh])
 
 kernel.variables['ldflags'] = ["${ldflags}", "-T", "${source_root}/src/kernel/kernel.ld"]

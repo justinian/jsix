@@ -28,10 +28,10 @@ endpoint::close()
 }
 
 j6_status_t
-endpoint::send(j6_tag_t tag, size_t len, void *data)
+endpoint::send(j6_tag_t tag, const void *data, size_t data_len)
 {
     thread_data sender = { &thread::current(), data };
-    sender.len = len;
+    sender.len = data_len;
     sender.tag = tag;
 
     if (!check_signal(j6_signal_endpoint_can_send)) {
@@ -55,11 +55,11 @@ endpoint::send(j6_tag_t tag, size_t len, void *data)
 }
 
 j6_status_t
-endpoint::receive(j6_tag_t *tag, size_t *len, void *data)
+endpoint::receive(j6_tag_t *tag, void *data, size_t *data_len)
 {
     thread_data receiver = { &thread::current(), data };
     receiver.tag_p = tag;
-    receiver.len_p = len;
+    receiver.len_p = data_len;
 
     if (!check_signal(j6_signal_endpoint_can_recv)) {
         assert_signal(j6_signal_endpoint_can_send);
@@ -120,7 +120,7 @@ endpoint::do_message_copy(const endpoint::thread_data &sender, endpoint::thread_
     if (sender.len) {
         vm_space &source = sender.th->parent().space();
         vm_space &dest = receiver.th->parent().space();
-        vm_space::copy(source, dest, sender.data, receiver.data, sender.len);
+        vm_space::copy(source, dest, sender.data, receiver.buffer, sender.len);
     }
 
     *receiver.len_p = sender.len;

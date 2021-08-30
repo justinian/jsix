@@ -9,7 +9,7 @@
 namespace syscalls {
 
 j6_status_t
-object_koid(j6_handle_t handle, j6_koid_t *koid)
+kobject_koid(j6_handle_t handle, j6_koid_t *koid)
 {
     if (koid == nullptr)
         return j6_err_invalid_arg;
@@ -23,7 +23,7 @@ object_koid(j6_handle_t handle, j6_koid_t *koid)
 }
 
 j6_status_t
-object_wait(j6_handle_t handle, j6_signal_t mask, j6_signal_t *sigs)
+kobject_wait(j6_handle_t handle, j6_signal_t mask, j6_signal_t *sigs)
 {
     kobject *obj = get_handle<kobject>(handle);
     if (!obj)
@@ -47,11 +47,11 @@ object_wait(j6_handle_t handle, j6_signal_t mask, j6_signal_t *sigs)
 }
 
 j6_status_t
-object_wait_many(j6_handle_t *handles, uint32_t count, j6_signal_t mask, j6_handle_t *handle, j6_signal_t *sigs)
+kobject_wait_many(j6_handle_t * handles, size_t handles_count, uint64_t mask, j6_handle_t * handle, uint64_t * signals)
 {
-    kutil::vector<kobject*> objects {count};
+    kutil::vector<kobject*> objects {uint32_t(handles_count)};
 
-    for (unsigned i = 0; i < count; ++i) {
+    for (unsigned i = 0; i < handles_count; ++i) {
         j6_handle_t h = handles[i];
         if (h == j6_handle_invalid)
             continue;
@@ -62,7 +62,7 @@ object_wait_many(j6_handle_t *handles, uint32_t count, j6_signal_t mask, j6_hand
 
         j6_signal_t current = obj->signals();
         if ((current & mask) != 0) {
-            *sigs = current;
+            *signals = current;
             *handle = h;
             return j6_status_ok;
         }
@@ -81,9 +81,9 @@ object_wait_many(j6_handle_t *handles, uint32_t count, j6_signal_t mask, j6_hand
         return result;
 
     *handle = j6_handle_invalid;
-    *sigs = th.get_wait_data();
+    *signals = th.get_wait_data();
     j6_koid_t koid = th.get_wait_object();
-    for (unsigned i = 0; i < count; ++i) {
+    for (unsigned i = 0; i < handles_count; ++i) {
         if (koid == objects[i]->koid())
             *handle = handles[i];
         else
@@ -96,7 +96,7 @@ object_wait_many(j6_handle_t *handles, uint32_t count, j6_signal_t mask, j6_hand
 }
 
 j6_status_t
-object_signal(j6_handle_t handle, j6_signal_t signals)
+kobject_signal(j6_handle_t handle, j6_signal_t signals)
 {
     if ((signals & j6_signal_user_mask) != signals)
         return j6_err_invalid_arg;
@@ -110,7 +110,7 @@ object_signal(j6_handle_t handle, j6_signal_t signals)
 }
 
 j6_status_t
-object_close(j6_handle_t handle)
+kobject_close(j6_handle_t handle)
 {
     kobject *obj = get_handle<kobject>(handle);
     if (!obj)

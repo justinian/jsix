@@ -286,7 +286,7 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
 }
 
 size_t
-vm_space::copy(vm_space &source, vm_space &dest, void *from, void *to, size_t length)
+vm_space::copy(vm_space &source, vm_space &dest, const void *from, void *to, size_t length)
 {
     uintptr_t ifrom = reinterpret_cast<uintptr_t>(from);
     uintptr_t ito = reinterpret_cast<uintptr_t>(to);

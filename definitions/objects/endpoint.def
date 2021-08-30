@@ -1,0 +1,30 @@
+# Channels are objects that enable synchronous IPC of
+# arbitrary-sized messages.
+
+object endpoint : kobject {
+    uid c5882f24a4c03b7e
+
+    method create [constructor]
+
+    # Send a message on a channel. Blocks until the message
+    # is received.
+    method send {
+        param tag uint64
+        param data buffer
+    }
+
+    # Receieve a message on a channel. Blocks until a message
+    # is available.
+    method receive {
+        param tag uint64 [out]
+        param data buffer [out]
+    }
+
+    # Send a message on a channel and then await a new message.
+    # Equivalent to calling send and then recieve, as a single
+    # operation.
+    method sendrecv {
+        param tag uint64 [inout]
+        param data buffer [inout]
+    }
+}

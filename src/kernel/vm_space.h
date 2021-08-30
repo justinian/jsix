@@ -103,7 +103,7 @@ public:
     /// \arg to     Pointer to the destination in the dest address space
     /// \arg length Amount of data to copy, in bytes
     /// \returnd    The number of bytes copied
-    static size_t copy(vm_space &source, vm_space &dest, void *from, void *to, size_t length);
+    static size_t copy(vm_space &source, vm_space &dest, const void *from, void *to, size_t length);
 
 private:
     friend class vm_area;

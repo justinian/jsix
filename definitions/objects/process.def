@@ -1,0 +1,27 @@
+import "objects/kobject.def"
+
+# Processes are a collection of handles and a virtual memory
+# space inside which threads are run.
+
+object process : kobject {
+    uid 0c69ee0b7502ba31
+
+    # Create a new empty process
+    method create [constructor]
+
+    # Stop all threads and exit the given process
+    method kill [destructor]
+
+    # Stop all threads and exit the current process
+    method exit [static] {
+        param result int32    # The result to retrun to the parent process
+    }
+
+    # Start the given process running. Note that the entrypoint
+    # address must be specified in the address space of the new
+    # process.
+    method start {
+        param entrypoint address            # The address of the main thread entrypoint
+        param handles object kobject [list] # A list of parent handles to send to the child process
+    }
+}

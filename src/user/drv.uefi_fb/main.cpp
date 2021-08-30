@@ -33,7 +33,7 @@ struct entry
 int
 main(int argc, const char **argv)
 {
-    j6_system_log("fb driver starting");
+    j6_log("fb driver starting");
 
     size_t initc = 0;
     j6_init_value *initv = nullptr;
@@ -48,7 +48,7 @@ main(int argc, const char **argv)
     }
 
     if (!fb || fb->addr == 0) {
-        j6_system_log("fb driver didn't find a framebuffer, exiting");
+        j6_log("fb driver didn't find a framebuffer, exiting");
         return 1;
     }
 
@@ -109,7 +109,7 @@ main(int argc, const char **argv)
             buffer_size = size;
             continue;
         } else if (s != j6_status_ok) {
-            j6_system_log("fb driver got error from get_log, quitting");
+            j6_log("fb driver got error from get_log, quitting");
             return s;
         }
 
@@ -134,7 +134,7 @@ main(int argc, const char **argv)
         }
     }
 
-    j6_system_log("fb driver done, exiting");
+    j6_log("fb driver done, exiting");
     return 0;
 }
 

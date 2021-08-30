@@ -1,0 +1,27 @@
+import "objects/system.def"
+import "objects/kobject.def"
+import "objects/process.def"
+import "objects/thread.def"
+import "objects/channel.def"
+import "objects/endpoint.def"
+import "objects/vma.def"
+
+interface syscalls [syscall] {
+    uid 01d9b6a948961097
+
+    expose object system
+    expose object kobject
+    expose object process
+    expose object thread
+    expose object channel
+    expose object endpoint
+    expose object vma
+
+    # Simple no-op syscall for testing
+    function noop
+
+    # Write a message to the kernel log
+    function log {
+        param message string
+    }
+}

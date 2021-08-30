@@ -4,17 +4,18 @@
 #include "log.h"
 #include "objects/process.h"
 #include "objects/thread.h"
+#include "syscalls/helpers.h"
 
 namespace syscalls {
 
 j6_status_t
-thread_create(void *rip, j6_handle_t *handle)
+thread_create(j6_handle_t *handle, uintptr_t entrypoint)
 {
     thread &parent = thread::current();
     process &p = parent.parent();
 
     thread *child = p.create_thread();
-    child->add_thunk_user(reinterpret_cast<uintptr_t>(rip));
+    child->add_thunk_user(entrypoint);
     *handle = child->self_handle();
     child->clear_state(thread::state::loading);
     child->set_state(thread::state::ready);
@@ -34,6 +35,18 @@ thread_exit(int32_t status)
 
     log::error(logs::task, "returned to exit syscall");
     return j6_err_unexpected;
+}
+
+j6_status_t
+thread_kill(j6_handle_t handle)
+{
+    thread *th = get_handle<thread>(handle);
+    if (!th)
+        return j6_err_invalid_arg;
+
+    log::debug(logs::task, "Killing thread %llx", th->koid());
+    th->exit(-1);
+    return j6_status_ok;
 }
 
 j6_status_t

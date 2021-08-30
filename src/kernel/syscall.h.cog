@@ -1,0 +1,60 @@
+#pragma once
+// vim: ft=cpp
+
+#include <stdint.h>
+#include "j6/types.h"
+
+struct cpu_state;
+
+/*[[[cog code generation
+from definitions.context import Context
+
+ctx = Context(definitions_path)
+ctx.parse("syscalls.def")
+syscalls = ctx.interfaces["syscalls"]
+
+]]]*/
+/// [[[end]]]
+
+enum class syscall : uint64_t
+{
+    /*[[[cog code generation
+
+    for id, scope, method in syscalls.methods:
+        if scope:
+            name = f"{scope.name}_{method.name}"
+        else:
+            name = method.name
+        cog.outl(f"{name:20} = {id},")
+
+    ]]]*/
+    //[[[end]]]
+};
+
+void syscall_initialize();
+extern "C" void syscall_enable();
+
+namespace syscalls
+{
+/*[[[cog code generation
+
+for id, scope, method in syscalls.methods:
+    if scope:
+        name = f"{scope.name}_{method.name}"
+    else:
+        name = method.name
+
+    args = []
+    if method.constructor:
+        args.append("j6_handle_t *handle")
+    elif not method.static:
+        args.append("j6_handle_t handle")
+
+    for param in method.params:
+        for type, suffix in param.type.c_names(param.options):
+            args.append(f"{type} {param.name}{suffix}")
+
+    cog.outl(f"""j6_status_t {name} ({", ".join(args)});""")
+]]]*/
+//[[[end]]]
+}

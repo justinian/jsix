@@ -1,4 +1,5 @@
 %include "tasking.inc"
+%include "syscalls.inc"
 
 ; SYSCALL/SYSRET control MSRs
 MSR_STAR   equ 0xc0000081
@@ -51,7 +52,9 @@ syscall_handler_prelude:
 
 	inc qword [rel __counter_syscall_enter]
 
-	and rax, 0xff ; Only 256 possible syscall values
+	cmp rax, NUM_SYSCALLS
+	jge .bad_syscall
+
 	lea r11, [rel syscall_registry]
 	mov r11, [r11 + rax * 8]
 	cmp r11, 0

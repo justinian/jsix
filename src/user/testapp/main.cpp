@@ -20,32 +20,32 @@ extern "C" {
 void
 thread_proc()
 {
-    j6_system_log("sub thread starting");
+    j6_log("sub thread starting");
 
     char buffer[512];
     size_t len = sizeof(buffer);
     j6_tag_t tag = 0;
-    j6_status_t result = j6_endpoint_receive(endp, &tag, &len, (void*)buffer);
+    j6_status_t result = j6_endpoint_receive(endp, &tag, (void*)buffer, &len);
     if (result != j6_status_ok)
         j6_thread_exit(result);
 
-    j6_system_log("sub thread received message");
+    j6_log("sub thread received message");
 
     for (int i = 0; i < len; ++i)
         if (buffer[i] >= 'A' && buffer[i] <= 'Z')
             buffer[i] += 0x20;
 
     tag++;
-    result = j6_endpoint_send(endp, tag, len, (void*)buffer);
+    result = j6_endpoint_send(endp, tag, (void*)buffer, len);
     if (result != j6_status_ok)
         j6_thread_exit(result);
 
-    j6_system_log("sub thread sent message");
+    j6_log("sub thread sent message");
 
     for (int i = 1; i < 5; ++i)
         j6_thread_sleep(i*10);
 
-    j6_system_log("sub thread exiting");
+    j6_log("sub thread exiting");
     j6_thread_exit(0);
 }
 
@@ -55,10 +55,10 @@ main(int argc, const char **argv)
     j6_handle_t children[2] = {j6_handle_invalid, j6_handle_invalid};
     j6_signal_t out = 0;
 
-    j6_system_log("main thread starting");
+    j6_log("main thread starting");
 
     for (int i = 0; i < argc; ++i)
-        j6_system_log(argv[i]);
+        j6_log(argv[i]);
 
     void *base = malloc(0x1000);
     if (!base)
@@ -68,57 +68,57 @@ main(int argc, const char **argv)
     for (int i = 0; i < 3; ++i)
         vma_ptr[i*100] = uint64_t(i);
 
-    j6_system_log("main thread wrote to memory area");
+    j6_log("main thread wrote to memory area");
 
     j6_status_t result = j6_endpoint_create(&endp);
     if (result != j6_status_ok)
         return result;
 
-    j6_system_log("main thread created endpoint");
+    j6_log("main thread created endpoint");
 
-    result = j6_thread_create(reinterpret_cast<void*>(&thread_proc), &children[1]);
+    result = j6_thread_create(&children[1], reinterpret_cast<uintptr_t>(&thread_proc));
     if (result != j6_status_ok)
         return result;
 
-    j6_system_log("main thread created sub thread");
+    j6_log("main thread created sub thread");
 
     char message[] = "MAIN THREAD SUCCESSFULLY CALLED SENDRECV IF THIS IS LOWERCASE";
     size_t size = sizeof(message);
     j6_tag_t tag = 16;
-    result = j6_endpoint_sendrecv(endp, &tag, &size, (void*)message);
+    result = j6_endpoint_sendrecv(endp, &tag, (void*)message, &size);
     if (result != j6_status_ok)
         return result;
 
     if (tag != 17)
-        j6_system_log("GOT WRONG TAG FROM SENDRECV");
+        j6_log("GOT WRONG TAG FROM SENDRECV");
 
     result = j6_system_bind_irq(__handle_sys, endp, 3);
     if (result != j6_status_ok)
         return result;
 
-    j6_system_log(message);
+    j6_log(message);
 
-    j6_system_log("main thread creating a new process");
+    j6_log("main thread creating a new process");
     result = j6_process_create(&children[0]);
     if (result != j6_status_ok)
         return result;
 
-    j6_system_log("main thread waiting on children");
+    j6_log("main thread waiting on children");
 
     j6_handle_t outhandle;
-    result = j6_object_wait_many(children, 2, -1ull, &outhandle, &out);
+    result = j6_kobject_wait_many(children, 2, -1ull, &outhandle, &out);
     if (result != j6_status_ok)
         return result;
 
     if (outhandle == children[1]) {
-        j6_system_log("   ok from child thread");
+        j6_log("   ok from child thread");
     } else if (outhandle == children[0]) {
-        j6_system_log("   ok from child process");
+        j6_log("   ok from child process");
     } else {
-        j6_system_log("   ... got unknown handle");
+        j6_log("   ... got unknown handle");
     }
 
-    j6_system_log("main testing irqs");
+    j6_log("main testing irqs");
 
 
     serial_port com2(COM2);
@@ -137,16 +137,10 @@ main(int argc, const char **argv)
             return result;
 
         if (j6_tag_is_irq(tag))
-            j6_system_log("main thread got irq!");
+            j6_log("main thread got irq!");
     }
 
-    j6_system_log("main thread closing endpoint");
-
-    result = j6_object_close(endp);
-    if (result != j6_status_ok)
-        return result;
-
-    j6_system_log("main thread done, exiting");
+    j6_log("main thread done, exiting");
     return 0;
 }
 

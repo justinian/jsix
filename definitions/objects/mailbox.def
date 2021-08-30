@@ -1,0 +1,33 @@
+# Mailboxes are objects that enable asynchronous IPC via event notification.
+# This is a second line of documentation
+
+object mailbox {
+    uid 99934ad04ece1e07
+
+    # Create an unbound mailbox
+    method create [constructor]
+
+    method close [destructor]
+
+    method bind {
+        param index uint
+        param source object kobject
+        param event uint
+    }
+
+    method unbind {
+        param index uint
+    }
+
+    method notify {
+        param index uint
+    }
+
+    method wait {
+        param bitmap uint64 [out]
+    }
+
+    method ack {
+        param bitmap uint64
+    }
+}

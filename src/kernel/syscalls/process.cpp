@@ -16,14 +16,14 @@ process_create(j6_handle_t *handle)
 }
 
 j6_status_t
-process_start(j6_handle_t handle, uintptr_t entrypoint, j6_handle_t *handles, size_t handle_count)
+process_start(j6_handle_t handle, uintptr_t entrypoint, j6_handle_t * handles, size_t handles_count)
 {
     process &p = process::current();
     process *c = get_handle<process>(handle);
-    if (handle_count && !handles)
+    if (handles_count && !handles)
         return j6_err_invalid_arg;
 
-    for (size_t i = 0; i < handle_count; ++i) {
+    for (size_t i = 0; i < handles_count; ++i) {
         kobject *o = p.lookup_handle(handles[i]);
         if (o) c->add_handle(o);
     }

@@ -1,0 +1,18 @@
+object thread : kobject {
+    uid 11f23e593d5761bd
+
+    method create [constructor] {
+        param entrypoint address
+    }
+
+    method kill [destructor]
+
+    method exit [static] {
+        param status int32
+    }
+
+    method pause [static]
+    method sleep [static] {
+        param until uint64
+    }
+}

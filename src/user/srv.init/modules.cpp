@@ -70,7 +70,7 @@ modules::load_modules(uintptr_t address, j6_handle_t system, j6_handle_t self)
 
         char message[100];
         sprintf(message, "srv.init found %d modules from page at 0x%lx", page->count, address);
-        j6_system_log(message);
+        j6_log(message);
 
         if (!first)
             first = page->modules;

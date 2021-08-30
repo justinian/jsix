@@ -1,0 +1,3 @@
+object channel : kobject {
+    uid 3ea38b96aa0e54c8
+}

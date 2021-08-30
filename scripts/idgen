@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+
+def hashid(s):
+    from hashlib import shake_128 as sh
+    return sh(s.encode('utf-8')).hexdigest(8)
+
+import sys
+
+for arg in sys.argv[1:]:
+    id = hashid(arg)
+    print(f"{arg}: {id}")

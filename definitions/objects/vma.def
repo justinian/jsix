@@ -1,0 +1,29 @@
+import "objects/process.def"
+
+object vma : kobject {
+    uid d6a12b63b3ed3937
+
+    method create [constructor] {
+        param size size
+        param flags uint32
+    }
+
+    method create_map [constructor] {
+        param size size
+        param address address
+        param flags uint32
+    }
+
+    method map {
+        param process object process
+        param address address
+    }
+
+    method unmap {
+        param process object process
+    }
+
+    method resize {
+        param size size [inout]
+    }
+}

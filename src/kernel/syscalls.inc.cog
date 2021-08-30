@@ -1,0 +1,11 @@
+; vim: ft=asm
+; [[[cog code generation
+; from definitions.context import Context
+;
+; ctx = Context(definitions_path)
+; ctx.parse("syscalls.def")
+; syscalls = ctx.interfaces['syscalls']
+; cog.outl(f"NUM_SYSCALLS equ {len(syscalls.methods)}")
+; ]]]
+; [[[end]]]
+

@@ -1,0 +1,56 @@
+// vim: ft=cpp
+#include <stddef.h>
+
+#include "kutil/memory.h"
+
+#include "console.h"
+#include "debug.h"
+#include "log.h"
+#include "syscall.h"
+
+extern "C" {
+    void syscall_invalid(uint64_t call);
+}
+
+/*[[[cog code generation
+from definitions.context import Context
+
+ctx = Context(definitions_path)
+ctx.parse("syscalls.def")
+syscalls = ctx.interfaces['syscalls']
+
+cog.outl(f"constexpr size_t num_syscalls = {len(syscalls.methods)};")
+]]]*/
+/// [[[end]]]
+uintptr_t syscall_registry[num_syscalls] __attribute__((section(".syscall_registry")));
+
+void
+syscall_invalid(uint64_t call)
+{
+    console *cons = console::get();
+    cons->set_color(9);
+    cons->printf("\nReceived unknown syscall: %02x\n", call);
+
+    cons->set_color();
+    _halt();
+}
+
+void
+syscall_initialize()
+{
+    kutil::memset(&syscall_registry, 0, sizeof(syscall_registry));
+
+    /*[[[cog code generation
+    for id, scope, method in syscalls.methods:
+        if scope:
+            name = f"{scope.name}_{method.name}"
+        else:
+            name = method.name
+
+        cog.outl(f"syscall_registry[{id}] = reinterpret_cast<uintptr_t>(syscalls::{name});")
+        cog.outl(f"""log::debug(logs::syscall, "Enabling syscall {id:x} as {name}");""")
+        cog.outl("")
+    ]]]*/
+    //[[[end]]]
+}
+

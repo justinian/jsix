@@ -20,7 +20,7 @@ j6_handle_t handle_system = 2; // boot protocol is that init gets the system as 
 int
 main(int argc, const char **argv)
 {
-    j6_system_log("srv.init starting");
+    j6_log("srv.init starting");
 
     modules mods = modules::load_modules(_arg_modules_phys, handle_system, handle_self);
 
@@ -28,7 +28,7 @@ main(int argc, const char **argv)
     for (auto &mod : mods.of_type(module_type::program)) {
         auto &prog = static_cast<const module_program&>(mod);
         sprintf(message, "  program module '%s' at %lx", prog.filename, prog.base_address);
-        j6_system_log(message);
+        j6_log(message);
     }
 
     return 0;

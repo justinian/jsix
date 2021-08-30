@@ -1,9 +1,14 @@
 # vim: ft=python
 
-module("j6",
+j6 = module("j6",
     kind = "lib",
     includes = [ "include" ],
     sources = [
         "init.cpp",
-        "syscalls.s",
     ])
+
+from glob import glob
+definitions = glob('definitions/**/*.def', recursive=True)
+j6.add_input("include/j6/syscalls.h.cog", deps=definitions)
+j6.add_input("syscalls.s.cog", deps=definitions)
+
