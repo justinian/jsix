@@ -1,10 +1,10 @@
-extends = "base"
+---
+extends: base
 
-[variables]
+variables:
+  ld: clang++
 
-ld = "clang++"
-
-ccflags = [
+  ccflags: [
     "-I${source_root}/external",
     "--target=x86_64-unknown-windows",
     "-ffreestanding",
@@ -13,23 +13,15 @@ ccflags = [
     "-fno-omit-frame-pointer",
     "-ggdb",
     "-g3",
-    '-DKERNEL_FILENAME=L"jsix.elf"',
-]
+    '-DKERNEL_FILENAME=L"jsix.elf"' ]
 
+  cxxflags: [ "-fno-exceptions", "-fno-rtti" ]
 
-cflags = [
-]
-
-cxxflags = [
-    "-fno-exceptions",
-    "-fno-rtti",
-]
-
-ldflags = [
+  ldflags: [
     "--target=x86_64-unknown-windows",
     "-nostdlib",
     "-Wl,-entry:efi_main",
     "-Wl,-subsystem:efi_application",
     "-fuse-ld=lld-link",
-    "-g"
-]
+    "-g" ]
+

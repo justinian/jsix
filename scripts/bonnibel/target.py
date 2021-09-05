@@ -3,7 +3,7 @@ class Target(dict):
 
     @classmethod
     def load(cls, root, name, config=None):
-        import toml
+        from . import load_config
 
         if (name, config) in cls.__targets:
             return cls.__targets[(name, config)]
@@ -17,9 +17,9 @@ class Target(dict):
             basename += f"-{config}"
 
         while basename is not None:
-            filename = str(configs / (basename + ".toml"))
+            filename = str(configs / (basename + ".yaml"))
             depfiles.append(filename)
-            desc = toml.load(filename)
+            desc = load_config(filename)
             basename = desc.get("extends")
             dicts.append(desc.get("variables", dict()))
 

@@ -1,0 +1,8 @@
+---
+programs:
+  - name: panic.serial
+    target: kernel
+
+  - name: drv.uefi_fb
+  - name: testapp
+  - name: srv.init

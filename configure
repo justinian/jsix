@@ -47,7 +47,7 @@ if __name__ == "__main__":
     from bonnibel import BonnibelError
 
     p = ArgumentParser(description="Generate jsix build files")
-    p.add_argument("--manifest", "-m", metavar="FILE", default="assets/manifests/default",
+    p.add_argument("--manifest", "-m", metavar="FILE", default="assets/manifests/default.yaml",
             help="File to use as the system manifest")
     p.add_argument("--config", "-c", metavar="NAME", default="debug",
             help="Configuration to build (eg, 'debug' or 'release')")

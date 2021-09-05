@@ -10,11 +10,12 @@ class Project:
     def __str__(self):
         return f"{self.name} {self.version.major}.{self.version.minor}.{self.version.patch}-{self.version.sha}"
 
-    def generate(self, root, output, modules, config, manifest):
+    def generate(self, root, output, modules, config, manifest_file):
         import sys
         import bonnibel
         from os.path import join
         from ninja.ninja_syntax import Writer
+        from . import load_config
         from .target import Target
 
         targets = set()
@@ -47,11 +48,7 @@ class Project:
             fatroot.mkdir(exist_ok=True)
 
             fatroot_content = []
-            for line in open(manifest, 'r'):
-                target, name = line.split(",", 1)
-                target = target.strip()
-                name = name.strip()
-
+            def add_fatroot(name, target):
                 if not name in modules:
                     raise BonnibelError(f"Manifest item '{name}' is not a known module")
 
@@ -66,8 +63,22 @@ class Project:
                         "name": f"Installing {name}",
                         "debug": f"${{build_root}}/{mod.output}.debug",
                     })
+
                 fatroot_content.append(fatroot_output)
                 build.newline()
+
+            manifest = load_config(manifest_file)
+            programs = manifest.get("programs", tuple())
+
+            kernel = manifest.get("kernel", dict())
+            add_fatroot(
+                kernel.get("name", "kernel"),
+                kernel.get("target", "kernel"))
+
+            for program in programs:
+                name = program["name"]
+                target = program.get("target", "user")
+                add_fatroot(name, target)
 
             symbol_table = "${build_root}/fatroot/symbol_table.dat"
             build.build(
@@ -123,7 +134,7 @@ class Project:
             build.newline()
 
             regen_implicits = \
-                [f"{self.root}/configure", str(manifest)] + \
+                [f"{self.root}/configure", str(manifest_file)] + \
                 [str(mod.modfile) for mod in modules.values()]
 
             for target in targets:
