@@ -26,9 +26,18 @@ public:
 private:
     page_tree(uint64_t base, uint8_t level);
 
-    /// Stores the page offset of the start of this node's pages in bits 0:41
-    /// and the depth of tree this node represents in bits 42:44 (0-7)
+    /// Check if this node should contain the given virtual address
+    /// \arg offset  The offset into the VMA, in bytes
+    /// \arg index   [out] If found, what entry index should contain addr
+    /// \returns     True if the address is contained
+    bool contains(uintptr_t offset, uint8_t &index) const;
+
+    /// Stores the page offset of the start of this node's pages virtual addresses
     uint64_t m_base;
+
+    /// Level of this node: 0 maps actual physical pages. Other levels N point to
+    /// nodes of level N-1.
+    uint8_t m_level;
 
     /// For a level 0 node, the entries area all physical page addresses.
     /// Other nodes contain pointers to child tree nodes.
