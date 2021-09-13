@@ -107,7 +107,6 @@ public:
 
 private:
     friend class vm_area;
-    friend class vm_mapper_multi;
 
     /// Find a given VMA in this address space
     bool find_vma(const vm_area &vma, uintptr_t &base) const;
@@ -117,6 +116,9 @@ private:
 
     /// Copy a range of mappings from the given address space 
     void copy_from(const vm_space &source, const vm_area &vma);
+
+    /// Remove an area's mappings from this space
+    void remove_area(vm_area *area);
 
     bool m_kernel;
     page_table *m_pml4;

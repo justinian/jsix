@@ -52,9 +52,7 @@ public:
 
     /// Track that this area was removed frm a vm_space
     /// \arg space  The space that is removing this area
-    /// \returns    True if the removing space should free the pages
-    ///             mapped for this area
-    virtual bool remove_from(vm_space *space);
+    virtual void remove_from(vm_space *space);
 
     /// Change the virtual size of the memory area. This may cause
     /// deallocation if the new size is smaller than the current size.
@@ -141,9 +139,8 @@ public:
 
 
 /// Area split into standard-sized segments, separated by guard pages.
-/// Based on vm_area_untracked, can not be shared.
 class vm_area_guarded :
-    public vm_area_untracked
+    public vm_area_open
 {
 public:
     /// Constructor.

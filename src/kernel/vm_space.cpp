@@ -45,11 +45,8 @@ vm_space::vm_space() :
 
 vm_space::~vm_space()
 {
-    for (auto &a : m_areas) {
-        bool free = a.area->remove_from(this);
-        clear(*a.area, 0, memory::page_count(a.area->size()), free);
-        a.area->handle_release();
-    }
+    for (auto &a : m_areas)
+        remove_area(a.area);
 
     kassert(!is_kernel(), "Kernel vm_space destructor!");
     if (active())
@@ -76,15 +73,21 @@ vm_space::add(uintptr_t base, vm_area *area)
     return true;
 }
 
+void
+vm_space::remove_area(vm_area *area)
+{
+    area->remove_from(this);
+    clear(*area, 0, memory::page_count(area->size()));
+    area->handle_release();
+}
+
 bool
 vm_space::remove(vm_area *area)
 {
     for (auto &a : m_areas) {
         if (a.area == area) {
-            bool free = area->remove_from(this);
-            clear(*area, 0, memory::page_count(area->size()), free);
+            remove_area(area);
             m_areas.remove(a);
-            area->handle_release();
             return true;
         }
     }
@@ -276,10 +279,6 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
     uintptr_t phys_page = 0;
     if (!area->get_page(offset, phys_page))
         return false;
-
-    void *mem = memory::to_virtual<void>(phys_page);
-    if (area->flags() && vm_flags::zero)
-        kutil::memset(mem, 0, memory::frame_size);
 
     page_in(*area, offset, phys_page, 1);
     return true;

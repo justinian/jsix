@@ -10,6 +10,9 @@ namespace memory {
     /// Size of a single page frame.
     constexpr size_t frame_size = 0x1000;
 
+    /// Number of bits of addressing within a page
+    constexpr size_t frame_bits = 12;
+
     /// Start of kernel memory.
     constexpr uintptr_t kernel_offset = 0xffff800000000000ull;
 

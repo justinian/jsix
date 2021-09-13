@@ -4,10 +4,10 @@
 #include "kernel_memory.h"
 #include "page_tree.h"
 
-// Page tree levels map the following parts of a pagewise offset. Note the xxx
-// are not part of the offset but represent the bits added for the actual virtual
-// address. (Also note that level 0's entries are physical page addrs, the rest
-// map other page_tree nodes)
+// Page tree levels map the following parts of an offset. Note the xxx part of
+// the offset but represent the bits of the actual sub-page virtual address.
+// (Also note that level 0's entries are physical page addrs, the rest map
+// other page_tree nodes)
 //
 // Level 0: 0000 0000 0003 fxxx    64 pages / 256 KiB
 // Level 1: 0000 0000 00fc 0xxx    4K pages /  16 MiB -- 24-bit addressing
@@ -34,6 +34,20 @@ page_tree::page_tree(uint64_t base, uint8_t level) :
     m_level {level}
 {
     kutil::memset(m_entries, 0, sizeof(m_entries));
+}
+
+page_tree::~page_tree()
+{
+    if (m_level) {
+        for (auto &e : m_entries)
+            delete e.child;
+    } else {
+        auto &fa = frame_allocator::get();
+        for (auto &e : m_entries) {
+            if (e.entry & 1)
+                fa.free(e.entry & ~0xfffull, 1);
+        }
+    }
 }
 
 bool

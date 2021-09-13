@@ -27,20 +27,21 @@ vm_area::add_to(vm_space *space)
     return true;
 }
 
-bool
+void
 vm_area::remove_from(vm_space *space)
 {
     m_spaces.remove_swap(space);
-    return
-        !m_spaces.count() &&
-        !(m_flags && vm_flags::mmio);
+    if (!m_spaces.count() &&
+        check_signal(j6_signal_no_handles))
+        delete this;
 }
 
 void
 vm_area::on_no_handles()
 {
     kobject::on_no_handles();
-    delete this;
+    if (!m_spaces.count())
+        delete this;
 }
 
 size_t
@@ -66,15 +67,24 @@ vm_area_fixed::vm_area_fixed(uintptr_t start, size_t size, vm_flags flags) :
 {
 }
 
-vm_area_fixed::~vm_area_fixed() {}
+vm_area_fixed::~vm_area_fixed()
+{
+    if (m_flags && vm_flags::mmio)
+        return;
 
-size_t vm_area_fixed::resize(size_t size)
+    size_t pages = memory::page_count(m_size);
+    frame_allocator::get().free(m_start, pages);
+}
+
+size_t
+vm_area_fixed::resize(size_t size)
 {
     // Not resizable
     return m_size;
 }
 
-bool vm_area_fixed::get_page(uintptr_t offset, uintptr_t &phys)
+bool
+vm_area_fixed::get_page(uintptr_t offset, uintptr_t &phys)
 {
     if (offset > m_size)
         return false;
@@ -83,13 +93,15 @@ bool vm_area_fixed::get_page(uintptr_t offset, uintptr_t &phys)
     return true;
 }
 
-
 vm_area_untracked::vm_area_untracked(size_t size, vm_flags flags) :
     vm_area {size, flags}
 {
 }
 
-vm_area_untracked::~vm_area_untracked() {}
+vm_area_untracked::~vm_area_untracked()
+{
+    kassert(false, "An untracked VMA's pages cannot be reclaimed, leaking memory");
+}
 
 bool
 vm_area_untracked::get_page(uintptr_t offset, uintptr_t &phys)
@@ -115,7 +127,11 @@ vm_area_open::vm_area_open(size_t size, vm_flags flags) :
 {
 }
 
-vm_area_open::~vm_area_open() {}
+vm_area_open::~vm_area_open()
+{
+    // the page_tree will free its pages when deleted
+    delete m_mapped;
+}
 
 bool
 vm_area_open::get_page(uintptr_t offset, uintptr_t &phys)
@@ -128,7 +144,7 @@ vm_area_guarded::vm_area_guarded(uintptr_t start, size_t buf_pages, size_t size,
     m_start {start},
     m_pages {buf_pages},
     m_next {memory::frame_size},
-    vm_area_untracked {size, flags}
+    vm_area_open {size, flags}
 {
 }
 
@@ -164,6 +180,5 @@ vm_area_guarded::get_page(uintptr_t offset, uintptr_t &phys)
     if ((offset >> 12) % (m_pages+1) == 0)
         return false;
 
-    return vm_area_untracked::get_page(offset, phys);
+    return vm_area_open::get_page(offset, phys);
 }
-

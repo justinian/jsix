@@ -23,6 +23,8 @@ public:
     /// \returns     True if a page was found
     static bool find_or_add(page_tree * &root, uint64_t offset, uintptr_t &page);
 
+    ~page_tree();
+
 private:
     page_tree(uint64_t base, uint8_t level);
 
