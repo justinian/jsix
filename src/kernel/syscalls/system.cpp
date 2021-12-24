@@ -1,6 +1,7 @@
 #include "j6/errors.h"
 #include "j6/types.h"
 
+#include "cpu.h"
 #include "device_manager.h"
 #include "frame_allocator.h"
 #include "log.h"
@@ -74,6 +75,19 @@ system_map_phys(j6_handle_t handle, j6_handle_t * area, uintptr_t phys, size_t s
     vm_flags vmf = (static_cast<vm_flags>(flags) & vm_flags::driver_mask);
     construct_handle<vm_area_fixed>(area, phys, size, vmf);
 
+    return j6_status_ok;
+}
+
+j6_status_t
+system_request_iopl(j6_handle_t handle, unsigned iopl)
+{
+    // TODO: check capabilities on sys handle
+    if (iopl != 0 && iopl != 3)
+        return j6_err_invalid_arg;
+
+    constexpr uint64_t mask = 3 << 12;
+    cpu_data &cpu = current_cpu();
+    cpu.rflags3 = (cpu.rflags3 & ~mask) | ((iopl << 12) & mask);
     return j6_status_ok;
 }
 

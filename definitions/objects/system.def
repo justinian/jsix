@@ -26,4 +26,10 @@ object system : kobject {
         param size size             # Size of the area, in pages
         param flags uint32          # Flags to apply to the created VMA
     }
+
+    # Request the kernel change the IOPL for this process. The only values
+    # that make sense are 0 and 3.
+    method request_iopl {
+        param iopl uint             # The IOPL to set for this process
+    }
 }
