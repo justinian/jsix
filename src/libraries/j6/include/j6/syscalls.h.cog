@@ -14,11 +14,16 @@ ctx = Context(definitions_path)
 ctx.parse("syscalls.def")
 syscalls = ctx.interfaces["syscalls"]
 
+last_scope = None
 for id, scope, method in syscalls.methods:
     if scope:
         name = f"{scope.name}_{method.name}"
     else:
         name = method.name
+
+    if scope != last_scope:
+        cog.outl("")
+    last_scope = scope
 
     args = []
     if method.constructor:
