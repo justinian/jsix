@@ -44,6 +44,9 @@ class Project:
                 build.subninja(output / target.name / "target.ninja")
             build.newline()
 
+            debugroot = output / ".debug"
+            debugroot.mkdir(exist_ok=True)
+
             fatroot = output / "fatroot"
             fatroot.mkdir(exist_ok=True)
 
@@ -53,15 +56,25 @@ class Project:
                     raise BonnibelError(f"Manifest item '{name}' is not a known module")
 
                 mod = modules[name]
+                intermediary = f"${{build_root}}/{mod.output}"
                 fatroot_output = f"${{build_root}}/fatroot/{mod.output}"
 
                 build.build(
                     rule = "strip",
-                    outputs = [fatroot_output],
+                    outputs = [intermediary],
                     inputs = [f"${{build_root}}/{target}/{mod.output}"],
+                    implicit = [f"${{build_root}}/{target}/{mod.output}.dump"],
+                    variables = {
+                        "name": f"Stripping {name}",
+                        "debug": f"${{build_root}}/.debug/{mod.output}.debug",
+                    })
+
+                build.build(
+                    rule = "cp",
+                    outputs = [fatroot_output],
+                    inputs = [intermediary],
                     variables = {
                         "name": f"Installing {name}",
-                        "debug": f"${{build_root}}/{mod.output}.debug",
                     })
 
                 fatroot_content.append(fatroot_output)
@@ -110,13 +123,13 @@ class Project:
             build.newline()
 
             default_assets = {
-                "ovmf/x64/ovmf_vars.fd": "UEFI Variables",
-                "debugging/jsix.elf-gdb.py": "GDB Debug Helpers",
+                "UEFI Variables": ("ovmf/x64/ovmf_vars.fd", "ovmf_vars.fd"),
+                "GDB Debug Helpers": ("debugging/jsix.elf-gdb.py", "jsix.elf-gdb.py"),
             }
 
-            for asset, name in default_assets.items():
-                p = root / "assets" / asset
-                out = f"${{build_root}}/{p.name}"
+            for name, assets in default_assets.items():
+                p = root / "assets" / assets[0]
+                out = f"${{build_root}}/{assets[1]}"
                 build.build(
                     rule = "cp",
                     outputs = [out],
