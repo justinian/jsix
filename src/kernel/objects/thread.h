@@ -15,6 +15,7 @@ struct TCB
     uintptr_t rsp;
     uintptr_t rsp0;
     uintptr_t rsp3;
+    uintptr_t rflags3;
     uintptr_t pml4;
 
     uint8_t priority;

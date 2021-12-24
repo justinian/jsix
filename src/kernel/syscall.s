@@ -31,6 +31,7 @@ syscall_handler_prelude:
 	swapgs
 	mov [gs:CPU_DATA.rsp3], rsp
 	mov rsp, [gs:CPU_DATA.rsp0]
+	mov [gs:CPU_DATA.rflags3], r11
 
 	push rcx
 	push rbp
@@ -44,7 +45,6 @@ syscall_handler_prelude:
 	mov rcx, r10
 
 	push rbx
-	push r11
 	push r12
 	push r13
 	push r14
@@ -76,12 +76,12 @@ kernel_to_user_trampoline:
 	pop r14
 	pop r13
 	pop r12
-	pop r11
 	pop rbx
 
 	pop rbp
 	pop rcx
 
+	mov r11, [gs:CPU_DATA.rflags3]
 	mov [gs:CPU_DATA.rsp0], rsp
 	mov rsp, [gs:CPU_DATA.rsp3]
 

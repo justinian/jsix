@@ -28,6 +28,7 @@ struct cpu_data
     uint32_t reserved;
     uintptr_t rsp0;
     uintptr_t rsp3;
+    uint64_t rflags3;
     TCB *tcb;
     thread *thread;
     process *process;
