@@ -34,6 +34,7 @@ struct module_program :
     public module
 {
     uintptr_t base_address;
+    size_t size;
     char filename[];
 };
 

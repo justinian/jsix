@@ -43,6 +43,7 @@ create_module(buffer data, const program_desc &desc, bool loaded)
     init::module_program *mod = g_alloc.allocate_module<init::module_program>(path_len);
     mod->mod_type = init::module_type::program;
     mod->base_address = reinterpret_cast<uintptr_t>(data.pointer);
+    mod->size = data.count;
     if (loaded)
         mod->mod_flags = static_cast<init::module_flags>(
             static_cast<uint8_t>(mod->mod_flags) |
