@@ -1,10 +1,13 @@
 # vim: ft=python
 
-module("srv.init",
+init = module("srv.init",
     targets = [ "user" ],
-    deps = [ "libc" ],
+    deps = [ "libc", "elf" ],
     sources = [
+        "loader.cpp",
         "main.cpp",
         "modules.cpp",
         "start.s",
     ])
+
+init.variables['ldflags'] = ["${ldflags}", "-section-start=.rodata=0x800000"]

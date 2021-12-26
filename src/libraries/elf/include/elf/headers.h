@@ -54,11 +54,18 @@ struct file_header
 
 
 enum class segment_type : uint32_t { null, load, dynamic, interpreter, note };
+enum class segment_flags : uint32_t
+{
+    none  = 0x00,
+    exec  = 0x01,
+    write = 0x02,
+    read  = 0x04,
+};
 
 struct program_header
 {
     segment_type type;
-    uint32_t flags;
+    segment_flags flags;
     uint64_t offset;
 
     uint64_t vaddr;

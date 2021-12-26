@@ -1,7 +1,8 @@
 #include <stdio.h>
-#include "j6/syscalls.h"
 #include "init_args.h"
+#include "j6/syscalls.h"
 
+#include "loader.h"
 #include "modules.h"
 
 using kernel::init::module;
@@ -24,11 +25,17 @@ main(int argc, const char **argv)
 
     modules mods = modules::load_modules(_arg_modules_phys, handle_system, handle_self);
 
-    char message[100];
     for (auto &mod : mods.of_type(module_type::program)) {
         auto &prog = static_cast<const module_program&>(mod);
-        sprintf(message, "  program module '%s' at %lx", prog.filename, prog.base_address);
+
+        char message[100];
+        sprintf(message, "  loading program module '%s' at %lx", prog.filename, prog.base_address);
         j6_log(message);
+
+        if (!load_program(prog, message)) {
+            j6_log(message);
+            return 1;
+        }
     }
 
     return 0;

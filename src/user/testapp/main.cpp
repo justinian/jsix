@@ -3,6 +3,7 @@
 
 #include "j6/types.h"
 #include "j6/errors.h"
+#include "j6/flags.h"
 #include "j6/signals.h"
 #include "j6/syscalls.h"
 
@@ -16,6 +17,11 @@ j6_handle_t endp = j6_handle_invalid;
 extern "C" {
     int main(int, const char **);
 }
+
+constexpr j6_handle_t handle_self   = 1; // Self program handle is always 1
+
+constexpr size_t stack_size = 0x10000;
+constexpr uintptr_t stack_top = 0xf80000000;
 
 void
 thread_proc()
@@ -52,7 +58,6 @@ thread_proc()
 int
 main(int argc, const char **argv)
 {
-    j6_handle_t children[2] = {j6_handle_invalid, j6_handle_invalid};
     j6_signal_t out = 0;
 
     j6_log("main thread starting");
@@ -76,7 +81,13 @@ main(int argc, const char **argv)
 
     j6_log("main thread created endpoint");
 
-    result = j6_thread_create(&children[1], reinterpret_cast<uintptr_t>(&thread_proc));
+    j6_handle_t child_stack_vma = j6_handle_invalid;
+    result = j6_vma_create_map(&child_stack_vma, stack_size, stack_top-stack_size, j6_vm_flag_write);
+    if (result != j6_status_ok)
+        return result;
+
+    j6_handle_t child = j6_handle_invalid;
+    result = j6_thread_create(&child, handle_self, stack_top, reinterpret_cast<uintptr_t>(&thread_proc));
     if (result != j6_status_ok)
         return result;
 
@@ -98,28 +109,19 @@ main(int argc, const char **argv)
 
     j6_log(message);
 
-    j6_log("main thread creating a new process");
-    result = j6_process_create(&children[0]);
+    j6_log("main thread waiting on sub thread");
+
+    result = j6_kobject_wait(child, -1ull, &out);
     if (result != j6_status_ok)
         return result;
 
-    j6_log("main thread waiting on children");
+    j6_log("main setting IOPL");
 
-    j6_handle_t outhandle;
-    result = j6_kobject_wait_many(children, 2, -1ull, &outhandle, &out);
+    result = j6_system_request_iopl(__handle_sys, 3);
     if (result != j6_status_ok)
         return result;
-
-    if (outhandle == children[1]) {
-        j6_log("   ok from child thread");
-    } else if (outhandle == children[0]) {
-        j6_log("   ok from child process");
-    } else {
-        j6_log("   ... got unknown handle");
-    }
 
     j6_log("main testing irqs");
-
 
     serial_port com2(COM2);
 
