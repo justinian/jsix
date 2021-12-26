@@ -183,7 +183,7 @@ kernel_main(init::args *args)
     // Load the init server
     load_init_server(*args->init, args->modules);
 
-    sched->create_kernel_task(logger_task, scheduler::max_priority/2, true);
+    sched->create_kernel_task(logger_task, scheduler::max_priority/4, true);
     sched->start();
 }
 
