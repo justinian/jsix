@@ -172,14 +172,15 @@ thread::add_thunk_user(uintptr_t rip3, uintptr_t rip0, uint64_t flags)
     // b) come out of the kernel/user trampoline and start executing
     //    in user mode at rip
 
-    m_tcb.rsp -= sizeof(uintptr_t) * 8;
-    uintptr_t *stack = reinterpret_cast<uintptr_t*>(m_tcb.rsp);
     flags |= 0x200;
+    m_tcb.rflags3 = flags;
 
-    stack[7] = rip3;       // return rip in rcx
-    stack[6] = m_tcb.rsp3; // rbp
-    stack[5] = 0xbbbbbbbb; // rbx
-    stack[4] = flags;      // r11 sets RFLAGS
+    m_tcb.rsp -= sizeof(uintptr_t) * 7;
+    uintptr_t *stack = reinterpret_cast<uintptr_t*>(m_tcb.rsp);
+
+    stack[6] = rip3;       // return rip in rcx
+    stack[5] = m_tcb.rsp3; // rbp
+    stack[4] = 0xbbbbbbbb; // rbx
     stack[3] = 0x12121212; // r12
     stack[2] = 0x13131313; // r13
     stack[1] = 0x14141414; // r14

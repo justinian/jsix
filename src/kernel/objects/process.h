@@ -43,10 +43,10 @@ public:
     vm_space & space() { return m_space; }
 
     /// Create a new thread in this process
+    /// \args rsp3      If non-zero, sets the ring3 stack pointer to this value
     /// \args priority  The new thread's scheduling priority
-    /// \args user      If true, create a userspace stack for this thread
     /// \returns        The newly created thread object
-    thread * create_thread(uint8_t priorty = default_priority, bool user = true);
+    thread * create_thread(uintptr_t rsp3 = 0, uint8_t priorty = default_priority);
 
     /// Start tracking an object with a handle.
     /// \args obj  The object this handle refers to

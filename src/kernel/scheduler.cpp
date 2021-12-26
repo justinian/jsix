@@ -70,7 +70,7 @@ inline T * push(uintptr_t &rsp, size_t size = sizeof(T)) {
 void
 scheduler::create_kernel_task(void (*task)(), uint8_t priority, bool constant)
 {
-    thread *th = process::kernel_process().create_thread(priority, false);
+    thread *th = process::kernel_process().create_thread(0, priority);
     auto *tcb = th->tcb();
 
     th->add_thunk_kernel(reinterpret_cast<uintptr_t>(task));

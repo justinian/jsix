@@ -2,6 +2,8 @@ object thread : kobject {
     uid 11f23e593d5761bd
 
     method create [constructor] {
+        param process object process
+        param stack_top address
         param entrypoint address
     }
 

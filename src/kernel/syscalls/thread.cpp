@@ -9,19 +9,22 @@
 namespace syscalls {
 
 j6_status_t
-thread_create(j6_handle_t *handle, uintptr_t entrypoint)
+thread_create(j6_handle_t *handle, j6_handle_t proc, uintptr_t stack_top, uintptr_t entrypoint)
 {
-    thread &parent = thread::current();
-    process &p = parent.parent();
+    thread &parent_th = thread::current();
+    process &parent_pr = parent_th.parent();
 
-    thread *child = p.create_thread();
+    process *owner = get_handle<process>(proc);
+    if (!owner) return j6_err_invalid_arg;
+
+    thread *child = owner->create_thread(stack_top);
     child->add_thunk_user(entrypoint);
     *handle = child->self_handle();
     child->clear_state(thread::state::loading);
     child->set_state(thread::state::ready);
 
-    log::debug(logs::task, "Thread %llx spawned new thread %llx, handle %d",
-        parent.koid(), child->koid(), *handle);
+    log::debug(logs::task, "Thread %llx:%llx spawned new thread %llx:%llx",
+        parent_pr.koid(), parent_th.koid(), owner->koid(), child->koid());
 
     return j6_status_ok;
 }

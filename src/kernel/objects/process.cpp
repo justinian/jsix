@@ -86,7 +86,7 @@ process::update()
 }
 
 thread *
-process::create_thread(uint8_t priority, bool user)
+process::create_thread(uintptr_t rsp3, uint8_t priority)
 {
     if (priority == default_priority)
         priority = scheduler::default_priority;
@@ -94,17 +94,8 @@ process::create_thread(uint8_t priority, bool user)
     thread *th = new thread(*this, priority);
     kassert(th, "Failed to create thread!");
 
-    if (user) {
-        uintptr_t stack_top = stacks_top - (m_threads.count() * stack_size);
-
-        vm_flags flags = vm_flags::zero|vm_flags::write;
-        vm_area *vma = new vm_area_open(stack_size, flags);
-        m_space.add(stack_top - stack_size, vma);
-
-        // Space for null frame - because the page gets zeroed on
-        // allocation, just pointing rsp here does the trick
-        th->tcb()->rsp3 = stack_top - 2 * sizeof(uint64_t);
-    }
+    if (rsp3)
+        th->tcb()->rsp3 = rsp3;
 
     m_threads.append(th);
     scheduler::get().add_thread(th->tcb());
