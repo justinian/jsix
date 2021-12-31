@@ -9,9 +9,9 @@ namespace panic {
 void
 print_header(serial_port &out, const char *message)
 {
-    out.write("\n\n \e[5;31mPANIC:\e[0;1;31m ");
+    out.write("\n\n\e[5;31m PANIC:\e[0;1;31m ");
     out.write(message);
-    out.write("\n \e[0;31m=====================================================================\n");
+    out.write("\n \e[0;31m===================================================================================\n");
 }
 
 void
