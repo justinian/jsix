@@ -7,10 +7,27 @@
 namespace panic {
 
 void
-print_header(serial_port &out, const char *message)
+print_header(
+        serial_port &out,
+        const char *message,
+        const char *function,
+        const char *file,
+        uint64_t line)
 {
     out.write("\n\n\e[5;31m PANIC:\e[0;1;31m ");
-    out.write(message);
+    if (message) {
+        out.write(message);
+        out.write("\n ");
+    }
+    out.write(function);
+    out.write("  ");
+    out.write(file);
+    out.write(":");
+
+    char linestr[6];
+    snprintf(linestr, sizeof(linestr), "%d", line);
+    out.write(linestr);
+
     out.write("\n \e[0;31m===================================================================================\n");
 }
 

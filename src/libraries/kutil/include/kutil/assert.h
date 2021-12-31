@@ -16,14 +16,29 @@ extern uintptr_t symbol_table;
 } // namespace assert
 } // namespace kutil
 
-#define kassert(stmt, message)  \
-    do { \
-        if(!(stmt)) { \
-            register const char *m asm("rdi"); \
-            register uintptr_t i asm("rsi"); \
-            asm volatile ("mov %1, %0" : "=r"(m) : "r"(message)); \
-            asm volatile ("mov %1, %0" : "=r"(i) : "r"(kutil::assert::symbol_table)); \
-            *kutil::assert::apic_icr = kutil::assert::send_nmi_command; \
-            while (1) __asm__ __volatile__ ("hlt"); \
-        } \
-    } while(0);
+__attribute__ ((always_inline))
+inline void kassert(
+        bool check,
+        const char *message = nullptr,
+        const char *function = __builtin_FUNCTION(),
+        const char *file = __builtin_FILE(),
+        uint64_t line = __builtin_LINE())
+{
+    if (!check) {
+        register uintptr_t syms asm("rdi");
+        register const char *m asm("rsi");
+        register const char *fn asm("rdx");
+        register const char *fi asm("rcx");
+        register uint64_t l asm("r8");
+
+        asm volatile ("mov %1, %0" : "=r"(syms) : "r"(kutil::assert::symbol_table));
+        asm volatile ("mov %1, %0" : "=r"(m) : "r"(message));
+        asm volatile ("mov %1, %0" : "=r"(fn) : "r"(function));
+        asm volatile ("mov %1, %0" : "=r"(fi) : "r"(file));
+        asm volatile ("mov %1, %0" : "=r"(l) : "r"(line));
+
+        *kutil::assert::apic_icr = kutil::assert::send_nmi_command;
+
+        while (1) asm ("hlt");
+    }
+}

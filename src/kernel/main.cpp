@@ -89,21 +89,6 @@ kernel_main(init::args *args)
 
     cpu_validate();
 
-    kassert(args->magic == init::args_magic,
-            "Bad kernel args magic number");
-
-    log::debug(logs::boot, "jsix init args are at: %016lx", args);
-    log::debug(logs::boot, "     Memory map is at: %016lx", args->mem_map);
-    log::debug(logs::boot, "ACPI root table is at: %016lx", args->acpi_table);
-    log::debug(logs::boot, "Runtime service is at: %016lx", args->runtime_services);
-    log::debug(logs::boot, "    Kernel PML4 is at: %016lx", args->pml4);
-
-    uint64_t cr0, cr4;
-    asm ("mov %%cr0, %0" : "=r"(cr0));
-    asm ("mov %%cr4, %0" : "=r"(cr4));
-    uint64_t efer = rdmsr(msr::ia32_efer);
-    log::debug(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx", cr0, cr4, efer);
-
     extern IDT &g_bsp_idt;
     extern TSS &g_bsp_tss;
     extern GDT &g_bsp_gdt;
@@ -119,6 +104,21 @@ kernel_main(init::args *args)
     cpu->gdt = new (&g_bsp_gdt) GDT {cpu->tss};
     cpu->rsp0 = idle_stack_end;
     cpu_early_init(cpu);
+
+    kassert(args->magic == init::args_magic,
+            "Bad kernel args magic number");
+
+    log::debug(logs::boot, "jsix init args are at: %016lx", args);
+    log::debug(logs::boot, "     Memory map is at: %016lx", args->mem_map);
+    log::debug(logs::boot, "ACPI root table is at: %016lx", args->acpi_table);
+    log::debug(logs::boot, "Runtime service is at: %016lx", args->runtime_services);
+    log::debug(logs::boot, "    Kernel PML4 is at: %016lx", args->pml4);
+
+    uint64_t cr0, cr4;
+    asm ("mov %%cr0, %0" : "=r"(cr0));
+    asm ("mov %%cr4, %0" : "=r"(cr4));
+    uint64_t efer = rdmsr(msr::ia32_efer);
+    log::debug(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx", cr0, cr4, efer);
 
     disable_legacy_pic();
 
