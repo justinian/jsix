@@ -1,6 +1,7 @@
 #include <stddef.h>
 
 #include <j6/init.h>
+#include "kutil/assert.h"
 
 #include "apic.h"
 #include "clock.h"
@@ -21,10 +22,6 @@
 #include "objects/vm_area.h"
 #include "scheduler.h"
 
-// here for the framebuffer hack
-#include "kernel_args.h"
-
-#include "kutil/assert.h"
 
 extern "C" void task_switch(TCB *tcb);
 scheduler *scheduler::s_instance = nullptr;
