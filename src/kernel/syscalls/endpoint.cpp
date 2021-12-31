@@ -29,7 +29,7 @@ endpoint_send(j6_handle_t handle, uint64_t tag, const void * data, size_t data_l
 j6_status_t
 endpoint_receive(j6_handle_t handle, uint64_t * tag, void * data, size_t * data_len)
 {
-    if (!tag || !data_len || !data)
+    if (!tag || !data_len || (*data_len && !data))
         return j6_err_invalid_arg;
 
     endpoint *e = get_handle<endpoint>(handle);

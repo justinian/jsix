@@ -134,7 +134,7 @@ main(int argc, const char **argv)
 
     size_t len = 0;
     while (true) {
-        result = j6_endpoint_receive(endp, &tag, &len, nullptr);
+        result = j6_endpoint_receive(endp, &tag, nullptr, &len);
         if (result != j6_status_ok)
             return result;
 
