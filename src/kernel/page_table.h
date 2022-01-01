@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include "enum_bitfields.h"
 #include "kernel_memory.h"
+#include "kutil/spinlock.h"
 
 struct free_page_header;
 
@@ -141,6 +142,7 @@ struct page_table
 
     static free_page_header *s_page_cache; ///< Cache of free pages to use for tables
     static size_t s_cache_count;           ///< Number of pages in s_page_cache
+    static kutil::spinlock s_lock;         ///< Lock for shared page cache
 
     /// Get an entry in the page table as a page_table pointer
     /// \arg i     Index of the entry in this page table

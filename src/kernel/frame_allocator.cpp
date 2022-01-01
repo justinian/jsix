@@ -59,16 +59,16 @@ frame_allocator::allocate(size_t count, uintptr_t *address)
         *address = block.base + frame * frame_size;
 
         // Clear the bits to mark these pages allocated
-        m3 &= ~(((1 << n) - 1) << o3);
+        m3 &= ~(((1ull << n) - 1) << o3);
         block.bitmap[(o1 << 6) + o2] = m3;
         if (!m3) {
             // if that was it for this group, clear the next level bit
-            m2 &= ~(1 << o2);
+            m2 &= ~(1ull << o2);
             block.map2[o1] = m2;
 
             if (!m2) {
                 // if that was cleared too, update the top level
-                block.map1 &= ~(1 << o1);
+                block.map1 &= ~(1ull << o1);
             }
         }
 

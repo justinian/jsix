@@ -10,6 +10,7 @@ using level = page_table::level;
 
 free_page_header * page_table::s_page_cache = nullptr;
 size_t page_table::s_cache_count = 0;
+kutil::spinlock page_table::s_lock;
 constexpr size_t page_table::entry_sizes[4];
 
 
@@ -174,12 +175,20 @@ struct free_page_header { free_page_header *next; };
 page_table *
 page_table::get_table_page()
 {
-    if (!s_cache_count)
-        fill_table_page_cache();
+    free_page_header *page = nullptr;
 
-    free_page_header *page = s_page_cache;
-    s_page_cache = s_page_cache->next;
-    --s_cache_count;
+    {
+        kutil::scoped_lock lock(s_lock);
+
+        if (!s_cache_count)
+            fill_table_page_cache();
+
+        kassert(s_page_cache, "Somehow the page cache pointer is null");
+
+        page = s_page_cache;
+        s_page_cache = s_page_cache->next;
+        --s_cache_count;
+    }
 
     kutil::memset(page, 0, memory::frame_size);
     return reinterpret_cast<page_table*>(page);
@@ -188,22 +197,24 @@ page_table::get_table_page()
 void
 page_table::free_table_page(page_table *pt)
 {
+    kutil::scoped_lock lock(s_lock);
     free_page_header *page =
         reinterpret_cast<free_page_header*>(pt);
     page->next = s_page_cache;
-    s_page_cache = page->next;
+    s_page_cache = page;
     ++s_cache_count;
 }
 
 void
 page_table::fill_table_page_cache()
 {
-    constexpr size_t min_pages = 16;
+    constexpr size_t min_pages = 32;
 
     frame_allocator &fa = frame_allocator::get();
     while (s_cache_count < min_pages) {
         uintptr_t phys = 0;
         size_t n = fa.allocate(min_pages - s_cache_count, &phys);
+        kassert(phys, "Got physical page 0 as a page table");
 
         free_page_header *start =
             memory::to_virtual<free_page_header>(phys);
