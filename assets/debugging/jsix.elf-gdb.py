@@ -114,7 +114,7 @@ class TableWalkCommand(gdb.Command):
         table = pml4
         entry = 0
         for i in range(len(indices)):
-            entry = int(gdb.parse_and_eval(f'((uint64_t*){table})[{indices[i]}]'))
+            entry = int(gdb.parse_and_eval(f'((uint64_t*)0x{table:x})[0x{indices[i]:x}]'))
             flagset = flagsets[i]
             flag_names = " | ".join([f[1] for f in flagset if (entry & f[0]) == f[0]])
 
