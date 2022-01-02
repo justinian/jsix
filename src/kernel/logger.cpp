@@ -1,10 +1,10 @@
 #include "kutil/assert.h"
 #include "kutil/constexpr_hash.h"
-#include "kutil/logger.h"
 #include "kutil/memory.h"
-#include "kutil/printf.h"
+#include "printf/printf.h"
 
-namespace kutil {
+#include "logger.h"
+
 namespace logs {
 #define LOG(name, lvl) \
     const log::area_t name = #name ## _h; \
@@ -170,4 +170,3 @@ void fatal(area_t area, const char *fmt, ...)
 }
 
 } // namespace log
-} // namespace kutil

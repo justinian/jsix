@@ -26,7 +26,8 @@ variables:
     "-Wpointer-arith", "-Wno-attributes", "-Wno-sign-compare", "-Wno-multichar",
     "-Wno-div-by-zero", "-Wno-endif-labels", "-Wno-pragmas", "-Wno-format-extra-args",
     "-Wno-unused-result", "-Wno-deprecated-declarations", "-Wno-unused-function",
-    "-Wno-address-of-packed-member", "-Wno-invalid-offsetof", "-Werror" ]
+    "-Wno-address-of-packed-member", "-Wno-invalid-offsetof", "-Wno-format-nonliteral",
+    "-Werror" ]
 
   asflags: [
     "-DVERSION_MAJOR=${version_major}",

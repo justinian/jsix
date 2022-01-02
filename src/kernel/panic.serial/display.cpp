@@ -1,6 +1,7 @@
+#include "printf/printf.h"
+
 #include "cpu.h"
 #include "display.h"
-#include "kutil/printf.h"
 #include "serial.h"
 #include "symbol_table.h"
 
@@ -25,7 +26,7 @@ print_header(
     out.write(":");
 
     char linestr[6];
-    snprintf(linestr, sizeof(linestr), "%d", line);
+    snprintf(linestr, sizeof(linestr), "%ld", line);
     out.write(linestr);
 
     out.write("\n \e[0;31m===================================================================================\n");
@@ -56,7 +57,7 @@ print_reg(serial_port &out, const char *name, uint64_t val, const char *color)
 {
     char message[512];
 
-    snprintf(message, sizeof(message), " \e[0;%sm%-3s %016llx\e[0m", color, name, val);
+    snprintf(message, sizeof(message), " \e[0;%sm%-3s %016lx\e[0m", color, name, val);
     out.write(message);
 }
 
@@ -102,3 +103,6 @@ print_cpu_state(serial_port &out, const cpu_state &regs)
 }
 
 } // namespace panic
+
+// For printf.c
+extern "C" void putchar_(char c) {}

@@ -11,6 +11,7 @@ panic = module("panic.serial",
         "main.cpp",
         "serial.cpp",
         "symbol_table.cpp",
+        "../printf/printf.c",
     ])
 
 panic.variables['ldflags'] = ["${ldflags}", "-T", "${source_root}/src/kernel/panic.serial/panic.serial.ld"]

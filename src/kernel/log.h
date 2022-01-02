@@ -1,9 +1,6 @@
 #pragma once
 
-#include "kutil/logger.h"
-
-namespace log = kutil::log;
-namespace logs = kutil::logs;
+#include "logger.h"
 
 void logger_init();
 void logger_clear_immediate();

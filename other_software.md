@@ -35,14 +35,16 @@ Boost Software license:
 
 ## printf
 
-jsix uses Marco Paland's tiny [printf][] library for its `*printf()` functions,
-which is also released under the terms of the MIT license:
+jsix uses Marco Paland and Eyal Rozenberg's tiny [printf][] library for
+in-kernel `*printf()` functions, which is also released under the terms of the
+MIT license:
 
-[printf]: https://github.com/mpaland/printf
+[printf]: https://github.com/eyalroz/printf
 
 > The MIT License (MIT)
 >
 > Copyright (c) 2014 Marco Paland
+> Copyright (c) 2021 Eyal Rozenberg
 >
 > Permission is hereby granted, free of charge, to any person obtaining a copy
 > of this software and associated documentation files (the "Software"), to deal

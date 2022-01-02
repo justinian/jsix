@@ -8,7 +8,6 @@
 #include "kutil/bip_buffer.h"
 #include "kutil/spinlock.h"
 
-namespace kutil {
 namespace log {
 
 using area_t = uint8_t;
@@ -124,6 +123,8 @@ void warn (area_t area, const char *fmt, ...);
 void error(area_t area, const char *fmt, ...);
 void fatal(area_t area, const char *fmt, ...);
 
+extern log::logger &g_logger;
+
 } // namespace log
 
 namespace logs {
@@ -131,5 +132,3 @@ namespace logs {
 #include "j6/tables/log_areas.inc"
 #undef LOG
 } // namespace logs
-
-} // namespace kutil

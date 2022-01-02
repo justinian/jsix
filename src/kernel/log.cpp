@@ -28,6 +28,9 @@ output_log(log::area_t area, log::level severity, const char *message)
     cons->set_color();
 }
 
+// For printf.c
+extern "C" void putchar_(char c) {}
+
 static void
 log_flush()
 {

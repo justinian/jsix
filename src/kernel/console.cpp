@@ -1,8 +1,6 @@
-#include "kutil/coord.h"
-#include "kutil/guid.h"
 #include "kutil/memory.h"
 #include "kutil/no_construct.h"
-#include "kutil/printf.h"
+#include "printf/printf.h"
 #include "console.h"
 #include "serial.h"
 
@@ -81,6 +79,6 @@ void console::vprintf(const char *fmt, va_list args)
 {
     static const unsigned buf_size = 256;
     char buffer[buf_size];
-    vsnprintf_(buffer, buf_size, fmt, args);
+    vsnprintf(buffer, buf_size, fmt, args);
     puts(buffer);
 }

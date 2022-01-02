@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 #include "kernel_memory.h"
-#include "kutil/printf.h"
+#include "printf/printf.h"
 
 #include "cpu.h"
 #include "device_manager.h"
@@ -130,7 +130,7 @@ isr_handler(cpu_state *regs)
                 break;
 
             snprintf(message, sizeof(message),
-                "Page fault: %016llx%s%s%s%s%s", cr2,
+                "Page fault: %016lx%s%s%s%s%s", cr2,
                 (regs->errorcode & 0x01) ? " present" : "",
                 (regs->errorcode & 0x02) ? " write" : "",
                 (regs->errorcode & 0x04) ? " user" : "",
@@ -153,7 +153,7 @@ isr_handler(cpu_state *regs)
         return;
 
     default:
-        snprintf(message, sizeof(message), "Unknown interrupt 0x%x", regs->interrupt);
+        snprintf(message, sizeof(message), "Unknown interrupt 0x%lx", regs->interrupt);
         kassert(false, message);
     }
 
@@ -170,7 +170,7 @@ irq_handler(cpu_state *regs)
     if (! device_manager::get().dispatch_irq(irq)) {
         char message[100];
         snprintf(message, sizeof(message),
-            "Unknown IRQ: %d (vec 0x%x)", irq, regs->interrupt);
+            "Unknown IRQ: %d (vec 0x%lx)", irq, regs->interrupt);
         kassert(false, message);
     }
 

@@ -7,8 +7,6 @@ module("kutil",
         "assert.cpp",
         "bip_buffer.cpp",
         "heap_allocator.cpp",
-        "logger.cpp",
         "memory.cpp",
-        "printf.c",
         "spinlock.cpp",
     ])
