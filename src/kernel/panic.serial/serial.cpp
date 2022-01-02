@@ -1,6 +1,6 @@
 #include "serial.h"
 
-namespace panic {
+namespace panicking {
 
 // register offsets
 constexpr uint16_t THR = 0; // Write
@@ -52,4 +52,4 @@ serial_port::write(const char *s)
     }
 }
 
-} // namespace panic
+} // namespace panicking

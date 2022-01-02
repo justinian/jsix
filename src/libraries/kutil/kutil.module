@@ -4,7 +4,6 @@ module("kutil",
     kind = "lib",
     includes = [ "include" ],
     sources = [
-        "assert.cpp",
         "bip_buffer.cpp",
         "spinlock.cpp",
     ])

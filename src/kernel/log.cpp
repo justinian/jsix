@@ -1,6 +1,7 @@
 #include "j6/signals.h"
 #include "kutil/no_construct.h"
 
+#include "assert.h"
 #include "console.h"
 #include "log.h"
 #include "memory.h"

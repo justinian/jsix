@@ -5,7 +5,7 @@
 #include "serial.h"
 #include "symbol_table.h"
 
-namespace panic {
+namespace panicking {
 
 void
 print_header(
@@ -102,7 +102,7 @@ print_cpu_state(serial_port &out, const cpu_state &regs)
     out.write("\e[0m\n");
 }
 
-} // namespace panic
+} // namespace panicking
 
 // For printf.c
 extern "C" void putchar_(char c) {}

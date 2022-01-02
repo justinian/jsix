@@ -1,7 +1,9 @@
 #include <string.h>
 
-#include "frame_allocator.h"
 #include "kernel_memory.h"
+
+#include "assert.h"
+#include "frame_allocator.h"
 #include "log.h"
 #include "objects/process.h"
 #include "objects/thread.h"

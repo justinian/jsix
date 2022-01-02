@@ -1,7 +1,6 @@
 #include <string.h>
 
-#include "kutil/assert.h"
-
+#include "assert.h"
 #include "console.h"
 #include "frame_allocator.h"
 #include "kernel_memory.h"

@@ -6,7 +6,7 @@
 
 struct cpu_state;
 
-namespace panic {
+namespace panicking {
 
 class serial_port;
 class symbol_table;
@@ -27,4 +27,4 @@ void print_header(
 void print_callstack(serial_port &out, symbol_table &syms, frame const *fp);
 void print_cpu_state(serial_port &out, const cpu_state &regs);
 
-}
+} // namespace panicking

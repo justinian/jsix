@@ -1,5 +1,6 @@
-#include "kutil/assert.h"
 #include "kutil/no_construct.h"
+
+#include "assert.h"
 #include "cpu.h"
 #include "objects/process.h"
 #include "objects/thread.h"

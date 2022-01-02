@@ -10,10 +10,9 @@
 
 #include "j6libc/aux.h"
 
-void _PDCLIB_assert( const char * const message1, const char * const function, const char * const message2 )
+void _PDCLIB_assert( const char * const message, const char * const function, const char * const file, unsigned line )
 {
-    fputs( message1, stderr );
-    fputs( function, stderr );
-    fputs( message2, stderr );
+    fprintf( stderr, "Assertion failed: %s, function %s, file %s, line %d.%s",
+            message, function, file, line, _PDCLIB_endl );
     abort();
 }

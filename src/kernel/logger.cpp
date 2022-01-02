@@ -1,9 +1,9 @@
 #include <string.h>
 
-#include "kutil/assert.h"
 #include "kutil/constexpr_hash.h"
 #include "printf/printf.h"
 
+#include "assert.h"
 #include "logger.h"
 
 namespace logs {

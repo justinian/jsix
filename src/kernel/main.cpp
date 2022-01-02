@@ -5,9 +5,9 @@
 #include "j6/signals.h"
 #include "kernel_args.h"
 #include "kernel_memory.h"
-#include "kutil/assert.h"
 
 #include "apic.h"
+#include "assert.h"
 #include "block_device.h"
 #include "clock.h"
 #include "console.h"
@@ -83,7 +83,7 @@ kernel_main(init::args *args)
 {
     if (args->panic) {
         IDT::set_nmi_handler(args->panic->entrypoint);
-        kutil::assert::symbol_table = args->symbol_table | memory::page_offset;
+        panic::symbol_table = args->symbol_table | memory::page_offset;
     }
 
     init_console();

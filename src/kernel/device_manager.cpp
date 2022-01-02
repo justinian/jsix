@@ -1,8 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "kutil/assert.h"
-
+#include "assert.h"
 #include "acpi_tables.h"
 #include "apic.h"
 #include "clock.h"

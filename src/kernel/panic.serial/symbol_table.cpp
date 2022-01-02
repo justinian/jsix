@@ -1,7 +1,7 @@
 #include "pointer_manipulation.h"
 #include "symbol_table.h"
 
-namespace panic {
+namespace panicking {
 
 symbol_table::symbol_table(const void *data) :
     m_data(data)
@@ -25,4 +25,4 @@ symbol_table::find_symbol(uintptr_t addr) const
     return nullptr;
 }
 
-} // namespace panic
+} // namespace panicking

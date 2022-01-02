@@ -1,4 +1,9 @@
-#include "kutil/assert.h"
+#if __has_include(<assert.h>)
+#include <assert.h>
+#else
+#define assert(x) ((void)0)
+#endif
+
 #include "kutil/bip_buffer.h"
 
 namespace kutil {
@@ -61,14 +66,14 @@ size_t bip_buffer::reserve(size_t size, void **area)
 
 void bip_buffer::commit(size_t size)
 {
-    kassert(size <= m_size_r, "Tried to commit more than reserved");
+    assert(size <= m_size_r && "Tried to commit more than reserved");
 
     if (m_start_r == m_start_a + m_size_a) {
         // We were adding to A
         m_size_a += size;
     } else {
         // We were adding to B
-        kassert(m_start_r == m_start_b + m_size_b, "Bad m_start_r!");
+        assert(m_start_r == m_start_b + m_size_b && "Bad m_start_r!");
         m_size_b += size;
     }
 
@@ -83,7 +88,7 @@ size_t bip_buffer::get_block(void **area) const
 
 void bip_buffer::consume(size_t size)
 {
-    kassert(size <= m_size_a, "Consumed more bytes than exist in A");
+    assert(size <= m_size_a && "Consumed more bytes than exist in A");
     if (size >= m_size_a) {
         m_size_a = m_size_b;
         m_start_a = m_start_b;

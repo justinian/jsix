@@ -1,4 +1,4 @@
-#include "kutil/assert.h"
+#include "assert.h"
 #include "console.h"
 #include "log.h"
 #include "interrupts.h"

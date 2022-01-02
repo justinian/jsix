@@ -3,7 +3,7 @@
 /// Non-interrupt-driven serial 'driver' for panic handling
 #include <stdint.h>
 
-namespace panic {
+namespace panicking {
 
 class serial_port
 {
@@ -20,4 +20,4 @@ private:
 
 constexpr uint16_t COM1 = 0x03f8;
 
-} // namespace panic
+} // namespace panicking

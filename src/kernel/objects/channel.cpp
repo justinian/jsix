@@ -1,6 +1,6 @@
 #include <string.h>
-#include "kutil/assert.h"
 
+#include "assert.h"
 #include "kernel_memory.h"
 #include "objects/channel.h"
 #include "objects/vm_area.h"

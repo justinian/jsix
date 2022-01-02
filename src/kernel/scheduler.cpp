@@ -1,9 +1,9 @@
 #include <stddef.h>
 
 #include <j6/init.h>
-#include "kutil/assert.h"
 
 #include "apic.h"
+#include "assert.h"
 #include "clock.h"
 #include "console.h"
 #include "cpu.h"

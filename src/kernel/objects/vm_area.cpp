@@ -1,5 +1,7 @@
-#include "frame_allocator.h"
 #include "kernel_memory.h"
+
+#include "assert.h"
+#include "frame_allocator.h"
 #include "objects/vm_area.h"
 #include "page_tree.h"
 #include "vm_space.h"

@@ -2,9 +2,9 @@
 /// \file vector.h
 /// Definition of a simple dynamic vector collection for use in kernel space
 
+#include <assert.h>
 #include <string.h>
 #include <utility>
-#include "kutil/assert.h"
 #include "kutil/util.h"
 
 namespace kutil {
@@ -158,7 +158,7 @@ public:
     /// Remove an item from the end of the array.
     void remove()
     {
-        kassert(m_size, "Called remove() on an empty array");
+        assert(m_size && "Called remove() on an empty array");
 
         m_size -= 1;
         m_elements[m_size].~T();
@@ -167,14 +167,14 @@ public:
     /// Remove an item from the front of the array, preserving order.
     void remove_front()
     {
-        kassert(m_size, "Called remove_front() on an empty array");
+        assert(m_size && "Called remove_front() on an empty array");
         remove_at(0);
     }
 
     /// Remove an item from the array.
     void remove(const T &item)
     {
-        kassert(m_size, "Called remove() on an empty array");
+        assert(m_size && "Called remove() on an empty array");
         for (count_t i = 0; i < m_size; ++i) {
             if (m_elements[i] == item) {
                 remove_at(i);
@@ -224,7 +224,7 @@ public:
     /// Remove an item from the end of the array and return it.
     T pop()
     {
-        kassert(m_size, "Called pop() on an empty array");
+        assert(m_size && "Called pop() on an empty array");
 
         T temp = m_elements[m_size - 1];
         remove();
@@ -234,7 +234,7 @@ public:
     /// Remove an item from the beginning of the array and return it.
     T pop_front()
     {
-        kassert(m_size, "Called pop_front() on an empty array");
+        assert(m_size && "Called pop_front() on an empty array");
 
         T temp = m_elements[0];
         remove_front();

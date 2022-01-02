@@ -1,8 +1,8 @@
 #include <stdint.h>
 #include <string.h>
-#include "kutil/assert.h"
 #include "kutil/util.h"
 
+#include "assert.h"
 #include "heap_allocator.h"
 #include "memory.h"
 

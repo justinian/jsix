@@ -2,6 +2,7 @@
 #include "j6/signals.h"
 #include "j6/types.h"
 
+#include "assert.h"
 #include "log.h"
 #include "objects/thread.h"
 #include "syscalls/helpers.h"

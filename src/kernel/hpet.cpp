@@ -1,5 +1,6 @@
 #include "kernel_memory.h"
-#include "kutil/assert.h"
+
+#include "assert.h"
 #include "device_manager.h"
 #include "hpet.h"
 #include "io.h"

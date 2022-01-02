@@ -11,6 +11,7 @@
 ///  http://codecapsule.com/2013/11/17/robin-hood-hashing-backward-shift-deletion/
 
 #include <new>
+#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 #include "kutil/hash.h"
@@ -145,7 +146,7 @@ protected:
     }
 
     void set_capacity(size_t capacity) {
-        kassert((capacity & (capacity - 1)) == 0,
+        assert((capacity & (capacity - 1)) == 0 &&
                 "Map capacity must be a power of two");
 
         m_capacity = capacity;

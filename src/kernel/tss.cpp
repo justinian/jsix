@@ -1,7 +1,7 @@
 #include <string.h>
-#include "kutil/assert.h"
 #include "kutil/no_construct.h"
 
+#include "assert.h"
 #include "cpu.h"
 #include "kernel_memory.h"
 #include "log.h"

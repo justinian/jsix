@@ -3,6 +3,7 @@
 #include "kernel_memory.h"
 #include "printf/printf.h"
 
+#include "assert.h"
 #include "cpu.h"
 #include "device_manager.h"
 #include "idt.h"

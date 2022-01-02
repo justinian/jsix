@@ -1,7 +1,7 @@
 #include <string.h>
-#include "kutil/assert.h"
 #include "kutil/no_construct.h"
 
+#include "assert.h"
 #include "interrupts.h"
 #include "io.h"
 #include "serial.h"

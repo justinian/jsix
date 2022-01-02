@@ -1,9 +1,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "kutil/assert.h"
 #include "kutil/no_construct.h"
 
+#include "assert.h"
 #include "console.h"
 #include "cpu.h"
 #include "gdt.h"

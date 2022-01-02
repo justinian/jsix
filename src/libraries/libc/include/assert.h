@@ -10,7 +10,7 @@
 
 CPP_CHECK_BEGIN
 
-void _PDCLIB_assert( const char * const, const char * const, const char * const );
+void _PDCLIB_assert( const char * const, const char * const, const char * const, unsigned );
 
 /* If NDEBUG is set, assert() is a null operation. */
 #undef assert
@@ -19,11 +19,7 @@ void _PDCLIB_assert( const char * const, const char * const, const char * const 
 #define assert( ignore ) ( (void) 0 )
 #else
 #define assert( expression ) ( ( expression ) ? (void) 0 \
-        : _PDCLIB_assert( "Assertion failed: " #expression \
-                          ", function ", __func__, \
-                          ", file " __FILE__ \
-                          ", line " _PDCLIB_symbol2string( __LINE__ ) \
-                          "." _PDCLIB_endl ) )
+        : _PDCLIB_assert( #expression, __func__, __FILE__, __LINE__ ) )
 #endif
 
 CPP_CHECK_END

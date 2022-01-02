@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "counted.h"
 
-namespace panic {
+namespace panicking {
 
 class symbol_table
 {
@@ -29,4 +29,4 @@ private:
     counted<entry const> m_entries;
 };
 
-} // namespace panic
+} // namespace panicking

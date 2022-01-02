@@ -10,6 +10,7 @@ kernel = module("kernel",
     sources = [
         "apic.cpp",
         "ap_startup.s",
+        "assert.cpp",
         "boot.s",
         "clock.cpp",
         "console.cpp",

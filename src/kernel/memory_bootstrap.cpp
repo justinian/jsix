@@ -4,9 +4,9 @@
 #include "j6/init.h"
 
 #include "enum_bitfields.h"
-#include "kutil/assert.h"
 #include "kutil/no_construct.h"
 
+#include "assert.h"
 #include "device_manager.h"
 #include "frame_allocator.h"
 #include "gdt.h"

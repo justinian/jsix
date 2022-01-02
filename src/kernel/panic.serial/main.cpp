@@ -1,3 +1,6 @@
+#include "kutil/spinlock.h"
+
+#include "assert.h"
 #include "display.h"
 #include "serial.h"
 #include "symbol_table.h"
@@ -13,10 +16,10 @@ void panic_handler(
         uint64_t line,
         const cpu_state *regs)
 {
-    panic::serial_port com1(panic::COM1);
-    panic::symbol_table syms(symbol_data);
+    panicking::serial_port com1(panicking::COM1);
+    panicking::symbol_table syms(symbol_data);
 
-    panic::frame const *fp = nullptr;
+    panicking::frame const *fp = nullptr;
     asm ( "mov %%rbp, %0" : "=r" (fp) );
 
     print_header(com1, message, function, file, line);
