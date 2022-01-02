@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 #include "kutil/assert.h"
-#include "kutil/memory.h"
+
 #include "acpi_tables.h"
 #include "apic.h"
 #include "clock.h"
@@ -11,6 +11,7 @@
 #include "interrupts.h"
 #include "kernel_memory.h"
 #include "log.h"
+#include "memory.h"
 #include "objects/endpoint.h"
 #include "serial.h"
 
@@ -47,7 +48,7 @@ struct acpi2_rsdp
 bool
 acpi_table_header::validate(uint32_t expected_type) const
 {
-    if (kutil::checksum(this, length) != 0) return false;
+    if (::checksum(this, length) != 0) return false;
     return !expected_type || (expected_type == type);
 }
 
@@ -82,7 +83,7 @@ device_manager::parse_acpi(const void *root_table)
         kassert(acpi1->signature[i] == expected_signature[i],
                 "ACPI RSDP table signature mismatch");
 
-    uint8_t sum = kutil::checksum(acpi1, sizeof(acpi1_rsdp), 0);
+    uint8_t sum = checksum(acpi1, sizeof(acpi1_rsdp), 0);
     kassert(sum == 0, "ACPI 1.0 RSDP checksum mismatch.");
 
     kassert(acpi1->revision > 1, "ACPI 1.0 not supported.");
@@ -90,7 +91,7 @@ device_manager::parse_acpi(const void *root_table)
     const acpi2_rsdp *acpi2 =
         reinterpret_cast<const acpi2_rsdp *>(acpi1);
 
-    sum = kutil::checksum(acpi2, sizeof(acpi2_rsdp), sizeof(acpi1_rsdp));
+    sum = checksum(acpi2, sizeof(acpi2_rsdp), sizeof(acpi1_rsdp));
     kassert(sum == 0, "ACPI 2.0 RSDP checksum mismatch.");
 
     load_xsdt(memory::to_virtual(acpi2->xsdt_address));
@@ -212,8 +213,8 @@ device_manager::load_apic(const acpi_table_header *header)
 
         switch (type) {
         case 0: { // Local APIC
-                uint8_t uid = kutil::read_from<uint8_t>(p+2);
-                uint8_t id = kutil::read_from<uint8_t>(p+3);
+                uint8_t uid = read_from<uint8_t>(p+2);
+                uint8_t id = read_from<uint8_t>(p+3);
                 m_apic_ids.append(id);
 
                 log::debug(logs::device, "    Local APIC uid %x id %x", uid, id);
@@ -221,8 +222,8 @@ device_manager::load_apic(const acpi_table_header *header)
             break;
 
         case 1: { // I/O APIC
-                uintptr_t base = kutil::read_from<uint32_t>(p+4);
-                uint32_t base_gsi = kutil::read_from<uint32_t>(p+8);
+                uintptr_t base = read_from<uint32_t>(p+4);
+                uint32_t base_gsi = read_from<uint32_t>(p+8);
                 m_ioapics.emplace(base, base_gsi);
 
                 log::debug(logs::device, "    IO APIC gsi %x base %x", base_gsi, base);
@@ -231,9 +232,9 @@ device_manager::load_apic(const acpi_table_header *header)
 
         case 2: { // Interrupt source override
                 irq_override o;
-                o.source = kutil::read_from<uint8_t>(p+3);
-                o.gsi = kutil::read_from<uint32_t>(p+4);
-                o.flags = kutil::read_from<uint16_t>(p+8);
+                o.source = read_from<uint8_t>(p+3);
+                o.gsi = read_from<uint32_t>(p+4);
+                o.flags = read_from<uint16_t>(p+8);
                 m_overrides.append(o);
 
                 log::debug(logs::device, "    Intr source override IRQ %d -> %d Pol %d Tri %d",
@@ -243,9 +244,9 @@ device_manager::load_apic(const acpi_table_header *header)
 
         case 4: {// LAPIC NMI
             apic_nmi nmi;
-            nmi.cpu = kutil::read_from<uint8_t>(p + 2);
-            nmi.lint = kutil::read_from<uint8_t>(p + 5);
-            nmi.flags = kutil::read_from<uint16_t>(p + 3);
+            nmi.cpu = read_from<uint8_t>(p + 2);
+            nmi.lint = read_from<uint8_t>(p + 5);
+            nmi.flags = read_from<uint16_t>(p + 3);
             m_nmis.append(nmi);
 
             log::debug(logs::device, "    LAPIC NMI Proc %02x LINT%d Pol %d Tri %d",

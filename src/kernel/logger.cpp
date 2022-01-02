@@ -1,6 +1,7 @@
+#include <string.h>
+
 #include "kutil/assert.h"
 #include "kutil/constexpr_hash.h"
-#include "kutil/memory.h"
 #include "printf/printf.h"
 
 #include "logger.h"
@@ -14,9 +15,6 @@ namespace logs {
 }
 
 namespace log {
-
-using kutil::memset;
-using kutil::memcpy;
 
 logger *logger::s_log = nullptr;
 const char *logger::s_level_names[] = {"", "debug", "info", "warn", "error", "fatal"};

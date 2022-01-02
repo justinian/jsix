@@ -1,8 +1,9 @@
 #include "j6/signals.h"
-#include "kutil/memory.h"
 #include "kutil/no_construct.h"
+
 #include "console.h"
 #include "log.h"
+#include "memory.h"
 #include "objects/system.h"
 #include "objects/thread.h"
 
@@ -57,8 +58,8 @@ logger_task()
         size_t size = g_logger.get_entry(buffer, buffer_size);
         if (size > buffer_size) {
             while (size > buffer_size) buffer_size *= 2;
-            kutil::kfree(buffer);
-            buffer = reinterpret_cast<uint8_t*>(kutil::kalloc(buffer_size));
+            kfree(buffer);
+            buffer = reinterpret_cast<uint8_t*>(kalloc(buffer_size));
             kassert(buffer, "Could not allocate logger task buffer");
             continue;
         }

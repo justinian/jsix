@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "frame_allocator.h"
 #include "kernel_memory.h"
 #include "log.h"
@@ -38,7 +40,7 @@ vm_space::vm_space() :
     m_pml4 = page_table::get_table_page();
     page_table *kpml4 = kernel_space().m_pml4;
 
-    kutil::memset(m_pml4, 0, memory::frame_size/2);
+    memset(m_pml4, 0, memory::frame_size/2);
     for (unsigned i = memory::pml4e_kernel; i < memory::table_entries; ++i)
         m_pml4->entries[i] = kpml4->entries[i];
 }
@@ -295,7 +297,7 @@ vm_space::copy(vm_space &source, vm_space &dest, const void *from, void *to, siz
 
     // TODO: iterate page mappings and continue copying. For now i'm blindly
     // assuming both buffers are fully contained within single pages
-    kutil::memcpy(
+    memcpy(
         memory::to_virtual<void>((*dit & ~0xfffull) | (ito & 0xffful)),
         memory::to_virtual<void>((*sit & ~0xfffull) | (ifrom & 0xffful)),
         length);

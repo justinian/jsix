@@ -6,7 +6,5 @@ module("kutil",
     sources = [
         "assert.cpp",
         "bip_buffer.cpp",
-        "heap_allocator.cpp",
-        "memory.cpp",
         "spinlock.cpp",
     ])

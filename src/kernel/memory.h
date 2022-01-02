@@ -6,33 +6,15 @@
 
 void * operator new (size_t, void *p) noexcept;
 
-namespace kutil {
-
-/// Allocate from the default allocator. Note this needs to be
-/// implemented by users of the kutil library.
+/// Allocate from the default allocator.
 /// \arg size  The size in bytes requested
 /// \returns   A pointer to the newly allocated memory,
 ///            or nullptr on error
 void * kalloc(size_t size);
 
-/// Free memory allocated by `kalloc`. Note this needs to be
-/// implemented by users of the kutil library.
+/// Free memory allocated by `kalloc`.
 /// \arg p  Pointer that was returned from a `kalloc` call
 void kfree(void *p);
-
-/// Fill memory with the given value.
-/// \arg p   The beginning of the memory area to fill
-/// \arg v   The byte value to fill memory with
-/// \arg n   The size in bytes of the memory area
-/// \returns A pointer to the filled memory
-void * memset(void *p, uint8_t v, size_t n);
-
-/// Copy an area of memory to another
-/// \dest    The memory to copy to
-/// \src     The memory to copy from
-/// \n       The number of bytes to copy
-/// \returns A pointer to the destination memory
-void * memcpy(void *dest, const void *src, size_t n);
 
 /// Read a value of type T from a location in memory
 /// \arg p   The location in memory to read
@@ -68,5 +50,3 @@ inline T* mask_pointer(T *p, uintptr_t mask)
 /// \arg len  The number of bytes in the region
 /// \arg off  An optional offset into the region
 uint8_t checksum(const void *p, size_t len, size_t off = 0);
-
-} // namespace kutil

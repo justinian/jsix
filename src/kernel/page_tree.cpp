@@ -1,5 +1,7 @@
+#include <string.h>
+
 #include "kutil/assert.h"
-#include "kutil/memory.h"
+
 #include "frame_allocator.h"
 #include "kernel_memory.h"
 #include "page_tree.h"
@@ -33,7 +35,7 @@ page_tree::page_tree(uint64_t base, uint8_t level) :
     m_base {base & level_mask(level)},
     m_level {level}
 {
-    kutil::memset(m_entries, 0, sizeof(m_entries));
+    memset(m_entries, 0, sizeof(m_entries));
 }
 
 page_tree::~page_tree()

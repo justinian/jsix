@@ -106,7 +106,7 @@ pci_device::pci_device(pci_group &group, uint8_t bus, uint8_t device, uint8_t fu
         // Walk the extended capabilities list
         uint8_t next = m_base[13] & 0xff;
         while (next) {
-            pci_cap *cap = reinterpret_cast<pci_cap *>(kutil::offset_pointer(m_base, next));
+            pci_cap *cap = reinterpret_cast<pci_cap *>(offset_pointer(m_base, next));
             next = cap->next;
             log::debug(logs::device, "  - found PCI cap type %02x", cap->id);
 

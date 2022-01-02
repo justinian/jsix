@@ -1,8 +1,9 @@
 #include <stdint.h>
+#include <string.h>
 
 #include "kutil/assert.h"
-#include "kutil/memory.h"
 #include "kutil/no_construct.h"
+
 #include "console.h"
 #include "cpu.h"
 #include "gdt.h"
@@ -28,7 +29,7 @@ GDT &g_bsp_gdt = __g_bsp_gdt_storage.value;
 GDT::GDT(TSS *tss) :
     m_tss(tss)
 {
-    kutil::memset(this, 0, sizeof(GDT));
+    memset(this, 0, sizeof(GDT));
 
     m_ptr.limit = sizeof(m_entries) - 1;
     m_ptr.base = &m_entries[0];
@@ -110,7 +111,7 @@ GDT::set_tss(TSS *tss)
         type::ring3 |
         type::present;
 
-    kutil::memcpy(&m_entries[tss_index], &tssd, sizeof(tss_descriptor));
+    memcpy(&m_entries[tss_index], &tssd, sizeof(tss_descriptor));
 }
 
 void

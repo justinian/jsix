@@ -1,5 +1,5 @@
+#include <string.h>
 #include "kutil/assert.h"
-#include "kutil/memory.h"
 #include "kutil/no_construct.h"
 
 #include "cpu.h"
@@ -17,7 +17,7 @@ TSS &g_bsp_tss = __g_bsp_tss_storage.value;
 
 TSS::TSS()
 {
-    kutil::memset(this, 0, sizeof(TSS));
+    memset(this, 0, sizeof(TSS));
     m_iomap_offset = sizeof(TSS);
 }
 

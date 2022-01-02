@@ -1,9 +1,12 @@
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "j6/signals.h"
-
+#include "kernel_args.h"
+#include "kernel_memory.h"
 #include "kutil/assert.h"
+
 #include "apic.h"
 #include "block_device.h"
 #include "clock.h"
@@ -14,8 +17,6 @@
 #include "idt.h"
 #include "interrupts.h"
 #include "io.h"
-#include "kernel_args.h"
-#include "kernel_memory.h"
 #include "log.h"
 #include "msr.h"
 #include "objects/channel.h"
@@ -27,6 +28,7 @@
 #include "syscall.h"
 #include "tss.h"
 #include "vm_space.h"
+
 
 #ifndef GIT_VERSION
 #define GIT_VERSION
@@ -96,7 +98,7 @@ kernel_main(init::args *args)
     extern uintptr_t idle_stack_end;
 
     cpu_data *cpu = &g_bsp_cpu_data;
-    kutil::memset(cpu, 0, sizeof(cpu_data));
+    memset(cpu, 0, sizeof(cpu_data));
 
     cpu->self = cpu;
     cpu->idt = new (&g_bsp_idt) IDT;
@@ -158,7 +160,7 @@ kernel_main(init::args *args)
     if (disk) {
         for (int i=0; i<1; ++i) {
             uint8_t buf[512];
-            kutil::memset(buf, 0, 512);
+            memset(buf, 0, 512);
 
             kassert(disk->read(0x200, sizeof(buf), buf),
                     "Disk read returned 0");
@@ -214,7 +216,7 @@ start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4)
     uint8_t vector = addr >> 12;
     vm_area *vma = new vm_area_fixed(addr, 0x1000, vm_flags::write);
     vm_space::kernel_space().add(addr, vma);
-    kutil::memcpy(
+    memcpy(
         reinterpret_cast<void*>(addr),
         reinterpret_cast<void*>(&ap_startup),
         ap_startup_code_size);
@@ -241,7 +243,7 @@ start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4)
         TSS *tss = new TSS;
         GDT *gdt = new GDT {tss};
         cpu_data *cpu = new cpu_data;
-        kutil::memset(cpu, 0, sizeof(cpu_data));
+        memset(cpu, 0, sizeof(cpu_data));
 
         cpu->self = cpu;
         cpu->id = id;

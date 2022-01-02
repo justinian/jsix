@@ -1,5 +1,7 @@
-#include "kutil/memory.h"
+#include <string.h>
+
 #include "kutil/no_construct.h"
+
 #include "cpu.h"
 #include "idt.h"
 #include "log.h"
@@ -33,7 +35,7 @@ IDT::set_nmi_handler(uintptr_t address)
 
 IDT::IDT()
 {
-    kutil::memset(this, 0, sizeof(IDT));
+    memset(this, 0, sizeof(IDT));
     m_ptr.limit = sizeof(m_entries) - 1;
     m_ptr.base = &m_entries[0];
 

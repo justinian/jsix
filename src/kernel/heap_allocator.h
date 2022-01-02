@@ -5,8 +5,6 @@
 #include <stddef.h>
 #include "kutil/spinlock.h"
 
-namespace kutil {
-
 
 /// Allocator for a given heap range
 class heap_allocator
@@ -58,9 +56,7 @@ protected:
     mem_header *m_free[max_order - min_order + 1];
     size_t m_allocated_size;
 
-    spinlock m_lock;
+    kutil::spinlock m_lock;
 
     heap_allocator(const heap_allocator &) = delete;
 };
-
-} // namespace kutil

@@ -1,8 +1,11 @@
+#include <string.h>
+
 #include "kutil/assert.h"
-#include "kutil/memory.h"
+
 #include "console.h"
 #include "frame_allocator.h"
 #include "kernel_memory.h"
+#include "memory.h"
 #include "page_table.h"
 
 using memory::page_offset;
@@ -28,8 +31,8 @@ page_table::iterator::iterator(uintptr_t virt, page_table *pml4) :
 
 page_table::iterator::iterator(const page_table::iterator &o)
 {
-    kutil::memcpy(&m_table, &o.m_table, sizeof(m_table));
-    kutil::memcpy(&m_index, &o.m_index, sizeof(m_index));
+    memcpy(&m_table, &o.m_table, sizeof(m_table));
+    memcpy(&m_index, &o.m_index, sizeof(m_index));
 }
 
 inline static level to_lv(unsigned i) { return static_cast<level>(i); }
@@ -190,7 +193,7 @@ page_table::get_table_page()
         --s_cache_count;
     }
 
-    kutil::memset(page, 0, memory::frame_size);
+    memset(page, 0, memory::frame_size);
     return reinterpret_cast<page_table*>(page);
 }
 
@@ -220,11 +223,11 @@ page_table::fill_table_page_cache()
             memory::to_virtual<free_page_header>(phys);
 
         for (int i = 0; i < n - 1; ++i)
-            kutil::offset_pointer(start, i * memory::frame_size)
-                ->next = kutil::offset_pointer(start, (i+1) * memory::frame_size);
+            offset_pointer(start, i * memory::frame_size)
+                ->next = offset_pointer(start, (i+1) * memory::frame_size);
 
         free_page_header *end =
-            kutil::offset_pointer(start, (n-1) * memory::frame_size);
+            offset_pointer(start, (n-1) * memory::frame_size);
 
         end->next = s_page_cache;
         s_page_cache = start;

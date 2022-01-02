@@ -5,12 +5,12 @@
 
 #include "enum_bitfields.h"
 #include "kutil/assert.h"
-#include "kutil/heap_allocator.h"
 #include "kutil/no_construct.h"
 
 #include "device_manager.h"
 #include "frame_allocator.h"
 #include "gdt.h"
+#include "heap_allocator.h"
 #include "io.h"
 #include "log.h"
 #include "msr.h"
@@ -39,8 +39,8 @@ extern "C" uintptr_t initialize_main_user_stack();
 // These objects are initialized _before_ global constructors are called,
 // so we don't want them to have global constructors at all, lest they
 // overwrite the previous initialization.
-static kutil::no_construct<kutil::heap_allocator> __g_kernel_heap_storage;
-kutil::heap_allocator &g_kernel_heap = __g_kernel_heap_storage.value;
+static kutil::no_construct<heap_allocator> __g_kernel_heap_storage;
+heap_allocator &g_kernel_heap = __g_kernel_heap_storage.value;
 
 static kutil::no_construct<frame_allocator> __g_frame_allocator_storage;
 frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
@@ -62,10 +62,8 @@ void * operator new [] (size_t size)       { return g_kernel_heap.allocate(size)
 void operator delete (void *p) noexcept    { return g_kernel_heap.free(p); }
 void operator delete [] (void *p) noexcept { return g_kernel_heap.free(p); }
 
-namespace kutil {
-    void * kalloc(size_t size) { return g_kernel_heap.allocate(size); }
-    void kfree(void *p) { return g_kernel_heap.free(p); }
-}
+void * kalloc(size_t size) { return g_kernel_heap.allocate(size); }
+void kfree(void *p) { return g_kernel_heap.free(p); }
 
 template <typename T>
 uintptr_t
@@ -80,7 +78,7 @@ memory_initialize_pre_ctors(init::args &kargs)
 
     page_table *kpml4 = static_cast<page_table*>(kargs.pml4);
 
-    new (&g_kernel_heap) kutil::heap_allocator {heap_start, kernel_max_heap};
+    new (&g_kernel_heap) heap_allocator {heap_start, kernel_max_heap};
 
     frame_block *blocks = reinterpret_cast<frame_block*>(memory::bitmap_start);
     new (&g_frame_allocator) frame_allocator {blocks, kargs.frame_blocks.count};

@@ -1,3 +1,4 @@
+#include <string.h>
 #include "kutil/assert.h"
 
 #include "kernel_memory.h"
@@ -38,7 +39,7 @@ channel::enqueue(size_t *len, const void *data)
     size_t avail = m_buffer.reserve(*len, &buffer);
     *len = *len > avail ? avail : *len;
 
-    kutil::memcpy(buffer, data, *len);
+    memcpy(buffer, data, *len);
     m_buffer.commit(*len);
 
     assert_signal(j6_signal_channel_can_recv);
@@ -65,7 +66,7 @@ channel::dequeue(size_t *len, void *data)
     size_t avail = m_buffer.get_block(&buffer);
     *len = *len > avail ? avail : *len;
 
-    kutil::memcpy(data, buffer, *len);
+    memcpy(data, buffer, *len);
     m_buffer.consume(*len);
 
     assert_signal(j6_signal_channel_can_send);

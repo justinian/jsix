@@ -1,6 +1,6 @@
-#include "kutil/memory.h"
 #include "kutil/no_construct.h"
 #include "printf/printf.h"
+
 #include "console.h"
 #include "serial.h"
 

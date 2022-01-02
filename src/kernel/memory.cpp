@@ -1,10 +1,12 @@
-#include "kutil/memory.h"
+#include "memory.h"
 
 namespace std {
     enum class __attribute__ ((__type_visibility("default"))) align_val_t : size_t { };
 }
 
-namespace kutil {
+// Implementation of memset and memcpy because we're not
+// linking libc into the kernel
+extern "C" {
 
 void *
 memset(void *s, uint8_t v, size_t n)
@@ -23,6 +25,8 @@ memcpy(void *dest, const void *src, size_t n)
     return d;
 }
 
+}
+
 uint8_t
 checksum(const void *p, size_t len, size_t off)
 {
@@ -31,5 +35,3 @@ checksum(const void *p, size_t len, size_t off)
     for (int i = off; i < len; ++i) sum += c[i];
     return sum;
 }
-
-} // namespace kutil

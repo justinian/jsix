@@ -10,9 +10,10 @@
 ///  http://codecapsule.com/2013/11/11/robin-hood-hashing/
 ///  http://codecapsule.com/2013/11/17/robin-hood-hashing-backward-shift-deletion/
 
+#include <new>
 #include <stdint.h>
+#include <string.h>
 #include "kutil/hash.h"
-#include "kutil/memory.h"
 #include "kutil/vector.h"
 #include "kutil/util.h"
 
@@ -87,7 +88,7 @@ public:
     virtual ~base_map() {
         for (size_t i = 0; i < m_capacity; ++i)
             m_nodes[i].~node();
-        kfree(m_nodes);
+        delete [] reinterpret_cast<uint8_t*>(m_nodes);
     }
 
     iterator begin() {
@@ -149,8 +150,8 @@ protected:
 
         m_capacity = capacity;
         const size_t size = m_capacity * sizeof(node);
-        m_nodes = reinterpret_cast<node*>(kalloc(size));
-        kutil::memset(m_nodes, 0, size);
+        m_nodes = reinterpret_cast<node*>(new uint8_t [size]);
+        memset(m_nodes, 0, size);
     }
 
     void grow() {
@@ -169,7 +170,7 @@ protected:
             n.~node();
         }
 
-        kfree(old);
+        delete [] reinterpret_cast<uint8_t*>(old);
     }
 
     inline node * construct(size_t i, uint64_t h, K &&k, V &&v) {

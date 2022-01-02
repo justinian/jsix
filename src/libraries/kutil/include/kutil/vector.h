@@ -2,9 +2,9 @@
 /// \file vector.h
 /// Definition of a simple dynamic vector collection for use in kernel space
 
+#include <string.h>
 #include <utility>
 #include "kutil/assert.h"
-#include "kutil/memory.h"
 #include "kutil/util.h"
 
 namespace kutil {
@@ -42,7 +42,7 @@ public:
         m_elements(nullptr)
     {
         set_capacity(other.m_capacity);
-        kutil::memcpy(m_elements, other.m_elements, other.m_size * sizeof(T));
+        memcpy(m_elements, other.m_elements, other.m_size * sizeof(T));
         m_size = other.m_size;
     }
 
@@ -73,7 +73,7 @@ public:
 
         bool was_static = m_capacity & ~cap_mask;
         if (!was_static)
-            kfree(m_elements);
+            delete [] m_elements;
     }
 
     /// Get the size of the array.
@@ -271,17 +271,18 @@ public:
     void set_capacity(count_t capacity)
     {
         bool was_static = m_capacity & ~cap_mask;
-        T *new_array = reinterpret_cast<T*>(kalloc(capacity * sizeof(T)));
+        T *new_array = reinterpret_cast<T*>(new uint8_t [capacity * sizeof(T)]);
         count_t size = capacity > m_size ? m_size : capacity;
 
-        kutil::memcpy(new_array, m_elements, size * sizeof(T));
+        memcpy(new_array, m_elements, size * sizeof(T));
 
         while (size < m_size) remove();
         m_size = size;
         m_capacity = capacity;
 
         if (!was_static)
-            kfree(m_elements);
+            delete [] m_elements;
+
         m_elements = new_array;
     }
 

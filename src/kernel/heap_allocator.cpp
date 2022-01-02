@@ -1,10 +1,10 @@
 #include <stdint.h>
+#include <string.h>
 #include "kutil/assert.h"
-#include "kutil/heap_allocator.h"
-#include "kutil/memory.h"
 #include "kutil/util.h"
 
-namespace kutil {
+#include "heap_allocator.h"
+#include "memory.h"
 
 struct heap_allocator::mem_header
 {
@@ -43,8 +43,8 @@ struct heap_allocator::mem_header
         set_next(nullptr);
     }
 
-    inline mem_header * next() { return kutil::mask_pointer(m_next, 0x3f); }
-    inline mem_header * prev() { return kutil::mask_pointer(m_prev, 0x3f); }
+    inline mem_header * next() { return mask_pointer(m_next, 0x3f); }
+    inline mem_header * prev() { return mask_pointer(m_prev, 0x3f); }
 
     inline mem_header * buddy() const {
         return reinterpret_cast<mem_header *>(
@@ -70,7 +70,7 @@ heap_allocator::heap_allocator(uintptr_t start, size_t size) :
     m_blocks {0},
     m_allocated_size {0}
 {
-    kutil::memset(m_free, 0, sizeof(m_free));
+    memset(m_free, 0, sizeof(m_free));
 }
 
 void *
@@ -81,7 +81,7 @@ heap_allocator::allocate(size_t length)
     if (length == 0)
         return nullptr;
 
-    unsigned order = log2(total);
+    unsigned order = kutil::log2(total);
     if (order < min_order)
         order = min_order;
 
@@ -89,7 +89,7 @@ heap_allocator::allocate(size_t length)
     if (order > max_order)
         return nullptr;
 
-    scoped_lock lock {m_lock};
+    kutil::scoped_lock lock {m_lock};
 
     mem_header *header = pop_free(order);
     header->set_used(true);
@@ -106,7 +106,7 @@ heap_allocator::free(void *p)
     kassert(addr >= m_start && addr < m_end,
         "Attempt to free non-heap pointer");
 
-    scoped_lock lock {m_lock};
+    kutil::scoped_lock lock {m_lock};
 
     mem_header *header = reinterpret_cast<mem_header *>(p);
     header -= 1; // p points after the header
@@ -154,7 +154,7 @@ heap_allocator::ensure_block(unsigned order)
     } else {
         mem_header *orig = pop_free(order + 1);
         if (orig) {
-            mem_header *next = kutil::offset_pointer(orig, 1 << order);
+            mem_header *next = offset_pointer(orig, 1 << order);
             new (next) mem_header(orig, nullptr, order);
 
             orig->set_next(next);
@@ -175,5 +175,3 @@ heap_allocator::pop_free(unsigned order)
     }
     return block;
 }
-
-} // namespace kutil

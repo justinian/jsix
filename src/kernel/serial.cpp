@@ -1,6 +1,7 @@
+#include <string.h>
 #include "kutil/assert.h"
-#include "kutil/memory.h"
 #include "kutil/no_construct.h"
+
 #include "interrupts.h"
 #include "io.h"
 #include "serial.h"
@@ -121,7 +122,7 @@ serial_port::do_write()
     if (n > fifo_size)
         n = fifo_size;
 
-    kutil::memcpy(tmp, data, n);
+    memcpy(tmp, data, n);
     m_out_buffer.consume(n);
 
     for (size_t i = 0; i < n; ++i)

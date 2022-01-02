@@ -3,7 +3,7 @@
 /// PCI devices and groups
 
 #include <stdint.h>
-#include "kutil/memory.h"
+#include "memory.h"
 
 struct pci_group;
 enum class isr : uint8_t;
@@ -126,7 +126,7 @@ struct pci_group
     /// \returns    A pointer to the memory-mapped configuration registers
     inline uint32_t * base_for(uint8_t bus, uint8_t device, uint8_t func)
     {
-        return kutil::offset_pointer(base,
+        return offset_pointer(base,
                 pci_device::bus_addr(bus, device, func) << 12);
     }
 
