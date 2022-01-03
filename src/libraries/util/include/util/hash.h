@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-namespace kutil {
+namespace util {
 
 constexpr uint64_t fnv_64_prime = 0x100000001b3ull;
 constexpr uint64_t fnv1a_64_init = 0xcbf29ce484222325ull;
@@ -40,4 +40,4 @@ inline uint64_t hash(const T &v) {
 template <> inline uint64_t hash<uint64_t>(const uint64_t &i) { return i; }
 template <> inline uint64_t hash<const char *>(const char * const &s) { return hash_string(s); }
 
-} // namespace kutil
+} // namespace util

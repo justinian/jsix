@@ -1,7 +1,9 @@
 #pragma once
 /// \file device_manager.h
 /// The device manager definition
-#include "kutil/vector.h"
+
+#include <util/vector.h>
+
 #include "apic.h"
 #include "hpet.h"
 #include "pci.h"
@@ -79,7 +81,7 @@ public:
     };
 
     /// Get the list of APIC ids for other CPUs
-    inline const kutil::vector<uint8_t> & get_apic_ids() const { return m_apic_ids; }
+    inline const util::vector<uint8_t> & get_apic_ids() const { return m_apic_ids; }
 
     /// Get the LAPIC base address
     /// \returns The physical base address of the local apic registers
@@ -150,18 +152,18 @@ private:
 
     uintptr_t m_lapic_base;
 
-    kutil::vector<ioapic> m_ioapics;
-    kutil::vector<hpet> m_hpets;
-    kutil::vector<uint8_t> m_apic_ids;
-    kutil::vector<apic_nmi> m_nmis;
-    kutil::vector<irq_override> m_overrides;
+    util::vector<ioapic> m_ioapics;
+    util::vector<hpet> m_hpets;
+    util::vector<uint8_t> m_apic_ids;
+    util::vector<apic_nmi> m_nmis;
+    util::vector<irq_override> m_overrides;
 
-    kutil::vector<pci_group> m_pci;
-    kutil::vector<pci_device> m_devices;
+    util::vector<pci_group> m_pci;
+    util::vector<pci_device> m_devices;
 
-    kutil::vector<endpoint*> m_irqs;
+    util::vector<endpoint*> m_irqs;
 
-    kutil::vector<block_device *> m_blockdevs;
+    util::vector<block_device *> m_blockdevs;
 
     static device_manager s_instance;
 

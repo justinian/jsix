@@ -4,9 +4,9 @@
 #define assert(x) ((void)0)
 #endif
 
-#include "kutil/bip_buffer.h"
+#include <util/bip_buffer.h>
 
-namespace kutil {
+namespace util {
 
 bip_buffer::bip_buffer() :
         m_start_a(0),
@@ -30,6 +30,8 @@ bip_buffer::bip_buffer(uint8_t *buffer, size_t size) :
 
 size_t bip_buffer::reserve(size_t size, void **area)
 {
+    scoped_lock lock {m_lock};
+
     if (m_size_r) {
         *area = nullptr;
         return 0;
@@ -66,6 +68,8 @@ size_t bip_buffer::reserve(size_t size, void **area)
 
 void bip_buffer::commit(size_t size)
 {
+    scoped_lock lock {m_lock};
+
     assert(size <= m_size_r && "Tried to commit more than reserved");
 
     if (m_start_r == m_start_a + m_size_a) {
@@ -82,12 +86,16 @@ void bip_buffer::commit(size_t size)
 
 size_t bip_buffer::get_block(void **area) const
 {
+    scoped_lock lock {m_lock};
+
     *area = m_size_a ? &m_buffer[m_start_a] : nullptr;
     return m_size_a;
 }
 
 void bip_buffer::consume(size_t size)
 {
+    scoped_lock lock {m_lock};
+
     assert(size <= m_size_a && "Consumed more bytes than exist in A");
     if (size >= m_size_a) {
         m_size_a = m_size_b;
@@ -99,4 +107,4 @@ void bip_buffer::consume(size_t size)
     }
 }
 
-} // namespace kutil
+} // namespace util

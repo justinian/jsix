@@ -2,8 +2,9 @@
 /// \file process.h
 /// Definition of process kobject types
 
-#include "kutil/map.h"
-#include "kutil/vector.h"
+#include <util/map.h>
+#include <util/vector.h>
+
 #include "objects/kobject.h"
 #include "page_table.h"
 #include "vm_space.h"
@@ -88,8 +89,8 @@ private:
 
     vm_space m_space;
 
-    kutil::vector<thread*> m_threads;
-    kutil::map<j6_handle_t, kobject*> m_handles;
+    util::vector<thread*> m_threads;
+    util::map<j6_handle_t, kobject*> m_handles;
     j6_handle_t m_next_handle;
 
     enum class state : uint8_t { running, exited };

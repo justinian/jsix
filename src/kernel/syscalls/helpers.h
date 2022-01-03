@@ -2,7 +2,8 @@
 /// \file syscalls/helpers.h
 /// Utility functions for use in syscall handler implementations
 
-#include "j6/types.h"
+#include <j6/types.h>
+
 #include "objects/kobject.h"
 #include "objects/process.h"
 

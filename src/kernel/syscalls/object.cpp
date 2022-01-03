@@ -1,6 +1,7 @@
-#include "j6/errors.h"
-#include "j6/signals.h"
-#include "j6/types.h"
+#include <j6/errors.h>
+#include <j6/signals.h>
+#include <j6/types.h>
+#include <util/vector.h>
 
 #include "assert.h"
 #include "log.h"
@@ -50,7 +51,7 @@ kobject_wait(j6_handle_t handle, j6_signal_t mask, j6_signal_t *sigs)
 j6_status_t
 kobject_wait_many(j6_handle_t * handles, size_t handles_count, uint64_t mask, j6_handle_t * handle, uint64_t * signals)
 {
-    kutil::vector<kobject*> objects {uint32_t(handles_count)};
+    util::vector<kobject*> objects {uint32_t(handles_count)};
 
     for (unsigned i = 0; i < handles_count; ++i) {
         j6_handle_t h = handles[i];

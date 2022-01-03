@@ -2,8 +2,9 @@
 /// \file channel.h
 /// Definition of channel objects and related functions
 
-#include "j6/signals.h"
-#include "kutil/bip_buffer.h"
+#include <j6/signals.h>
+#include <util/bip_buffer.h>
+
 #include "objects/kobject.h"
 
 /// Channels are bi-directional means of sending messages
@@ -45,5 +46,5 @@ protected:
 private:
     size_t m_len;
     uintptr_t m_data;
-    kutil::bip_buffer m_buffer;
+    util::bip_buffer m_buffer;
 };

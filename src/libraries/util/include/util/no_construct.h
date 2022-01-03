@@ -2,7 +2,7 @@
 /// \file no_construct.h
 /// Tools for creating objects witout running constructors
 
-namespace kutil {
+namespace util {
 
 /// Helper template for creating objects witout running constructors
 template <typename T>
@@ -13,4 +13,4 @@ union no_construct
     ~no_construct() {}
 };
 
-} // namespace kutil
+} // namespace util

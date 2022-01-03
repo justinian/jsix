@@ -1,6 +1,6 @@
 # vim: ft=python
 
-module("kutil",
+module("util",
     kind = "lib",
     includes = [ "include" ],
     sources = [

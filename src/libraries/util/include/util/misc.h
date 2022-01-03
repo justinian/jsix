@@ -1,6 +1,6 @@
 #pragma once
 
-namespace kutil {
+namespace util {
 
 constexpr uint32_t
 byteswap(uint32_t x)

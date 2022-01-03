@@ -1,10 +1,10 @@
 #pragma once
 /// \file util.h
-/// Utility functions used in other kutil code
+/// Utility functions used in other util code
 
 #include <stdint.h>
 
-namespace kutil {
+namespace util {
 
 // Get the base-2 logarithm of i
 inline unsigned log2(uint64_t i) {

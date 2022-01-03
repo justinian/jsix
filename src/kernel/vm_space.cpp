@@ -170,7 +170,7 @@ void
 vm_space::page_in(const vm_area &vma, uintptr_t offset, uintptr_t phys, size_t count)
 {
     using memory::frame_size;
-    kutil::scoped_lock lock {m_lock};
+    util::scoped_lock lock {m_lock};
 
     uintptr_t base = 0;
     if (!find_vma(vma, base))
@@ -198,7 +198,7 @@ void
 vm_space::clear(const vm_area &vma, uintptr_t offset, size_t count, bool free)
 {
     using memory::frame_size;
-    kutil::scoped_lock lock {m_lock};
+    util::scoped_lock lock {m_lock};
 
     uintptr_t base = 0;
     if (!find_vma(vma, base))

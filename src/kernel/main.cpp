@@ -2,9 +2,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "j6/signals.h"
-#include "kernel_args.h"
-#include "kernel_memory.h"
+#include <j6/signals.h>
+#include <util/vector.h>
+#include <kernel_args.h>
+#include <kernel_memory.h>
 
 #include "apic.h"
 #include "assert.h"
@@ -54,7 +55,7 @@ void memory_initialize_pre_ctors(init::args &kargs);
 void memory_initialize_post_ctors(init::args &kargs);
 void load_init_server(init::program &program, uintptr_t modules_address);
 
-unsigned start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4);
+unsigned start_aps(lapic &apic, const util::vector<uint8_t> &ids, void *kpml4);
 
 void
 init_console()
@@ -190,7 +191,7 @@ kernel_main(init::args *args)
 }
 
 unsigned
-start_aps(lapic &apic, const kutil::vector<uint8_t> &ids, void *kpml4)
+start_aps(lapic &apic, const util::vector<uint8_t> &ids, void *kpml4)
 {
     using memory::frame_size;
     using memory::kernel_stack_pages;

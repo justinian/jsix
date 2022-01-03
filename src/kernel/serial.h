@@ -3,7 +3,7 @@
 /// Declarations related to serial ports.
 #include <stdint.h>
 
-#include "kutil/bip_buffer.h"
+#include <util/bip_buffer.h>
 
 class serial_port
 {
@@ -22,8 +22,8 @@ public:
 private:
     bool m_writing;
     uint16_t m_port;
-    kutil::bip_buffer m_out_buffer;
-    kutil::bip_buffer m_in_buffer;
+    util::bip_buffer m_out_buffer;
+    util::bip_buffer m_in_buffer;
 
     void do_read();
     void do_write();

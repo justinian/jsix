@@ -3,9 +3,11 @@
 /// Structure for tracking a range of virtual memory addresses
 
 #include <stdint.h>
-#include "enum_bitfields.h"
-#include "kutil/spinlock.h"
-#include "kutil/vector.h"
+
+#include <util/spinlock.h>
+#include <util/vector.h>
+#include <enum_bitfields.h>
+
 #include "page_table.h"
 
 class process;
@@ -129,9 +131,9 @@ private:
         int compare(const struct area &o) const;
         bool operator==(const struct area &o) const;
     };
-    kutil::vector<area> m_areas;
+    util::vector<area> m_areas;
 
-    kutil::spinlock m_lock;
+    util::spinlock m_lock;
 };
 
 is_bitfield(vm_space::fault_type);

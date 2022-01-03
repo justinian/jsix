@@ -1,4 +1,4 @@
-#include "kutil/no_construct.h"
+#include <util/no_construct.h>
 
 #include "assert.h"
 #include "cpu.h"
@@ -10,7 +10,7 @@
 // This object is initialized _before_ global constructors are called,
 // so we don't want it to have a global constructor at all, lest it
 // overwrite the previous initialization.
-static kutil::no_construct<process> __g_kernel_process_storage;
+static util::no_construct<process> __g_kernel_process_storage;
 process &g_kernel_process = __g_kernel_process_storage.value;
 
 

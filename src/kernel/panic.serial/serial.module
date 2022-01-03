@@ -4,7 +4,7 @@ panic = module("panic.serial",
     kind = "exe",
     output = "panic.serial.elf",
     targets = [ "kernel" ],
-    deps = [ "kutil", "elf", "kernel" ],
+    deps = [ "util", "elf", "kernel" ],
     sources = [
         "display.cpp",
         "entry.s",

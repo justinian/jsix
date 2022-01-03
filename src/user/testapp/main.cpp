@@ -1,11 +1,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "j6/types.h"
-#include "j6/errors.h"
-#include "j6/flags.h"
-#include "j6/signals.h"
-#include "j6/syscalls.h"
+#include <j6/types.h>
+#include <j6/errors.h>
+#include <j6/flags.h>
+#include <j6/signals.h>
+#include <j6/syscalls.h>
 
 #include "io.h"
 #include "serial.h"

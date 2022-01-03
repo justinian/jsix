@@ -2,9 +2,9 @@
 /// \file modules.h
 /// Routines for loading initial argument modules
 
-#include "j6/types.h"
-#include "init_args.h"
-#include "pointer_manipulation.h"
+#include <j6/types.h>
+#include <init_args.h>
+#include <pointer_manipulation.h>
 
 
 class module_iterator

@@ -1,6 +1,7 @@
 #include <stdio.h>
-#include "init_args.h"
-#include "j6/syscalls.h"
+
+#include <j6/syscalls.h>
+#include <init_args.h>
 
 #include "loader.h"
 #include "modules.h"

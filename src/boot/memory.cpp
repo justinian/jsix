@@ -3,7 +3,6 @@
 #include <uefi/boot_services.h>
 #include <uefi/runtime_services.h>
 #include <uefi/types.h>
-#include <kutil/no_construct.h>
 
 #include "console.h"
 #include "error.h"

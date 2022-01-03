@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-namespace kutil {
+namespace util {
 
 constexpr static const uint8_t pearson_hash_table[256] = {
     0x76,0x07,0xbe,0x47,0xcf,0x41,0x0a,0xe8,0x01,0x5c,0x9f,0xc5,0x24,0x63,0x9a,0x85,
@@ -34,9 +34,9 @@ constexpr inline uint32_t djb_hash_32(const char *s, int off = 0) {
     return !s[off] ? 5381 : (djb_hash_32(s, off+1)*33) ^ s[off];
 }
 
-} // namespace kutil
+} // namespace util
 
 constexpr inline uint8_t operator "" _h (const char *s, size_t len) {
-    return kutil::pearson_hash_8(s, static_cast<uint8_t>(len & 0xff));
+    return util::pearson_hash_8(s, static_cast<uint8_t>(len & 0xff));
 }
 

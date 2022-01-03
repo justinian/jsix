@@ -2,10 +2,10 @@
 /// \file kobject.h
 /// Definition of base type for user-interactable kernel objects
 
-#include "j6/errors.h"
-#include "j6/signals.h"
-#include "j6/types.h"
-#include "kutil/vector.h"
+#include <j6/errors.h>
+#include <j6/signals.h>
+#include <j6/types.h>
+#include <util/vector.h>
 
 class thread;
 
@@ -17,7 +17,7 @@ public:
     enum class type : uint16_t
     {
 #define OBJECT_TYPE( name, val ) name = val,
-#include "j6/tables/object_types.inc"
+#include <j6/tables/object_types.inc>
 #undef OBJECT_TYPE
 
         max
@@ -96,5 +96,5 @@ private:
     uint16_t m_handle_count;
 
 protected:
-    kutil::vector<thread*> m_blocked_threads;
+    util::vector<thread*> m_blocked_threads;
 };

@@ -3,7 +3,7 @@
 
 #pragma once
 
-namespace kutil {
+namespace util {
 
 /// An MCS based spinlock
 class spinlock
@@ -43,4 +43,4 @@ private:
     spinlock::waiter m_waiter;
 };
 
-} // namespace kutil
+} // namespace util

@@ -2,7 +2,9 @@
 /// \file endpoint.h
 /// Definition of endpoint kobject types
 
-#include "j6/signals.h"
+#include <j6/signals.h>
+#include <util/vector.h>
+
 #include "objects/kobject.h"
 
 /// Endpoints are objects that enable synchronous message-passing IPC
@@ -64,5 +66,5 @@ private:
 
     j6_status_t do_message_copy(const thread_data &sender, thread_data &receiver);
 
-    kutil::vector<thread_data> m_blocked;
+    util::vector<thread_data> m_blocked;
 };

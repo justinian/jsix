@@ -5,9 +5,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "enum_bitfields.h"
-#include "j6/signals.h"
-#include "kutil/vector.h"
+#include <j6/signals.h>
+#include <util/vector.h>
+#include <enum_bitfields.h>
 
 #include "kernel_memory.h"
 #include "objects/kobject.h"
@@ -18,7 +18,7 @@ class vm_space;
 enum class vm_flags : uint32_t
 {
 #define VM_FLAG(name, v) name = v,
-#include "j6/tables/vm_flags.inc"
+#include <j6/tables/vm_flags.inc>
 #undef VM_FLAG
     driver_mask     = 0x000fffff, ///< flags allowed via syscall for drivers
     user_mask       = 0x0000ffff, ///< flags allowed via syscall for non-drivers
@@ -74,7 +74,7 @@ protected:
 
     size_t m_size;
     vm_flags m_flags;
-    kutil::vector<vm_space*> m_spaces;
+    util::vector<vm_space*> m_spaces;
 
     // Initial static space for m_spaces - most areas will never grow
     // beyond this size, so avoid allocations
@@ -165,7 +165,7 @@ public:
     virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
 
 private:
-    kutil::vector<uintptr_t> m_cache;
+    util::vector<uintptr_t> m_cache;
     uintptr_t m_start;
     size_t m_pages;
     uintptr_t m_next;

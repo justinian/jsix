@@ -3,8 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "enum_bitfields.h"
-#include "kutil/misc.h"
+#include <util/misc.h>
+#include <enum_bitfields.h>
 
 struct acpi_table_header
 {
@@ -22,7 +22,7 @@ struct acpi_table_header
 } __attribute__ ((packed));
 
 #define TABLE_HEADER(signature) \
-    static constexpr uint32_t type_id = kutil::byteswap(signature); \
+    static constexpr uint32_t type_id = util::byteswap(signature); \
     acpi_table_header header;
 
 

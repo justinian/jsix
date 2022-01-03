@@ -1,6 +1,6 @@
-#include "kutil/spinlock.h"
+#include <util/spinlock.h>
 
-namespace kutil {
+namespace util {
 
 static constexpr int memorder = __ATOMIC_SEQ_CST;
 
@@ -43,4 +43,4 @@ spinlock::release(waiter *w)
 }
 
 
-} // namespace kutil
+} // namespace util

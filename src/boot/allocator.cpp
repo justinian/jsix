@@ -1,7 +1,7 @@
 #include <uefi/boot_services.h>
 #include <uefi/types.h>
+#include <util/no_construct.h>
 
-#include "kutil/no_construct.h"
 #include "allocator.h"
 #include "error.h"
 #include "init_args.h"
@@ -10,7 +10,7 @@
 
 namespace boot {
 
-kutil::no_construct<memory::allocator> __g_alloc_storage;
+util::no_construct<memory::allocator> __g_alloc_storage;
 memory::allocator &g_alloc = __g_alloc_storage.value;
 
 namespace memory {

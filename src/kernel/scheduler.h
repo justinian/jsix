@@ -3,8 +3,7 @@
 /// The task scheduler and related definitions
 
 #include <stdint.h>
-#include "kutil/spinlock.h"
-#include "kutil/vector.h"
+#include <util/vector.h>
 
 namespace kernel {
 namespace args {
@@ -92,7 +91,7 @@ private:
 
     process *m_kernel_process;
 
-    kutil::vector<run_queue> m_run_queues;
+    util::vector<run_queue> m_run_queues;
 
     // TODO: lol a real clock
     uint64_t m_clock = 0;

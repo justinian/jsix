@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "kutil/no_construct.h"
+#include <util/no_construct.h>
 
 #include "assert.h"
 #include "console.h"
@@ -22,7 +22,7 @@ static constexpr uint8_t tss_index       = 6; // Note that this takes TWO GDT en
 // The BSP's GDT is initialized _before_ global constructors are called,
 // so we don't want it to have a global constructor, lest it overwrite
 // the previous initialization.
-static kutil::no_construct<GDT> __g_bsp_gdt_storage;
+static util::no_construct<GDT> __g_bsp_gdt_storage;
 GDT &g_bsp_gdt = __g_bsp_gdt_storage.value;
 
 

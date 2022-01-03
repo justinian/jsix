@@ -1,16 +1,16 @@
 #include <string.h>
 
-#include "kutil/constexpr_hash.h"
-#include "printf/printf.h"
+#include <util/constexpr_hash.h>
 
 #include "assert.h"
 #include "logger.h"
+#include "printf/printf.h"
 
 namespace logs {
 #define LOG(name, lvl) \
     const log::area_t name = #name ## _h; \
     const char * name ## _name = #name;
-#include "j6/tables/log_areas.inc"
+#include <j6/tables/log_areas.inc>
 #undef LOG
 }
 
@@ -42,7 +42,7 @@ logger::logger(uint8_t *buffer, size_t size, logger::immediate_cb output) :
 
 #define LOG(name, lvl) \
     register_area(logs::name, logs::name ## _name, log::level::lvl);
-#include "j6/tables/log_areas.inc"
+#include <j6/tables/log_areas.inc>
 #undef LOG
 }
 
@@ -89,7 +89,7 @@ logger::output(level severity, area_t area, const char *fmt, va_list args)
     header->bytes +=
         vsnprintf(header->message, sizeof(buffer) - sizeof(entry), fmt, args);
 
-    kutil::scoped_lock lock {m_lock};
+    util::scoped_lock lock {m_lock};
 
     if (m_immediate) {
         buffer[header->bytes] = 0;
@@ -117,7 +117,7 @@ logger::output(level severity, area_t area, const char *fmt, va_list args)
 size_t
 logger::get_entry(void *buffer, size_t size)
 {
-    kutil::scoped_lock lock {m_lock};
+    util::scoped_lock lock {m_lock};
 
     void *out;
     size_t out_size = m_buffer.get_block(&out);

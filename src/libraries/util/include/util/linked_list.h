@@ -3,7 +3,7 @@
 /// A generic templatized linked list.
 #include <stddef.h>
 
-namespace kutil {
+namespace util {
 
 template <typename T> class linked_list;
 
@@ -346,4 +346,4 @@ private:
 };
 
 
-} // namespace kutil
+} // namespace util

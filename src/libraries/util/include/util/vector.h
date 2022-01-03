@@ -5,9 +5,10 @@
 #include <assert.h>
 #include <string.h>
 #include <utility>
-#include "kutil/util.h"
 
-namespace kutil {
+#include <util/util.h>
+
+namespace util {
 
 /// A dynamic array.
 template <typename T, typename S = uint32_t>
@@ -292,4 +293,4 @@ private:
     T *m_elements;
 };
 
-} // namespace kutil
+} // namespace util

@@ -1,5 +1,5 @@
-#include "j6/signals.h"
-#include "kutil/no_construct.h"
+#include <j6/signals.h>
+#include <util/no_construct.h>
 
 #include "assert.h"
 #include "console.h"
@@ -13,7 +13,7 @@ static uint8_t log_buffer[0x10000];
 // The logger is initialized _before_ global constructors are called,
 // so that we can start log output immediately. Keep its constructor
 // from being called here so as to not overwrite the previous initialization.
-static kutil::no_construct<log::logger> __g_logger_storage;
+static util::no_construct<log::logger> __g_logger_storage;
 log::logger &g_logger = __g_logger_storage.value;
 
 static const uint8_t level_colors[] = {0x07, 0x07, 0x0f, 0x0b, 0x09};

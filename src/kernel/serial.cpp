@@ -1,5 +1,5 @@
 #include <string.h>
-#include "kutil/no_construct.h"
+#include <util/no_construct.h>
 
 #include "assert.h"
 #include "interrupts.h"
@@ -9,7 +9,7 @@
 // This object is initialized _before_ global constructors are called,
 // so we don't want it to have global constructors at all, lest it
 // overwrite the previous initialization.
-static kutil::no_construct<serial_port> __g_com1_storage;
+static util::no_construct<serial_port> __g_com1_storage;
 serial_port &g_com1 = __g_com1_storage.value;
 
 constexpr size_t fifo_size = 64;

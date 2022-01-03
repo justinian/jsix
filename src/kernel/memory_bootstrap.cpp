@@ -1,10 +1,9 @@
 #include <utility>
 
-#include "kernel_args.h"
-#include "j6/init.h"
-
-#include "enum_bitfields.h"
-#include "kutil/no_construct.h"
+#include <j6/init.h>
+#include <util/no_construct.h>
+#include <kernel_args.h>
+#include <enum_bitfields.h>
 
 #include "assert.h"
 #include "device_manager.h"
@@ -39,16 +38,16 @@ extern "C" uintptr_t initialize_main_user_stack();
 // These objects are initialized _before_ global constructors are called,
 // so we don't want them to have global constructors at all, lest they
 // overwrite the previous initialization.
-static kutil::no_construct<heap_allocator> __g_kernel_heap_storage;
+static util::no_construct<heap_allocator> __g_kernel_heap_storage;
 heap_allocator &g_kernel_heap = __g_kernel_heap_storage.value;
 
-static kutil::no_construct<frame_allocator> __g_frame_allocator_storage;
+static util::no_construct<frame_allocator> __g_frame_allocator_storage;
 frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
 
-static kutil::no_construct<vm_area_untracked> __g_kernel_heap_area_storage;
+static util::no_construct<vm_area_untracked> __g_kernel_heap_area_storage;
 vm_area_untracked &g_kernel_heap_area = __g_kernel_heap_area_storage.value;
 
-static kutil::no_construct<vm_area_guarded> __g_kernel_stacks_storage;
+static util::no_construct<vm_area_guarded> __g_kernel_stacks_storage;
 vm_area_guarded &g_kernel_stacks = __g_kernel_stacks_storage.value;
 
 vm_area_guarded g_kernel_buffers {

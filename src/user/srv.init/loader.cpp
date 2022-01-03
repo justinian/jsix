@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <string.h>
-#include "enum_bitfields.h"
-#include "elf/file.h"
-#include "elf/headers.h"
-#include "j6/errors.h"
-#include "j6/flags.h"
-#include "j6/syscalls.h"
-#include "init_args.h"
+
+#include <elf/file.h>
+#include <elf/headers.h>
+#include <j6/errors.h>
+#include <j6/flags.h>
+#include <j6/syscalls.h>
+#include <init_args.h>
+#include <enum_bitfields.h>
 
 using kernel::init::module_flags;
 using kernel::init::module_program;

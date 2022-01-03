@@ -6,7 +6,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-namespace kutil {
+#include <util/spinlock.h>
+
+namespace util {
 
 class bip_buffer
 {
@@ -52,8 +54,10 @@ private:
     size_t m_size_b;
     size_t m_size_r;
 
+    mutable spinlock m_lock;
+
     const size_t m_buffer_size;
     uint8_t * const m_buffer;
 };
 
-} // namespace kutil
+} // namespace util

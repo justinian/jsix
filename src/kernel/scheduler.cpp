@@ -1,6 +1,7 @@
 #include <stddef.h>
 
 #include <j6/init.h>
+#include <util/spinlock.h>
 
 #include "apic.h"
 #include "assert.h"
@@ -34,7 +35,7 @@ struct run_queue
 
     uint64_t last_promotion = 0;
     uint64_t last_steal = 0;
-    kutil::spinlock lock;
+    util::spinlock lock;
 };
 
 scheduler::scheduler(unsigned cpus) :
@@ -97,7 +98,7 @@ scheduler::start()
     run_queue &queue = m_run_queues[cpu.index];
 
     {
-        kutil::scoped_lock lock {queue.lock};
+        util::scoped_lock lock {queue.lock};
 
         process *kp = &process::kernel_process();
         thread *idle = thread::create_idle_thread(*kp, max_priority, cpu.rsp0);
@@ -119,7 +120,7 @@ scheduler::add_thread(TCB *t)
 {
     cpu_data &cpu = current_cpu();
     run_queue &queue = m_run_queues[cpu.index];
-    kutil::scoped_lock lock {queue.lock};
+    util::scoped_lock lock {queue.lock};
 
     queue.blocked.push_back(static_cast<tcb_node*>(t));
     t->time_left = quantum(t->priority);
@@ -221,14 +222,14 @@ scheduler::steal_work(cpu_data &cpu)
 {
     // Lock this cpu's queue for the whole time while we modify it
     run_queue &my_queue = m_run_queues[cpu.index];
-    kutil::scoped_lock my_queue_lock {my_queue.lock};
+    util::scoped_lock my_queue_lock {my_queue.lock};
 
     const unsigned count = m_run_queues.count();
     for (unsigned i = 0; i < count; ++i) {
         if (i == cpu.index) continue;
 
         run_queue &other_queue = m_run_queues[i];
-        kutil::scoped_lock other_queue_lock {other_queue.lock};
+        util::scoped_lock other_queue_lock {other_queue.lock};
 
         size_t stolen = 0;
 
@@ -263,7 +264,7 @@ scheduler::schedule()
     // We need to explicitly lock/unlock here instead of
     // using a scoped lock, because the scope doesn't "end"
     // for the current thread until it gets scheduled again
-    kutil::spinlock::waiter waiter;
+    util::spinlock::waiter waiter;
     queue.lock.acquire(&waiter);
 
     queue.current->time_left = remaining;

@@ -1,5 +1,5 @@
-#include "j6/errors.h"
-#include "j6/types.h"
+#include <j6/errors.h>
+#include <j6/types.h>
 
 #include "cpu.h"
 #include "device_manager.h"

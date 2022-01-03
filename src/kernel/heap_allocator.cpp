@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <string.h>
-#include "kutil/util.h"
+
+#include <util/util.h>
 
 #include "assert.h"
 #include "heap_allocator.h"
@@ -81,7 +82,7 @@ heap_allocator::allocate(size_t length)
     if (length == 0)
         return nullptr;
 
-    unsigned order = kutil::log2(total);
+    unsigned order = util::log2(total);
     if (order < min_order)
         order = min_order;
 
@@ -89,7 +90,7 @@ heap_allocator::allocate(size_t length)
     if (order > max_order)
         return nullptr;
 
-    kutil::scoped_lock lock {m_lock};
+    util::scoped_lock lock {m_lock};
 
     mem_header *header = pop_free(order);
     header->set_used(true);
@@ -106,7 +107,7 @@ heap_allocator::free(void *p)
     kassert(addr >= m_start && addr < m_end,
         "Attempt to free non-heap pointer");
 
-    kutil::scoped_lock lock {m_lock};
+    util::scoped_lock lock {m_lock};
 
     mem_header *header = reinterpret_cast<mem_header *>(p);
     header -= 1; // p points after the header

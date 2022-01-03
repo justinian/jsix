@@ -2,7 +2,8 @@
 /// \file thread.h
 /// Definition of thread kobject types
 
-#include "kutil/linked_list.h"
+#include <util/linked_list.h>
+
 #include "objects/kobject.h"
 
 struct page_table;
@@ -29,7 +30,7 @@ struct TCB
     uint64_t last_ran;
 };
 
-using tcb_list = kutil::linked_list<TCB>;
+using tcb_list = util::linked_list<TCB>;
 using tcb_node = tcb_list::item_type;
 
 class thread :

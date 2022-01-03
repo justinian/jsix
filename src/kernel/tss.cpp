@@ -1,5 +1,5 @@
 #include <string.h>
-#include "kutil/no_construct.h"
+#include <util/no_construct.h>
 
 #include "assert.h"
 #include "cpu.h"
@@ -11,7 +11,7 @@
 // The BSP's TSS is initialized _before_ global constructors are called,
 // so we don't want it to have a global constructor, lest it overwrite
 // the previous initialization.
-static kutil::no_construct<TSS> __g_bsp_tss_storage;
+static util::no_construct<TSS> __g_bsp_tss_storage;
 TSS &g_bsp_tss = __g_bsp_tss_storage.value;
 
 

@@ -12,7 +12,7 @@ using level = page_table::level;
 
 free_page_header * page_table::s_page_cache = nullptr;
 size_t page_table::s_cache_count = 0;
-kutil::spinlock page_table::s_lock;
+util::spinlock page_table::s_lock;
 constexpr size_t page_table::entry_sizes[4];
 
 
@@ -180,7 +180,7 @@ page_table::get_table_page()
     free_page_header *page = nullptr;
 
     {
-        kutil::scoped_lock lock(s_lock);
+        util::scoped_lock lock(s_lock);
 
         if (!s_cache_count)
             fill_table_page_cache();
@@ -199,7 +199,7 @@ page_table::get_table_page()
 void
 page_table::free_table_page(page_table *pt)
 {
-    kutil::scoped_lock lock(s_lock);
+    util::scoped_lock lock(s_lock);
     free_page_header *page =
         reinterpret_cast<free_page_header*>(pt);
     page->next = s_page_cache;

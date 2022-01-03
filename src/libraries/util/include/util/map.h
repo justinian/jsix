@@ -14,11 +14,12 @@
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
-#include "kutil/hash.h"
-#include "kutil/vector.h"
-#include "kutil/util.h"
 
-namespace kutil {
+#include <util/hash.h>
+#include <util/vector.h>
+#include <util/util.h>
+
+namespace util {
 
 /// Templated equality check to allow overriding
 template <typename T>
@@ -290,4 +291,4 @@ public:
     }
 };
 
-} // namespace kutil
+} // namespace util

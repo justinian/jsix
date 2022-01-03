@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "kutil/no_construct.h"
+#include <util/no_construct.h>
 
 #include "cpu.h"
 #include "idt.h"
@@ -23,7 +23,7 @@ extern "C" {
 // The BSP's IDT is initialized _before_ global constructors are called,
 // so we don't want it to have a global constructor, lest it overwrite
 // the previous initialization.
-static kutil::no_construct<IDT> __g_bsp_idt_storage;
+static util::no_construct<IDT> __g_bsp_idt_storage;
 IDT &g_bsp_idt = __g_bsp_idt_storage.value;
 void (*__nmi_handler)();
 

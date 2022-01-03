@@ -5,8 +5,8 @@
 #include <stdarg.h>
 #include <stdint.h>
 
-#include "kutil/bip_buffer.h"
-#include "kutil/spinlock.h"
+#include <util/bip_buffer.h>
+#include <util/spinlock.h>
 
 namespace log {
 
@@ -110,8 +110,8 @@ private:
 
     uint8_t m_sequence;
 
-    kutil::bip_buffer m_buffer;
-    kutil::spinlock m_lock;
+    util::bip_buffer m_buffer;
+    util::spinlock m_lock;
 
     static logger *s_log;
     static const char *s_level_names[static_cast<unsigned>(level::max)];
@@ -129,6 +129,6 @@ extern log::logger &g_logger;
 
 namespace logs {
 #define LOG(name, lvl) extern const log::area_t name;
-#include "j6/tables/log_areas.inc"
+#include <j6/tables/log_areas.inc>
 #undef LOG
 } // namespace logs

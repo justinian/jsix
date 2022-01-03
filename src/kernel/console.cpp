@@ -1,13 +1,13 @@
-#include "kutil/no_construct.h"
-#include "printf/printf.h"
+#include <util/no_construct.h>
 
 #include "console.h"
+#include "printf/printf.h"
 #include "serial.h"
 
 
 const char digits[] = "0123456789abcdef";
 
-static kutil::no_construct<console> __g_console_storage;
+static util::no_construct<console> __g_console_storage;
 console &g_console = __g_console_storage.value;
 
 

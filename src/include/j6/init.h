@@ -3,7 +3,7 @@
 /// Types used in process and thread initialization
 
 #include <stdint.h>
-#include "j6/types.h"
+#include <j6/types.h>
 
 enum j6_init_type {                 // `value` is a:
     j6_init_handle_self,            // Handle to the system

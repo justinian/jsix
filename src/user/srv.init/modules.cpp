@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "j6/errors.h"
-#include "j6/syscalls.h"
+#include <j6/errors.h>
+#include <j6/syscalls.h>
 
 #include "modules.h"
 

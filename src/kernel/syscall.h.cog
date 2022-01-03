@@ -2,7 +2,7 @@
 // vim: ft=cpp
 
 #include <stdint.h>
-#include "j6/types.h"
+#include <j6/types.h>
 
 struct cpu_state;
 

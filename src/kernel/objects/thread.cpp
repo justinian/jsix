@@ -1,4 +1,4 @@
-#include "j6/signals.h"
+#include <j6/signals.h>
 
 #include "cpu.h"
 #include "log.h"
