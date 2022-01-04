@@ -1,10 +1,11 @@
+#include <bootproto/kernel.h>
+
 #include "assert.h"
 #include "frame_allocator.h"
-#include "kernel_args.h"
-#include "kernel_memory.h"
 #include "log.h"
+#include "memory.h"
 
-using memory::frame_size;
+using mem::frame_size;
 
 
 frame_allocator &
@@ -14,7 +15,7 @@ frame_allocator::get()
     return g_frame_allocator;
 }
 
-frame_allocator::frame_allocator(kernel::init::frame_block *frames, size_t count) :
+frame_allocator::frame_allocator(bootproto::frame_block *frames, size_t count) :
     m_blocks {frames},
     m_count {count}
 {

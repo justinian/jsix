@@ -2,9 +2,8 @@
 /// \file loader.h
 /// Routines for loading and starting other programs
 
-namespace kernel {
-namespace init {
+namespace bootproto {
     struct module_program;
-}}
+}
 
-bool load_program(const kernel::init::module_program &prog, char *err_msg);
+bool load_program(const bootproto::module_program &prog, char *err_msg);

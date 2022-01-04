@@ -3,9 +3,9 @@
 /// Helper structures for dealing with page tables.
 
 #include <stdint.h>
+#include <arch/memory.h>
 #include <util/spinlock.h>
 #include <enum_bitfields.h>
-#include <kernel_memory.h>
 
 struct free_page_header;
 
@@ -173,7 +173,7 @@ struct page_table
     /// Print this table to the debug console.
     void dump(level lvl = level::pml4, bool recurse = true);
 
-    uint64_t entries[memory::table_entries];
+    uint64_t entries[arch::table_entries];
 };
 
 

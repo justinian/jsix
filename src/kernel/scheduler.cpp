@@ -13,7 +13,6 @@
 #include "gdt.h"
 #include "interrupts.h"
 #include "io.h"
-#include "kernel_memory.h"
 #include "log.h"
 #include "msr.h"
 #include "objects/channel.h"

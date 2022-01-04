@@ -1,14 +1,16 @@
 #pragma once
+/// \file bootproto/kernel.h
+/// Data structures for initializing the kernel
 
 #include <stdalign.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "counted.h"
 
-namespace kernel {
-namespace init {
+#include <util/counted.h>
 
-constexpr uint32_t args_magic = 'j6ia'; // "jsix init args"
+namespace bootproto {
+
+constexpr uint32_t args_magic = 'j6bp'; // "jsix boot protocol"
 constexpr uint16_t args_version = 1;
 
 constexpr uint64_t header_magic = 0x4c454e52454b366aull; // 'j6KERNEL'
@@ -32,7 +34,7 @@ struct program_section {
 struct program {
     uintptr_t entrypoint;
     uintptr_t phys_base;
-    counted<program_section> sections;
+    util::counted<program_section> sections;
 };
 
 enum class mem_type : uint32_t {
@@ -120,9 +122,9 @@ struct args
     boot_flags flags;
 
     void *pml4;
-    counted<void> page_tables;
-    counted<mem_entry> mem_map;
-    counted<frame_block> frame_blocks;
+    util::counted<void> page_tables;
+    util::counted<mem_entry> mem_map;
+    util::counted<frame_block> frame_blocks;
 
     program *kernel;
     program *init;
@@ -153,7 +155,6 @@ struct header
     uint64_t flags;
 };
 
-using entrypoint = __attribute__((sysv_abi)) void (*)(init::args *);
+using entrypoint = __attribute__((sysv_abi)) void (*)(args *);
 
-} // namespace init
-} // namespace kernel
+} // namespace bootproto

@@ -3,7 +3,7 @@
 /// Page table structure and related definitions
 #include <stdint.h>
 #include <uefi/boot_services.h>
-#include "kernel_args.h"
+#include <bootproto/kernel.h>
 
 namespace boot {
 namespace paging {
@@ -30,7 +30,7 @@ struct page_table
 /// and kernel args' `page_table_cache` and `num_free_tables` are updated with
 /// the leftover space.
 /// \arg args    The kernel args struct, used for the page table cache and pml4
-void allocate_tables(kernel::init::args *args);
+void allocate_tables(bootproto::args *args);
 
 /// Copy existing page table entries to a new page table. Does not do a deep
 /// copy - the new PML4 is updated to point to the existing next-level page
@@ -46,7 +46,7 @@ void add_current_mappings(page_table *new_pml4);
 /// \arg write_flag If true, mark the pages writeable
 /// \arg exe_flag   If true, mark the pages executable
 void map_pages(
-    kernel::init::args *args,
+    bootproto::args *args,
     uintptr_t phys, uintptr_t virt,
     size_t count, bool write_flag, bool exe_flag);
 
@@ -55,8 +55,8 @@ void map_pages(
 /// \arg args    The kernel args struct, used for the page table cache and pml4
 /// \arg program The program to load
 void map_program(
-    kernel::init::args *args,
-    kernel::init::program &program);
+    bootproto::args *args,
+    bootproto::program &program);
 
 } // namespace paging
 } // namespace boot

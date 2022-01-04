@@ -1,10 +1,11 @@
 #include <string.h>
 
-#include "kernel_memory.h"
+#include <arch/memory.h>
 
 #include "assert.h"
 #include "frame_allocator.h"
 #include "log.h"
+#include "memory.h"
 #include "objects/process.h"
 #include "objects/thread.h"
 #include "objects/vm_area.h"
@@ -42,8 +43,8 @@ vm_space::vm_space() :
     m_pml4 = page_table::get_table_page();
     page_table *kpml4 = kernel_space().m_pml4;
 
-    memset(m_pml4, 0, memory::frame_size/2);
-    for (unsigned i = memory::pml4e_kernel; i < memory::table_entries; ++i)
+    memset(m_pml4, 0, mem::frame_size/2);
+    for (unsigned i = arch::kernel_root_index; i < arch::table_entries; ++i)
         m_pml4->entries[i] = kpml4->entries[i];
 }
 
@@ -81,7 +82,7 @@ void
 vm_space::remove_area(vm_area *area)
 {
     area->remove_from(this);
-    clear(*area, 0, memory::page_count(area->size()));
+    clear(*area, 0, mem::page_count(area->size()));
     area->handle_release();
 }
 
@@ -153,7 +154,7 @@ vm_space::copy_from(const vm_space &source, const vm_area &vma)
     if (!find_vma(vma, from) || !source.find_vma(vma, from))
         return;
 
-    size_t count = memory::page_count(vma.size());
+    size_t count = mem::page_count(vma.size());
     page_table::iterator dit {to, m_pml4};
     page_table::iterator sit {from, source.m_pml4};
 
@@ -169,7 +170,7 @@ vm_space::copy_from(const vm_space &source, const vm_area &vma)
 void
 vm_space::page_in(const vm_area &vma, uintptr_t offset, uintptr_t phys, size_t count)
 {
-    using memory::frame_size;
+    using mem::frame_size;
     util::scoped_lock lock {m_lock};
 
     uintptr_t base = 0;
@@ -197,7 +198,7 @@ vm_space::page_in(const vm_area &vma, uintptr_t offset, uintptr_t phys, size_t c
 void
 vm_space::clear(const vm_area &vma, uintptr_t offset, size_t count, bool free)
 {
-    using memory::frame_size;
+    using mem::frame_size;
     util::scoped_lock lock {m_lock};
 
     uintptr_t base = 0;
@@ -248,13 +249,13 @@ vm_space::active() const
 {
     uintptr_t pml4 = 0;
     __asm__ __volatile__ ( "mov %%cr3, %0" : "=r" (pml4) );
-    return memory::to_virtual<page_table>(pml4 & ~0xfffull) == m_pml4;
+    return mem::to_virtual<page_table>(pml4 & ~0xfffull) == m_pml4;
 }
 
 void
 vm_space::activate() const
 {
-    constexpr uint64_t phys_mask = ~memory::page_offset & ~0xfffull;
+    constexpr uint64_t phys_mask = ~mem::linear_offset & ~0xfffull;
     uintptr_t p = reinterpret_cast<uintptr_t>(m_pml4) & phys_mask;
     __asm__ __volatile__ ( "mov %0, %%cr3" :: "r" (p) );
 }
@@ -264,7 +265,7 @@ vm_space::initialize_tcb(TCB &tcb)
 {
     tcb.pml4 =
         reinterpret_cast<uintptr_t>(m_pml4) &
-        ~memory::page_offset;
+        ~mem::linear_offset;
 }
 
 bool
@@ -300,8 +301,8 @@ vm_space::copy(vm_space &source, vm_space &dest, const void *from, void *to, siz
     // TODO: iterate page mappings and continue copying. For now i'm blindly
     // assuming both buffers are fully contained within single pages
     memcpy(
-        memory::to_virtual<void>((*dit & ~0xfffull) | (ito & 0xffful)),
-        memory::to_virtual<void>((*sit & ~0xfffull) | (ifrom & 0xffful)),
+        mem::to_virtual<void>((*dit & ~0xfffull) | (ito & 0xffful)),
+        mem::to_virtual<void>((*sit & ~0xfffull) | (ifrom & 0xffful)),
         length);
 
     return length;

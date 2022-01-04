@@ -1,9 +1,12 @@
 #include <uefi/boot_services.h>
 #include <uefi/types.h>
 
+#include <bootproto/kernel.h>
+#include <bootproto/memory.h>
+#include <util/pointers.h>
+
 #include "allocator.h"
 #include "error.h"
-#include "kernel_memory.h"
 #include "memory.h"
 #include "memory_map.h"
 #include "paging.h"
@@ -12,10 +15,10 @@
 namespace boot {
 namespace memory {
 
-using kernel::init::frame_block;
-using kernel::init::frames_per_block;
-using kernel::init::mem_entry;
-using kernel::init::mem_type;
+using bootproto::frame_block;
+using bootproto::frames_per_block;
+using bootproto::mem_entry;
+using bootproto::mem_type;
 
 
 void
@@ -89,7 +92,7 @@ memory_type_name(uefi::memory_type t)
 }
 
 static const wchar_t *
-kernel_memory_type_name(kernel::init::mem_type t)
+kernel_memory_type_name(bootproto::mem_type t)
 {
     return kernel_memory_type_names[static_cast<uint32_t>(t)];
 }
@@ -103,7 +106,7 @@ can_merge(mem_entry &prev, mem_type type, uefi::memory_descriptor &next)
         prev.attr == (next.attribute & 0xffffffff);
 }
 
-counted<mem_entry>
+util::counted<mem_entry>
 build_kernel_map(efi_mem_map &map)
 {
     status_line status {L"Creating kernel memory map"};
@@ -200,8 +203,8 @@ build_kernel_map(efi_mem_map &map)
 inline size_t bitmap_size(size_t frames) { return (frames + 63) / 64; }
 inline size_t num_blocks(size_t frames) { return (frames + (frames_per_block-1)) / frames_per_block; }
 
-counted<kernel::init::frame_block>
-build_frame_blocks(const counted<kernel::init::mem_entry> &kmap)
+util::counted<bootproto::frame_block>
+build_frame_blocks(const util::counted<bootproto::mem_entry> &kmap)
 {
     status_line status {L"Creating kernel frame accounting map"};
 
@@ -232,7 +235,7 @@ build_frame_blocks(const counted<kernel::init::mem_entry> &kmap)
         while (page_count) {
             frame_block *blk = next_block++;
 
-            blk->flags = static_cast<kernel::init::frame_flags>(ent.attr);
+            blk->flags = static_cast<bootproto::frame_flags>(ent.attr);
             blk->base = base_addr;
             base_addr += frames_per_block * page_size;
 
@@ -275,9 +278,9 @@ build_frame_blocks(const counted<kernel::init::mem_entry> &kmap)
 }
 
 void
-fix_frame_blocks(kernel::init::args *args)
+fix_frame_blocks(bootproto::args *args)
 {
-    counted<frame_block> &blocks = args->frame_blocks;
+    util::counted<frame_block> &blocks = args->frame_blocks;
 
     size_t size = blocks.count * sizeof(frame_block);
     for (unsigned i = 0; i < blocks.count; ++i)
@@ -288,13 +291,13 @@ fix_frame_blocks(kernel::init::args *args)
 
     // Map the frame blocks to the appropriate address
     paging::map_pages(args, addr,
-        ::memory::bitmap_start, pages, true, false);
+        bootproto::mem::bitmap_offset, pages, true, false);
 
-    uintptr_t offset = ::memory::bitmap_start - addr;
+    uintptr_t offset = bootproto::mem::bitmap_offset - addr;
 
     for (unsigned i = 0; i < blocks.count; ++i) {
         frame_block &blk = blocks[i];
-        blk.bitmap = offset_ptr<uint64_t>(blk.bitmap, offset);
+        blk.bitmap = util::offset_pointer(blk.bitmap, offset);
     }
 }
 

@@ -2,7 +2,7 @@
 
 init = module("srv.init",
     targets = [ "user" ],
-    deps = [ "libc", "elf" ],
+    deps = [ "libc", "elf", "bootproto" ],
     sources = [
         "loader.cpp",
         "main.cpp",

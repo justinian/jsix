@@ -1,4 +1,3 @@
-#include "pointer_manipulation.h"
 #include "symbol_table.h"
 
 namespace panicking {

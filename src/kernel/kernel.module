@@ -5,7 +5,7 @@ kernel = module("kernel",
     default = True,
     output = "jsix.elf",
     targets = [ "kernel" ],
-    deps = [ "util", "cpu" ],
+    deps = [ "util", "cpu", "bootproto" ],
     includes = [ "." ],
     sources = [
         "apic.cpp",
@@ -15,6 +15,7 @@ kernel = module("kernel",
         "clock.cpp",
         "console.cpp",
         "cpprt.cpp",
+        "cpu.cpp",
         "debug.cpp",
         "debug.s",
         "device_manager.cpp",
@@ -29,6 +30,7 @@ kernel = module("kernel",
         "io.cpp",
         "log.cpp",
         "logger.cpp",
+        "main.cpp",
         "memory.cpp",
         "memory_bootstrap.cpp",
         "msr.cpp",
@@ -45,6 +47,7 @@ kernel = module("kernel",
         "printf/printf.c",
         "scheduler.cpp",
         "serial.cpp",
+        "syscall.s",
         "syscalls/channel.cpp",
         "syscalls/endpoint.cpp",
         "syscalls/object.cpp",
@@ -58,14 +61,41 @@ kernel = module("kernel",
     ])
 
 from glob import glob
-definitions = glob('definitions/**/*.def', recursive=True)
-sysinc = kernel.add_input("syscalls.inc.cog", deps=definitions)
-kernel.add_input("syscall.s", deps=[sysinc])
+from os.path import join
 
+layout = join(source_root, "definitions/memory_layout.csv")
+definitions = glob('definitions/**/*.def', recursive=True)
+
+sysinc = kernel.add_input("syscalls.inc.cog", deps=definitions)
+
+memh = kernel.add_input("memory.h.cog", deps=[layout])
 sysh = kernel.add_input("syscall.h.cog", deps=definitions)
 sysc = kernel.add_input("syscall.cpp.cog", deps=definitions + [sysh])
 
-kernel.add_input("main.cpp", deps=[sysh])
-kernel.add_input("cpu.cpp", deps=[sysh])
+kernel.add_depends(["syscall.s"], [sysinc])
+kernel.add_depends(["main.cpp", "cpu.cpp"], [sysh])
+kernel.add_depends(["main.cpp", "cpu.cpp"], [sysh])
+
+kernel.add_depends([
+    "apic.cpp",
+    "device_manager.cpp",
+    "frame_allocator.cpp",
+    "heap_allocator.cpp",
+    "heap_allocator.h",
+    "interrupts.cpp",
+    "log.cpp",
+    "main.cpp",
+    "memory_bootstrap.cpp",
+    "memory.cpp",
+    "objects/channel.cpp",
+    "objects/thread.cpp",
+    "objects/vm_area.cpp",
+    "page_table.cpp",
+    "page_tree.cpp",
+    "syscalls/system.cpp",
+    "tss.cpp",
+    "vm_space.cpp",
+    ],
+    [memh])
 
 kernel.variables['ldflags'] = ["${ldflags}", "-T", "${source_root}/src/kernel/kernel.ld"]

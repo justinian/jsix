@@ -2,20 +2,19 @@
 /// \file memory_map.h
 /// Memory-map related types and functions
 
-#include "counted.h"
-#include "pointer_manipulation.h"
+#include <util/counted.h>
+#include <util/pointers.h>
 
 namespace uefi {
     struct boot_services;
     struct memory_descriptor;
 }
 
-namespace kernel {
-namespace init {
+namespace bootproto {
     struct args;
     struct frame_block;
     struct mem_entry;
-}}
+}
 
 namespace boot {
 namespace memory {
@@ -25,7 +24,7 @@ namespace memory {
 struct efi_mem_map
 {
     using desc = uefi::memory_descriptor;
-    using iterator = offset_iterator<desc>;
+    using iterator = util::offset_iterator<desc>;
 
     size_t length;     ///< Total length of the map data
     size_t total;      ///< Total allocated space for map data
@@ -46,18 +45,18 @@ struct efi_mem_map
     inline iterator begin() { return iterator(entries, size); }
 
     /// Return an iterator to the end of the array
-    inline iterator end() { return offset_ptr<desc>(entries, length); }
+    inline iterator end() { return util::offset_pointer(entries, length); }
 };
 
 /// Add the kernel's memory map as a module to the kernel args.
 /// \returns  The uefi memory map used to build the kernel map
-counted<kernel::init::mem_entry> build_kernel_map(efi_mem_map &map);
+util::counted<bootproto::mem_entry> build_kernel_map(efi_mem_map &map);
 
 /// Create the kernel frame allocation maps
-counted<kernel::init::frame_block> build_frame_blocks(const counted<kernel::init::mem_entry> &kmap);
+util::counted<bootproto::frame_block> build_frame_blocks(const util::counted<bootproto::mem_entry> &kmap);
 
 /// Map the frame allocation maps to the right spot and fix up pointers
-void fix_frame_blocks(kernel::init::args *args);
+void fix_frame_blocks(bootproto::args *args);
 
 } // namespace boot
 } // namespace memory

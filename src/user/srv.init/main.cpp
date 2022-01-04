@@ -1,14 +1,14 @@
 #include <stdio.h>
 
 #include <j6/syscalls.h>
-#include <init_args.h>
+#include <bootproto/init.h>
 
 #include "loader.h"
 #include "modules.h"
 
-using kernel::init::module;
-using kernel::init::module_type;
-using kernel::init::module_program;
+using bootproto::module;
+using bootproto::module_type;
+using bootproto::module_program;
 
 extern "C" {
     int main(int, const char **);

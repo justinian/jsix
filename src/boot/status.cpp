@@ -4,7 +4,6 @@
 
 #include "console.h"
 #include "error.h"
-#include "init_args.h"
 #include "status.h"
 #include "video.h"
 

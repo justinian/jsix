@@ -1,0 +1,12 @@
+# vim: ft=python
+
+bp = module("bootproto",
+    kind = "lib",
+    includes = [ "include" ],
+    sources = [
+    ])
+
+from os.path import join
+
+layout = join(source_root, "definitions/memory_layout.csv")
+bp.add_input("include/bootproto/memory.h.cog", deps=[layout])

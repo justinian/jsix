@@ -1,13 +1,14 @@
 #include <string.h>
+#include <util/pointers.h>
 
 #include "assert.h"
 #include "console.h"
-#include "frame_allocator.h"
-#include "kernel_memory.h"
 #include "memory.h"
+#include "frame_allocator.h"
 #include "page_table.h"
 
-using memory::page_offset;
+using mem::frame_size;
+using mem::linear_offset;
 using level = page_table::level;
 
 free_page_header * page_table::s_page_cache = nullptr;
@@ -123,7 +124,7 @@ page_table::iterator::check_table(level l) const
 
     uint64_t parent = entry(l - 1);
     if (parent & 1) {
-        table(l) = reinterpret_cast<page_table*>(page_offset | (parent & ~0xfffull));
+        table(l) = reinterpret_cast<page_table*>(linear_offset | (parent & ~0xfffull));
         return true;
     }
     return false;
@@ -138,11 +139,11 @@ page_table::iterator::ensure_table(level l)
     if (check_table(l)) return;
 
     page_table *table = page_table::get_table_page();
-    uintptr_t phys = reinterpret_cast<uintptr_t>(table) & ~page_offset;
+    uintptr_t phys = reinterpret_cast<uintptr_t>(table) & ~linear_offset;
 
     uint64_t &parent = entry(l - 1);
     flag flags = table_flags;
-    if (m_index[0] < memory::pml4e_kernel)
+    if (m_index[0] < arch::kernel_root_index)
         flags |= flag::user;
 
     m_table[unsigned(l)] = table;
@@ -161,14 +162,14 @@ page_table::get(int i, uint16_t *flags) const
     if (flags)
         *flags = entry & 0xfffull;
 
-    return reinterpret_cast<page_table *>((entry & ~0xfffull) + page_offset);
+    return reinterpret_cast<page_table *>((entry & ~0xfffull) + linear_offset);
 }
 
 void
 page_table::set(int i, page_table *p, uint16_t flags)
 {
     entries[i] =
-        (reinterpret_cast<uint64_t>(p) - page_offset) |
+        (reinterpret_cast<uint64_t>(p) - linear_offset) |
         (flags & 0xfff);
 }
 
@@ -192,7 +193,7 @@ page_table::get_table_page()
         --s_cache_count;
     }
 
-    memset(page, 0, memory::frame_size);
+    memset(page, 0, frame_size);
     return reinterpret_cast<page_table*>(page);
 }
 
@@ -219,14 +220,14 @@ page_table::fill_table_page_cache()
         kassert(phys, "Got physical page 0 as a page table");
 
         free_page_header *start =
-            memory::to_virtual<free_page_header>(phys);
+            mem::to_virtual<free_page_header>(phys);
 
         for (int i = 0; i < n - 1; ++i)
-            offset_pointer(start, i * memory::frame_size)
-                ->next = offset_pointer(start, (i+1) * memory::frame_size);
+            util::offset_pointer(start, i * frame_size)
+                ->next = util::offset_pointer(start, (i+1) * frame_size);
 
         free_page_header *end =
-            offset_pointer(start, (n-1) * memory::frame_size);
+            util::offset_pointer(start, (n-1) * frame_size);
 
         end->next = s_page_cache;
         s_page_cache = start;
@@ -238,14 +239,14 @@ void
 page_table::free(page_table::level l)
 {
     unsigned last = l == level::pml4
-        ? memory::pml4e_kernel
-        : memory::table_entries;
+        ? arch::kernel_root_index
+        : arch::table_entries;
 
     frame_allocator &fa = frame_allocator::get();
     for (unsigned i = 0; i < last; ++i) {
         if (!is_present(i)) continue;
         if (is_page(l, i)) {
-            size_t count = memory::page_count(entry_sizes[unsigned(l)]);
+            size_t count = mem::page_count(entry_sizes[unsigned(l)]);
             fa.free(entries[i] & ~0xfffull, count);
         } else {
             get(i)->free(l + 1);
@@ -261,7 +262,7 @@ page_table::dump(page_table::level lvl, bool recurse)
     console *cons = console::get();
 
     cons->printf("\nLevel %d page table @ %lx:\n", lvl, this);
-    for (int i=0; i<memory::table_entries; ++i) {
+    for (int i=0; i<arch::table_entries; ++i) {
         uint64_t ent = entries[i];
 
         if ((ent & 0x1) == 0)
@@ -275,11 +276,11 @@ page_table::dump(page_table::level lvl, bool recurse)
 
         else
             cons->printf("  %3d: %016lx -> Level %d table at %016lx\n",
-                    i, ent, deeper(lvl), (ent & ~0xfffull) + page_offset);
+                    i, ent, deeper(lvl), (ent & ~0xfffull) + linear_offset);
     }
 
     if (lvl != level::pt && recurse) {
-        for (int i=0; i<=memory::table_entries; ++i) {
+        for (int i=0; i<=arch::table_entries; ++i) {
             if (is_large_page(lvl, i))
                 continue;
 

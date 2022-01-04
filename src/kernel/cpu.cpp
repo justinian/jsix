@@ -6,7 +6,6 @@
 #include "device_manager.h"
 #include "gdt.h"
 #include "idt.h"
-#include "kernel_memory.h"
 #include "log.h"
 #include "msr.h"
 #include "objects/vm_area.h"

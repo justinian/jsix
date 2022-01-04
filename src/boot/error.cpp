@@ -1,6 +1,5 @@
 #include "error.h"
 #include "console.h"
-#include "kernel_args.h"
 #include "status.h"
 
 namespace boot {

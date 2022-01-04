@@ -3,8 +3,8 @@
 #include "clock.h"
 #include "interrupts.h"
 #include "io.h"
-#include "kernel_memory.h"
 #include "log.h"
+#include "memory.h"
 
 uint64_t lapic::s_ticks_per_us = 0;
 
@@ -51,7 +51,7 @@ ioapic_write(uint32_t volatile *base, uint8_t reg, uint32_t value)
 }
 
 apic::apic(uintptr_t base) :
-    m_base(memory::to_virtual<uint32_t>(base))
+    m_base(mem::to_virtual<uint32_t>(base))
 {
 }
 

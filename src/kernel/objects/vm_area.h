@@ -9,7 +9,6 @@
 #include <util/vector.h>
 #include <enum_bitfields.h>
 
-#include "kernel_memory.h"
 #include "objects/kobject.h"
 
 class page_tree;

@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "pointer_manipulation.h"
+#include <util/pointers.h>
 
 namespace elf {
 
@@ -14,7 +14,7 @@ template <typename T>
 class subheaders
 {
 public:
-    using iterator = const_offset_iterator<T>;
+    using iterator = util::const_offset_iterator<T>;
 
     subheaders(const T *start, size_t size, unsigned count) :
         m_start(start), m_size(size), m_count(count) {}
@@ -22,9 +22,9 @@ public:
     inline size_t size() const { return m_size; }
     inline unsigned count() const { return m_count; }
 
-    inline const T & operator [] (int i) const { return *offset_ptr<T>(m_start, m_size*i); }
+    inline const T & operator [] (int i) const { return *util::offset_pointer<T>(m_start, m_size*i); }
     inline const iterator begin() const { return iterator(m_start, m_size); }
-    inline const iterator end() const { return offset_ptr<T>(m_start, m_size*m_count); }
+    inline const iterator end() const { return util::offset_pointer(m_start, m_size*m_count); }
 
 private:
     const T *m_start;

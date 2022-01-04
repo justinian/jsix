@@ -26,12 +26,3 @@ memcpy(void *dest, const void *src, size_t n)
 }
 
 }
-
-uint8_t
-checksum(const void *p, size_t len, size_t off)
-{
-    uint8_t sum = 0;
-    const uint8_t *c = reinterpret_cast<const uint8_t *>(p);
-    for (int i = off; i < len; ++i) sum += c[i];
-    return sum;
-}

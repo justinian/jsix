@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "counted.h"
+#include <util/counted.h>
 
 namespace panicking {
 
@@ -26,7 +26,7 @@ private:
     };
 
     const void *m_data;
-    counted<entry const> m_entries;
+    util::counted<entry const> m_entries;
 };
 
 } // namespace panicking

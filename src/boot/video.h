@@ -5,7 +5,8 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#include "init_args.h"
+#include <bootproto/init.h>
+#include <util/counted.h>
 
 namespace uefi {
     struct boot_services;
@@ -14,11 +15,11 @@ namespace uefi {
 namespace boot {
 namespace video {
 
-using kernel::init::video_mode;
-using layout = kernel::init::fb_layout;
+using bootproto::video_mode;
+using layout = bootproto::fb_layout;
 
 struct screen {
-    buffer framebuffer;
+    util::buffer framebuffer;
     video_mode mode;
 };
 

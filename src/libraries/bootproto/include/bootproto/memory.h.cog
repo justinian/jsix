@@ -1,0 +1,24 @@
+#pragma once
+// vim: ft=cpp
+
+/// \file bootproto/memory.h
+/// Import memory layout constants necessary for boot
+
+namespace bootproto {
+namespace mem {
+
+/*[[[cog code generation
+from os.path import join
+from memory import Layout
+
+layout = Layout(join(definitions_path, "memory_layout.csv"))
+
+for region in layout.regions:
+    if region.shared:
+        cog.outl(f"constexpr uintptr_t {region.name}_offset = 0x{region.start:x};")
+
+]]]*/
+///[[[end]]]
+
+} // namespace mem
+} // namespace bootproto

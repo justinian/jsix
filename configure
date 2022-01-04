@@ -25,7 +25,12 @@ def generate(output, config, manifest):
                     modules[m.name] = m
                     return m
 
-                glo = {'module': module_init}
+                glo = {
+                    "module": module_init,
+                    "source_root": root,
+                    "built_root": output,
+                    "module_root": path,
+                }
                 code = compile(open(fullpath, 'r').read(), fullpath, "exec")
 
                 loc = {}

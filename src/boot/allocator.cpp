@@ -1,11 +1,13 @@
 #include <uefi/boot_services.h>
 #include <uefi/types.h>
+
+#include <bootproto/init.h>
+#include <bootproto/kernel.h>
 #include <util/no_construct.h>
+#include <util/pointers.h>
 
 #include "allocator.h"
 #include "error.h"
-#include "init_args.h"
-#include "kernel_args.h"
 #include "memory.h"
 
 namespace boot {
@@ -15,9 +17,9 @@ memory::allocator &g_alloc = __g_alloc_storage.value;
 
 namespace memory {
 
-using kernel::init::allocation_register;
-using kernel::init::module;
-using kernel::init::page_allocation;
+using bootproto::allocation_register;
+using bootproto::module;
+using bootproto::page_allocation;
 
 static_assert(sizeof(allocation_register) == page_size);
 
@@ -119,7 +121,7 @@ allocator::allocate_module_untyped(size_t size)
 
     ++m_modules->count;
     module *m = m_next_mod;
-    m_next_mod = offset_ptr<module>(m_next_mod, size);
+    m_next_mod = util::offset_pointer(m_next_mod, size);
 
     m->mod_length = size;
     return m;

@@ -3,7 +3,7 @@
 #pragma once
 
 #include <uefi/types.h>
-#include "counted.h"
+#include <util/counted.h>
 
 namespace uefi {
     struct boot_services;
@@ -29,7 +29,7 @@ public:
     /// Load the contents of this file into memory.
     /// \returns       A buffer describing the loaded memory. The
     ///                memory will be page-aligned.
-    buffer load();
+    util::buffer load();
 
 private:
     friend file get_boot_volume(uefi::handle, uefi::boot_services*);

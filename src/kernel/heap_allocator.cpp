@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <util/pointers.h>
 #include <util/util.h>
 
 #include "assert.h"
@@ -44,8 +45,8 @@ struct heap_allocator::mem_header
         set_next(nullptr);
     }
 
-    inline mem_header * next() { return mask_pointer(m_next, 0x3f); }
-    inline mem_header * prev() { return mask_pointer(m_prev, 0x3f); }
+    inline mem_header * next() { return util::mask_pointer(m_next, 0x3f); }
+    inline mem_header * prev() { return util::mask_pointer(m_prev, 0x3f); }
 
     inline mem_header * buddy() const {
         return reinterpret_cast<mem_header *>(
@@ -155,7 +156,7 @@ heap_allocator::ensure_block(unsigned order)
     } else {
         mem_header *orig = pop_free(order + 1);
         if (orig) {
-            mem_header *next = offset_pointer(orig, 1 << order);
+            mem_header *next = util::offset_pointer(orig, 1 << order);
             new (next) mem_header(orig, nullptr, order);
 
             orig->set_next(next);

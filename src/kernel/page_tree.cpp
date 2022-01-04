@@ -1,8 +1,9 @@
 #include <string.h>
 
+#include <arch/memory.h>
+
 #include "assert.h"
 #include "frame_allocator.h"
-#include "kernel_memory.h"
 #include "page_tree.h"
 
 // Page tree levels map the following parts of an offset. Note the xxx part of
@@ -26,7 +27,7 @@ static_assert(sizeof(page_tree) == 66 * sizeof(uintptr_t));
 static constexpr unsigned max_level = 5;
 static constexpr unsigned bits_per_level = 6;
 
-inline int level_shift(uint8_t level) { return level * bits_per_level + memory::frame_bits; }
+inline int level_shift(uint8_t level) { return level * bits_per_level + arch::frame_bits; }
 inline uint64_t level_mask(uint8_t level) { return ~0x3full << level_shift(level); }
 inline int index_for(uint64_t off, uint8_t level) { return (off >> level_shift(level)) & 0x3full; }
 

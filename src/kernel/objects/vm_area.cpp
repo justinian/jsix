@@ -1,12 +1,12 @@
-#include "kernel_memory.h"
 
 #include "assert.h"
 #include "frame_allocator.h"
+#include "memory.h"
 #include "objects/vm_area.h"
 #include "page_tree.h"
 #include "vm_space.h"
 
-using memory::frame_size;
+using mem::frame_size;
 
 vm_area::vm_area(size_t size, vm_flags flags) :
     m_size {size},
@@ -74,7 +74,7 @@ vm_area_fixed::~vm_area_fixed()
     if (m_flags && vm_flags::mmio)
         return;
 
-    size_t pages = memory::page_count(m_size);
+    size_t pages = mem::page_count(m_size);
     frame_allocator::get().free(m_start, pages);
 }
 
@@ -145,7 +145,7 @@ vm_area_open::get_page(uintptr_t offset, uintptr_t &phys)
 vm_area_guarded::vm_area_guarded(uintptr_t start, size_t buf_pages, size_t size, vm_flags flags) :
     m_start {start},
     m_pages {buf_pages},
-    m_next {memory::frame_size},
+    m_next {mem::frame_size},
     vm_area_open {size, flags}
 {
 }
@@ -160,7 +160,7 @@ vm_area_guarded::get_section()
     }
 
     uintptr_t addr = m_next;
-    m_next += (m_pages + 1) * memory::frame_size;
+    m_next += (m_pages + 1) * mem::frame_size;
     return m_start + addr;
 }
 

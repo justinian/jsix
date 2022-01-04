@@ -3,8 +3,8 @@
 
 #include "assert.h"
 #include "cpu.h"
-#include "kernel_memory.h"
 #include "log.h"
+#include "memory.h"
 #include "objects/vm_area.h"
 #include "tss.h"
 
@@ -45,8 +45,8 @@ void
 TSS::create_ist_stacks(uint8_t ist_entries)
 {
     extern vm_area_guarded &g_kernel_stacks;
-    using memory::frame_size;
-    using memory::kernel_stack_pages;
+    using mem::frame_size;
+    using mem::kernel_stack_pages;
     constexpr size_t stack_bytes = kernel_stack_pages * frame_size;
 
     for (unsigned ist = 1; ist < 8; ++ist) {

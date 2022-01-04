@@ -1,0 +1,79 @@
+#pragma once
+// vim: ft=cpp
+
+/// \file bootproto/memory.h
+/// Import memory layout constants necessary for boot
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include <arch/memory.h>
+
+void * operator new (size_t, void *p) noexcept;
+
+/// Allocate from the default allocator.
+/// \arg size  The size in bytes requested
+/// \returns   A pointer to the newly allocated memory,
+///            or nullptr on error
+void * kalloc(size_t size);
+
+/// Free memory allocated by `kalloc`.
+/// \arg p  Pointer that was returned from a `kalloc` call
+void kfree(void *p);
+
+/// Kernel space virtual memory layout
+namespace mem {
+
+using arch::frame_size;
+using arch::kernel_offset;
+
+/// Max number of pages for a kernel stack
+constexpr unsigned kernel_stack_pages = 2;
+
+/// Max number of pages for a kernel buffer
+constexpr unsigned kernel_buffer_pages = 16;
+
+/*[[[cog code generation
+from os.path import join
+from memory import Layout
+
+layout = Layout(join(definitions_path, "memory_layout.csv"))
+l = max([len(r.name) for r in layout.regions])
+
+for region in layout.regions:
+    cog.outl(f"constexpr size_t {region.name:>{l}}_size = {region.size:#14x};")
+
+cog.outl("")
+
+for region in layout.regions:
+    cog.outl(f"constexpr uintptr_t {region.name:>{l}}_offset = {region.start:#x};")
+
+]]]*/
+///[[[end]]]
+
+/// Helper to determine if a physical address can be accessed
+/// through the linear_offset area.
+constexpr bool linear_mappable(uintptr_t a) { return (a & linear_offset) == 0; }
+
+/// Convert a physical address to a virtual one (in the linear-mapped area)
+template <typename T> T * to_virtual(uintptr_t a) {
+    return reinterpret_cast<T*>(a|linear_offset);
+}
+
+/// Convert a physical address to a virtual one (in the linear-mapped area)
+template <typename T> T * to_virtual(T *p) {
+    return to_virtual<T>(reinterpret_cast<uintptr_t>(p));
+}
+
+/// Get the number of pages needed for a given number of bytes.
+/// \arg bytes  The number of bytes desired
+/// \returns    The number of pages needed to contain the desired bytes
+constexpr size_t page_count(size_t bytes) { return ((bytes - 1) >> 12) + 1; }
+
+/// Get the given address, aligned to the next lowest page
+constexpr uintptr_t page_align_down(uintptr_t a) { return a & ~(frame_size-1); }
+
+/// Get the given address, aligned to the next page
+constexpr uintptr_t page_align_up(uintptr_t a) { return page_align_down(a-1) + frame_size; }
+
+} // namespace mem

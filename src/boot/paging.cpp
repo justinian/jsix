@@ -1,4 +1,7 @@
-#include "kernel_memory.h"
+#include <arch/memory.h>
+#include <bootproto/memory.h>
+#include <util/counted.h>
+#include <util/pointers.h>
 
 #include "allocator.h"
 #include "console.h"
@@ -6,7 +9,6 @@
 #include "loader.h"
 #include "memory.h"
 #include "paging.h"
-#include "pointer_manipulation.h"
 #include "status.h"
 
 namespace boot {
@@ -14,8 +16,6 @@ namespace paging {
 
 using memory::alloc_type;
 using memory::page_size;
-using ::memory::pml4e_kernel;
-using ::memory::table_entries;
 
 // Flags: 0 0 0 1  0 0 0 0  0 0 0 1 = 0x0101
 //         IGN  |  | | | |  | | | +- Present
@@ -58,13 +58,13 @@ constexpr uint64_t table_flags = 0x003;
 
 
 inline void *
-pop_pages(counted<void> &pages, size_t count)
+pop_pages(util::counted<void> &pages, size_t count)
 {
     if (count > pages.count)
         error::raise(uefi::status::out_of_resources, L"Page table cache empty", 0x7ab1e5);
 
     void *next = pages.pointer;
-    pages.pointer = offset_ptr<void>(pages.pointer, count*page_size);
+    pages.pointer = util::offset_pointer(pages.pointer, count*page_size);
     pages.count -= count;
     return next;
 }
@@ -81,7 +81,7 @@ public:
     page_entry_iterator(
             uintptr_t virt,
             page_table *pml4,
-            counted<void> &pages) :
+            util::counted<void> &pages) :
         m_pages(pages)
     {
         m_table[0] = pml4;
@@ -137,17 +137,17 @@ private:
         }
     }
 
-    counted<void> &m_pages;
+    util::counted<void> &m_pages;
     page_table *m_table[D];
     uint16_t m_index[D];
 };
 
 
 static void
-add_offset_mappings(page_table *pml4, counted<void> &pages)
+add_offset_mappings(page_table *pml4, util::counted<void> &pages)
 {
     uintptr_t phys = 0;
-    uintptr_t virt = ::memory::page_offset; // Start of offset-mapped area
+    uintptr_t virt = bootproto::mem::linear_offset; // Start of offset-mapped area
     size_t page_count = 64 * 1024; // 64 TiB of 1 GiB pages
     constexpr size_t GiB = 0x40000000ull;
 
@@ -164,9 +164,12 @@ add_offset_mappings(page_table *pml4, counted<void> &pages)
 }
 
 static void
-add_kernel_pds(page_table *pml4, counted<void> &pages)
+add_kernel_pds(page_table *pml4, util::counted<void> &pages)
 {
-    for (unsigned i = pml4e_kernel; i < table_entries; ++i)
+    constexpr unsigned start = arch::kernel_root_index; 
+    constexpr unsigned end = arch::table_entries; 
+
+    for (unsigned i = start; i < end; ++i)
         pml4->set(i, pop_pages(pages, 1), table_flags);
 }
 
@@ -178,7 +181,8 @@ add_current_mappings(page_table *new_pml4)
     asm volatile ( "mov %%cr3, %0" : "=r" (old_pml4) );
 
     // Only copy mappings in the lower half
-    for (int i = 0; i < ::memory::pml4e_kernel; ++i) {
+    constexpr unsigned halfway = arch::kernel_root_index; 
+    for (int i = 0; i < halfway; ++i) {
         uint64_t entry = old_pml4->entries[i];
         if (entry & 1)
             new_pml4->entries[i] = entry;
@@ -186,7 +190,7 @@ add_current_mappings(page_table *new_pml4)
 }
 
 void
-allocate_tables(kernel::init::args *args)
+allocate_tables(bootproto::args *args)
 {
     status_line status(L"Allocating initial page tables");
 
@@ -221,7 +225,7 @@ constexpr bool has_flag(E set, E flag) {
 
 void
 map_pages(
-    kernel::init::args *args,
+    bootproto::args *args,
     uintptr_t phys, uintptr_t virt,
     size_t count, bool write_flag, bool exe_flag)
 {
@@ -251,10 +255,10 @@ map_pages(
 
 void
 map_section(
-    kernel::init::args *args,
-    const kernel::init::program_section &section)
+    bootproto::args *args,
+    const bootproto::program_section &section)
 {
-    using kernel::init::section_flags;
+    using bootproto::section_flags;
 
     map_pages(
         args,
@@ -267,8 +271,8 @@ map_section(
 
 void
 map_program(
-    kernel::init::args *args,
-    kernel::init::program &program)
+    bootproto::args *args,
+    bootproto::program &program)
 {
     for (auto &section : program.sections)
         paging::map_section(args, section);

@@ -1,5 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
+#include <util/misc.h> // for checksum
+#include <util/pointers.h>
 
 #include "assert.h"
 #include "acpi_tables.h"
@@ -8,7 +10,6 @@
 #include "console.h"
 #include "device_manager.h"
 #include "interrupts.h"
-#include "kernel_memory.h"
 #include "log.h"
 #include "memory.h"
 #include "objects/endpoint.h"
@@ -47,7 +48,7 @@ struct acpi2_rsdp
 bool
 acpi_table_header::validate(uint32_t expected_type) const
 {
-    if (::checksum(this, length) != 0) return false;
+    if (util::checksum(this, length) != 0) return false;
     return !expected_type || (expected_type == type);
 }
 
@@ -75,14 +76,14 @@ device_manager::parse_acpi(const void *root_table)
 {
     kassert(root_table != 0, "ACPI root table pointer is null.");
 
-    const acpi1_rsdp *acpi1 = memory::to_virtual(
+    const acpi1_rsdp *acpi1 = mem::to_virtual(
         reinterpret_cast<const acpi1_rsdp *>(root_table));
 
     for (int i = 0; i < sizeof(acpi1->signature); ++i)
         kassert(acpi1->signature[i] == expected_signature[i],
                 "ACPI RSDP table signature mismatch");
 
-    uint8_t sum = checksum(acpi1, sizeof(acpi1_rsdp), 0);
+    uint8_t sum = util::checksum(acpi1, sizeof(acpi1_rsdp), 0);
     kassert(sum == 0, "ACPI 1.0 RSDP checksum mismatch.");
 
     kassert(acpi1->revision > 1, "ACPI 1.0 not supported.");
@@ -90,10 +91,10 @@ device_manager::parse_acpi(const void *root_table)
     const acpi2_rsdp *acpi2 =
         reinterpret_cast<const acpi2_rsdp *>(acpi1);
 
-    sum = checksum(acpi2, sizeof(acpi2_rsdp), sizeof(acpi1_rsdp));
+    sum = util::checksum(acpi2, sizeof(acpi2_rsdp), sizeof(acpi1_rsdp));
     kassert(sum == 0, "ACPI 2.0 RSDP checksum mismatch.");
 
-    load_xsdt(memory::to_virtual(acpi2->xsdt_address));
+    load_xsdt(mem::to_virtual(acpi2->xsdt_address));
 }
 
 const device_manager::apic_nmi *
@@ -142,7 +143,7 @@ device_manager::load_xsdt(const acpi_table_header *header)
     size_t num_tables = acpi_table_entries(xsdt, sizeof(void*));
     for (size_t i = 0; i < num_tables; ++i) {
         const acpi_table_header *header =
-            memory::to_virtual(xsdt->headers[i]);
+            mem::to_virtual(xsdt->headers[i]);
 
         put_sig(sig, header->type);
         log::debug(logs::device, "  Found table %s", sig);
@@ -212,8 +213,8 @@ device_manager::load_apic(const acpi_table_header *header)
 
         switch (type) {
         case 0: { // Local APIC
-                uint8_t uid = read_from<uint8_t>(p+2);
-                uint8_t id = read_from<uint8_t>(p+3);
+                uint8_t uid = util::read_from<uint8_t>(p+2);
+                uint8_t id = util::read_from<uint8_t>(p+3);
                 m_apic_ids.append(id);
 
                 log::debug(logs::device, "    Local APIC uid %x id %x", uid, id);
@@ -221,8 +222,8 @@ device_manager::load_apic(const acpi_table_header *header)
             break;
 
         case 1: { // I/O APIC
-                uintptr_t base = read_from<uint32_t>(p+4);
-                uint32_t base_gsi = read_from<uint32_t>(p+8);
+                uintptr_t base = util::read_from<uint32_t>(p+4);
+                uint32_t base_gsi = util::read_from<uint32_t>(p+8);
                 m_ioapics.emplace(base, base_gsi);
 
                 log::debug(logs::device, "    IO APIC gsi %x base %x", base_gsi, base);
@@ -231,9 +232,9 @@ device_manager::load_apic(const acpi_table_header *header)
 
         case 2: { // Interrupt source override
                 irq_override o;
-                o.source = read_from<uint8_t>(p+3);
-                o.gsi = read_from<uint32_t>(p+4);
-                o.flags = read_from<uint16_t>(p+8);
+                o.source = util::read_from<uint8_t>(p+3);
+                o.gsi = util::read_from<uint32_t>(p+4);
+                o.flags = util::read_from<uint16_t>(p+8);
                 m_overrides.append(o);
 
                 log::debug(logs::device, "    Intr source override IRQ %d -> %d Pol %d Tri %d",
@@ -243,9 +244,9 @@ device_manager::load_apic(const acpi_table_header *header)
 
         case 4: {// LAPIC NMI
             apic_nmi nmi;
-            nmi.cpu = read_from<uint8_t>(p + 2);
-            nmi.lint = read_from<uint8_t>(p + 5);
-            nmi.flags = read_from<uint16_t>(p + 3);
+            nmi.cpu = util::read_from<uint8_t>(p + 2);
+            nmi.lint = util::read_from<uint8_t>(p + 5);
+            nmi.flags = util::read_from<uint16_t>(p + 3);
             m_nmis.append(nmi);
 
             log::debug(logs::device, "    LAPIC NMI Proc %02x LINT%d Pol %d Tri %d",
@@ -279,7 +280,7 @@ device_manager::load_mcfg(const acpi_table_header *header)
         m_pci[i].group = mcfge.group;
         m_pci[i].bus_start = mcfge.bus_start;
         m_pci[i].bus_end = mcfge.bus_end;
-        m_pci[i].base = memory::to_virtual<uint32_t>(mcfge.base);
+        m_pci[i].base = mem::to_virtual<uint32_t>(mcfge.base);
 
         log::debug(logs::device, "  Found MCFG entry: base %lx  group %d  bus %d-%d",
                 mcfge.base, mcfge.group, mcfge.bus_start, mcfge.bus_end);
@@ -308,7 +309,7 @@ device_manager::load_hpet(const acpi_table_header *header)
     log::debug(logs::device, "      pci vendor id: %04x", pci_vendor_id);
 
     m_hpets.emplace(hpet->index,
-        reinterpret_cast<uint64_t*>(hpet->base_address.address + ::memory::page_offset));
+        reinterpret_cast<uint64_t*>(hpet->base_address.address + mem::linear_offset));
 }
 
 void

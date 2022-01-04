@@ -3,6 +3,7 @@
 module("elf",
     kind = "lib",
     includes = [ "include" ],
+    deps = [ "util" ],
     sources = [
         "file.cpp",
     ])

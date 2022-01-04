@@ -4,7 +4,7 @@ module("boot",
     kind = "exe",
     output = "boot.efi",
     targets = [ "boot" ],
-    deps = [ "cpu", "elf", "util" ],
+    deps = [ "cpu", "elf", "util", "bootproto" ],
     sources = [
         "allocator.cpp",
         "console.cpp",

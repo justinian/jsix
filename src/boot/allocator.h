@@ -6,25 +6,24 @@ namespace uefi {
     class boot_services;
 }
 
-namespace kernel {
-namespace init {
+namespace bootproto {
     enum class allocation_type : uint8_t;
     struct allocation_register;
     struct module;
     struct modules_page;
-}}
+}
 
 namespace boot {
 namespace memory {
 
-using alloc_type = kernel::init::allocation_type;
+using alloc_type = bootproto::allocation_type;
 
 class allocator
 {
 public:
-    using allocation_register = kernel::init::allocation_register;
-    using module = kernel::init::module;
-    using modules_page = kernel::init::modules_page;
+    using allocation_register = bootproto::allocation_register;
+    using module = bootproto::module;
+    using modules_page = bootproto::modules_page;
 
     allocator(uefi::boot_services &bs);
 

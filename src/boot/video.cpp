@@ -5,17 +5,16 @@
 #include "allocator.h"
 #include "console.h"
 #include "error.h"
-#include "init_args.h"
 #include "video.h"
 
 namespace boot {
 namespace video {
 
-using kernel::init::fb_layout;
-using kernel::init::fb_type;
-using kernel::init::module_flags;
-using kernel::init::module_framebuffer;
-using kernel::init::module_type;
+using bootproto::fb_layout;
+using bootproto::fb_type;
+using bootproto::module_flags;
+using bootproto::module_framebuffer;
+using bootproto::module_type;
 
 static uefi::protos::graphics_output *
 get_gop(uefi::boot_services *bs)
@@ -109,7 +108,7 @@ pick_mode(uefi::boot_services *bs)
 void
 make_module(screen *s)
 {
-    using kernel::init::module_framebuffer;
+    using bootproto::module_framebuffer;
     module_framebuffer *modfb = g_alloc.allocate_module<module_framebuffer>();
     modfb->mod_type = module_type::framebuffer;
     modfb->type = fb_type::uefi; 

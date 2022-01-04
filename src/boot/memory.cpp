@@ -4,9 +4,10 @@
 #include <uefi/runtime_services.h>
 #include <uefi/types.h>
 
+#include <bootproto/memory.h>
+
 #include "console.h"
 #include "error.h"
-#include "kernel_memory.h"
 #include "memory.h"
 #include "memory_map.h"
 #include "paging.h"
@@ -61,7 +62,7 @@ virtualize(void *pml4, efi_mem_map &map, uefi::runtime_services *rs)
     paging::add_current_mappings(reinterpret_cast<paging::page_table*>(pml4));
 
     for (auto &desc : map)
-        desc.virtual_start = desc.physical_start + ::memory::page_offset;
+        desc.virtual_start = desc.physical_start + bootproto::mem::linear_offset;
 
     // Write our new PML4 pointer to CR3
     asm volatile ( "mov %0, %%cr3" :: "r" (pml4) );

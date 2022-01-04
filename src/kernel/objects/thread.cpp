@@ -1,4 +1,5 @@
 #include <j6/signals.h>
+#include <util/pointers.h>
 
 #include "cpu.h"
 #include "log.h"
@@ -42,7 +43,7 @@ thread::from_tcb(TCB *tcb)
 {
     static ptrdiff_t offset =
         -1 * static_cast<ptrdiff_t>(offsetof(thread, m_tcb));
-    return reinterpret_cast<thread*>(offset_pointer(tcb, offset));
+    return reinterpret_cast<thread*>(util::offset_pointer(tcb, offset));
 }
 
 thread & thread::current() { return *current_cpu().thread; }
@@ -196,8 +197,8 @@ thread::add_thunk_user(uintptr_t rip3, uintptr_t rip0, uint64_t flags)
 void
 thread::setup_kernel_stack()
 {
-    using memory::frame_size;
-    using memory::kernel_stack_pages;
+    using mem::frame_size;
+    using mem::kernel_stack_pages;
     static constexpr size_t stack_bytes = kernel_stack_pages * frame_size;
 
     constexpr unsigned null_frame_entries = 2;

@@ -2,10 +2,9 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <bootproto/kernel.h>
 #include <j6/signals.h>
 #include <util/vector.h>
-#include <kernel_args.h>
-#include <kernel_memory.h>
 
 #include "apic.h"
 #include "assert.h"
@@ -19,6 +18,7 @@
 #include "interrupts.h"
 #include "io.h"
 #include "log.h"
+#include "memory.h"
 #include "msr.h"
 #include "objects/channel.h"
 #include "objects/event.h"
@@ -36,7 +36,7 @@
 #endif
 
 extern "C" {
-    void kernel_main(kernel::init::args *args);
+    void kernel_main(bootproto::args *args);
     void (*__ctors)(void);
     void (*__ctors_end)(void);
     void long_ap_startup(cpu_data *cpu);
@@ -45,15 +45,13 @@ extern "C" {
     void init_ap_trampoline(void*, cpu_data *, void (*)());
 }
 
-using namespace kernel;
-
 volatile size_t ap_startup_count;
 static bool scheduler_ready = false;
 
 /// Bootstrap the memory managers.
-void memory_initialize_pre_ctors(init::args &kargs);
-void memory_initialize_post_ctors(init::args &kargs);
-void load_init_server(init::program &program, uintptr_t modules_address);
+void memory_initialize_pre_ctors(bootproto::args &kargs);
+void memory_initialize_post_ctors(bootproto::args &kargs);
+void load_init_server(bootproto::program &program, uintptr_t modules_address);
 
 unsigned start_aps(lapic &apic, const util::vector<uint8_t> &ids, void *kpml4);
 
@@ -80,11 +78,11 @@ run_constructors()
 }
 
 void
-kernel_main(init::args *args)
+kernel_main(bootproto::args *args)
 {
     if (args->panic) {
         IDT::set_nmi_handler(args->panic->entrypoint);
-        panic::symbol_table = args->symbol_table | memory::page_offset;
+        panic::symbol_table = args->symbol_table | mem::linear_offset;
     }
 
     init_console();
@@ -108,7 +106,7 @@ kernel_main(init::args *args)
     cpu->rsp0 = idle_stack_end;
     cpu_early_init(cpu);
 
-    kassert(args->magic == init::args_magic,
+    kassert(args->magic == bootproto::args_magic,
             "Bad kernel args magic number");
 
     log::debug(logs::boot, "jsix init args are at: %016lx", args);
@@ -193,8 +191,8 @@ kernel_main(init::args *args)
 unsigned
 start_aps(lapic &apic, const util::vector<uint8_t> &ids, void *kpml4)
 {
-    using memory::frame_size;
-    using memory::kernel_stack_pages;
+    using mem::frame_size;
+    using mem::kernel_stack_pages;
 
     extern size_t ap_startup_code_size;
     extern process &g_kernel_process;

@@ -7,6 +7,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <bootproto/kernel.h>
+#include <bootproto/memory.h>
+#include <util/counted.h>
+#include <util/pointers.h>
+
 #include "allocator.h"
 #include "console.h"
 #include "error.h"
@@ -19,19 +24,13 @@
 #include "status.h"
 #include "video.h"
 
-#include "kernel_args.h"
-
-namespace kernel {
-#include "kernel_memory.h"
-}
-
-namespace init = kernel::init;
 
 namespace boot {
 
 const loader::program_desc kern_desc = {L"kernel", L"jsix.elf"};
 const loader::program_desc init_desc = {L"init server", L"srv.init.elf"};
 const loader::program_desc fb_driver = {L"UEFI framebuffer driver", L"drv.uefi_fb.elf"};
+const loader::program_desc uart_driver = {L"Serial port driver", L"drv.uart.elf"};
 
 const loader::program_desc panic_handler = {L"Serial panic handler", L"panic.serial.elf"};
 
@@ -44,13 +43,13 @@ const loader::program_desc extra_programs[] = {
 template <typename T>
 void change_pointer(T *&pointer)
 {
-    pointer = offset_ptr<T>(pointer, kernel::memory::page_offset);
+    pointer = util::offset_pointer(pointer, bootproto::mem::linear_offset);
 }
 
 /// The main procedure for the portion of the loader that runs while
 /// UEFI is still in control of the machine. (ie, while the loader still
 /// has access to boot services.)
-init::args *
+bootproto::args *
 uefi_preboot(uefi::handle image, uefi::system_table *st)
 {
     uefi::boot_services *bs = st->boot_services;
@@ -61,11 +60,11 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
     hw::check_cpu_supported();
     memory::init_pointer_fixup(bs, rs);
 
-    init::args *args = new init::args;
-    g_alloc.zero(args, sizeof(init::args));
+    bootproto::args *args = new bootproto::args;
+    g_alloc.zero(args, sizeof(bootproto::args));
 
-    args->magic = init::args_magic;
-    args->version = init::args_version;
+    args->magic = bootproto::args_magic;
+    args->version = bootproto::args_version;
     args->runtime_services = rs;
     args->acpi_table = hw::find_acpi_table(st);
     memory::mark_pointer_fixup(&args->runtime_services);
@@ -77,7 +76,7 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
 
 /// Load the kernel and other programs from disk
 void
-load_resources(init::args *args, video::screen *screen, uefi::handle image, uefi::boot_services *bs)
+load_resources(bootproto::args *args, video::screen *screen, uefi::handle image, uefi::boot_services *bs)
 {
     status_line status {L"Loading programs"};
 
@@ -86,9 +85,11 @@ load_resources(init::args *args, video::screen *screen, uefi::handle image, uefi
     if (screen) {
         video::make_module(screen);
         loader::load_module(disk, fb_driver);
+    } else {
+        loader::load_module(disk, uart_driver);
     }
 
-    buffer symbol_table = loader::load_file(disk, {L"symbol table", L"symbol_table.dat"});
+    util::buffer symbol_table = loader::load_file(disk, {L"symbol table", L"symbol_table.dat"});
     args->symbol_table = reinterpret_cast<uintptr_t>(symbol_table.pointer);
 
     args->kernel = loader::load_program(disk, kern_desc, true);
@@ -102,7 +103,7 @@ load_resources(init::args *args, video::screen *screen, uefi::handle image, uefi
 }
 
 memory::efi_mem_map
-uefi_exit(init::args *args, uefi::handle image, uefi::boot_services *bs)
+uefi_exit(bootproto::args *args, uefi::handle image, uefi::boot_services *bs)
 {
     status_line status {L"Exiting UEFI", nullptr, false};
 
@@ -131,14 +132,14 @@ efi_main(uefi::handle image, uefi::system_table *st)
     uefi::boot_services *bs = st->boot_services;
     console con(st->con_out);
 
-    init::allocation_register *allocs = nullptr;
-    init::modules_page *modules = nullptr;
+    bootproto::allocation_register *allocs = nullptr;
+    bootproto::modules_page *modules = nullptr;
     memory::allocator::init(allocs, modules, bs);
 
     video::screen *screen = video::pick_mode(bs);
     con.announce();
 
-    init::args *args = uefi_preboot(image, st);
+    bootproto::args *args = uefi_preboot(image, st);
     load_resources(args, screen, image, bs);
     memory::efi_mem_map map = uefi_exit(args, image, st->boot_services);
 
@@ -153,8 +154,8 @@ efi_main(uefi::handle image, uefi::system_table *st)
 
     memory::fix_frame_blocks(args);
 
-    init::entrypoint kentry =
-        reinterpret_cast<init::entrypoint>(args->kernel->entrypoint);
+    bootproto::entrypoint kentry =
+        reinterpret_cast<bootproto::entrypoint>(args->kernel->entrypoint);
     //status.next();
 
     hw::setup_control_regs();

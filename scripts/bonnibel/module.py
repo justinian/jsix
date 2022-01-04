@@ -187,3 +187,8 @@ class Module:
         s = Source(self.root, path, **kwargs)
         self.sources.append(s)
         return str(s.output)
+
+    def add_depends(self, paths, deps):
+        for source in self.sources:
+            if source.name in paths:
+                source.add_deps(deps)

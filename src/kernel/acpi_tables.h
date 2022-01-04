@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <util/misc.h>
+#include <util/misc.h> // for byteswap32
 #include <enum_bitfields.h>
 
 struct acpi_table_header
@@ -22,7 +22,7 @@ struct acpi_table_header
 } __attribute__ ((packed));
 
 #define TABLE_HEADER(signature) \
-    static constexpr uint32_t type_id = util::byteswap(signature); \
+    static constexpr uint32_t type_id = util::byteswap32(signature); \
     acpi_table_header header;
 
 

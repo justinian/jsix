@@ -1,8 +1,9 @@
 #include <utility>
 
+#include <arch/memory.h>
+#include <bootproto/kernel.h>
 #include <j6/init.h>
 #include <util/no_construct.h>
-#include <kernel_args.h>
 #include <enum_bitfields.h>
 
 #include "assert.h"
@@ -12,6 +13,7 @@
 #include "heap_allocator.h"
 #include "io.h"
 #include "log.h"
+#include "memory.h"
 #include "msr.h"
 #include "objects/process.h"
 #include "objects/thread.h"
@@ -19,18 +21,12 @@
 #include "objects/vm_area.h"
 #include "vm_space.h"
 
-using memory::heap_start;
-using memory::kernel_max_heap;
+namespace bootproto {
+    is_bitfield(section_flags);
+}
 
-namespace kernel {
-namespace init {
-is_bitfield(section_flags);
-}}
-
-using kernel::init::allocation_register;
-using kernel::init::section_flags;
-
-using namespace kernel;
+using bootproto::allocation_register;
+using bootproto::section_flags;
 
 extern "C" void initialize_main_thread();
 extern "C" uintptr_t initialize_main_user_stack();
@@ -51,9 +47,9 @@ static util::no_construct<vm_area_guarded> __g_kernel_stacks_storage;
 vm_area_guarded &g_kernel_stacks = __g_kernel_stacks_storage.value;
 
 vm_area_guarded g_kernel_buffers {
-    memory::buffers_start,
-    memory::kernel_buffer_pages,
-    memory::kernel_max_buffers,
+    mem::buffers_offset,
+    mem::kernel_buffer_pages,
+    mem::buffers_size,
     vm_flags::write};
 
 void * operator new(size_t size)           { return g_kernel_heap.allocate(size); }
@@ -67,26 +63,26 @@ void kfree(void *p) { return g_kernel_heap.free(p); }
 template <typename T>
 uintptr_t
 get_physical_page(T *p) {
-    return memory::page_align_down(reinterpret_cast<uintptr_t>(p));
+    return mem::page_align_down(reinterpret_cast<uintptr_t>(p));
 }
 
 void
-memory_initialize_pre_ctors(init::args &kargs)
+memory_initialize_pre_ctors(bootproto::args &kargs)
 {
-    using kernel::init::frame_block;
+    using bootproto::frame_block;
 
     page_table *kpml4 = static_cast<page_table*>(kargs.pml4);
 
-    new (&g_kernel_heap) heap_allocator {heap_start, kernel_max_heap};
+    new (&g_kernel_heap) heap_allocator {mem::heap_offset, mem::heap_size};
 
-    frame_block *blocks = reinterpret_cast<frame_block*>(memory::bitmap_start);
+    frame_block *blocks = reinterpret_cast<frame_block*>(mem::bitmap_offset);
     new (&g_frame_allocator) frame_allocator {blocks, kargs.frame_blocks.count};
 
     // Mark all the things the bootloader allocated for us as used
     allocation_register *reg = kargs.allocations;
     while (reg) {
         for (auto &alloc : reg->entries)
-            if (alloc.type != init::allocation_type::none)
+            if (alloc.type != bootproto::allocation_type::none)
                 g_frame_allocator.used(alloc.address, alloc.count);
         reg = reg->next;
     }
@@ -95,27 +91,27 @@ memory_initialize_pre_ctors(init::args &kargs)
     vm_space &vm = kp->space();
 
     vm_area *heap = new (&g_kernel_heap_area)
-        vm_area_untracked(kernel_max_heap, vm_flags::write);
+        vm_area_untracked(mem::heap_size, vm_flags::write);
 
-    vm.add(heap_start, heap);
+    vm.add(mem::heap_offset, heap);
 
     vm_area *stacks = new (&g_kernel_stacks) vm_area_guarded {
-        memory::stacks_start,
-        memory::kernel_stack_pages,
-        memory::kernel_max_stacks,
+        mem::stacks_offset,
+        mem::kernel_stack_pages,
+        mem::stacks_size,
         vm_flags::write};
-    vm.add(memory::stacks_start, &g_kernel_stacks);
+    vm.add(mem::stacks_offset, &g_kernel_stacks);
 
     // Clean out any remaning bootloader page table entries
-    for (unsigned i = 0; i < memory::pml4e_kernel; ++i)
+    for (unsigned i = 0; i < arch::kernel_root_index; ++i)
         kpml4->entries[i] = 0;
 }
 
 void
-memory_initialize_post_ctors(init::args &kargs)
+memory_initialize_post_ctors(bootproto::args &kargs)
 {
     vm_space &vm = vm_space::kernel_space();
-    vm.add(memory::buffers_start, &g_kernel_buffers);
+    vm.add(mem::buffers_offset, &g_kernel_buffers);
 
     g_frame_allocator.free(
         get_physical_page(kargs.page_tables.pointer),
@@ -179,7 +175,7 @@ log_mtrrs()
 
 
 void
-load_init_server(init::program &program, uintptr_t modules_address)
+load_init_server(bootproto::program &program, uintptr_t modules_address)
 {
     process *p = new process;
     p->add_handle(&system::get());

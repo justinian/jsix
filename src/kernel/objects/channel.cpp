@@ -1,13 +1,13 @@
 #include <string.h>
 
 #include "assert.h"
-#include "kernel_memory.h"
+#include "memory.h"
 #include "objects/channel.h"
 #include "objects/vm_area.h"
 
 extern vm_area_guarded g_kernel_buffers;
 
-constexpr size_t buffer_bytes = memory::kernel_buffer_pages * memory::frame_size;
+constexpr size_t buffer_bytes = mem::kernel_buffer_pages * mem::frame_size;
 
 channel::channel() :
     m_len(0),

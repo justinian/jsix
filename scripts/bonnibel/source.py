@@ -53,10 +53,13 @@ class Source:
         self.__root = Path(root)
         self.__path = Path(path)
         self.__output = output
-        self.__deps = deps
+        self.__deps = tuple(deps)
 
     def __str__(self):
         return self.input
+
+    def add_deps(self, deps):
+        self.__deps += tuple(deps)
 
     @property
     def action(self):

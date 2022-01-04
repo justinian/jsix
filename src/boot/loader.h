@@ -2,13 +2,12 @@
 /// Definitions for loading the kernel into memory
 #pragma once
 
-#include "counted.h"
+#include <util/counted.h>
 
-namespace kernel {
-namespace init {
+namespace bootproto {
     struct program;
     struct module;
-}}
+}
 
 namespace boot {
 
@@ -27,7 +26,7 @@ struct program_desc
 /// Load a file from disk into memory.
 /// \arg disk  The opened UEFI filesystem to load from
 /// \arg desc  The program descriptor identifying the file
-buffer
+util::buffer
 load_file(
     fs::file &disk,
     const program_desc &desc);
@@ -36,7 +35,7 @@ load_file(
 /// \arg disk       The opened UEFI filesystem to load from
 /// \arg desc       The program descriptor identifying the program
 /// \arg add_module Also create a module for this loaded program
-kernel::init::program *
+bootproto::program *
 load_program(
     fs::file &disk,
     const program_desc &desc,
@@ -53,7 +52,7 @@ load_module(
 /// Verify that a loaded ELF has the j6 kernel header
 /// \arg program  The program to check for a header
 void
-verify_kernel_header(kernel::init::program &program);
+verify_kernel_header(bootproto::program &program);
 
 } // namespace loader
 } // namespace boot

@@ -1,12 +1,13 @@
 #pragma once
+/// \file bootproto/init.h
+/// Data structures for initializing the init server
 
 #include <stddef.h>
 #include <stdint.h>
 
-#include "counted.h"
+#include <util/counted.h>
 
-namespace kernel {
-namespace init {
+namespace bootproto {
 
 enum class module_type : uint8_t {
     none,
@@ -52,7 +53,7 @@ struct video_mode
 struct module_framebuffer :
     public module
 {
-    buffer framebuffer;
+    util::buffer framebuffer;
     video_mode mode;
     fb_type type;
 };
@@ -64,5 +65,4 @@ struct modules_page
     uintptr_t next;
 };
 
-} // namespace init
-} // namespace kernel
+} // namespace bootproto

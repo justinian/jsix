@@ -5,16 +5,15 @@
 #include <stdint.h>
 #include <util/spinlock.h>
 
-namespace kernel {
-namespace init {
+namespace bootproto {
     struct frame_block;
-}}
+}
 
 /// Allocator for physical memory frames
 class frame_allocator
 {
 public:
-    using frame_block = kernel::init::frame_block;
+    using frame_block = bootproto::frame_block;
 
     /// Constructor
     /// \arg blocks The bootloader-supplied frame bitmap block list

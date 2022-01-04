@@ -5,6 +5,7 @@
 #include "device_manager.h"
 #include "frame_allocator.h"
 #include "log.h"
+#include "memory.h"
 #include "objects/endpoint.h"
 #include "objects/thread.h"
 #include "objects/system.h"
@@ -70,7 +71,7 @@ system_map_phys(j6_handle_t handle, j6_handle_t * area, uintptr_t phys, size_t s
     // TODO: check to see if frames are already used? How would that collide with
     // the bootloader's allocated pages already being marked used?
     if (!(flags & vm_flags::mmio))
-        frame_allocator::get().used(phys, memory::page_count(size));
+        frame_allocator::get().used(phys, mem::page_count(size));
 
     vm_flags vmf = (static_cast<vm_flags>(flags) & vm_flags::driver_mask);
     construct_handle<vm_area_fixed>(area, phys, size, vmf);

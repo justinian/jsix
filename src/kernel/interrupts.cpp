@@ -1,7 +1,5 @@
 #include <stdint.h>
 
-#include "kernel_memory.h"
-#include "printf/printf.h"
 
 #include "assert.h"
 #include "cpu.h"
@@ -9,14 +7,16 @@
 #include "idt.h"
 #include "interrupts.h"
 #include "io.h"
+#include "memory.h"
 #include "objects/process.h"
+#include "printf/printf.h"
 #include "scheduler.h"
 #include "vm_space.h"
 
 static const uint16_t PIC1 = 0x20;
 static const uint16_t PIC2 = 0xa0;
 
-constexpr uintptr_t apic_eoi_addr = 0xfee000b0 + ::memory::page_offset;
+constexpr uintptr_t apic_eoi_addr = 0xfee000b0 + mem::linear_offset;
 
 extern "C" {
     void isr_handler(cpu_state*);
@@ -119,7 +119,7 @@ isr_handler(cpu_state *regs)
             uintptr_t cr2 = 0;
             __asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
 
-            bool user = cr2 < memory::kernel_offset;
+            bool user = cr2 < mem::kernel_offset;
             vm_space::fault_type ft =
                 static_cast<vm_space::fault_type>(regs->errorcode);
 

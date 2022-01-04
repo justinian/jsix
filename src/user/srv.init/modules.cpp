@@ -6,8 +6,8 @@
 
 #include "modules.h"
 
-using module = kernel::init::module;
-using modules_page = kernel::init::modules_page;
+using module = bootproto::module;
+using modules_page = bootproto::modules_page;
 
 static const modules_page *
 get_page(const module *mod)
@@ -20,7 +20,7 @@ const module *
 module_iterator::operator++()
 {
     do {
-        m_mod = offset_ptr<module>(m_mod, m_mod->mod_length);
+        m_mod = util::offset_pointer(m_mod, m_mod->mod_length);
 
         if (m_mod->mod_type == type::none) {
             // We've reached the end of a page, see if there's another

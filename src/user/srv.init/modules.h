@@ -2,16 +2,16 @@
 /// \file modules.h
 /// Routines for loading initial argument modules
 
+#include <bootproto/init.h>
 #include <j6/types.h>
-#include <init_args.h>
-#include <pointer_manipulation.h>
+#include <util/pointers.h>
 
 
 class module_iterator
 {
 public:
-    using type = kernel::init::module_type;
-    using module = kernel::init::module;
+    using type = bootproto::module_type;
+    using module = bootproto::module;
 
     module_iterator(const module *m, type t = type::none) :
         m_mod {m}, m_type {t} {}
@@ -40,7 +40,7 @@ private:
 class modules
 {
 public:
-    using type = kernel::init::module_type;
+    using type = bootproto::module_type;
     using iterator = module_iterator;
 
     static modules load_modules(
@@ -54,7 +54,7 @@ public:
     iterator end() const { return nullptr; }
 
 private:
-    using module = kernel::init::module;
+    using module = bootproto::module;
 
     modules(const module* root) : m_root {root} {}
 

@@ -5,11 +5,12 @@
 #include <uefi/protos/loaded_image.h>
 #include <uefi/protos/simple_file_system.h>
 
+#include <bootproto/kernel.h>
+
 #include "allocator.h"
 #include "console.h"
 #include "error.h"
 #include "fs.h"
-#include "kernel_args.h"
 #include "memory.h"
 #include "status.h"
 
@@ -53,7 +54,7 @@ file::open(const wchar_t *path)
     return file(fh);
 }
 
-buffer
+util::buffer
 file::load()
 {
     uint8_t info_buf[sizeof(uefi::protos::file_info) + 100];
