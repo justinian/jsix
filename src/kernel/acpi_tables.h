@@ -3,8 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <util/enum_bitfields.h>
 #include <util/misc.h> // for byteswap32
-#include <enum_bitfields.h>
 
 struct acpi_table_header
 {

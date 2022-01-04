@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include <util/counted.h>
+#include <util/enum_bitfields.h>
 
 namespace bootproto {
 
@@ -23,6 +24,7 @@ enum class module_flags : uint8_t {
     /// informational purposes only.
     no_load   = 0x01,
 };
+is_bitfield(module_flags);
 
 struct module
 {

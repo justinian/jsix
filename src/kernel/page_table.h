@@ -4,8 +4,8 @@
 
 #include <stdint.h>
 #include <arch/memory.h>
+#include <util/enum_bitfields.h>
 #include <util/spinlock.h>
-#include <enum_bitfields.h>
 
 struct free_page_header;
 

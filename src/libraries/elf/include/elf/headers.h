@@ -1,6 +1,6 @@
 #pragma once
 #include <stdint.h>
-#include "enum_bitfields.h"
+#include <util/enum_bitfields.h>
 
 namespace elf {
 
@@ -61,6 +61,7 @@ enum class segment_flags : uint32_t
     write = 0x02,
     read  = 0x04,
 };
+is_bitfield(segment_flags);
 
 struct program_header
 {

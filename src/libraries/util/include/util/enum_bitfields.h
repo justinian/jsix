@@ -1,8 +1,9 @@
 #pragma once
 
-#include "basic_types.h"
+#include <util/basic_types.h>
 
-namespace bitfields {
+namespace util {
+namespace bits {
 
 template <typename E>
 constexpr bool is_enum_bitfield(E) { return false; }
@@ -81,9 +82,10 @@ constexpr bool has(E set, F flags)
         static_cast<typename types::integral<F>::type>(flags);
 }
 
-} // namespace bitfields
+} // namespace bits
+} // namespace util
 
 #define is_bitfield(name) \
     constexpr bool is_enum_bitfield(name) { return true; } \
-    using namespace ::bitfields;
+    using namespace ::util::bits;
 

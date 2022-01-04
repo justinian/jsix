@@ -1,9 +1,9 @@
 #pragma once
 /// \file gdt.h
 /// Definitions relating to a CPU's GDT table
-#include <stdint.h>
 
-#include "enum_bitfields.h"
+#include <stdint.h>
+#include <util/enum_bitfields.h>
 
 class TSS;
 

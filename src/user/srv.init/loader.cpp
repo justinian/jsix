@@ -7,7 +7,7 @@
 #include <j6/errors.h>
 #include <j6/flags.h>
 #include <j6/syscalls.h>
-#include <enum_bitfields.h>
+#include <util/enum_bitfields.h>
 
 using bootproto::module_flags;
 using bootproto::module_program;
@@ -22,7 +22,7 @@ constexpr uintptr_t stack_top = 0x80000000000;
 bool
 load_program(const module_program &prog, char *err_msg)
 {
-    if (bitfields::has(prog.mod_flags, module_flags::no_load)) {
+    if (prog.mod_flags && module_flags::no_load) {
         sprintf(err_msg, "  skipping pre-loaded program module '%s' at %lx", prog.filename, prog.base_address);
         return true;
     }
@@ -64,7 +64,7 @@ load_program(const module_program &prog, char *err_msg)
         // TODO: way to remap VMA as read-only if there's no write flag on
         // the segment
         unsigned long flags = j6_vm_flag_write;
-        if (bitfields::has(seg.flags, elf::segment_flags::exec))
+        if (seg.flags && elf::segment_flags::exec)
             flags |= j6_vm_flag_exec;
 
         j6_handle_t sub_vma = j6_handle_invalid;

@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include <util/counted.h>
+#include <util/enum_bitfields.h>
 
 namespace bootproto {
 
@@ -23,6 +24,7 @@ enum class section_flags : uint32_t {
     write   = 2,
     read    = 4,
 };
+is_bitfield(section_flags);
 
 struct program_section {
     uintptr_t phys_addr;

@@ -7,7 +7,7 @@
 
 #include <j6/signals.h>
 #include <util/vector.h>
-#include <enum_bitfields.h>
+#include <util/enum_bitfields.h>
 
 #include "objects/kobject.h"
 

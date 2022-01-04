@@ -4,9 +4,9 @@
 
 #include <stdint.h>
 
+#include <util/enum_bitfields.h>
 #include <util/spinlock.h>
 #include <util/vector.h>
-#include <enum_bitfields.h>
 
 #include "page_table.h"
 

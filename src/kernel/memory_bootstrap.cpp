@@ -4,7 +4,6 @@
 #include <bootproto/kernel.h>
 #include <j6/init.h>
 #include <util/no_construct.h>
-#include <enum_bitfields.h>
 
 #include "assert.h"
 #include "device_manager.h"
@@ -20,10 +19,6 @@
 #include "objects/system.h"
 #include "objects/vm_area.h"
 #include "vm_space.h"
-
-namespace bootproto {
-    is_bitfield(section_flags);
-}
 
 using bootproto::allocation_register;
 using bootproto::section_flags;
