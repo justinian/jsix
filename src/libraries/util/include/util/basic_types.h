@@ -7,29 +7,36 @@ namespace types {
 template <bool B, typename T = void> struct enable_if {};
 template <typename T> struct enable_if<true, T> { using type = T; };
 
+template <typename T> struct non_const          { using type = T; };
+template <typename T> struct non_const<const T> { using type = T; };
+
 template <typename T> struct is_integral           { static constexpr bool value = false; };
-template <> struct is_integral<char>               { static constexpr bool value = true; };
-template <> struct is_integral<unsigned char>      { static constexpr bool value = true; };
-template <> struct is_integral<short>              { static constexpr bool value = true; };
-template <> struct is_integral<unsigned short>     { static constexpr bool value = true; };
-template <> struct is_integral<int>                { static constexpr bool value = true; };
-template <> struct is_integral<unsigned int>       { static constexpr bool value = true; };
-template <> struct is_integral<long>               { static constexpr bool value = true; };
-template <> struct is_integral<unsigned long>      { static constexpr bool value = true; };
-template <> struct is_integral<long long>          { static constexpr bool value = true; };
-template <> struct is_integral<unsigned long long> { static constexpr bool value = true; };
- 
+
+#define make_is_integral(n) \
+    template <> struct is_integral< n >               { static constexpr bool value = true; }; \
+    template <> struct is_integral<const n >          { static constexpr bool value = true; }; \
+    template <> struct is_integral<unsigned n >       { static constexpr bool value = true; }; \
+    template <> struct is_integral<const unsigned n > { static constexpr bool value = true; };
+
+make_is_integral(char);
+make_is_integral(short);
+make_is_integral(int);
+make_is_integral(long);
+make_is_integral(long long);
+
 template <typename E> struct integral           { using type = unsigned long long; };
-template <> struct integral<char>               { using type = char; };
-template <> struct integral<unsigned char>      { using type = unsigned char; };
-template <> struct integral<short>              { using type = short; };
-template <> struct integral<unsigned short>     { using type = unsigned short; };
-template <> struct integral<int>                { using type = int; };
-template <> struct integral<unsigned int>       { using type = unsigned int; };
-template <> struct integral<long>               { using type = long; };
-template <> struct integral<unsigned long>      { using type = unsigned long; };
-template <> struct integral<long long>          { using type = long long; };
-template <> struct integral<unsigned long long> { using type = unsigned long long; };
+
+#define make_integral(n) \
+    template <> struct integral< n >               { using type = n ; }; \
+    template <> struct integral<const n >          { using type = n ; }; \
+    template <> struct integral<unsigned n >       { using type = unsigned n ; }; \
+    template <> struct integral<const unsigned n > { using type = unsigned n ; };
+
+make_integral(char);
+make_integral(short);
+make_integral(int);
+make_integral(long);
+make_integral(long long);
 
 template <typename T, T v>
 struct integral_constant
