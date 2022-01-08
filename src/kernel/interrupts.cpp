@@ -7,6 +7,7 @@
 #include "idt.h"
 #include "interrupts.h"
 #include "io.h"
+#include "log.h"
 #include "memory.h"
 #include "objects/process.h"
 #include "printf/printf.h"
@@ -169,10 +170,8 @@ irq_handler(cpu_state *regs)
 {
     uint8_t irq = get_irq(regs->interrupt);
     if (! device_manager::get().dispatch_irq(irq)) {
-        char message[100];
-        snprintf(message, sizeof(message),
-            "Unknown IRQ: %d (vec 0x%lx)", irq, regs->interrupt);
-        kassert(false, message);
+        log::warn(logs::irq, "Unknown IRQ: %d (vec 0x%lx)",
+            irq, regs->interrupt);
     }
 
     *reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
