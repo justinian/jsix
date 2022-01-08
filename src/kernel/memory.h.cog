@@ -1,7 +1,7 @@
 #pragma once
 // vim: ft=cpp
 
-/// \file bootproto/memory.h
+/// \file memory.h
 /// Import memory layout constants necessary for boot
 
 #include <stddef.h>

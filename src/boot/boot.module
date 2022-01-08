@@ -1,6 +1,6 @@
 # vim: ft=python
 
-module("boot",
+boot = module("boot",
     kind = "exe",
     output = "boot.efi",
     targets = [ "boot" ],
@@ -20,4 +20,12 @@ module("boot",
         "status.cpp",
         "support.cpp",
         "video.cpp",
+    ])
+
+boot.add_depends([
+        "main.cpp",
+        "memory_map.cpp",
+        "paging.cpp",
+    ], [
+        "${target_dir}/bootproto.dir/include/bootproto/memory.h",
     ])
