@@ -11,17 +11,13 @@ namespace bootproto {
 
 namespace boot {
 
+class descriptor;
+
 namespace fs {
     class file;
 }
 
 namespace loader {
-
-struct program_desc
-{
-    const wchar_t *name;
-    const wchar_t *path;
-};
 
 /// Load a file from disk into memory.
 /// \arg disk  The opened UEFI filesystem to load from
@@ -29,16 +25,16 @@ struct program_desc
 util::buffer
 load_file(
     fs::file &disk,
-    const program_desc &desc);
+    const descriptor &desc);
 
 /// Parse and load an ELF file in memory into a loaded image.
 /// \arg disk       The opened UEFI filesystem to load from
-/// \arg desc       The program descriptor identifying the program
+/// \arg desc       The descriptor identifying the program
 /// \arg add_module Also create a module for this loaded program
 bootproto::program *
 load_program(
     fs::file &disk,
-    const program_desc &desc,
+    const descriptor &desc,
     bool add_module = false);
 
 /// Load a file from disk into memory, creating an init args module
@@ -47,7 +43,7 @@ load_program(
 void
 load_module(
     fs::file &disk,
-    const program_desc &desc);
+    const descriptor &desc);
 
 /// Verify that a loaded ELF has the j6 kernel header
 /// \arg program  The program to check for a header

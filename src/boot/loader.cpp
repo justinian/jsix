@@ -7,6 +7,7 @@
 #include <util/pointers.h>
 
 #include "allocator.h"
+#include "bootconfig.h"
 #include "console.h"
 #include "error.h"
 #include "fs.h"
@@ -23,7 +24,7 @@ using memory::alloc_type;
 util::buffer
 load_file(
     fs::file &disk,
-    const program_desc &desc)
+    const descriptor &desc)
 {
     status_line status(L"Loading file", desc.path);
 
@@ -36,7 +37,7 @@ load_file(
 
 
 static void
-create_module(util::buffer data, const program_desc &desc, bool loaded)
+create_module(util::buffer data, const descriptor &desc, bool loaded)
 {
     size_t path_len = wstrlen(desc.path);
     bootproto::module_program *mod = g_alloc.allocate_module<bootproto::module_program>(path_len);
@@ -50,18 +51,20 @@ create_module(util::buffer data, const program_desc &desc, bool loaded)
 
     // TODO: support non-ascii path characters and do real utf-16 to utf-8
     // conversion
-    for (int i = 0; i < path_len; ++i)
-        mod->filename[i] = desc.path[i];
+    for (int i = 0; i < path_len; ++i) {
+        char c = desc.path[i];
+        mod->filename[i] = c == '\\' ? '/' : c;
+    }
     mod->filename[path_len] = 0;
 }
 
 bootproto::program *
 load_program(
     fs::file &disk,
-    const program_desc &desc,
+    const descriptor &desc,
     bool add_module)
 {
-    status_line status(L"Loading program", desc.name);
+    status_line status(L"Loading program", desc.desc);
 
     util::buffer data = load_file(disk, desc);
 
@@ -113,9 +116,9 @@ load_program(
 void
 load_module(
     fs::file &disk,
-    const program_desc &desc)
+    const descriptor &desc)
 {
-    status_line status(L"Loading module", desc.name);
+    status_line status(L"Loading module", desc.desc);
 
     util::buffer data = load_file(disk, desc);
     create_module(data, desc, false);

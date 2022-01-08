@@ -7,12 +7,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <bootproto/bootconfig.h>
 #include <bootproto/kernel.h>
 #include <bootproto/memory.h>
 #include <util/counted.h>
 #include <util/pointers.h>
 
 #include "allocator.h"
+#include "bootconfig.h"
 #include "console.h"
 #include "error.h"
 #include "fs.h"
@@ -26,17 +28,6 @@
 
 
 namespace boot {
-
-const loader::program_desc kern_desc = {L"kernel", L"jsix.elf"};
-const loader::program_desc init_desc = {L"init server", L"srv.init.elf"};
-const loader::program_desc fb_driver = {L"UEFI framebuffer driver", L"drv.uefi_fb.elf"};
-const loader::program_desc uart_driver = {L"Serial port driver", L"drv.uart.elf"};
-
-const loader::program_desc panic_handler = {L"Serial panic handler", L"panic.serial.elf"};
-
-const loader::program_desc extra_programs[] = {
-    {L"test application", L"testapp.elf"},
-};
 
 /// Change a pointer to point to the higher-half linear-offset version
 /// of the address it points to.
@@ -81,23 +72,51 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
     status_line status {L"Loading programs"};
 
     fs::file disk = fs::get_boot_volume(image, bs);
+    fs::file bc_data = disk.open(L"jsix_boot.dat");
+    bootconfig bc {bc_data.load(), bs};
+
+    args->kernel = loader::load_program(disk, bc.kernel(), true);
+    args->init = loader::load_program(disk, bc.init());
+
+    namespace bits = util::bits;
+    using bootproto::desc_flags;
 
     if (screen) {
         video::make_module(screen);
-        loader::load_module(disk, fb_driver);
-    } else {
-        loader::load_module(disk, uart_driver);
+
+        // Go through the screen-specific descriptors first to
+        // give them priority
+        for (const descriptor &d : bc.programs()) {
+            if (!bits::has(d.flags, desc_flags::graphical))
+                continue;
+
+            if (bits::has(d.flags, desc_flags::panic))
+                args->panic = loader::load_program(disk, d);
+            else
+                loader::load_module(disk, d);
+        }
     }
 
-    util::buffer symbol_table = loader::load_file(disk, {L"symbol table", L"symbol_table.dat"});
-    args->symbol_table = reinterpret_cast<uintptr_t>(symbol_table.pointer);
+    // Load the non-graphical descriptors
+    for (const descriptor &d : bc.programs()) {
+        if (bits::has(d.flags, desc_flags::graphical))
+            continue;
 
-    args->kernel = loader::load_program(disk, kern_desc, true);
-    args->init = loader::load_program(disk, init_desc);
-    args->panic = loader::load_program(disk, panic_handler);
+        if (bits::has(d.flags, desc_flags::panic) && !args->panic)
+            args->panic = loader::load_program(disk, d);
+        else
+            loader::load_module(disk, d);
+    }
 
-    for (auto &desc : extra_programs)
-        loader::load_module(disk, desc);
+    // For now the only data we load is the symbol table
+    for (const descriptor &d : bc.data()) {
+        if (!bits::has(d.flags, desc_flags::symbols))
+            continue;
+
+        util::buffer symbol_table = loader::load_file(disk, d);
+        args->symbol_table = reinterpret_cast<uintptr_t>(symbol_table.pointer);
+        break;
+    }
 
     loader::verify_kernel_header(*args->kernel);
 }

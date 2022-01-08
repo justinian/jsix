@@ -2,9 +2,9 @@
 
 panic = module("panic.serial",
     kind = "exe",
-    output = "panic.serial.elf",
     targets = [ "kernel" ],
     deps = [ "util", "elf", "kernel" ],
+    description = "Serial panic handler",
     sources = [
         "display.cpp",
         "entry.s",

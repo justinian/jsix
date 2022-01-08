@@ -15,6 +15,8 @@ class Module:
         "sources": (tuple, ()),
         "variables": (dict, ()),
         "default": (bool, False),
+        "location": (str, "jsix"),
+        "description": (str, None),
     }
 
     def __init__(self, name, modfile, root, **kwargs):

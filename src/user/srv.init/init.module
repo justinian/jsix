@@ -3,6 +3,7 @@
 init = module("srv.init",
     targets = [ "user" ],
     deps = [ "libc", "elf", "bootproto" ],
+    description = "Init server",
     sources = [
         "loader.cpp",
         "main.cpp",

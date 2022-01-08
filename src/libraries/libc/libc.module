@@ -2,7 +2,6 @@
 
 libc = module("libc",
     kind = "lib",
-    output = "libc.a",
     includes = [ "include" ],
     deps = [ "j6" ],
     sources = [

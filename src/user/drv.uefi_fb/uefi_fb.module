@@ -3,6 +3,7 @@
 module("drv.uefi_fb",
     targets = [ "user" ],
     deps = [ "libc" ],
+    description = "UEFI framebuffer driver",
     sources = [
         "font.cpp",
         "main.cpp",

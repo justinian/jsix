@@ -8,6 +8,7 @@ variables:
     "--target=x86_64-unknown-elf",
     "-I${source_root}/external",
 
+    "-nostdinc",
     "-nostdlib",
     "-ffreestanding",
     "-nodefaultlibs",
@@ -18,7 +19,8 @@ variables:
     "-mno-red-zone",
     "-mcmodel=large",
 
-    "-g",
+    "-g3",
+    "-ggdb",
 
     "-D__ELF__",
     "-D__JSIX__",

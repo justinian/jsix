@@ -51,56 +51,57 @@ class Project:
             fatroot.mkdir(exist_ok=True)
 
             fatroot_content = []
-            def add_fatroot(name, target):
-                if not name in modules:
-                    raise BonnibelError(f"Manifest item '{name}' is not a known module")
 
-                mod = modules[name]
-                intermediary = f"${{build_root}}/{mod.output}"
-                fatroot_output = f"${{build_root}}/fatroot/{mod.output}"
-
-                build.build(
-                    rule = "strip",
-                    outputs = [intermediary],
-                    inputs = [f"${{build_root}}/{target}/{mod.output}"],
-                    implicit = [f"${{build_root}}/{target}/{mod.output}.dump"],
-                    variables = {
-                        "name": f"Stripping {name}",
-                        "debug": f"${{build_root}}/.debug/{mod.output}.debug",
-                    })
+            def add_fatroot(source, entry):
+                output = join(entry.location, entry.output)
+                fatroot_output = f"${{build_root}}/fatroot/{output}"
 
                 build.build(
                     rule = "cp",
                     outputs = [fatroot_output],
-                    inputs = [intermediary],
+                    inputs = [source],
                     variables = {
-                        "name": f"Installing {name}",
+                        "name": f"Installing {output}",
                     })
 
                 fatroot_content.append(fatroot_output)
                 build.newline()
 
-            manifest = load_config(manifest_file)
-            programs = manifest.get("programs", tuple())
+            def add_fatroot_exe(entry):
+                input_path = f"${{build_root}}/{entry.target}/{entry.output}"
+                intermediary = f"${{build_root}}/{entry.output}"
 
-            kernel = manifest.get("kernel", dict())
-            add_fatroot(
-                kernel.get("name", "kernel"),
-                kernel.get("target", "kernel"))
+                build.build(
+                    rule = "strip",
+                    outputs = [intermediary],
+                    inputs = [input_path],
+                    implicit = [f"{input_path}.dump"],
+                    variables = {
+                        "name": f"Stripping {entry.module}",
+                        "debug": f"${{build_root}}/.debug/{entry.output}.debug",
+                    })
 
-            for program in programs:
-                name = program["name"]
-                target = program.get("target", "user")
-                add_fatroot(name, target)
+                add_fatroot(intermediary, entry)
+                return mod.location
 
-            symbol_table = "${build_root}/fatroot/symbol_table.dat"
+            from .manifest import Manifest
+            manifest = Manifest(manifest_file, modules)
+
+            add_fatroot_exe(manifest.kernel)
+            add_fatroot_exe(manifest.init)
+            for program in manifest.programs:
+                add_fatroot_exe(program)
+
+            syms = manifest.add_data("symbol_table.dat",
+                    manifest.kernel.location, "Symbol table", ("symbols",))
+
+            sym_out = f"${{build_root}}/symbol_table.dat"
             build.build(
                 rule = "makest",
-                outputs = [symbol_table],
-                inputs = ["${build_root}/fatroot/jsix.elf"],
+                outputs = [sym_out],
+                inputs = [f"${{build_root}}/{modules['kernel'].output}"],
                 )
-            fatroot_content.append(symbol_table)
-            build.newline()
+            add_fatroot(sym_out, syms)
 
             bootloader = "${build_root}/fatroot/efi/boot/bootx64.efi"
             build.build(
@@ -110,14 +111,16 @@ class Project:
                 variables = {
                     "name": "Installing bootloader",
                 })
-            fatroot_content.append(bootloader)
             build.newline()
+
+            boot_config = join(fatroot, "jsix_boot.dat")
+            manifest.write_boot_config(boot_config)
 
             build.build(
                 rule = "makefat",
                 outputs = ["${build_root}/jsix.img"],
                 inputs = ["${source_root}/assets/diskbase.img"],
-                implicit = fatroot_content,
+                implicit = fatroot_content + [bootloader],
                 variables = {"name": "jsix.img"},
                 )
             build.newline()
@@ -159,7 +162,8 @@ class Project:
                 implicit = regen_implicits,
                 implicit_outputs = 
                     [f"{mod.name}.ninja" for mod in modules.values()] +
-                    [f"{target.name}/target.ninja" for target in targets],
+                    [f"{target.name}/target.ninja" for target in targets] +
+                    [boot_config],
                 )
 
             build.newline()

@@ -35,6 +35,14 @@ struct counted
 
     /// Return an iterator to the end of the array
     inline const_iterator end() const { return offset_pointer<const T>(pointer, sizeof(T)*count); }
+
+    /// Advance the pointer by N items
+    inline counted<T> & operator+=(unsigned i) {
+        if (i > count) i = count;
+        pointer += i;
+        count -= i;
+        return *this;
+    }
 };
 
 /// Specialize for `void` which cannot be indexed or iterated
@@ -43,8 +51,24 @@ struct counted<void>
 {
     void *pointer;
     size_t count;
+
+    /// Advance the pointer by N bytes
+    inline counted<void> & operator+=(unsigned i) {
+        if (i > count) i = count;
+        pointer = offset_pointer(pointer, i);
+        count -= i;
+        return *this;
+    }
 };
 
 using buffer = counted<void>;
+
+template <typename T>
+const T * read(buffer &b) {
+    const T *p = reinterpret_cast<const T*>(b.pointer);
+    b.pointer = offset_pointer(b.pointer, sizeof(T));
+    b.count -= sizeof(T);
+    return p;
+}
 
 } // namespace util

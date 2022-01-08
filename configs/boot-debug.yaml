@@ -5,6 +5,10 @@ variables:
   ld: clang++
 
   ccflags: [
+    "-nostdlib",
+    "-nodefaultlibs",
+    "-fno-builtin",
+
     "-I${source_root}/external",
     "--target=x86_64-unknown-windows",
     "-ffreestanding",
@@ -12,8 +16,7 @@ variables:
     "-fshort-wchar",
     "-fno-omit-frame-pointer",
     "-ggdb",
-    "-g3",
-    '-DKERNEL_FILENAME=L"jsix.elf"' ]
+    "-g3" ]
 
   cxxflags: [ "-fno-exceptions", "-fno-rtti" ]
 

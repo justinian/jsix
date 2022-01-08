@@ -5,6 +5,7 @@ kernel = module("kernel",
     default = True,
     output = "jsix.elf",
     targets = [ "kernel" ],
+    description = "jsix kernel",
     deps = [ "util", "cpu", "bootproto" ],
     includes = [ "." ],
     sources = [

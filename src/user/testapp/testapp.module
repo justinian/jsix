@@ -3,6 +3,7 @@
 module("testapp",
     targets = [ "user" ],
     deps = [ "libc" ],
+    description = "Testbed app",
     sources = [
         "io.cpp",
         "main.cpp",
