@@ -33,6 +33,7 @@ kernel = module("kernel",
         "logger.cpp",
         "main.cpp",
         "memory.cpp",
+        "memory.h.cog",
         "memory_bootstrap.cpp",
         "msr.cpp",
         "objects/channel.cpp",
@@ -48,7 +49,10 @@ kernel = module("kernel",
         "printf/printf.c",
         "scheduler.cpp",
         "serial.cpp",
+        "syscall.cpp.cog",
+        "syscall.h.cog",
         "syscall.s",
+        "syscalls.inc.cog",
         "syscalls/channel.cpp",
         "syscalls/endpoint.cpp",
         "syscalls/object.cpp",
@@ -67,36 +71,7 @@ from os.path import join
 layout = join(source_root, "definitions/memory_layout.csv")
 definitions = glob('definitions/**/*.def', recursive=True)
 
-sysinc = kernel.add_input("syscalls.inc.cog", deps=definitions)
-
-memh = kernel.add_input("memory.h.cog", deps=[layout])
-sysh = kernel.add_input("syscall.h.cog", deps=definitions)
-sysc = kernel.add_input("syscall.cpp.cog", deps=definitions + [sysh])
-
-kernel.add_depends(["syscall.s"], [sysinc])
-kernel.add_depends(["main.cpp", "cpu.cpp"], [sysh])
-kernel.add_depends(["main.cpp", "cpu.cpp"], [sysh])
-
-kernel.add_depends([
-    "apic.cpp",
-    "device_manager.cpp",
-    "frame_allocator.cpp",
-    "heap_allocator.cpp",
-    "heap_allocator.h",
-    "interrupts.cpp",
-    "log.cpp",
-    "main.cpp",
-    "memory_bootstrap.cpp",
-    "memory.cpp",
-    "objects/channel.cpp",
-    "objects/thread.cpp",
-    "objects/vm_area.cpp",
-    "page_table.cpp",
-    "page_tree.cpp",
-    "syscalls/system.cpp",
-    "tss.cpp",
-    "vm_space.cpp",
-    ],
-    [memh])
+kernel.add_depends(["memory.h.cog"], [layout])
+kernel.add_depends(["syscall.cpp.cog", "syscall.h.cog", "syscalls.inc.cog"], definitions)
 
 kernel.variables['ldflags'] = ["${ldflags}", "-T", "${source_root}/src/kernel/kernel.ld"]

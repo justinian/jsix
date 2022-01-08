@@ -2,6 +2,7 @@ class Action:
     name = property(lambda self: self.__name)
     implicit = property(lambda self: False)
     rule = property(lambda self: None)
+    deps = property(lambda self: tuple())
 
     def __init__(self, name):
         self.__name = name
@@ -12,6 +13,7 @@ class Action:
 
 class Compile(Action):
     rule = property(lambda self: f'compile_{self.name}')
+    deps = property(lambda self: ("${module_dir}/.parse_dep.phony",))
 
     def __init__(self, name, suffix = ".o"):
         super().__init__(name)
@@ -46,6 +48,7 @@ class Source:
         '.cog': Parse('cog'),
         '.o': Link('o'),
         '.h': Header('h'),
+        '.inc': Header('inc'),
     }
 
     def __init__(self, root, path, output=None, deps=tuple()):

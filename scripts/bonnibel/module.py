@@ -113,14 +113,19 @@ class Module:
                     includes.append(f"${{module_dir}}/{p}")
 
             libs = []
+            child_deps = []
             order_only = []
             closed = set()
             children = set(self.depmods)
             while children:
                 child = children.pop()
                 closed.add(child)
+
                 includes += [f"${{target_dir}}/{child.name}.dir/{i}" for i in child.includes]
                 includes += [f"{child.root}/{i}" for i in child.includes]
+
+                child_deps.append(f"${{target_dir}}/{child.name}.dir/.parse_dep.phony")
+
                 if child.kind == "lib":
                     libs.append(f"${{target_dir}}/{child.output}")
                 else:
@@ -135,7 +140,7 @@ class Module:
                 build.variable("libs", ["${libs}"] + libs)
 
             inputs = []
-            implicits = []
+            parse_deps = []
 
             for start in self.sources:
                 source = start
@@ -144,30 +149,41 @@ class Module:
                     output = source.output
 
                     if source.action.rule:
+                        build.newline()
                         build.build(
                             rule = source.action.rule,
                             outputs = output.input,
                             inputs = source.input,
-                            implicit = list(map(resolve, source.deps)),
+                            implicit = list(map(resolve, source.deps)) +
+                                       list(source.action.deps),
                             variables = {"name": source.name},
                         )
 
                     elif source.action.implicit:
-                        implicits.append(source.input)
+                        parse_deps.append(source.input)
 
                     else:
                         inputs.append(source.input)
 
                     source = output
-                    build.newline()
+
+            parse_dep = "${module_dir}/.parse_dep.phony"
+            build.newline()
+            build.build(
+                rule = "touch",
+                outputs = [parse_dep],
+                implicit = child_deps,
+                order_only = parse_deps,
+            )
 
             output = f"${{target_dir}}/{self.output}"
             dump = f"${{target_dir}}/{self.output}.dump"
+            build.newline()
             build.build(
                 rule = self.kind,
                 outputs = output,
                 inputs = inputs,
-                implicit = implicits + libs,
+                implicit = [parse_dep] + libs,
                 order_only = order_only,
             )
 

@@ -73,3 +73,6 @@ rule strip
         objcopy --only-keep-debug $out $debug; $
         strip -g $out; $
         objcopy --add-gnu-debuglink=$debug $out
+
+rule touch
+    command = touch $out
