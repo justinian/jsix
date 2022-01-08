@@ -4,7 +4,6 @@ build="$(dirname $0)/build"
 assets="$(dirname $0)/assets"
 debug=""
 debugtarget="${build}/jsix.elf"
-flash_name="ovmf_vars"
 gfx="-nographic"
 vga="-vga none"
 kvm=""
@@ -16,12 +15,10 @@ while true; do
 		-b | --debugboot)
 			debug="-s -S"
 			debugtarget="${build}/boot/boot.efi"
-			flash_name="ovmf_vars_d"
             shift
 			;;
 		-d | --debug)
 			debug="-s -S"
-			flash_name="ovmf_vars_d"
             shift
 			;;
 		-g | --gfx)
@@ -70,7 +67,7 @@ if [[ -n $TMUX ]]; then
 	fi
 elif [[ $DESKTOP_SESSION = "i3" ]]; then
 	if [[ -n $debug ]]; then
-		i3-msg exec i3-sensible-terminal -- -e "gdb ${PWD}/${build}/jsix.elf" &
+		i3-msg exec i3-sensible-terminal -- -e "gdb ${debugtarget}" &
 	else
 		i3-msg exec i3-sensible-terminal -- -e 'telnet localhost 45454' &
 	fi
@@ -78,7 +75,7 @@ fi
 
 exec qemu-system-x86_64 \
 	-drive "if=pflash,format=raw,readonly,file=${assets}/ovmf/x64/ovmf_code.fd" \
-	-drive "if=pflash,format=raw,file=${build}/${flash_name}.fd" \
+	-drive "if=pflash,format=raw,file=${build}/ovmf_vars.fd" \
 	-drive "format=raw,file=${build}/jsix.img" \
 	-device "isa-debug-exit,iobase=0xf4,iosize=0x04" \
 	-monitor telnet:localhost:45454,server,nowait \
