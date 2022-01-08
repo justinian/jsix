@@ -7,6 +7,8 @@
 
 namespace panicking {
 
+const char *clear = "\e[0m\n";
+
 void
 print_header(
         serial_port &out,
@@ -15,7 +17,8 @@ print_header(
         const char *file,
         uint64_t line)
 {
-    out.write("\n\n\e[5;31m PANIC:\e[0;1;31m ");
+    out.write(clear);
+    out.write("\n\e[5;31m PANIC:\e[0;1;31m ");
     if (message) {
         out.write(message);
         out.write("\n ");
@@ -28,8 +31,16 @@ print_header(
     char linestr[6];
     snprintf(linestr, sizeof(linestr), "%ld", line);
     out.write(linestr);
+}
 
-    out.write("\n \e[0;31m===================================================================================\n");
+void
+print_cpu(serial_port &out, cpu_data &cpu)
+{
+    out.write("\n \e[0;31m==[ CPU: ");
+    char cpuid[7];
+    snprintf(cpuid, sizeof(cpuid), "%4x", cpu.id);
+    out.write(cpuid);
+    out.write(" ]====================================================================\n");
 }
 
 void
@@ -64,7 +75,7 @@ print_reg(serial_port &out, const char *name, uint64_t val, const char *color)
 void
 print_cpu_state(serial_port &out, const cpu_state &regs)
 {
-    out.write("\e[0m\n");
+    out.write(clear);
 
     // Row 1
     print_reg(out, "rsp", regs.rsp, "1;34");
@@ -99,7 +110,7 @@ print_cpu_state(serial_port &out, const cpu_state &regs)
     print_reg(out, "ss",  regs.ss,  "1;33");
     print_reg(out, "cs",  regs.cs,  "1;33");
     print_reg(out, "flg", regs.rflags, "0;37");
-    out.write("\e[0m\n");
+    out.write(clear);
 }
 
 } // namespace panicking

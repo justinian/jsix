@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 struct cpu_state;
+struct cpu_data;
 
 namespace panicking {
 
@@ -24,6 +25,7 @@ void print_header(
         const char *file,
         uint64_t line);
 
+void print_cpu(serial_port &out, cpu_data &cpu);
 void print_callstack(serial_port &out, symbol_table &syms, frame const *fp);
 void print_cpu_state(serial_port &out, const cpu_state &regs);
 

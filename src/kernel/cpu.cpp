@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <string.h>
 
 #include "assert.h"
 #include "cpu.h"
@@ -11,6 +12,11 @@
 #include "objects/vm_area.h"
 #include "syscall.h"
 #include "tss.h"
+
+unsigned g_num_cpus = 1;
+
+panic_data g_panic_data;
+panic_data *g_panic_data_p = &g_panic_data;
 
 cpu_data g_bsp_cpu_data;
 
@@ -38,8 +44,17 @@ cpu_validate()
 }
 
 void
+global_cpu_init()
+{
+    memset(&g_panic_data, 0, sizeof(g_panic_data));
+}
+
+void
 cpu_early_init(cpu_data *cpu)
 {
+    if (cpu->index == 0)
+        global_cpu_init();
+
     cpu->idt->install();
     cpu->gdt->install();
 

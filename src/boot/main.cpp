@@ -114,7 +114,7 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
             continue;
 
         util::buffer symbol_table = loader::load_file(disk, d);
-        args->symbol_table = reinterpret_cast<uintptr_t>(symbol_table.pointer);
+        args->symbol_table = symbol_table.pointer;
         break;
     }
 

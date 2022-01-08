@@ -18,6 +18,20 @@ struct cpu_state
     uint64_t rip, cs, rflags, rsp, ss;
 };
 
+/// Kernel-wide panic information
+struct panic_data
+{
+    void const * symbol_data;
+    char const * message;
+    char const * function;
+    char const * file;
+    uint32_t line;
+    uint16_t cpus;
+};
+
+extern unsigned g_num_cpus;
+extern panic_data *g_panic_data_p;
+
 /// Per-cpu state data. If you change this, remember to update the assembly
 /// version in 'tasking.inc'
 struct cpu_data
@@ -39,6 +53,7 @@ struct cpu_data
     // Members beyond this point do not appear in
     // the assembly version
     lapic *apic;
+    panic_data *panic;
 };
 
 extern "C" cpu_data * _current_gsbase();

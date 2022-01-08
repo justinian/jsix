@@ -139,11 +139,11 @@ init_ap_trampoline:
 	ret
 
 extern long_ap_startup
-global ap_idle
+global ap_idle:function (ap_idle.end - ap_idle)
 ap_idle:
 	call long_ap_startup
 	sti
 .hang:
 	hlt
 	jmp .hang
-
+.end:

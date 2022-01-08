@@ -1,16 +1,17 @@
 #pragma once
 
 #include <stdint.h>
+#include "cpu.h"
 
 namespace panic {
 
 constexpr uint32_t send_nmi_command =
     (4 << 8) |  // Delivery mode NMI
     (1 << 14) | // assert level high
-    (1 << 18);  // destination self
+    (2 << 18);  // destination all
 
 extern uint32_t *apic_icr;
-extern uintptr_t symbol_table;
+extern void const *symbol_table;
 
 __attribute__ ((always_inline))
 inline void panic(
@@ -19,19 +20,23 @@ inline void panic(
         const char *file = __builtin_FILE(),
         uint64_t line = __builtin_LINE())
 {
-    register uintptr_t syms asm("rdi");
-    register const char *m asm("rsi");
-    register const char *fn asm("rdx");
-    register const char *fi asm("rcx");
-    register uint64_t l asm("r8");
+    cpu_data &cpu = current_cpu();
 
-    asm volatile ("mov %1, %0" : "=r"(syms) : "r"(symbol_table));
-    asm volatile ("mov %1, %0" : "=r"(m) : "r"(message));
-    asm volatile ("mov %1, %0" : "=r"(fn) : "r"(function));
-    asm volatile ("mov %1, %0" : "=r"(fi) : "r"(file));
-    asm volatile ("mov %1, %0" : "=r"(l) : "r"(line));
+    // Grab the global panic block for ourselves
+    cpu.panic = __atomic_exchange_n(&g_panic_data_p, nullptr, __ATOMIC_ACQ_REL);
 
-    *apic_icr = send_nmi_command;
+    // If we aren't the first CPU to panic, cpu.panic will be null
+    if (cpu.panic) {
+        cpu.panic->symbol_data = symbol_table;
+        cpu.panic->message = message;
+        cpu.panic->function = function;
+        cpu.panic->file = file;
+        cpu.panic->line = line;
+        cpu.panic->cpus = g_num_cpus;
+
+        *apic_icr = send_nmi_command;
+    }
+
     while (1) asm ("hlt");
 }
 

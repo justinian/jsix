@@ -133,7 +133,7 @@ struct args
     program *panic;
     allocation_register *allocations;
     uintptr_t modules;
-    uintptr_t symbol_table;
+    void const *symbol_table;
 
     void *runtime_services;
     void *acpi_table;

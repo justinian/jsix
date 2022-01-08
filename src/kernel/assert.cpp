@@ -3,7 +3,7 @@
 namespace panic {
 
 uint32_t *apic_icr = reinterpret_cast<uint32_t*>(0xffffc000fee00300);
-uintptr_t symbol_table = 0;
+void const *symbol_table = nullptr;
 
 } // namespace panic
 

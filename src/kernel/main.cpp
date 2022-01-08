@@ -82,7 +82,7 @@ kernel_main(bootproto::args *args)
 {
     if (args->panic) {
         IDT::set_nmi_handler(args->panic->entrypoint);
-        panic::symbol_table = args->symbol_table | mem::linear_offset;
+        panic::symbol_table = util::offset_pointer(args->symbol_table, mem::linear_offset);
     }
 
     init_console();
@@ -149,7 +149,7 @@ kernel_main(bootproto::args *args)
     apic->calibrate_timer();
 
     const auto &apic_ids = devices.get_apic_ids();
-    unsigned num_cpus = start_aps(*apic, apic_ids, args->pml4);
+    g_num_cpus = start_aps(*apic, apic_ids, args->pml4);
 
     interrupts_enable();
     g_com1.handle_interrupt();
@@ -178,7 +178,7 @@ kernel_main(bootproto::args *args)
     }
     */
 
-    scheduler *sched = new scheduler {num_cpus};
+    scheduler *sched = new scheduler {g_num_cpus};
     scheduler_ready = true;
 
     // Load the init server
