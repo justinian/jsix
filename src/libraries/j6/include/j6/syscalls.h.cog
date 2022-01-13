@@ -1,6 +1,10 @@
 #pragma once
 // vim: ft=cpp
 
+// The kernel depends on libj6 for some shared code,
+// but should not include the user-specific code.
+#ifndef __j6kernel
+
 #include <j6/types.h>
 
 #ifdef __cplusplus
@@ -42,3 +46,5 @@ for id, scope, method in syscalls.methods:
 #ifdef __cplusplus
 }
 #endif
+
+#endif // __j6kernel

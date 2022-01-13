@@ -1,6 +1,5 @@
 #include <stddef.h>
 
-#include <j6/init.h>
 #include <util/spinlock.h>
 
 #include "apic.h"

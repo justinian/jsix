@@ -1,3 +1,7 @@
+// The kernel depends on libj6 for some shared code,
+// but should not include the user-specific code.
+#ifndef __j6kernel
+
 #include <stdint.h>
 #include <j6/init.h>
 #include <j6/types.h>
@@ -39,3 +43,5 @@ _init_libj6(uint64_t *rsp)
         }
     }
 }
+
+#endif // __j6kernel

@@ -27,11 +27,12 @@
 ;   ctx.parse("syscalls.def")
 ;   syscalls = ctx.interfaces['syscalls']
 ;
-;   for id, scope, method in syscalls.methods:
-;       if scope:
-;           name = f"{scope.name}_{method.name}"
-;       else:
-;           name = method.name
-;       cog.outl(f"define_syscall {name:20}, {id}")
+;   if target != "kernel":
+;       for id, scope, method in syscalls.methods:
+;           if scope:
+;               name = f"{scope.name}_{method.name}"
+;           else:
+;               name = method.name
+;           cog.outl(f"define_syscall {name:20}, {id}")
 ; ]]]
 ; [[[end]]]

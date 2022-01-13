@@ -37,7 +37,7 @@ rule compile_asm
   deps = gcc
 
 rule parse_cog
-  command = $cog -o $out -d $cogflags $in
+  command = $cog -o $out -d -D target=$target $cogflags $in
   description = Parsing $name
 
 rule exe

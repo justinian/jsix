@@ -2,7 +2,6 @@
 
 #include <arch/memory.h>
 #include <bootproto/kernel.h>
-#include <j6/init.h>
 #include <util/no_construct.h>
 
 #include "assert.h"

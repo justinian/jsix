@@ -11,7 +11,7 @@ variables:
     "-g",
 
     "-D__ELF__",
-    "-D__JSIX__",
+    "-D__jsix__",
     "-U__linux",
     "-U__linux__",
 

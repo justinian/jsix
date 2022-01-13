@@ -23,7 +23,8 @@ variables:
     "-ggdb",
 
     "-D__ELF__",
-    "-D__JSIX__",
+    "-D__jsix__",
+    "-D__j6kernel",
     "-U__linux",
     "-U__linux__",
     "-DPRINTF_ALIAS_STANDARD_FUNCTION_NAMES=1",

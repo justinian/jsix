@@ -5,10 +5,15 @@ j6 = module("j6",
     includes = [ "include" ],
     sources = [
         "init.cpp",
+        "include/j6/syscalls.h.cog",
+        "syscalls.s.cog",
     ])
 
 from glob import glob
 definitions = glob('definitions/**/*.def', recursive=True)
-j6.add_input("include/j6/syscalls.h.cog", deps=definitions)
-j6.add_input("syscalls.s.cog", deps=definitions)
+
+j6.add_depends([
+        "include/j6/syscalls.h.cog",
+        "syscalls.s.cog",
+    ], definitions)
 
