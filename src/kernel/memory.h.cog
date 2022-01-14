@@ -37,7 +37,7 @@ constexpr unsigned kernel_buffer_pages = 16;
 from os.path import join
 from memory import Layout
 
-layout = Layout(join(definitions_path, "memory_layout.csv"))
+layout = Layout(join(definitions_path, "memory_layout.yaml"))
 l = max([len(r.name) for r in layout.regions])
 
 for region in layout.regions:

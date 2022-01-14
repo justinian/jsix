@@ -8,5 +8,5 @@ bp = module("bootproto",
 
 from os.path import join
 
-layout = join(source_root, "definitions/memory_layout.csv")
+layout = join(source_root, "definitions/memory_layout.yaml")
 bp.add_input("include/bootproto/memory.h.cog", deps=[layout])

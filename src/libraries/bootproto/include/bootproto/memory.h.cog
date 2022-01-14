@@ -11,7 +11,7 @@ namespace mem {
 from os.path import join
 from memory import Layout
 
-layout = Layout(join(definitions_path, "memory_layout.csv"))
+layout = Layout(join(definitions_path, "memory_layout.yaml"))
 
 for region in layout.regions:
     if region.shared:

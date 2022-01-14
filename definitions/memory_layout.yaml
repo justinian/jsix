@@ -1,0 +1,17 @@
+---
+- name: linear
+  size: 64T
+  shared: true
+
+- name: bitmap
+  size: 1T
+  shared: true
+
+- name: heap
+  size: 64G
+
+- name: stacks
+  size: 64G
+
+- name: buffers
+  size: 64G

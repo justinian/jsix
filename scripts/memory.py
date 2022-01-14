@@ -4,27 +4,29 @@ class Layout:
 
     sizes = {'G': 1024 ** 3, 'T': 1024 ** 4}
 
+    @staticmethod
+    def get_size(desc):
+        size, mag = int(desc[:-1]), desc[-1]
+
+        try:
+            mult = Layout.sizes[mag]
+        except KeyError:
+            raise RuntimeError(f"No magnitude named '{mag}'.")
+
+        return size * mult
+
     def __init__(self, path):
-        import csv
+        from yaml import safe_load
 
         regions = []
         addr = 1 << 64
 
-        with open(path, newline='') as infile:
-            reader = csv.reader(infile)
-            for row in reader:
-                name, size = row[:2]
-                shared = (len(row) > 2 and "shared" in row[2])
-
-                size, mag = int(size[:-1]), size[-1]
-
-                try:
-                    mult = Layout.sizes[mag]
-                except KeyError:
-                    raise RuntimeError(f"No magnitude named '{mag}'.")
-
-                size *= mult
+        with open(path, 'r') as infile:
+            data = safe_load(infile.read())
+            for r in data:
+                size = Layout.get_size(r["size"])
                 addr -= size
-                regions.append(Layout.Region(name, addr, size, shared))
+                regions.append(Layout.Region(r["name"], addr, size,
+                    r.get("shared", False)))
 
         self.regions = tuple(regions)

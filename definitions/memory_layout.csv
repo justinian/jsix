@@ -1,5 +1,0 @@
-linear,64T,shared
-bitmap,1T,shared
-heap,64G
-stacks,64G
-buffers,64G

@@ -68,7 +68,7 @@ kernel = module("kernel",
 from glob import glob
 from os.path import join
 
-layout = join(source_root, "definitions/memory_layout.csv")
+layout = join(source_root, "definitions/memory_layout.yaml")
 definitions = glob('definitions/**/*.def', recursive=True)
 
 kernel.add_depends(["memory.h.cog"], [layout])
