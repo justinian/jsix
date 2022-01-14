@@ -1,0 +1,44 @@
+#pragma once
+// vim: ft=cpp
+
+/// \file sysconf.h
+/// Get kernel configuration
+
+// The kernel depends on libj6 for some shared code,
+// but should not include the user-specific code.
+#ifndef __j6kernel
+
+#include <stddef.h>
+#include <stdint.h>
+
+/*[[[cog code generation
+from os.path import join
+from sysconf import Sysconf
+sc = Sysconf(join(definitions_path, "sysconf.yaml"))
+]]]*/
+///[[[end]]]
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum j6_sysconf_arg
+{
+    /*[[[cog code generation
+    for var in sc.vars:
+        cog.outl(f"j6sc_{var.name},")
+    ]]]*/
+    ///[[[end]]]
+
+    j6sc_MAX
+};
+
+/// Get the kernel configuration value specified by
+/// the argument.
+unsigned long j6_sysconf(j6_sysconf_arg arg);
+
+#ifdef __cplusplus
+} // extern C
+#endif
+
+#endif // __j6kernel

@@ -9,6 +9,7 @@
 #include "objects/process.h"
 #include "objects/thread.h"
 #include "objects/vm_area.h"
+#include "sysconf.h"
 #include "vm_space.h"
 
 // The initial memory for the array of areas for the kernel space
@@ -46,6 +47,14 @@ vm_space::vm_space() :
     memset(m_pml4, 0, mem::frame_size/2);
     for (unsigned i = arch::kernel_root_index; i < arch::table_entries; ++i)
         m_pml4->entries[i] = kpml4->entries[i];
+
+    // Every vm space has sysconf in it
+    vm_area *sysc = new vm_area_fixed(
+            g_sysconf_phys,
+            sizeof(system_config),
+            vm_flags::none);
+
+    add(sysconf_user_address, sysc);
 }
 
 vm_space::~vm_space()

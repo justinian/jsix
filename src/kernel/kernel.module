@@ -60,6 +60,8 @@ kernel = module("kernel",
         "syscalls/system.cpp",
         "syscalls/thread.cpp",
         "syscalls/vm_area.cpp",
+        "sysconf.cpp",
+        "sysconf.h.cog",
         "task.s",
         "tss.cpp",
         "vm_space.cpp",
@@ -69,9 +71,11 @@ from glob import glob
 from os.path import join
 
 layout = join(source_root, "definitions/memory_layout.yaml")
+sysconf = join(source_root, "definitions/sysconf.yaml")
 definitions = glob('definitions/**/*.def', recursive=True)
 
 kernel.add_depends(["memory.h.cog"], [layout])
+kernel.add_depends(["sysconf.h.cog"], [sysconf])
 kernel.add_depends(["syscall.cpp.cog", "syscall.h.cog", "syscalls.inc.cog"], definitions)
 
 kernel.variables['ldflags'] = ["${ldflags}", "-T", "${source_root}/src/kernel/kernel.ld"]

@@ -6,14 +6,24 @@ j6 = module("j6",
     sources = [
         "init.cpp",
         "include/j6/syscalls.h.cog",
+        "include/j6/sysconf.h.cog",
         "syscalls.s.cog",
+        "sysconf.cpp.cog",
     ])
 
 from glob import glob
+from os.path import join
+
+sysconf = join(source_root, "definitions/sysconf.yaml")
 definitions = glob('definitions/**/*.def', recursive=True)
 
 j6.add_depends([
         "include/j6/syscalls.h.cog",
         "syscalls.s.cog",
     ], definitions)
+
+j6.add_depends([
+        "include/j6/sysconf.h.cog",
+        "sysconf.cpp.cog",
+    ], [sysconf])
 

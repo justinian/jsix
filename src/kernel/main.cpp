@@ -27,6 +27,7 @@
 #include "scheduler.h"
 #include "serial.h"
 #include "syscall.h"
+#include "sysconf.h"
 #include "tss.h"
 #include "vm_space.h"
 
@@ -151,6 +152,7 @@ kernel_main(bootproto::args *args)
     const auto &apic_ids = devices.get_apic_ids();
     g_num_cpus = start_aps(*apic, apic_ids, args->pml4);
 
+    sysconf_create();
     interrupts_enable();
     g_com1.handle_interrupt();
 

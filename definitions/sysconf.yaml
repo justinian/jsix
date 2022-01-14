@@ -1,0 +1,34 @@
+---
+address: 0x6a360000
+vars:
+  - name: version_major
+    section: kernel
+    type: uint8_t
+
+  - name: version_minor
+    section: kernel
+    type: uint8_t
+
+  - name: version_patch
+    section: kernel
+    type: uint16_t
+
+  - name: version_gitsha
+    section: kernel
+    type: uint32_t
+
+  - name: page_size
+    section: sys
+    type: size_t
+
+  - name: large_page_size
+    section: sys
+    type: size_t
+
+  - name: huge_page_size
+    section: sys
+    type: size_t
+
+  - name: num_cpus
+    section: sys
+    type: uint32_t

@@ -1,0 +1,44 @@
+// vim: ft=cpp
+
+// The kernel depends on libj6 for some shared code,
+// but should not include the user-specific code.
+#ifndef __j6kernel
+
+#include <j6/sysconf.h>
+
+/*[[[cog code generation
+from os.path import join
+from sysconf import Sysconf
+sc = Sysconf(join(definitions_path, "sysconf.yaml"))
+
+cog.outl(f"constexpr uintptr_t __sysconf_address = {sc.address:#x};")
+]]]*/
+///[[[end]]]
+
+struct __system_config
+{
+    /*[[[cog code generation
+    for var in sc.vars:
+        cog.outl(f"{var.type:10} {var.section}_{var.name};")
+    ]]]*/
+    ///[[[end]]]
+};
+
+unsigned long
+j6_sysconf(j6_sysconf_arg arg)
+{
+    __system_config &sc =
+       * reinterpret_cast<__system_config*>(__sysconf_address);
+
+    switch (arg) {
+    /*[[[cog code generation
+    for var in sc.vars:
+        cog.outl(f"case j6sc_{var.name}: return sc.{var.section}_{var.name};")
+    ]]]*/
+    ///[[[end]]]
+
+    default: return 0;
+    }
+}
+
+#endif // __j6kernel

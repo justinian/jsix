@@ -55,6 +55,11 @@ for region in layout.regions:
 /// through the linear_offset area.
 constexpr bool linear_mappable(uintptr_t a) { return (a & linear_offset) == 0; }
 
+/// Get the number of pages needed to hold `bytes` bytes
+inline constexpr size_t bytes_to_pages(size_t bytes) {
+    return ((bytes - 1) / frame_size) + 1;
+}
+
 /// Convert a physical address to a virtual one (in the linear-mapped area)
 template <typename T> T * to_virtual(uintptr_t a) {
     return reinterpret_cast<T*>(a|linear_offset);

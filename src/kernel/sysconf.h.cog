@@ -1,0 +1,28 @@
+#pragma once
+// vim: ft=cpp
+
+/// \file sysconf.h
+/// Kernel-side implementation of sysconf struct
+
+/*[[[cog code generation
+from os.path import join
+from sysconf import Sysconf
+sc = Sysconf(join(definitions_path, "sysconf.yaml"))
+
+cog.outl(f"constexpr uintptr_t sysconf_user_address = {sc.address:#x};")
+]]]*/
+///[[[end]]]
+
+struct system_config
+{
+    /*[[[cog code generation
+    for var in sc.vars:
+        cog.outl(f"{var.type:10} {var.section}_{var.name};")
+    ]]]*/
+    ///[[[end]]]
+};
+
+extern system_config *g_sysconf;
+extern uintptr_t g_sysconf_phys;
+
+void sysconf_create();
