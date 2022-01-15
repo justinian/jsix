@@ -113,6 +113,13 @@ print_cpu_state(serial_port &out, const cpu_state &regs)
     out.write(clear);
 }
 
+void
+print_user_state(serial_port &out, const cpu_state &regs)
+{
+    out.write("\n\e[1;35m USER:\e[0 ");
+    print_cpu_state(out, regs);
+}
+
 } // namespace panicking
 
 // For printf.c

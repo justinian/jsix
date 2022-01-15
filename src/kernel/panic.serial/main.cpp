@@ -22,13 +22,7 @@ panicking::symbol_table &syms = __syms_storage.value;
 constexpr int order = __ATOMIC_ACQ_REL;
 
 extern "C"
-void panic_handler(
-        const void *symbol_data,
-        const char *message,
-        const char *function,
-        const char *file,
-        uint64_t line,
-        const cpu_state *regs)
+void panic_handler(const cpu_state *regs)
 {
     cpu_data &cpu = current_cpu();
     panic_data *panic = cpu.panic;
@@ -56,6 +50,9 @@ void panic_handler(
     print_cpu(com1, cpu);
     print_callstack(com1, syms, fp);
     print_cpu_state(com1, *regs);
+
+    if (panic && panic->user_state)
+        print_user_state(com1, *panic->user_state);
 
     __atomic_clear(&asserting_locked, order);
 

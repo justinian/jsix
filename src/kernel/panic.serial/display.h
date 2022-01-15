@@ -28,5 +28,6 @@ void print_header(
 void print_cpu(serial_port &out, cpu_data &cpu);
 void print_callstack(serial_port &out, symbol_table &syms, frame const *fp);
 void print_cpu_state(serial_port &out, const cpu_state &regs);
+void print_user_state(serial_port &out, const cpu_state &regs);
 
 } // namespace panicking

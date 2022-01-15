@@ -21,11 +21,14 @@ struct cpu_state
 /// Kernel-wide panic information
 struct panic_data
 {
-    void const * symbol_data;
-    char const * message;
-    char const * function;
-    char const * file;
+    void const *symbol_data;
+    cpu_state const *user_state;
+
+    char const *message;
+    char const *function;
+    char const *file;
     uint32_t line;
+
     uint16_t cpus;
 };
 

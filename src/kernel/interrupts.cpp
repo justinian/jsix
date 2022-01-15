@@ -91,11 +91,11 @@ isr_handler(cpu_state *regs)
         asm volatile ("mov %%dr5, %%r13" ::: "r13");
         asm volatile ("mov %%dr6, %%r14" ::: "r14");
         asm volatile ("mov %%dr7, %%r15" ::: "r15");
-        kassert(false, "Debug exception");
+        kassert(false, "Debug exception", regs);
         break;
 
     case isr::isrDoubleFault:
-        kassert(false, "Double fault");
+        kassert(false, "Double fault", regs);
         break;
 
     case isr::isrGPFault:
@@ -113,7 +113,7 @@ isr_handler(cpu_state *regs)
             snprintf(message, sizeof(message), "General Protection Fault, error:%lx%s",
                 regs->errorcode, regs->errorcode & 1 ? " external" : "");
         }
-        kassert(false, message);
+        kassert(false, message, regs);
         break;
 
     case isr::isrPageFault: {
@@ -138,7 +138,7 @@ isr_handler(cpu_state *regs)
                 (regs->errorcode & 0x04) ? " user" : "",
                 (regs->errorcode & 0x08) ? " reserved" : "",
                 (regs->errorcode & 0x10) ? " ip" : "");
-            kassert(false, message);
+            kassert(false, message, regs);
         }
         break;
 
@@ -156,7 +156,7 @@ isr_handler(cpu_state *regs)
 
     default:
         snprintf(message, sizeof(message), "Unknown interrupt 0x%lx", regs->interrupt);
-        kassert(false, message);
+        kassert(false, message, regs);
     }
 
     // Return the IST for this vector to what it was

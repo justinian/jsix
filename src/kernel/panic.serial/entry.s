@@ -12,7 +12,7 @@ _panic_entry:
 	push_all
 	check_swap_gs
 
-	mov r9, rsp
+	mov rdi, rsp
 
 	mov rax, [rsp + REGS.rip]
 	push rax

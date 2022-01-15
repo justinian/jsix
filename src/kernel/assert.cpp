@@ -9,5 +9,5 @@ void const *symbol_table = nullptr;
 
 extern "C"
 void _PDCLIB_assert(const char *message, const char *function, const char *file, unsigned line) {
-    panic::panic(message, function, file, line);
+    panic::panic(message, nullptr, function, file, line);
 }

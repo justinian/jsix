@@ -16,6 +16,7 @@ extern void const *symbol_table;
 __attribute__ ((always_inline))
 inline void panic(
         const char *message = nullptr,
+        const cpu_state *user = nullptr,
         const char *function = __builtin_FUNCTION(),
         const char *file = __builtin_FILE(),
         uint64_t line = __builtin_LINE())
@@ -28,10 +29,13 @@ inline void panic(
     // If we aren't the first CPU to panic, cpu.panic will be null
     if (cpu.panic) {
         cpu.panic->symbol_data = symbol_table;
+        cpu.panic->user_state = user;
+
         cpu.panic->message = message;
         cpu.panic->function = function;
         cpu.panic->file = file;
         cpu.panic->line = line;
+
         cpu.panic->cpus = g_num_cpus;
 
         *apic_icr = send_nmi_command;
@@ -48,12 +52,13 @@ __attribute__ ((always_inline))
 inline void kassert(
         bool check,
         const char *message = nullptr,
+        const cpu_state *user = nullptr,
         const char *function = __builtin_FUNCTION(),
         const char *file = __builtin_FILE(),
         uint64_t line = __builtin_LINE())
 {
     if (!check)
-        panic::panic(message, function, file, line);
+        panic::panic(message, user, function, file, line);
 }
 
 #define assert(x) kassert((x))
