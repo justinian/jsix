@@ -1,16 +1,16 @@
-LOG(apic,   info);
-LOG(boot,   debug);
-LOG(clock,  debug);
-LOG(device, debug);
-LOG(driver, info);
-LOG(fs,     info);
-LOG(irq,    info);
-LOG(loader, debug);
-LOG(memory, debug);
-LOG(objs,   debug);
-LOG(paging, info);
-LOG(sched,  info);
-LOG(syscall,info);
-LOG(task,   debug);
-LOG(timer,  debug);
-LOG(vmem,   debug);
+LOG(apic,   info)
+LOG(boot,   debug)
+LOG(clock,  debug)
+LOG(device, debug)
+LOG(driver, info)
+LOG(fs,     info)
+LOG(irq,    info)
+LOG(loader, debug)
+LOG(memory, debug)
+LOG(objs,   debug)
+LOG(paging, info)
+LOG(sched,  info)
+LOG(syscall,debug)
+LOG(task,   debug)
+LOG(timer,  debug)
+LOG(vmem,   debug)

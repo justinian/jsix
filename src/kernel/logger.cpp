@@ -4,80 +4,45 @@
 
 #include "assert.h"
 #include "logger.h"
+#include "objects/system.h"
 #include "printf/printf.h"
-
-namespace logs {
-#define LOG(name, lvl) \
-    const log::area_t name = #name ## _h; \
-    const char * name ## _name = #name;
-#include <j6/tables/log_areas.inc>
-#undef LOG
-}
 
 namespace log {
 
 logger *logger::s_log = nullptr;
 const char *logger::s_level_names[] = {"", "debug", "info", "warn", "error", "fatal"};
+const char *logger::s_area_names[] = {
+#define LOG(name, lvl) #name ,
+#include <j6/tables/log_areas.inc>
+#undef LOG
+    nullptr
+};
 
 logger::logger(logger::immediate_cb output) :
     m_buffer(nullptr, 0),
     m_immediate(output),
-    m_flush(nullptr),
     m_sequence(0)
 {
     memset(&m_levels, 0, sizeof(m_levels));
-    memset(&m_names, 0, sizeof(m_names));
     s_log = this;
 }
 
 logger::logger(uint8_t *buffer, size_t size, logger::immediate_cb output) :
     m_buffer(buffer, size),
     m_immediate(output),
-    m_flush(nullptr),
     m_sequence(0)
 {
     memset(&m_levels, 0, sizeof(m_levels));
-    memset(&m_names, 0, sizeof(m_names));
     s_log = this;
 
 #define LOG(name, lvl) \
-    register_area(logs::name, logs::name ## _name, log::level::lvl);
+    set_level(logs::name, log::level::lvl);
 #include <j6/tables/log_areas.inc>
 #undef LOG
 }
 
 void
-logger::set_level(area_t area, level l)
-{
-    unsigned uarea = static_cast<unsigned>(area);
-    uint8_t ulevel = static_cast<uint8_t>(l) & 0x0f;
-    uint8_t &flags = m_levels[uarea / 2];
-    if (uarea & 1)
-        flags = (flags & 0x0f) | (ulevel << 4);
-    else
-        flags = (flags & 0xf0) | ulevel;
-}
-
-level
-logger::get_level(area_t area)
-{
-    unsigned uarea = static_cast<unsigned>(area);
-    uint8_t &flags = m_levels[uarea / 2];
-    if (uarea & 1)
-        return static_cast<level>((flags & 0xf0) >> 4);
-    else
-        return static_cast<level>(flags & 0x0f);
-}
-
-void
-logger::register_area(area_t area, const char *name, level verbosity)
-{
-    m_names[area] = name;
-    set_level(area, verbosity);
-}
-
-void
-logger::output(level severity, area_t area, const char *fmt, va_list args)
+logger::output(level severity, logs area, const char *fmt, va_list args)
 {
     uint8_t buffer[256];
     entry *header = reinterpret_cast<entry *>(buffer);
@@ -86,8 +51,9 @@ logger::output(level severity, area_t area, const char *fmt, va_list args)
     header->severity = severity;
     header->sequence = m_sequence++;
 
-    header->bytes +=
-        vsnprintf(header->message, sizeof(buffer) - sizeof(entry), fmt, args);
+    size_t mlen = vsnprintf(header->message, sizeof(buffer) - sizeof(entry) - 1, fmt, args);
+    header->message[mlen] = 0;
+    header->bytes += mlen + 1;
 
     util::scoped_lock lock {m_lock};
 
@@ -99,19 +65,16 @@ logger::output(level severity, area_t area, const char *fmt, va_list args)
 
     uint8_t *out;
     size_t n = m_buffer.reserve(header->bytes, reinterpret_cast<void**>(&out));
-    if (n < sizeof(entry)) {
-        m_buffer.commit(0); // Cannot even write the header, abort
+    if (n < header->bytes) {
+        m_buffer.commit(0); // Cannot write the message, give up
         return;
     }
-
-    if (n < header->bytes)
-        header->bytes = n;
 
     memcpy(out, buffer, n);
     m_buffer.commit(n);
 
-    if (m_flush)
-        m_flush();
+    system &sys = system::get();
+    sys.assert_signal(j6_signal_system_has_log);
 }
 
 size_t
@@ -138,7 +101,7 @@ logger::get_entry(void *buffer, size_t size)
 }
 
 #define LOG_LEVEL_FUNCTION(name) \
-    void name (area_t area, const char *fmt, ...) { \
+    void name (logs area, const char *fmt, ...) { \
         logger *l = logger::s_log; \
         if (!l) return; \
         level limit = l->get_level(area); \
@@ -154,7 +117,7 @@ LOG_LEVEL_FUNCTION(info);
 LOG_LEVEL_FUNCTION(warn);
 LOG_LEVEL_FUNCTION(error);
 
-void fatal(area_t area, const char *fmt, ...)
+void fatal(logs area, const char *fmt, ...)
 {
     logger *l = logger::s_log;
     if (!l) return;

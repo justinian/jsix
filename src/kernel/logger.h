@@ -8,21 +8,27 @@
 #include <util/bip_buffer.h>
 #include <util/spinlock.h>
 
+enum class logs : uint8_t {
+#define LOG(name, lvl) name,
+#include <j6/tables/log_areas.inc>
+#undef LOG
+    COUNT
+};
+
 namespace log {
 
-using area_t = uint8_t;
 enum class level : uint8_t {
     none, debug, info, warn, error, fatal, max
 };
+
+constexpr unsigned areas_count =
+    static_cast<unsigned>(logs::COUNT);
 
 class logger
 {
 public:
     /// Callback type for immediate-mode logging
-    typedef void (*immediate_cb)(area_t, level, const char *);
-
-    /// Callback type for log flushing
-    typedef void (*flush_cb)();
+    typedef void (*immediate_cb)(logs, level, const char *);
 
     /// Default constructor. Creates a logger without a backing store.
     /// \arg output  Immediate-mode logging output function
@@ -34,23 +40,17 @@ public:
     /// \arg output  Immediate-mode logging output function
     logger(uint8_t *buffer, size_t size, immediate_cb output = nullptr);
 
-    /// Register a log area for future use.
-    /// \arg area      The key for the new area
-    /// \arg name      The area name
-    /// \arg verbosity What level of logs to print for this area
-    void register_area(area_t area, const char *name, level verbosity);
+    /// Get the current immediate-mode callback
+    inline immediate_cb get_immediate() const { return m_immediate; }
 
     /// Register an immediate-mode log callback
     inline void set_immediate(immediate_cb cb) { m_immediate = cb; }
-
-    /// Register a flush callback
-    inline void set_flush(flush_cb cb) { m_flush = cb; }
 
     /// Get the default logger.
     inline logger & get() { return *s_log; }
 
     /// Get the registered name for a given area
-    inline const char * area_name(area_t area) const { return m_names[area]; }
+    inline const char * area_name(logs area) const { return s_area_names[static_cast<unsigned>(area)]; }
 
     /// Get the name of a level
     inline const char * level_name(level l) const { return s_level_names[static_cast<unsigned>(l)]; }
@@ -59,7 +59,7 @@ public:
     /// \arg severity  The severity of the message
     /// \arg area      The log area to write to
     /// \arg fmt       A printf-like format string
-    inline void log(level severity, area_t area, const char *fmt, ...)
+    inline void log(level severity, logs area, const char *fmt, ...)
     {
         level limit = get_level(area);
         if (limit == level::none || severity < limit)
@@ -74,7 +74,7 @@ public:
     struct entry
     {
         uint8_t bytes;
-        area_t area;
+        logs area;
         level severity;
         uint8_t sequence;
         char message[0];
@@ -91,22 +91,24 @@ public:
     inline bool has_log() const { return m_buffer.size(); }
 
 private:
-    friend void debug(area_t area, const char *fmt, ...);
-    friend void info (area_t area, const char *fmt, ...);
-    friend void warn (area_t area, const char *fmt, ...);
-    friend void error(area_t area, const char *fmt, ...);
-    friend void fatal(area_t area, const char *fmt, ...);
+    friend void debug(logs area, const char *fmt, ...);
+    friend void info (logs area, const char *fmt, ...);
+    friend void warn (logs area, const char *fmt, ...);
+    friend void error(logs area, const char *fmt, ...);
+    friend void fatal(logs area, const char *fmt, ...);
 
-    void output(level severity, area_t area, const char *fmt, va_list args);
+    void output(level severity, logs area, const char *fmt, va_list args);
 
-    void set_level(area_t area, level l);
-    level get_level(area_t area);
+    inline void set_level(logs area, level l) {
+        m_levels[static_cast<unsigned>(area)] = l;
+    }
 
-    static const unsigned num_areas = 1 << (sizeof(area_t) * 8);
-    uint8_t m_levels[num_areas / 2];
-    const char *m_names[num_areas];
+    inline level get_level(logs area) {
+        return m_levels[static_cast<unsigned>(area)];
+    }
+
+    level m_levels[areas_count];
     immediate_cb m_immediate;
-    flush_cb m_flush;
 
     uint8_t m_sequence;
 
@@ -114,21 +116,16 @@ private:
     util::spinlock m_lock;
 
     static logger *s_log;
+    static const char *s_area_names[areas_count+1];
     static const char *s_level_names[static_cast<unsigned>(level::max)];
 };
 
-void debug(area_t area, const char *fmt, ...);
-void info (area_t area, const char *fmt, ...);
-void warn (area_t area, const char *fmt, ...);
-void error(area_t area, const char *fmt, ...);
-void fatal(area_t area, const char *fmt, ...);
+void debug(logs area, const char *fmt, ...);
+void info (logs area, const char *fmt, ...);
+void warn (logs area, const char *fmt, ...);
+void error(logs area, const char *fmt, ...);
+void fatal(logs area, const char *fmt, ...);
 
 extern log::logger &g_logger;
 
 } // namespace log
-
-namespace logs {
-#define LOG(name, lvl) extern const log::area_t name;
-#include <j6/tables/log_areas.inc>
-#undef LOG
-} // namespace logs

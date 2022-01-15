@@ -8,7 +8,7 @@
 #include "objects/system.h"
 #include "objects/thread.h"
 
-static uint8_t log_buffer[0x10000];
+static uint8_t log_buffer[128 * 1024];
 
 // The logger is initialized _before_ global constructors are called,
 // so that we can start log output immediately. Keep its constructor
@@ -19,7 +19,7 @@ log::logger &g_logger = __g_logger_storage.value;
 static const uint8_t level_colors[] = {0x07, 0x07, 0x0f, 0x0b, 0x09};
 
 static void
-output_log(log::area_t area, log::level severity, const char *message)
+output_log(logs area, log::level severity, const char *message)
 {
     auto *cons = console::get();
     cons->set_color(level_colors[static_cast<int>(severity)]);
@@ -33,13 +33,6 @@ output_log(log::area_t area, log::level severity, const char *message)
 // For printf.c
 extern "C" void putchar_(char c) {}
 
-static void
-log_flush()
-{
-    system &sys = system::get();
-    sys.assert_signal(j6_signal_system_has_log);
-}
-
 void
 logger_task()
 {
@@ -47,7 +40,6 @@ logger_task()
 
     log::info(logs::task, "Starting kernel logger task");
     g_logger.set_immediate(nullptr);
-    g_logger.set_flush(log_flush);
 
     thread &self = thread::current();
     system &sys = system::get();
