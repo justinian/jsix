@@ -133,6 +133,8 @@ uefi_exit(bootproto::args *args, uefi::handle image, uefi::boot_services *bs)
     args->frame_blocks = memory::build_frame_blocks(args->mem_map);
 
     map.update(*bs);
+    status.do_blank();
+
     try_or_raise(
         bs->exit_boot_services(image, map.key),
         L"Failed to exit boot services");

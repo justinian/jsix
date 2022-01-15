@@ -147,6 +147,16 @@ status_line::do_fail(const wchar_t *message, uefi::status status)
     out->output_string(L"\r\n");
 }
 
+void
+status_line::do_blank()
+{
+    auto out = console::get().m_out;
+    int row = out->mode->cursor_row;
+
+    out->set_cursor_position(0, row);
+    out->output_string(L"\r\n\r\n");
+}
+
 
 
 status_bar::status_bar(video::screen *screen) :

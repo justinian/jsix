@@ -75,6 +75,7 @@ public:
 
     virtual void do_warn(const wchar_t *message, uefi::status status) override;
     virtual void do_fail(const wchar_t *message, uefi::status status) override;
+    void do_blank();
 
 private:
     void print_status_tag();
