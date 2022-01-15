@@ -24,4 +24,11 @@ object process : kobject {
         param entrypoint address            # The address of the main thread entrypoint
         param handles object kobject [list] # A list of parent handles to send to the child process
     }
+
+    # Give the given process a handle that points to the same
+    # object as the specified handle.
+    method give_handle {
+        param sender object kobject          # A handle in the caller process to send
+        param receiver object kobject [out]  # The handle as the recipient will see it
+    }
 }

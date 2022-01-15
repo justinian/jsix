@@ -56,4 +56,18 @@ process_exit(int32_t status)
     return j6_err_unexpected;
 }
 
+j6_status_t
+process_give_handle(j6_handle_t handle, j6_handle_t sender, j6_handle_t *receiver)
+{
+    process *dest = get_handle<process>(handle);
+    if (!dest) return j6_err_invalid_arg;
+
+    kobject *o = get_handle<kobject>(sender);
+    j6_handle_t out = dest->add_handle(o);
+
+    if (receiver)
+        *receiver = out;
+    return j6_status_ok;
+}
+
 } // namespace syscalls
