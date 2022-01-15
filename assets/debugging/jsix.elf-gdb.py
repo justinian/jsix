@@ -10,6 +10,7 @@ class PrintStackCommand(gdb.Command):
         base = "$rsp"
         if len(args) > 0:
             base = args[0]
+        base = int(gdb.parse_and_eval(base))
 
         depth = 22
         if len(args) > 1:
@@ -18,9 +19,8 @@ class PrintStackCommand(gdb.Command):
         for i in range(depth-1, -1, -1):
             try:
                 offset = i * 8
-                base_addr = gdb.parse_and_eval(base)
-                value = gdb.parse_and_eval(f"*(uint64_t*)({base} + 0x{offset:x})")
-                print("{:016x} (+{:04x}): {:016x}".format(int(base_addr) + offset, offset, int(value)))
+                value = gdb.parse_and_eval(f"*(uint64_t*)({base:#x} + {offset:#x})")
+                print("{:016x} (+{:04x}): {:016x}".format(base + offset, offset, int(value)))
             except Exception as e:
                 print(e)
                 continue
@@ -33,18 +33,18 @@ class PrintBacktraceCommand(gdb.Command):
     def invoke(self, arg, from_tty):
         args = gdb.string_to_argv(arg)
 
-        depth = 30
-        if len(args) > 0:
-            depth = int(args[0])
-
         frame = "$rbp"
-        if len(args) > 1:
-            frame = args[1]
+        if len(args) > 0:
+            frame = args[0]
 
-        frame = gdb.parse_and_eval(f"{frame}")
+        frame = int(gdb.parse_and_eval(f"{frame}"))
+
+        depth = 30
+        if len(args) > 1:
+            depth = int(gdb.parse_and_eval(args[1]))
 
         for i in range(depth-1, -1, -1):
-            ret = gdb.parse_and_eval(f"*(uint64_t*)({frame} + 0x8)")
+            ret = gdb.parse_and_eval(f"*(uint64_t*)({frame:#x} + 0x8)")
 
             name = ""
             try:
@@ -56,7 +56,7 @@ class PrintBacktraceCommand(gdb.Command):
 
             print("{:016x}: {:016x} {}".format(int(frame), int(ret), name))
 
-            frame = gdb.parse_and_eval(f"*(uint64_t*)({frame})")
+            frame = int(gdb.parse_and_eval(f"*(uint64_t*)({frame:#x})"))
             if frame == 0 or ret == 0:
                 return
 
