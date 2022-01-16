@@ -21,9 +21,39 @@ ctx = Context(definitions_path)
 ctx.parse("syscalls.def")
 syscalls = ctx.interfaces['syscalls']
 
-cog.outl(f"constexpr size_t num_syscalls = {len(syscalls.methods)};")
 ]]]*/
 /// [[[end]]]
+
+namespace syscalls
+{
+    /*[[[cog code generation
+
+    last_scope = None
+    for id, scope, method in syscalls.methods:
+        if scope != last_scope:
+            cog.outl()
+            last_scope = scope
+
+        if scope:
+            name = f"{scope.name}_{method.name}"
+        else:
+            name = method.name
+
+        args = []
+        if method.constructor:
+            args.append("j6_handle_t *handle")
+        elif not method.static:
+            args.append("j6_handle_t handle")
+
+        for param in method.params:
+            for type, suffix in param.type.c_names(param.options):
+                args.append(f"{type} {param.name}{suffix}")
+
+        cog.outl(f"""j6_status_t _syscall_verify_{name} ({", ".join(args)});""")
+    ]]]*/
+    //[[[end]]]
+}
+
 uintptr_t syscall_registry[num_syscalls] __attribute__((section(".syscall_registry")));
 
 void
@@ -44,8 +74,8 @@ syscall_initialize()
         else:
             name = method.name
 
-        cog.outl(f"syscall_registry[{id}] = reinterpret_cast<uintptr_t>(syscalls::{name});")
-        cog.outl(f"""log::debug(logs::syscall, "Enabling syscall {id:x} as {name}");""")
+        cog.outl(f"syscall_registry[{id}] = reinterpret_cast<uintptr_t>(syscalls::_syscall_verify_{name});")
+        cog.outl(f"""log::debug(logs::syscall, "Enabling syscall {id:02x} as {name}");""")
         cog.outl("")
     ]]]*/
     //[[[end]]]

@@ -56,9 +56,6 @@ vma_unmap(j6_handle_t handle, j6_handle_t proc)
 j6_status_t
 vma_resize(j6_handle_t handle, size_t *size)
 {
-    if (!size)
-        return j6_err_invalid_arg;
-
     vm_area *a = get_handle<vm_area>(handle);
     if (!a) return j6_err_invalid_arg;
 

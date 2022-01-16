@@ -48,6 +48,7 @@ kernel = module("kernel",
         "syscall.cpp.cog",
         "syscall.h.cog",
         "syscall.s",
+        "syscall_verify.cpp.cog",
         "syscalls.inc.cog",
         "syscalls/channel.cpp",
         "syscalls/endpoint.cpp",
@@ -68,10 +69,15 @@ from os.path import join
 
 layout = join(source_root, "definitions/memory_layout.yaml")
 sysconf = join(source_root, "definitions/sysconf.yaml")
-definitions = glob('definitions/**/*.def', recursive=True)
+definitions = glob(join(source_root, 'definitions/**/*.def'), recursive=True)
 
 kernel.add_depends(["memory.h.cog"], [layout])
 kernel.add_depends(["sysconf.h.cog"], [sysconf])
-kernel.add_depends(["syscall.cpp.cog", "syscall.h.cog", "syscalls.inc.cog"], definitions)
+kernel.add_depends([
+        "syscall.cpp.cog",
+        "syscall.h.cog",
+        "syscalls.inc.cog",
+        "syscall_verify.cpp.cog",
+    ], definitions)
 
 kernel.variables['ldflags'] = ["${ldflags}", "-T", "${source_root}/src/kernel/kernel.ld"]

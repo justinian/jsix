@@ -2,3 +2,4 @@ cogapp >= 3
 ninja >= 1.10.2
 peru >= 1.2.1
 pyyaml >= 5.4
+lark == 0.12.0

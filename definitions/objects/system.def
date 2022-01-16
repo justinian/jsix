@@ -8,7 +8,7 @@ object system : kobject {
 
     # Get a log line from the kernel log
     method get_log {
-        param buffer buffer [out]   # Buffer for the log message data structure
+        param buffer buffer [out optional]   # Buffer for the log message data structure
     }
 
     # Ask the kernel to send this process messages whenever

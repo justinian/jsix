@@ -29,7 +29,9 @@ endpoint_send(j6_handle_t handle, uint64_t tag, const void * data, size_t data_l
 j6_status_t
 endpoint_receive(j6_handle_t handle, uint64_t * tag, void * data, size_t * data_len, uint64_t timeout)
 {
-    if (!tag || !data_len || (*data_len && !data))
+    // Data is marked optional, but we need the length, and if length > 0,
+    // data is not optional.
+    if (!data_len || (*data_len && !data))
         return j6_err_invalid_arg;
 
     endpoint *e = get_handle<endpoint>(handle);
@@ -46,7 +48,7 @@ endpoint_receive(j6_handle_t handle, uint64_t * tag, void * data, size_t * data_
 j6_status_t
 endpoint_sendrecv(j6_handle_t handle, uint64_t * tag, void * data, size_t * data_len, uint64_t timeout)
 {
-    if (!tag || (*tag & j6_tag_system_flag))
+    if (*tag & j6_tag_system_flag)
         return j6_err_invalid_arg;
 
     endpoint *e = get_handle<endpoint>(handle);

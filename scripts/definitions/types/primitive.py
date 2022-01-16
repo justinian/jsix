@@ -8,9 +8,9 @@ class Primitive(Type):
     def __repr__(self):
         return f'Primitive({self.name})'
 
-    def c_names(self, options=None):
+    def c_names(self, options=dict()):
         one = self.c_type
-        if options and "out" in options or "inout" in options:
+        if "out" in options or "inout" in options:
             one += " *"
 
         return ((one, ""),)
@@ -23,11 +23,13 @@ class PrimitiveRef(Primitive):
         super().__init__(name, c_type)
         self.__counted = counted
 
-    def c_names(self, options=None):
+    reference = property(lambda self: True)
+
+    def c_names(self, options=dict()):
         one = f"{self.c_type} *"
         two = "size_t"
 
-        if options and "out" in options or "inout" in options:
+        if "out" in options or "inout" in options:
             two += " *"
         else:
             one = "const " + one

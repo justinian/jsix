@@ -34,6 +34,7 @@ class Context:
         pending = set()
         pending.add(filename)
 
+        from .parser import LarkError
         from .parser import Lark_StandAlone as Parser
         from .transformer import DefTransformer
 
@@ -47,7 +48,16 @@ class Context:
             path = self.find(name)
 
             parser = Parser(transformer=DefTransformer(name))
-            imps, objs, ints = parser.parse(open(path, "r").read())
+
+            try:
+                imps, objs, ints = parser.parse(open(path, "r").read())
+            except LarkError as e:
+                import sys
+                import textwrap
+                print(f"\nError parsing {name}:", file=sys.stderr)
+                print(textwrap.indent(str(e), "    "), file=sys.stderr)
+                sys.exit(1)
+
             objects.update(objs)
             interfaces.update(ints)
 

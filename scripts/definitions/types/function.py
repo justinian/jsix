@@ -47,3 +47,15 @@ class Param:
         return "param {} {} {}  {}".format(
                 self.name, repr(self.type), self.options, self.desc or "")
 
+    @property
+    def outparam(self):
+        return "out" in self.options or "inout" in self.options
+
+    @property
+    def refparam(self):
+        return self.type.reference or self.outparam
+
+    @property
+    def optional(self):
+        return "optional" in self.options
+

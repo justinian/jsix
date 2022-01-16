@@ -26,13 +26,14 @@ object_name: "object" name
 
 id: NUMBER
 name: IDENTIFIER
-options: "[" IDENTIFIER+ "]"
+options: "[" ( OPTION | IDENTIFIER )+ "]"
 description: COMMENT+
 
 PRIMITIVE: INT_TYPE | "size" | "string" | "buffer" | "address"
 INT_TYPE: /u?int(8|16|32|64)?/
 NUMBER: /(0x)?[0-9a-fA-F]+/
 UID: /[0-9a-fA-F]{16}/
+OPTION.2: IDENTIFIER ":" IDENTIFIER
 COMMENT: /#.*/
 PATH: /"[^"]*"/
 

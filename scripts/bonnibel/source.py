@@ -3,6 +3,7 @@ class Action:
     implicit = property(lambda self: False)
     rule = property(lambda self: None)
     deps = property(lambda self: tuple())
+    parse_deps = property(lambda self: False)
 
     def __init__(self, name):
         self.__name = name
@@ -14,6 +15,7 @@ class Action:
 class Compile(Action):
     rule = property(lambda self: f'compile_{self.name}')
     deps = property(lambda self: ("${module_dir}/.parse_dep.phony",))
+    parse_deps = property(lambda self: True)
 
     def __init__(self, name, suffix = ".o"):
         super().__init__(name)

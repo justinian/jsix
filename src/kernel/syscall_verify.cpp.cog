@@ -1,0 +1,73 @@
+// vim: ft=cpp
+
+#include <stdint.h>
+#include <arch/memory.h>
+#include <j6/errors.h>
+#include <j6/types.h>
+
+namespace {
+    template <typename T>
+    __attribute__((always_inline))
+    inline bool check_refparam(const T* param, bool optional) {
+        return reinterpret_cast<uintptr_t>(param) < arch::kernel_offset &&
+            (optional || param);
+    }
+}
+
+namespace syscalls {
+
+/*[[[cog code generation
+from definitions.context import Context
+
+ctx = Context(definitions_path)
+ctx.parse("syscalls.def")
+syscalls = ctx.interfaces["syscalls"]
+
+cbool = {True: "true", False: "false"}
+
+for id, scope, method in syscalls.methods:
+    if scope:
+        name = f"{scope.name}_{method.name}"
+    else:
+        name = f"{method.name}"
+
+    args = []
+    argdefs = []
+    refparams = []
+
+    if method.constructor:
+        argdefs.append("j6_handle_t *handle")
+        args.append("handle")
+        refparams.append(("handle", False))
+    elif not method.static:
+        argdefs.append("j6_handle_t handle")
+        args.append("handle")
+
+    for param in method.params:
+        for type, suffix in param.type.c_names(param.options):
+            arg = f"{param.name}{suffix}"
+            argdefs.append(f"{type} {arg}")
+            args.append(arg)
+
+        if param.refparam:
+            subs = param.type.c_names(param.options)
+            refparams.append((param.name + subs[0][1], param.optional))
+            if param.outparam:
+                for sub in subs[1:]:
+                    refparams.append((param.name + sub[1], param.optional))
+
+    cog.outl(f"""extern j6_status_t {name} ({", ".join(argdefs)});""")
+    cog.outl(f"""j6_status_t _syscall_verify_{name} ({", ".join(argdefs)}) {{""")
+
+    for pname, optional in refparams:
+        cog.outl(f"    if (!check_refparam({pname}, {cbool[optional]}))")
+        cog.outl( "        return j6_err_invalid_arg;")
+        cog.outl()
+
+    cog.outl(f"""    return syscalls::{name}({", ".join(args)});""")
+    cog.outl("}")
+    cog.outl("\n")
+]]]*/
+//[[[end]]]
+
+} // namespace syscalls

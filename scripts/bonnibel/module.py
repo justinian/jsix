@@ -141,12 +141,18 @@ class Module:
 
             inputs = []
             parse_deps = []
+            parse_dep = "${module_dir}/.parse_dep.phony"
 
             for start in self.sources:
                 source = start
 
                 while source and source.action:
                     output = source.output
+
+                    if source.action.parse_deps:
+                        oodeps = [parse_dep]
+                    else:
+                        oodeps = []
 
                     if source.action.rule:
                         build.newline()
@@ -156,6 +162,7 @@ class Module:
                             inputs = source.input,
                             implicit = list(map(resolve, source.deps)) +
                                        list(source.action.deps),
+                            order_only = oodeps,
                             variables = {"name": source.name},
                         )
 
@@ -167,7 +174,6 @@ class Module:
 
                     source = output
 
-            parse_dep = "${module_dir}/.parse_dep.phony"
             build.newline()
             build.build(
                 rule = "touch",
@@ -183,7 +189,7 @@ class Module:
                 rule = self.kind,
                 outputs = output,
                 inputs = inputs,
-                implicit = [parse_dep] + libs,
+                implicit = libs,
                 order_only = order_only,
             )
 

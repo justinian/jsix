@@ -17,7 +17,7 @@ object endpoint : kobject {
     # is available.
     method receive {
         param tag uint64 [out]
-        param data buffer [out]
+        param data buffer [out optional]
         param timeout uint64    # Receive timeout in nanoseconds
     }
 

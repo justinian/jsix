@@ -13,9 +13,6 @@ namespace syscalls {
 j6_status_t
 kobject_koid(j6_handle_t handle, j6_koid_t *koid)
 {
-    if (koid == nullptr)
-        return j6_err_invalid_arg;
-
     kobject *obj = get_handle<kobject>(handle);
     if (!obj)
         return j6_err_invalid_arg;
