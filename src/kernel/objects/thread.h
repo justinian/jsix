@@ -2,7 +2,9 @@
 /// \file thread.h
 /// Definition of thread kobject types
 
+#include <util/enum_bitfields.h>
 #include <util/linked_list.h>
+#include <util/spinlock.h>
 
 #include "objects/kobject.h"
 
@@ -36,11 +38,20 @@ struct TCB
 using tcb_list = util::linked_list<TCB>;
 using tcb_node = tcb_list::item_type;
 
+enum class wait_type : uint8_t
+{
+    none   = 0x00,
+    signal = 0x01,
+    time   = 0x02,
+    object = 0x04,
+};
+is_bitfield(wait_type);
+
 class thread :
     public kobject
 {
 public:
-    enum class wait_type : uint8_t { none, signal, time, object };
+
     enum class state : uint8_t {
         ready    = 0x01,
         loading  = 0x02,
@@ -85,8 +96,9 @@ public:
     void wait_on_time(uint64_t t);
 
     /// Block the thread, waiting on the given object
-    /// \arg o  The ojbect that should wake this thread
-    void wait_on_object(kobject *o);
+    /// \arg o  The object that should wake this thread
+    /// \arg t  The timeout clock value to wait for
+    void wait_on_object(kobject *o, uint64_t t = 0);
 
     /// Wake the thread if it is waiting on signals.
     /// \arg obj     Object that changed signals
@@ -184,8 +196,10 @@ private:
     int32_t m_return_code;
 
     uint64_t m_wait_data;
+    uint64_t m_wait_time;
     j6_status_t m_wait_result;
     j6_koid_t m_wait_obj;
+    util::spinlock m_wait_lock;
 
     j6_handle_t m_self_handle;
 };

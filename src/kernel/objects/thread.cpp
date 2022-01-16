@@ -47,37 +47,52 @@ inline void schedule_if_current(thread *t) { if (t == current_cpu().thread) sche
 void
 thread::wait_on_signals(j6_signal_t signals)
 {
-    m_wait_type = wait_type::signal;
-    m_wait_data = signals;
-    clear_state(state::ready);
-
+    {
+        util::scoped_lock {m_wait_lock};
+        m_wait_type = wait_type::signal;
+        m_wait_data = signals;
+        clear_state(state::ready);
+    }
     schedule_if_current(this);
 }
 
 void
 thread::wait_on_time(uint64_t t)
 {
-    m_wait_type = wait_type::time;
-    m_wait_data = t;
-    clear_state(state::ready);
-
+    {
+        util::scoped_lock {m_wait_lock};
+        m_wait_type = wait_type::time;
+        m_wait_time = t;
+        clear_state(state::ready);
+    }
     schedule_if_current(this);
 }
 
 void
-thread::wait_on_object(kobject *o)
+thread::wait_on_object(kobject *o, uint64_t t)
 {
-    m_wait_type = wait_type::object;
-    m_wait_data = reinterpret_cast<uint64_t>(o);
-    clear_state(state::ready);
+    {
+        util::scoped_lock {m_wait_lock};
 
+        m_wait_type = wait_type::object;
+        m_wait_data = reinterpret_cast<uint64_t>(o);
+
+        if (t) {
+            m_wait_type |= wait_type::time;
+            m_wait_time = t;
+        }
+
+        clear_state(state::ready);
+    }
     schedule_if_current(this);
 }
 
 bool
 thread::wake_on_signals(kobject *obj, j6_signal_t signals)
 {
-    if (m_wait_type != wait_type::signal ||
+    util::scoped_lock {m_wait_lock};
+
+    if (!(m_wait_type & wait_type::signal) ||
         (signals & m_wait_data) == 0)
         return false;
 
@@ -92,12 +107,18 @@ thread::wake_on_signals(kobject *obj, j6_signal_t signals)
 bool
 thread::wake_on_time(uint64_t now)
 {
-    if (m_wait_type != wait_type::time ||
-        now < m_wait_data)
+    util::scoped_lock {m_wait_lock};
+
+    if (!(m_wait_type & wait_type::time) ||
+        now < m_wait_time)
         return false;
 
+    if (!(m_wait_type & ~wait_type::none))
+        m_wait_result = j6_status_ok;
+    else
+        m_wait_result = j6_err_timed_out;
+
     m_wait_type = wait_type::none;
-    m_wait_result = j6_status_ok;
     m_wait_data = now;
     m_wait_obj = 0;
     set_state(state::ready);
@@ -107,7 +128,9 @@ thread::wake_on_time(uint64_t now)
 bool
 thread::wake_on_object(kobject *o)
 {
-    if (m_wait_type != wait_type::object ||
+    util::scoped_lock {m_wait_lock};
+
+    if (!(m_wait_type & wait_type::object) ||
         reinterpret_cast<uint64_t>(o) != m_wait_data)
         return false;
 
@@ -121,6 +144,8 @@ thread::wake_on_object(kobject *o)
 void
 thread::wake_on_result(kobject *obj, j6_status_t result)
 {
+    util::scoped_lock {m_wait_lock};
+
     m_wait_type = wait_type::none;
     m_wait_result = result;
     m_wait_data = 0;

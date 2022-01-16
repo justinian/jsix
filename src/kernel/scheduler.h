@@ -72,6 +72,8 @@ public:
     /// \arg t  The new thread's TCB
     void add_thread(TCB *t);
 
+    uint64_t clock() const { return m_clock; }
+
     /// Get a reference to the scheduler
     /// \returns  A reference to the global system scheduler
     static scheduler & get() { return *s_instance; }

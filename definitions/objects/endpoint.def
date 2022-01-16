@@ -18,6 +18,7 @@ object endpoint : kobject {
     method receive {
         param tag uint64 [out]
         param data buffer [out]
+        param timeout uint64    # Receive timeout in nanoseconds
     }
 
     # Send a message on a channel and then await a new message.
@@ -26,5 +27,6 @@ object endpoint : kobject {
     method sendrecv {
         param tag uint64 [inout]
         param data buffer [inout]
+        param timeout uint64      # Receive timeout in nanoseconds
     }
 }

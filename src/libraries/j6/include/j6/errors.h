@@ -17,4 +17,5 @@
 #define j6_err_invalid_arg          j6_err(0x0003)
 #define j6_err_not_ready            j6_err(0x0004)
 #define j6_err_insufficient         j6_err(0x0005)
+#define j6_err_timed_out            j6_err(0x0006)
 

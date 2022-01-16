@@ -36,11 +36,12 @@ public:
 
     /// Receive a message from a thread waiting to send on this endpoint. If no threads
     /// are currently trying to send, block the current thread.
-    /// \arg tag   [in] The sender-specified message tag
-    /// \arg len   [in] The size in bytes of the buffer [out] Number of bytes in the message
-    /// \arg data  Buffer for copying message data into
-    /// \returns   j6_status_ok on success
-    j6_status_t receive(j6_tag_t *tag, void *data, size_t *data_len);
+    /// \arg tag     [in] The sender-specified message tag
+    /// \arg len     [in] The size in bytes of the buffer [out] Number of bytes in the message
+    /// \arg data    Buffer for copying message data into
+    /// \arg timeout Receive timeout in nanoseconds
+    /// \returns     j6_status_ok on success
+    j6_status_t receive(j6_tag_t *tag, void *data, size_t *data_len, uint64_t timeout = 0);
 
     /// Give the listener on the endpoint a message that a bound IRQ has been signalled
     /// \arg irq  The IRQ that caused this signal

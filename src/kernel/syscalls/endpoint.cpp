@@ -27,7 +27,7 @@ endpoint_send(j6_handle_t handle, uint64_t tag, const void * data, size_t data_l
 }
 
 j6_status_t
-endpoint_receive(j6_handle_t handle, uint64_t * tag, void * data, size_t * data_len)
+endpoint_receive(j6_handle_t handle, uint64_t * tag, void * data, size_t * data_len, uint64_t timeout)
 {
     if (!tag || !data_len || (*data_len && !data))
         return j6_err_invalid_arg;
@@ -37,14 +37,14 @@ endpoint_receive(j6_handle_t handle, uint64_t * tag, void * data, size_t * data_
 
     j6_tag_t out_tag = j6_tag_invalid;
     size_t out_len = *data_len;
-    j6_status_t s = e->receive(&out_tag, data, &out_len);
+    j6_status_t s = e->receive(&out_tag, data, &out_len, timeout);
     *tag = out_tag;
     *data_len = out_len;
     return s;
 }
 
 j6_status_t
-endpoint_sendrecv(j6_handle_t handle, uint64_t * tag, void * data, size_t * data_len)
+endpoint_sendrecv(j6_handle_t handle, uint64_t * tag, void * data, size_t * data_len, uint64_t timeout)
 {
     if (!tag || (*tag & j6_tag_system_flag))
         return j6_err_invalid_arg;
@@ -58,7 +58,7 @@ endpoint_sendrecv(j6_handle_t handle, uint64_t * tag, void * data, size_t * data
 
     j6_tag_t out_tag = j6_tag_invalid;
     size_t out_len = *data_len;
-    j6_status_t s = e->receive(&out_tag, data, &out_len);
+    j6_status_t s = e->receive(&out_tag, data, &out_len, timeout);
     *tag = out_tag;
     *data_len = out_len;
     return s;

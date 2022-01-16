@@ -2,6 +2,7 @@
 #include "objects/endpoint.h"
 #include "objects/process.h"
 #include "objects/thread.h"
+#include "scheduler.h"
 #include "vm_space.h"
 
 endpoint::endpoint() :
@@ -55,16 +56,20 @@ endpoint::send(j6_tag_t tag, const void *data, size_t data_len)
 }
 
 j6_status_t
-endpoint::receive(j6_tag_t *tag, void *data, size_t *data_len)
+endpoint::receive(j6_tag_t *tag, void *data, size_t *data_len, uint64_t timeout)
 {
     thread_data receiver = { &thread::current(), data };
     receiver.tag_p = tag;
     receiver.len_p = data_len;
 
+    // Timeout is a duration, but wait_on_* calls need a time
+    if (timeout)
+        timeout += scheduler::get().clock();
+
     if (!check_signal(j6_signal_endpoint_can_recv)) {
         assert_signal(j6_signal_endpoint_can_send);
         m_blocked.append(receiver);
-        receiver.th->wait_on_object(this);
+        receiver.th->wait_on_object(this, timeout);
 
         // we woke up having already finished the recv
         // because it happened in the sender
