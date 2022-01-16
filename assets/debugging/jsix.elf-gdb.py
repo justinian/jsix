@@ -26,6 +26,25 @@ class PrintStackCommand(gdb.Command):
                 continue
 
 
+def stack_walk(frame, depth):
+    for i in range(depth-1, -1, -1):
+        ret = gdb.parse_and_eval(f"*(uint64_t*)({frame:#x} + 0x8)")
+
+        name = ""
+        try:
+            block = gdb.block_for_pc(int(ret))
+            if block:
+                name = block.function or ""
+        except RuntimeError:
+            pass
+
+        print("{:016x}: {:016x} {}".format(int(frame), int(ret), name))
+
+        frame = int(gdb.parse_and_eval(f"*(uint64_t*)({frame:#x})"))
+        if frame == 0 or ret == 0:
+            return
+
+
 class PrintBacktraceCommand(gdb.Command):
     def __init__(self):
         super().__init__("j6bt", gdb.COMMAND_DATA)
@@ -43,22 +62,7 @@ class PrintBacktraceCommand(gdb.Command):
         if len(args) > 1:
             depth = int(gdb.parse_and_eval(args[1]))
 
-        for i in range(depth-1, -1, -1):
-            ret = gdb.parse_and_eval(f"*(uint64_t*)({frame:#x} + 0x8)")
-
-            name = ""
-            try:
-                block = gdb.block_for_pc(int(ret))
-                if block:
-                    name = block.function or ""
-            except RuntimeError:
-                pass
-
-            print("{:016x}: {:016x} {}".format(int(frame), int(ret), name))
-
-            frame = int(gdb.parse_and_eval(f"*(uint64_t*)({frame:#x})"))
-            if frame == 0 or ret == 0:
-                return
+        stack_walk(frame, depth)
 
 
 class TableWalkCommand(gdb.Command):
@@ -128,10 +132,78 @@ class TableWalkCommand(gdb.Command):
             table = (entry & 0x7ffffffffffffe00) | 0xffffc00000000000
 
 
+class GetThreadsCommand(gdb.Command):
+    def __init__(self):
+        super().__init__("j6threads", gdb.COMMAND_DATA)
+
+    def print_thread(self, addr):
+        if addr == 0:
+            print("  <no thread>\n")
+            return
+
+        tcb = f"((TCB*){addr:#x})"
+        thread = f"({tcb}->thread)"
+        stack = int(gdb.parse_and_eval(f"{tcb}->kernel_stack"))
+        rsp = int(gdb.parse_and_eval(f"{tcb}->rsp"))
+        pri = int(gdb.parse_and_eval(f"{tcb}->priority"))
+        koid = int(gdb.parse_and_eval(f"{thread}->m_koid"))
+        proc = int(gdb.parse_and_eval(f"{thread}->m_parent.m_koid"))
+
+        creator = int(gdb.parse_and_eval(f"{thread}->m_creator"))
+        if creator != 0:
+            creator_koid = int(gdb.parse_and_eval(f"{thread}->m_creator->m_koid"))
+            creator = f"{creator_koid:x}"
+        else:
+            creator = "<no thread>"
+
+        print(f"  Thread {proc:x}:{koid:x}")
+        print(f"         creator: {creator}")
+        print(f"        priority: {pri}")
+        print(f"          kstack: {stack:#x}")
+        print(f"             rsp: {rsp:#x}")
+        print("------------------------------------")
+
+        if stack != 0:
+            rsp = int(gdb.parse_and_eval(f"{tcb}->rsp"))
+            stack_walk(rsp + 5*8, 5)
+
+        print("")
+
+    def print_thread_list(self, addr, name):
+        if addr == 0:
+            return
+
+        print(f"=== {name} ===")
+
+        while addr != 0:
+            self.print_thread(addr)
+            addr = int(gdb.parse_and_eval(f"((tcb_node*){addr:#x})->m_next"))
+
+
+    def invoke(self, arg, from_tty):
+        args = gdb.string_to_argv(arg)
+        if len(args) != 1:
+            raise RuntimeError("Usage: j6threads <cpu>")
+
+        ncpu = int(args[0])
+        runlist = f"scheduler::s_instance->m_run_queues.m_elements[{ncpu:#x}]"
+
+        print("CURRENT:")
+        current = int(gdb.parse_and_eval(f"{runlist}.current"))
+        self.print_thread(current)
+
+        for pri in range(8):
+            ready = int(gdb.parse_and_eval(f"{runlist}.ready[{pri:#x}].m_head"))
+            self.print_thread_list(ready, f"PRIORITY {pri}")
+
+        blocked = int(gdb.parse_and_eval(f"{runlist}.blocked.m_head"))
+        self.print_thread_list(ready, "BLOCKED")
 
 PrintStackCommand()
 PrintBacktraceCommand()
 TableWalkCommand()
+GetThreadsCommand()
 
-gdb.execute("target remote :1234")
 gdb.execute("display/i $rip")
+if not gdb.selected_inferior().was_attached:
+    gdb.execute("target remote :1234")

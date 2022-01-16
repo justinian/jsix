@@ -24,26 +24,20 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 {
     parent.space().initialize_tcb(m_tcb);
     m_tcb.priority = pri;
+    m_tcb.thread = this;
 
     if (!rsp0)
         setup_kernel_stack();
     else
         m_tcb.rsp0 = rsp0;
 
+    m_creator = current_cpu().thread;
     m_self_handle = parent.add_handle(this);
 }
 
 thread::~thread()
 {
     g_kernel_stacks.return_section(m_tcb.kernel_stack);
-}
-
-thread *
-thread::from_tcb(TCB *tcb)
-{
-    static ptrdiff_t offset =
-        -1 * static_cast<ptrdiff_t>(offsetof(thread, m_tcb));
-    return reinterpret_cast<thread*>(util::offset_pointer(tcb, offset));
 }
 
 thread & thread::current() { return *current_cpu().thread; }

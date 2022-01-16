@@ -9,7 +9,9 @@
 #include "idt.h"
 #include "log.h"
 #include "msr.h"
+#include "objects/thread.h"
 #include "objects/vm_area.h"
+#include "scheduler.h"
 #include "syscall.h"
 #include "tss.h"
 
@@ -60,10 +62,6 @@ cpu_early_init(cpu_data *cpu)
 
     // Install the GS base pointint to the cpu_data
     wrmsr(msr::ia32_gs_base, reinterpret_cast<uintptr_t>(cpu));
-
-    // Set the initial process as the kernel "process"
-    extern process &g_kernel_process;
-    cpu->process = &g_kernel_process;
 }
 
 void
@@ -73,6 +71,18 @@ cpu_init(cpu_data *cpu, bool bsp)
         // The BSP already called cpu_early_init
         cpu_early_init(cpu);
     }
+
+    // Set the initial process as the kernel "process"
+    extern process &g_kernel_process;
+    cpu->process = &g_kernel_process;
+
+    thread *idle = thread::create_idle_thread(
+            g_kernel_process,
+            scheduler::max_priority,
+            cpu->rsp0);
+
+    cpu->thread = idle;
+    cpu->tcb = idle->tcb();
 
     // Set up the syscall MSRs
     syscall_enable();

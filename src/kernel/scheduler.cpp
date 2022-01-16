@@ -97,16 +97,8 @@ scheduler::start()
 
     {
         util::scoped_lock lock {queue.lock};
-
-        process *kp = &process::kernel_process();
-        thread *idle = thread::create_idle_thread(*kp, max_priority, cpu.rsp0);
-
-        auto *tcb = idle->tcb();
-        cpu.process = kp;
-        cpu.thread = idle;
-        cpu.tcb = tcb;
-
-        queue.current = tcb;
+        thread *idle = cpu.thread;
+        queue.current = idle->tcb();
     }
 
     cpu.apic->enable_timer(isr::isrTimer, false);
@@ -130,7 +122,7 @@ void scheduler::prune(run_queue &queue, uint64_t now)
     // move them to the appropriate lists.
     auto *tcb = queue.blocked.front();
     while (tcb) {
-        thread *th = thread::from_tcb(tcb);
+        thread *th = tcb->thread;
         uint8_t priority = tcb->priority;
 
         bool ready = th->has_state(thread::state::ready);
@@ -171,7 +163,7 @@ scheduler::check_promotions(run_queue &queue, uint64_t now)
 {
     for (auto &pri_list : queue.ready) {
         for (auto *tcb : pri_list) {
-            const thread *th = thread::from_tcb(queue.current);
+            const thread *th = queue.current->thread;
             const bool constant = th->has_state(thread::state::constant);
             if (constant)
                 continue;
@@ -266,7 +258,7 @@ scheduler::schedule()
     queue.lock.acquire(&waiter);
 
     queue.current->time_left = remaining;
-    thread *th = thread::from_tcb(queue.current);
+    thread *th = queue.current->thread;
     uint8_t priority = queue.current->priority;
     const bool constant = th->has_state(thread::state::constant);
 
@@ -313,7 +305,7 @@ scheduler::schedule()
         return;
     }
 
-    thread *next_thread = thread::from_tcb(next);
+    thread *next_thread = next->thread;
 
     cpu.thread = next_thread;
     cpu.process = &next_thread->parent();

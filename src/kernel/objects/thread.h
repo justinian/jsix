@@ -18,6 +18,9 @@ struct TCB
     uintptr_t rsp3;
     uintptr_t rflags3;
     uintptr_t pml4;
+    // End of area used by asembly
+
+    thread* thread;
 
     uint8_t priority;
     // note: 3 bytes padding
@@ -45,9 +48,6 @@ public:
         constant = 0x80,
         none     = 0x00
     };
-
-    /// Get the pointer to the thread object containing this TCB
-    static thread * from_tcb(TCB *tcb);
 
     /// Destructor
     virtual ~thread();
@@ -175,6 +175,7 @@ private:
     tcb_node m_tcb;
 
     process &m_parent;
+    thread *m_creator;
 
     state m_state;
     wait_type m_wait_type;
