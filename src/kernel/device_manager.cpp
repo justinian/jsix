@@ -333,10 +333,11 @@ device_manager::probe_pci()
 }
 
 static uint64_t
-fake_clock_source(void*)
+tsc_clock_source(void*)
 {
-    static uint64_t value = 0;
-    return value++;
+    uint32_t lo = 0, hi = 0;
+    asm volatile ("rdtsc" : "=a" (lo), "=d" (hi));
+    return ((uint64_t)hi << 32) | lo;
 }
 
 void
@@ -367,7 +368,7 @@ device_manager::init_drivers()
         log::info(logs::clock, "Created master clock using HPET 0: Rate %d", h.rate());
     } else {
         //TODO: Other clocks, APIC clock?
-        master_clock = new clock(5000, fake_clock_source, nullptr);
+        master_clock = new clock(5000, tsc_clock_source, nullptr);
     }
 
     kassert(master_clock, "Failed to allocate master clock");

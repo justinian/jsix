@@ -36,8 +36,7 @@ struct run_queue
 };
 
 scheduler::scheduler(unsigned cpus) :
-    m_next_pid {1},
-    m_clock {0}
+    m_next_pid {1}
 {
     kassert(!s_instance, "Created multiple schedulers!");
     if (!s_instance)
@@ -242,11 +241,13 @@ scheduler::schedule()
     lapic &apic = *cpu.apic;
     uint32_t remaining = apic.stop_timer();
 
+    uint64_t now = clock::get().value();
+
     // Only one CPU can be stealing at a time
     if (m_steal_turn == cpu.index &&
-        m_clock - queue.last_steal > steal_frequency) {
+        now - queue.last_steal > steal_frequency) {
         steal_work(cpu);
-        queue.last_steal = m_clock;
+        queue.last_steal = now;
         m_steal_turn = (m_steal_turn + 1) % m_run_queues.count();
     }
 
@@ -283,9 +284,9 @@ scheduler::schedule()
     }
 
     clock::get().update();
-    prune(queue, ++m_clock);
-    if (m_clock - queue.last_promotion > promote_frequency)
-        check_promotions(queue, m_clock);
+    prune(queue, now);
+    if (now - queue.last_promotion > promote_frequency)
+        check_promotions(queue, now);
 
     priority = 0;
     while (queue.ready[priority].empty()) {
@@ -293,10 +294,10 @@ scheduler::schedule()
         kassert(priority < num_priorities, "All runlists are empty");
     }
 
-    queue.current->last_ran = m_clock;
+    queue.current->last_ran = now;
 
     auto *next = queue.ready[priority].pop_front();
-    next->last_ran = m_clock;
+    next->last_ran = now;
     apic.reset_timer(next->time_left);
 
     if (next == queue.current) {
@@ -313,7 +314,7 @@ scheduler::schedule()
     log::debug(logs::sched, "CPU%02x switching threads %llx->%llx",
             cpu.index, th->koid(), next_thread->koid());
     log::debug(logs::sched, "    priority %d time left %d @ %lld.",
-            next->priority, next->time_left, m_clock);
+            next->priority, next->time_left, now);
     log::debug(logs::sched, "    PML4 %llx", next->pml4);
 
     queue.lock.release(&waiter);

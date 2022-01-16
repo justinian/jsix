@@ -1,8 +1,8 @@
+#include "clock.h"
 #include "device_manager.h"
 #include "objects/endpoint.h"
 #include "objects/process.h"
 #include "objects/thread.h"
-#include "scheduler.h"
 #include "vm_space.h"
 
 endpoint::endpoint() :
@@ -64,7 +64,7 @@ endpoint::receive(j6_tag_t *tag, void *data, size_t *data_len, uint64_t timeout)
 
     // Timeout is a duration, but wait_on_* calls need a time
     if (timeout)
-        timeout += scheduler::get().clock();
+        timeout += clock::get().value();
 
     if (!check_signal(j6_signal_endpoint_can_recv)) {
         assert_signal(j6_signal_endpoint_can_send);

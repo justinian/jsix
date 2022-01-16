@@ -160,7 +160,7 @@ main(int argc, const char **argv)
     size_t len = 0;
     while (true) {
         uint64_t tag = 0;
-        result = j6_endpoint_receive(endp, &tag, nullptr, &len, 10);
+        result = j6_endpoint_receive(endp, &tag, nullptr, &len, 10000);
         if (result == j6_err_timed_out) {
             com1.handle_interrupt();
             com2.handle_interrupt();

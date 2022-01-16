@@ -72,8 +72,6 @@ public:
     /// \arg t  The new thread's TCB
     void add_thread(TCB *t);
 
-    uint64_t clock() const { return m_clock; }
-
     /// Get a reference to the scheduler
     /// \returns  A reference to the global system scheduler
     static scheduler & get() { return *s_instance; }
@@ -94,9 +92,6 @@ private:
     process *m_kernel_process;
 
     util::vector<run_queue> m_run_queues;
-
-    // TODO: lol a real clock
-    uint64_t m_clock = 0;
 
     unsigned m_steal_turn = 0;
     static scheduler *s_instance;
