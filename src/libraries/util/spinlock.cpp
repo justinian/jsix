@@ -7,6 +7,17 @@ static constexpr int memorder = __ATOMIC_SEQ_CST;
 spinlock::spinlock() : m_lock {nullptr} {}
 spinlock::~spinlock() {}
 
+bool
+spinlock::try_acquire(waiter *w)
+{
+    w->next = nullptr;
+    w->blocked = false;
+
+    // Point this lock at the waiter only if it's empty
+    waiter *expected = nullptr;
+    return __atomic_compare_exchange_n(&m_lock, &expected, w, false, memorder, memorder);
+}
+
 void
 spinlock::acquire(waiter *w)
 {
