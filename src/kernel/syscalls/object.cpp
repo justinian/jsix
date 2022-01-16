@@ -4,7 +4,7 @@
 #include <util/vector.h>
 
 #include "assert.h"
-#include "log.h"
+#include "logger.h"
 #include "objects/thread.h"
 #include "syscalls/helpers.h"
 

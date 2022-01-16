@@ -4,7 +4,7 @@
 
 #include "assert.h"
 #include "frame_allocator.h"
-#include "log.h"
+#include "logger.h"
 #include "memory.h"
 #include "objects/process.h"
 #include "objects/thread.h"

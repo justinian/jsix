@@ -10,22 +10,19 @@
 #include "assert.h"
 #include "block_device.h"
 #include "clock.h"
-#include "console.h"
 #include "cpu.h"
 #include "device_manager.h"
 #include "gdt.h"
 #include "idt.h"
 #include "interrupts.h"
 #include "io.h"
-#include "log.h"
+#include "logger.h"
 #include "memory.h"
 #include "msr.h"
 #include "objects/channel.h"
 #include "objects/event.h"
-#include "objects/thread.h"
 #include "objects/vm_area.h"
 #include "scheduler.h"
-#include "serial.h"
 #include "syscall.h"
 #include "sysconf.h"
 #include "tss.h"
@@ -57,18 +54,6 @@ void load_init_server(bootproto::program &program, uintptr_t modules_address);
 unsigned start_aps(lapic &apic, const util::vector<uint8_t> &ids, void *kpml4);
 
 void
-init_console()
-{
-    serial_port *com1 = new (&g_com1) serial_port(COM1);
-    console *cons = new (&g_console) console(com1);
-
-    cons->set_color(0x21, 0x00);
-    cons->puts("jsix OS ");
-    cons->set_color(0x08, 0x00);
-    cons->puts(GIT_VERSION " booting...\n");
-}
-
-void
 run_constructors()
 {
     void (**p)(void) = &__ctors;
@@ -86,9 +71,7 @@ kernel_main(bootproto::args *args)
         panic::symbol_table = util::offset_pointer(args->symbol_table, mem::linear_offset);
     }
 
-    init_console();
     logger_init();
-
     cpu_validate();
 
     extern IDT &g_bsp_idt;
@@ -154,31 +137,7 @@ kernel_main(bootproto::args *args)
 
     sysconf_create();
     interrupts_enable();
-    g_com1.handle_interrupt();
-
-    /*
-    block_device *disk = devices->get_block_device(0);
-    if (disk) {
-        for (int i=0; i<1; ++i) {
-            uint8_t buf[512];
-            memset(buf, 0, 512);
-
-            kassert(disk->read(0x200, sizeof(buf), buf),
-                    "Disk read returned 0");
-
-            console *cons = console::get();
-            uint8_t *p = &buf[0];
-            for (int i = 0; i < 8; ++i) {
-                for (int j = 0; j < 16; ++j) {
-                    cons->printf(" %02x", *p++);
-                }
-                cons->putc('\n');
-            }
-        }
-    } else {
-        log::warn(logs::boot, "No block devices present.");
-    }
-    */
+    //g_com1.handle_interrupt();
 
     scheduler *sched = new scheduler {g_num_cpus};
     scheduler_ready = true;
@@ -186,7 +145,6 @@ kernel_main(bootproto::args *args)
     // Load the init server
     load_init_server(*args->init, args->modules);
 
-    sched->create_kernel_task(logger_task, scheduler::max_priority/4, true);
     sched->start();
 }
 

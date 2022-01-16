@@ -2,7 +2,7 @@
 #include "device_manager.h"
 #include "hpet.h"
 #include "io.h"
-#include "log.h"
+#include "logger.h"
 
 namespace {
     inline uint64_t volatile *capabilities(uint64_t volatile *base) { return base; }

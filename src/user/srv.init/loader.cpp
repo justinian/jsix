@@ -55,6 +55,12 @@ load_program(const module_program &prog, char *err_msg)
         return false;
     }
 
+    res = j6_process_give_handle(proc, handle_system, nullptr);
+    if (res != j6_status_ok) {
+        sprintf(err_msg, "  ** error loading program '%s': giving system handle: %lx", prog.filename, res);
+        return false;
+    }
+
     uintptr_t load_addr = load_addr_base;
 
     for (auto &seg : progelf.programs()) {

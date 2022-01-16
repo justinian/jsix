@@ -2,7 +2,7 @@
 #include <util/pointers.h>
 
 #include "cpu.h"
-#include "log.h"
+#include "logger.h"
 #include "memory.h"
 #include "objects/thread.h"
 #include "objects/process.h"

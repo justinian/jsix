@@ -2,7 +2,7 @@
 
 #include "assert.h"
 #include "frame_allocator.h"
-#include "log.h"
+#include "logger.h"
 #include "memory.h"
 
 using mem::frame_size;

@@ -7,7 +7,7 @@
 #include "idt.h"
 #include "interrupts.h"
 #include "io.h"
-#include "log.h"
+#include "logger.h"
 #include "memory.h"
 #include "objects/process.h"
 #include "printf/printf.h"

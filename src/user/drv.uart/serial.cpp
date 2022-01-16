@@ -1,16 +1,6 @@
 #include <string.h>
-#include <util/no_construct.h>
-
-#include "assert.h"
-#include "interrupts.h"
 #include "io.h"
 #include "serial.h"
-
-// This object is initialized _before_ global constructors are called,
-// so we don't want it to have global constructors at all, lest it
-// overwrite the previous initialization.
-static util::no_construct<serial_port> __g_com1_storage;
-serial_port &g_com1 = __g_com1_storage.value;
 
 constexpr size_t fifo_size = 64;
 
@@ -28,20 +18,13 @@ constexpr uint16_t MSR = 6;
 constexpr uint16_t DLL = 0; // DLAB == 1
 constexpr uint16_t DLH = 1; // DLAB == 1
 
-uint8_t com1_out_buffer[4096*4];
-uint8_t com1_in_buffer[512];
-
-serial_port::serial_port() :
-    m_writing(false),
-    m_port(0)
-{
-}
-
-serial_port::serial_port(uint16_t port) :
+serial_port::serial_port(uint16_t port,
+        size_t in_buffer_len, uint8_t *in_buffer,
+        size_t out_buffer_len, uint8_t *out_buffer) :
     m_writing(false),
     m_port(port),
-    m_out_buffer(com1_out_buffer, sizeof(com1_out_buffer)),
-    m_in_buffer(com1_in_buffer, sizeof(com1_in_buffer))
+    m_out_buffer(out_buffer, out_buffer_len),
+    m_in_buffer(in_buffer, in_buffer_len)
 {
     outb(port + IER, 0x00);  // Disable all interrupts
     outb(port + LCR, 0x80);  // Enable the Divisor Latch Access Bit
@@ -62,7 +45,6 @@ inline bool write_ready(uint16_t port) { return (inb(port + LSR) & 0x20) != 0; }
 void
 serial_port::handle_interrupt()
 {
-    interrupts_disable();
     uint8_t iir = inb(m_port + IIR);
 
     while ((iir & 1) == 0) {
@@ -74,11 +56,9 @@ serial_port::handle_interrupt()
                 break;
 
             case 1: // Transmit buffer empty
-                do_write();
-                break;
-
             case 2: // Received data available
-                do_read();
+                if (read_ready(m_port)) do_read();
+                if (write_ready(m_port)) do_write();
                 break;
 
             case 3: // Line status change
@@ -89,7 +69,6 @@ serial_port::handle_interrupt()
 
         iir = inb(m_port + IIR);
     }
-    interrupts_enable();
 }
 
 void
@@ -110,30 +89,39 @@ serial_port::do_read()
 void
 serial_port::do_write()
 {
-    uint8_t *data = nullptr;
-    uint8_t tmp[fifo_size];
+    // If another thread is writing data, just give up and
+    // try again later
+    util::scoped_trylock lock {m_lock};
+    if (!lock.locked())
+        return;
 
+    uint8_t *data = nullptr;
     size_t n = m_out_buffer.get_block(reinterpret_cast<void**>(&data));
 
     m_writing = (n > 0);
-    if (!m_writing)
+    if (!m_writing) {
+        m_out_buffer.consume(0);
         return;
+    }
 
     if (n > fifo_size)
         n = fifo_size;
 
-    memcpy(tmp, data, n);
-    m_out_buffer.consume(n);
-
-    for (size_t i = 0; i < n; ++i)
+    for (size_t i = 0; i < n; ++i) {
+        if (!write_ready(m_port)) {
+            n = i;
+            break;
+        }
         outb(m_port, data[i]);
+    }
 
+    m_out_buffer.consume(n);
 }
 
 void
 serial_port::handle_error(uint16_t reg, uint8_t value)
 {
-    kassert(false, "serial line error");
+    while (1) asm ("hlt");
 }
 
 char
@@ -147,17 +135,18 @@ serial_port::read()
     return c;
 }
 
-void
-serial_port::write(char c)
+size_t
+serial_port::write(const char *c, size_t len)
 {
     uint8_t *data = nullptr;
-    size_t avail = m_out_buffer.reserve(1, reinterpret_cast<void**>(&data));
-    if (!avail)
-        return;
-    *data = c;
-    m_out_buffer.commit(1);
+    size_t avail = m_out_buffer.reserve(len, reinterpret_cast<void**>(&data));
+
+    memcpy(data, c, avail);
+    m_out_buffer.commit(avail);
 
     if (!m_writing)
         do_write();
+
+    return avail;
 }
 

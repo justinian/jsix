@@ -1,7 +1,7 @@
 #include <j6/errors.h>
 #include <j6/types.h>
 
-#include "log.h"
+#include "logger.h"
 #include "objects/endpoint.h"
 #include "syscalls/helpers.h"
 

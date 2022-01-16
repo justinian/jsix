@@ -129,3 +129,5 @@ void fatal(logs area, const char *fmt, ...);
 extern log::logger &g_logger;
 
 } // namespace log
+
+void logger_init();

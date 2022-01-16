@@ -3,14 +3,16 @@
 #include <string.h>
 
 
-#include "console.h"
 #include "debug.h"
-#include "log.h"
+#include "logger.h"
 #include "syscall.h"
 
 extern "C" {
     void syscall_invalid(uint64_t call);
 }
+
+size_t __counter_syscall_enter = 0;
+size_t __counter_syscall_sysret = 0;
 
 /*[[[cog code generation
 from definitions.context import Context
@@ -27,12 +29,7 @@ uintptr_t syscall_registry[num_syscalls] __attribute__((section(".syscall_regist
 void
 syscall_invalid(uint64_t call)
 {
-    console *cons = console::get();
-    cons->set_color(9);
-    cons->printf("\nReceived unknown syscall: %02x\n", call);
-
-    cons->set_color();
-    _halt();
+    log::warn(logs::syscall, "Received unknown syscall: %02x\n", call);
 }
 
 void

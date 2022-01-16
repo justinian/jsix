@@ -4,10 +4,9 @@
 #include <util/no_construct.h>
 
 #include "assert.h"
-#include "console.h"
 #include "cpu.h"
 #include "gdt.h"
-#include "log.h"
+#include "logger.h"
 #include "tss.h"
 
 extern "C" void gdt_write(const void *gdt_ptr, uint16_t cs, uint16_t ds, uint16_t tr);
@@ -114,6 +113,7 @@ GDT::set_tss(TSS *tss)
     memcpy(&m_entries[tss_index], &tssd, sizeof(tss_descriptor));
 }
 
+/*
 void
 GDT::dump(unsigned index) const
 {
@@ -167,3 +167,4 @@ GDT::dump(unsigned index) const
                 (gdt[i].size & 0x60) == 0x40 ? "32" : "16");
     }
 }
+*/

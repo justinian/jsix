@@ -1,0 +1,12 @@
+# vim: ft=python
+
+module("drv.uart",
+    targets = [ "user" ],
+    deps = [ "libc", "util" ],
+    description = "UART driver",
+    sources = [
+        "io.cpp",
+        "main.cpp",
+        "serial.cpp",
+    ])
+

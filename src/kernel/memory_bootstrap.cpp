@@ -10,7 +10,7 @@
 #include "gdt.h"
 #include "heap_allocator.h"
 #include "io.h"
-#include "log.h"
+#include "logger.h"
 #include "memory.h"
 #include "msr.h"
 #include "objects/process.h"

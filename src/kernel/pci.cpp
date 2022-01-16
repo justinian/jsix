@@ -1,6 +1,5 @@
 #include "assert.h"
-#include "console.h"
-#include "log.h"
+#include "logger.h"
 #include "interrupts.h"
 #include "pci.h"
 
@@ -36,6 +35,7 @@ struct pci_cap_msi64
 } __attribute__ ((packed));
 
 
+/*
 void dump_msi(pci_cap_msi *cap)
 {
     auto cons = console::get();
@@ -62,6 +62,7 @@ void dump_msi(pci_cap_msi *cap)
     }
     cons->putc('\n');
 };
+*/
 
 pci_device::pci_device() :
     m_base(nullptr),

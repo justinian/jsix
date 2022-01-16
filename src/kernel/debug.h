@@ -18,11 +18,3 @@ extern "C" {
 
 extern size_t __counter_syscall_enter;
 extern size_t __counter_syscall_sysret;
-
-void print_regs(const cpu_state &regs);
-void print_stack(const cpu_state &regs);
-
-#define print_regL(name, value) cons->printf("       %s: %016lx", name, (value));
-#define print_regM(name, value) cons->printf("    %s: %016lx", name, (value));
-#define print_regR(name, value) cons->printf("    %s: %016lx\n", name, (value));
-

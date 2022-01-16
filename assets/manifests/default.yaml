@@ -6,4 +6,4 @@ programs:
     flags: panic
   - name: drv.uefi_fb
     flags: graphical
-  - name: testapp
+  - name: drv.uart

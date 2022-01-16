@@ -2,7 +2,6 @@
 #include <util/pointers.h>
 
 #include "assert.h"
-#include "console.h"
 #include "memory.h"
 #include "frame_allocator.h"
 #include "page_table.h"
@@ -259,6 +258,7 @@ page_table::free(page_table::level l)
 void
 page_table::dump(page_table::level lvl, bool recurse)
 {
+    /*
     console *cons = console::get();
 
     cons->printf("\nLevel %d page table @ %lx:\n", lvl, this);
@@ -289,4 +289,5 @@ page_table::dump(page_table::level lvl, bool recurse)
                 next->dump(deeper(lvl), true);
         }
     }
+    */
 }

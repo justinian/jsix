@@ -4,7 +4,7 @@
 #include "cpu.h"
 #include "device_manager.h"
 #include "frame_allocator.h"
-#include "log.h"
+#include "logger.h"
 #include "memory.h"
 #include "objects/endpoint.h"
 #include "objects/thread.h"

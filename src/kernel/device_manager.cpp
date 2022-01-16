@@ -7,13 +7,11 @@
 #include "acpi_tables.h"
 #include "apic.h"
 #include "clock.h"
-#include "console.h"
 #include "device_manager.h"
 #include "interrupts.h"
-#include "log.h"
+#include "logger.h"
 #include "memory.h"
 #include "objects/endpoint.h"
-#include "serial.h"
 
 
 static endpoint * const ignore_endpoint = reinterpret_cast<endpoint*>(-1ull);
@@ -378,11 +376,6 @@ device_manager::init_drivers()
 bool
 device_manager::dispatch_irq(unsigned irq)
 {
-    if (irq == 4) {
-        g_com1.handle_interrupt();
-        return true;
-    }
-
     if (irq >= m_irqs.count())
         return false;
 

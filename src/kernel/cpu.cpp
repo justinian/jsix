@@ -7,7 +7,7 @@
 #include "device_manager.h"
 #include "gdt.h"
 #include "idt.h"
-#include "log.h"
+#include "logger.h"
 #include "msr.h"
 #include "objects/thread.h"
 #include "objects/vm_area.h"

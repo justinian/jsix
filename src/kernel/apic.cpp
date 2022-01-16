@@ -3,7 +3,7 @@
 #include "clock.h"
 #include "interrupts.h"
 #include "io.h"
-#include "log.h"
+#include "logger.h"
 #include "memory.h"
 
 uint64_t lapic::s_ticks_per_us = 0;

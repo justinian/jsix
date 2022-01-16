@@ -2,7 +2,7 @@
 #include <j6/signals.h>
 #include <j6/types.h>
 
-#include "log.h"
+#include "logger.h"
 #include "objects/process.h"
 #include "objects/vm_area.h"
 #include "syscalls/helpers.h"

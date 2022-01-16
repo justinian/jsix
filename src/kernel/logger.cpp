@@ -1,11 +1,24 @@
 #include <string.h>
 
-#include <util/constexpr_hash.h>
+#include <util/no_construct.h>
 
 #include "assert.h"
 #include "logger.h"
+#include "memory.h"
 #include "objects/system.h"
 #include "printf/printf.h"
+
+static uint8_t log_buffer[128 * 1024];
+
+// The logger is initialized _before_ global constructors are called,
+// so that we can start log output immediately. Keep its constructor
+// from being called here so as to not overwrite the previous initialization.
+static util::no_construct<log::logger> __g_logger_storage;
+log::logger &g_logger = __g_logger_storage.value;
+
+// For printf.c
+extern "C" void putchar_(char c) {}
+
 
 namespace log {
 
@@ -131,3 +144,9 @@ void fatal(logs area, const char *fmt, ...)
 }
 
 } // namespace log
+
+
+void logger_init()
+{
+    new (&g_logger) log::logger(log_buffer, sizeof(log_buffer), nullptr);
+}

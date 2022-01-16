@@ -4,7 +4,7 @@
 
 #include "cpu.h"
 #include "idt.h"
-#include "log.h"
+#include "logger.h"
 
 extern "C" {
     void idt_write(const void *idt_ptr);
