@@ -1,11 +1,12 @@
 from .parser import Transformer, v_args
 
 def get_opts(args):
-    from .types import Description, Options, Type, UID
+    from .types import CName, Description, Options, Type, UID
 
     kinds = {
         Description: "desc",
         Options: "opts",
+        CName: "cname",
         UID: "uid",
         Type: "typename",
     }
@@ -88,6 +89,11 @@ class DefTransformer(Transformer):
     @v_args(inline=True)
     def uid(self, s):
         return s
+
+    @v_args(inline=True)
+    def cname(self, s):
+        from .types import CName
+        return CName(s)
 
     @v_args(inline=True)
     def name(self, s):

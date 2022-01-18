@@ -2,6 +2,7 @@ import "objects/process.def"
 
 object vma : kobject {
     uid d6a12b63b3ed3937
+    cname vm_area
 
     method create [constructor] {
         param size size

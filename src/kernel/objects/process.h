@@ -5,14 +5,23 @@
 #include <util/map.h>
 #include <util/vector.h>
 
+#include "objects/handle.h"
 #include "objects/kobject.h"
 #include "page_table.h"
 #include "vm_space.h"
+
+namespace obj {
 
 class process :
     public kobject
 {
 public:
+    /// Capabilities on a newly constructed process handle
+    constexpr static j6_cap_t creation_caps = 0;
+
+    /// Capabilities on a process to itself
+    constexpr static j6_cap_t self_caps = 0;
+
     /// Top of memory area where thread stacks are allocated
     constexpr static uintptr_t stacks_top = 0x0000800000000000;
 
@@ -51,8 +60,9 @@ public:
 
     /// Start tracking an object with a handle.
     /// \args obj  The object this handle refers to
+    /// \args caps The capabilities on this handle
     /// \returns   The new handle for this object
-    j6_handle_t add_handle(kobject *obj);
+    j6_handle_t add_handle(kobject *obj, j6_cap_t caps);
 
     /// Stop tracking an object with a handle.
     /// \args handle The handle that refers to the object
@@ -61,8 +71,8 @@ public:
 
     /// Lookup an object for a handle
     /// \args handle The handle to the object
-    /// \returns     Pointer to the object, or null if not found
-    kobject * lookup_handle(j6_handle_t handle);
+    /// \returns     Pointer to the handle struct, or null if not found
+    handle * lookup_handle(j6_handle_t handle);
 
     /// Inform the process of an exited thread
     /// \args th  The thread which has exited
@@ -90,9 +100,12 @@ private:
     vm_space m_space;
 
     util::vector<thread*> m_threads;
-    util::map<j6_handle_t, kobject*> m_handles;
+
     j6_handle_t m_next_handle;
+    util::map<j6_handle_t, handle> m_handles;
 
     enum class state : uint8_t { running, exited };
     state m_state;
 };
+
+} // namespace obj

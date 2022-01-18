@@ -2,13 +2,14 @@ from . import _indent
 from . import Options
 
 class Object:
-    def __init__(self, name, uid, typename=None, opts=Options(), desc="", children=tuple()):
+    def __init__(self, name, uid, typename=None, opts=Options(), desc="", children=tuple(), cname=None):
         self.name = name
         self.uid = uid
         self.options = opts
         self.desc = desc
         self.super = typename
         self.methods = children
+        self.cname = cname or name
 
         from . import ObjectRef
         self.__ref = ObjectRef(name)

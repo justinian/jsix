@@ -12,6 +12,8 @@
 #include "sysconf.h"
 #include "vm_space.h"
 
+using obj::vm_flags;
+
 // The initial memory for the array of areas for the kernel space
 constexpr size_t num_kernel_areas = 8;
 static uint64_t kernel_areas[num_kernel_areas * 2];
@@ -49,7 +51,7 @@ vm_space::vm_space() :
         m_pml4->entries[i] = kpml4->entries[i];
 
     // Every vm space has sysconf in it
-    vm_area *sysc = new vm_area_fixed(
+    obj::vm_area *sysc = new obj::vm_area_fixed(
             g_sysconf_phys,
             sizeof(system_config),
             vm_flags::none);
@@ -74,11 +76,11 @@ vm_space::~vm_space()
 vm_space &
 vm_space::kernel_space()
 {
-    return process::kernel_process().space();
+    return obj::process::kernel_process().space();
 }
 
 bool
-vm_space::add(uintptr_t base, vm_area *area)
+vm_space::add(uintptr_t base, obj::vm_area *area)
 {
     //TODO: check for collisions
     m_areas.sorted_insert({base, area});
@@ -88,7 +90,7 @@ vm_space::add(uintptr_t base, vm_area *area)
 }
 
 void
-vm_space::remove_area(vm_area *area)
+vm_space::remove_area(obj::vm_area *area)
 {
     area->remove_from(this);
     clear(*area, 0, mem::page_count(area->size()));
@@ -96,7 +98,7 @@ vm_space::remove_area(vm_area *area)
 }
 
 bool
-vm_space::remove(vm_area *area)
+vm_space::remove(obj::vm_area *area)
 {
     for (auto &a : m_areas) {
         if (a.area == area) {
@@ -109,7 +111,7 @@ vm_space::remove(vm_area *area)
 }
 
 bool
-vm_space::can_resize(const vm_area &vma, size_t size) const
+vm_space::can_resize(const obj::vm_area &vma, size_t size) const
 {
     uintptr_t base = 0;
     unsigned n = m_areas.count();
@@ -131,7 +133,7 @@ vm_space::can_resize(const vm_area &vma, size_t size) const
     return end <= space_end;
 }
 
-vm_area *
+obj::vm_area *
 vm_space::get(uintptr_t addr, uintptr_t *base)
 {
     for (auto &a : m_areas) {
@@ -145,7 +147,7 @@ vm_space::get(uintptr_t addr, uintptr_t *base)
 }
 
 bool
-vm_space::find_vma(const vm_area &vma, uintptr_t &base) const
+vm_space::find_vma(const obj::vm_area &vma, uintptr_t &base) const
 {
     for (auto &a : m_areas) {
         if (a.area != &vma) continue;
@@ -156,7 +158,7 @@ vm_space::find_vma(const vm_area &vma, uintptr_t &base) const
 }
 
 void
-vm_space::copy_from(const vm_space &source, const vm_area &vma)
+vm_space::copy_from(const vm_space &source, const obj::vm_area &vma)
 {
     uintptr_t to = 0;
     uintptr_t from = 0;
@@ -177,7 +179,7 @@ vm_space::copy_from(const vm_space &source, const vm_area &vma)
 }
 
 void
-vm_space::page_in(const vm_area &vma, uintptr_t offset, uintptr_t phys, size_t count)
+vm_space::page_in(const obj::vm_area &vma, uintptr_t offset, uintptr_t phys, size_t count)
 {
     using mem::frame_size;
     util::scoped_lock lock {m_lock};
@@ -205,7 +207,7 @@ vm_space::page_in(const vm_area &vma, uintptr_t offset, uintptr_t phys, size_t c
 }
 
 void
-vm_space::clear(const vm_area &vma, uintptr_t offset, size_t count, bool free)
+vm_space::clear(const obj::vm_area &vma, uintptr_t offset, size_t count, bool free)
 {
     using mem::frame_size;
     util::scoped_lock lock {m_lock};
@@ -245,7 +247,7 @@ vm_space::clear(const vm_area &vma, uintptr_t offset, size_t count, bool free)
 }
 
 uintptr_t
-vm_space::lookup(const vm_area &vma, uintptr_t offset)
+vm_space::lookup(const obj::vm_area &vma, uintptr_t offset)
 {
     uintptr_t base = 0;
     if (!find_vma(vma, base))
@@ -285,7 +287,7 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
         return false;
 
     uintptr_t base = 0;
-    vm_area *area = get(addr, &base);
+    obj::vm_area *area = get(addr, &base);
     if (!area)
         return false;
 

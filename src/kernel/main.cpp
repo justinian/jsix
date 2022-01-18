@@ -153,10 +153,11 @@ start_aps(lapic &apic, const util::vector<uint8_t> &ids, void *kpml4)
 {
     using mem::frame_size;
     using mem::kernel_stack_pages;
+    using obj::vm_flags;
 
     extern size_t ap_startup_code_size;
-    extern process &g_kernel_process;
-    extern vm_area_guarded &g_kernel_stacks;
+    extern obj::process &g_kernel_process;
+    extern obj::vm_area_guarded &g_kernel_stacks;
 
     clock &clk = clock::get();
 
@@ -173,7 +174,7 @@ start_aps(lapic &apic, const util::vector<uint8_t> &ids, void *kpml4)
     // Copy the startup code somwhere the real mode trampoline can run
     uintptr_t addr = 0x8000; // TODO: find a valid address, rewrite addresses
     uint8_t vector = addr >> 12;
-    vm_area *vma = new vm_area_fixed(addr, 0x1000, vm_flags::write);
+    obj::vm_area *vma = new obj::vm_area_fixed(addr, 0x1000, vm_flags::write);
     vm_space::kernel_space().add(addr, vma);
     memcpy(
         reinterpret_cast<void*>(addr),

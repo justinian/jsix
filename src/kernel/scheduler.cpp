@@ -20,6 +20,8 @@
 #include "objects/vm_area.h"
 #include "scheduler.h"
 
+using obj::process;
+using obj::thread;
 
 extern "C" void task_switch(TCB *tcb);
 scheduler *scheduler::s_instance = nullptr;

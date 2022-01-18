@@ -10,38 +10,41 @@
 namespace syscalls {
 
 template <typename T, typename... Args>
-T * construct_handle(j6_handle_t *handle, Args... args)
+T * construct_handle(j6_handle_t *id, Args... args)
 {
-    process &p = process::current();
+    obj::process &p = obj::process::current();
     T *o = new T {args...};
-    *handle = p.add_handle(o);
+    *id = p.add_handle(o, T::creation_caps);
     return o;
 }
 
 template <typename T>
-T * get_handle(j6_handle_t handle)
+obj::handle * get_handle(j6_handle_t id)
 {
-    process &p = process::current();
-    kobject *o = p.lookup_handle(handle);
-    if (!o || o->get_type() != T::type)
+    obj::process &p = obj::process::current();
+    obj::handle *h = p.lookup_handle(id);
+    if (!h || h->type() != T::type)
         return nullptr;
-    return static_cast<T*>(o);
+    return h;
 }
 
 template <>
-inline kobject * get_handle<kobject>(j6_handle_t handle)
+inline obj::handle * get_handle<obj::kobject>(j6_handle_t id)
 {
-    process &p = process::current();
-    return p.lookup_handle(handle);
+    obj::process &p = obj::process::current();
+    return p.lookup_handle(id);
 }
 
 template <typename T>
-T * remove_handle(j6_handle_t handle)
+T * remove_handle(j6_handle_t id)
 {
-    T *o = get_handle<T>(handle);
-    if (o) {
-        process &p = process::current();
-        p.remove_handle(handle);
+    obj::handle *h = get_handle<T>(id);
+    T *o = nullptr;
+
+    if (h) {
+        o = h->object;
+        obj::process &p = obj::process::current();
+        p.remove_handle(id);
     }
     return o;
 }

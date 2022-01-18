@@ -5,10 +5,13 @@
 class GDT;
 class IDT;
 class lapic;
-class process;
 struct TCB;
-class thread;
 class TSS;
+
+namespace obj {
+    class process;
+    class thread;
+}
 
 struct cpu_state
 {
@@ -47,8 +50,8 @@ struct cpu_data
     uintptr_t rsp3;
     uint64_t rflags3;
     TCB *tcb;
-    thread *thread;
-    process *process;
+    obj::thread *thread;
+    obj::process *process;
     IDT *idt;
     TSS *tss;
     GDT *gdt;

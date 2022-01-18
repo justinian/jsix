@@ -5,7 +5,9 @@
 #include "objects/channel.h"
 #include "objects/vm_area.h"
 
-extern vm_area_guarded g_kernel_buffers;
+extern obj::vm_area_guarded g_kernel_buffers;
+
+namespace obj {
 
 constexpr size_t buffer_bytes = mem::kernel_buffer_pages * mem::frame_size;
 
@@ -89,3 +91,5 @@ channel::on_no_handles()
     kobject::on_no_handles();
     delete this;
 }
+
+} // namespace obj

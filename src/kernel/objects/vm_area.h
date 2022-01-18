@@ -14,6 +14,9 @@
 class page_tree;
 class vm_space;
 
+
+namespace obj {
+
 enum class vm_flags : uint32_t
 {
 #define VM_FLAG(name, v) name = v,
@@ -22,6 +25,7 @@ enum class vm_flags : uint32_t
     driver_mask     = 0x000fffff, ///< flags allowed via syscall for drivers
     user_mask       = 0x0000ffff, ///< flags allowed via syscall for non-drivers
 };
+is_bitfield(vm_flags);
 
 
 /// Virtual memory areas allow control over memory allocation
@@ -29,6 +33,9 @@ class vm_area :
     public kobject
 {
 public:
+    /// Capabilities on a newly constructed vma handle
+    constexpr static j6_cap_t creation_caps = 0;
+
     static constexpr kobject::type type = kobject::type::vma;
 
     /// Constructor.
@@ -170,5 +177,4 @@ private:
     uintptr_t m_next;
 };
 
-
-is_bitfield(vm_flags);
+} // namespace obj

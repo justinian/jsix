@@ -22,6 +22,8 @@
 using bootproto::allocation_register;
 using bootproto::section_flags;
 
+using obj::vm_flags;
+
 extern "C" void initialize_main_thread();
 extern "C" uintptr_t initialize_main_user_stack();
 
@@ -34,13 +36,13 @@ heap_allocator &g_kernel_heap = __g_kernel_heap_storage.value;
 static util::no_construct<frame_allocator> __g_frame_allocator_storage;
 frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
 
-static util::no_construct<vm_area_untracked> __g_kernel_heap_area_storage;
-vm_area_untracked &g_kernel_heap_area = __g_kernel_heap_area_storage.value;
+static util::no_construct<obj::vm_area_untracked> __g_kernel_heap_area_storage;
+obj::vm_area_untracked &g_kernel_heap_area = __g_kernel_heap_area_storage.value;
 
-static util::no_construct<vm_area_guarded> __g_kernel_stacks_storage;
-vm_area_guarded &g_kernel_stacks = __g_kernel_stacks_storage.value;
+static util::no_construct<obj::vm_area_guarded> __g_kernel_stacks_storage;
+obj::vm_area_guarded &g_kernel_stacks = __g_kernel_stacks_storage.value;
 
-vm_area_guarded g_kernel_buffers {
+obj::vm_area_guarded g_kernel_buffers {
     mem::buffers_offset,
     mem::kernel_buffer_pages,
     mem::buffers_size,
@@ -81,15 +83,15 @@ memory_initialize_pre_ctors(bootproto::args &kargs)
         reg = reg->next;
     }
 
-    process *kp = process::create_kernel_process(kpml4);
+    obj::process *kp = obj::process::create_kernel_process(kpml4);
     vm_space &vm = kp->space();
 
-    vm_area *heap = new (&g_kernel_heap_area)
-        vm_area_untracked(mem::heap_size, vm_flags::write);
+    obj::vm_area *heap = new (&g_kernel_heap_area)
+        obj::vm_area_untracked(mem::heap_size, vm_flags::write);
 
     vm.add(mem::heap_offset, heap);
 
-    vm_area *stacks = new (&g_kernel_stacks) vm_area_guarded {
+    obj::vm_area *stacks = new (&g_kernel_stacks) obj::vm_area_guarded {
         mem::stacks_offset,
         mem::kernel_stack_pages,
         mem::stacks_size,
@@ -171,8 +173,8 @@ log_mtrrs()
 void
 load_init_server(bootproto::program &program, uintptr_t modules_address)
 {
-    process *p = new process;
-    p->add_handle(&system::get());
+    obj::process *p = new obj::process;
+    p->add_handle(&obj::system::get(), obj::system::init_caps);
 
     vm_space &space = p->space();
     for (const auto &sect : program.sections) {
@@ -180,15 +182,15 @@ load_init_server(bootproto::program &program, uintptr_t modules_address)
             ((sect.type && section_flags::execute) ? vm_flags::exec : vm_flags::none) |
             ((sect.type && section_flags::write) ? vm_flags::write : vm_flags::none);
 
-        vm_area *vma = new vm_area_fixed(sect.phys_addr, sect.size, flags);
+        obj::vm_area *vma = new obj::vm_area_fixed(sect.phys_addr, sect.size, flags);
         space.add(sect.virt_addr, vma);
     }
 
     uint64_t iopl = (3ull << 12);
 
-    thread *main = p->create_thread();
+    obj::thread *main = p->create_thread();
     main->add_thunk_user(program.entrypoint, 0, iopl);
-    main->set_state(thread::state::ready);
+    main->set_state(obj::thread::state::ready);
 
     // Hacky: No process exists to have created a stack for init; it needs to create
     // its own stack. We take advantage of that to use rsp to pass it the init modules

@@ -4,6 +4,21 @@
 #include <arch/memory.h>
 #include <j6/errors.h>
 #include <j6/types.h>
+#include <util/counted.h>
+
+#include "syscalls/helpers.h"
+
+/*[[[cog code generation
+from definitions.context import Context
+
+ctx = Context(definitions_path)
+ctx.parse("syscalls.def")
+syscalls = ctx.interfaces["syscalls"]
+
+for obj in syscalls.exposes:
+    cog.outl(f'#include "objects/{obj.object.cname}.h"')
+]]]*/
+//[[[end]]]
 
 namespace {
     template <typename T>
@@ -16,13 +31,9 @@ namespace {
 
 namespace syscalls {
 
+using util::buffer;
+
 /*[[[cog code generation
-from definitions.context import Context
-
-ctx = Context(definitions_path)
-ctx.parse("syscalls.def")
-syscalls = ctx.interfaces["syscalls"]
-
 cbool = {True: "true", False: "false"}
 
 for id, scope, method in syscalls.methods:
@@ -33,21 +44,40 @@ for id, scope, method in syscalls.methods:
 
     args = []
     argdefs = []
+    cxxargdefs = []
     refparams = []
+    handles = []
 
     if method.constructor:
-        argdefs.append("j6_handle_t *handle")
-        args.append("handle")
-        refparams.append(("handle", False))
+        argdefs.append("j6_handle_t *self")
+        cxxargdefs.append("j6_handle_t *self")
+        args.append("self")
+        refparams.append(("self", False))
+
     elif not method.static:
-        argdefs.append("j6_handle_t handle")
-        args.append("handle")
+        argdefs.append("j6_handle_t self")
+        cxxargdefs.append(f"obj::{scope.cname} *self")
+        args.append("self_obj")
+        handles.append((f"obj::{scope.cname} *", "self", "self_obj"))
 
     for param in method.params:
+        needs_obj = param.type.needs_object(param.options)
+
         for type, suffix in param.type.c_names(param.options):
             arg = f"{param.name}{suffix}"
             argdefs.append(f"{type} {arg}")
-            args.append(arg)
+
+        for type, suffix in param.type.cxx_names(param.options):
+            arg = f"{param.name}{suffix}"
+            cxxargdefs.append(f"{type} {arg}")
+
+            if needs_obj:
+                oarg = f"{arg}_obj"
+                handles.append((type, arg, oarg))
+                args.append(oarg)
+            else:
+                args.append(arg)
+
 
         if param.refparam:
             subs = param.type.c_names(param.options)
@@ -56,7 +86,7 @@ for id, scope, method in syscalls.methods:
                 for sub in subs[1:]:
                     refparams.append((param.name + sub[1], param.optional))
 
-    cog.outl(f"""extern j6_status_t {name} ({", ".join(argdefs)});""")
+    cog.outl(f"""j6_status_t {name} ({", ".join(cxxargdefs)});""")
     cog.outl(f"""j6_status_t _syscall_verify_{name} ({", ".join(argdefs)}) {{""")
 
     for pname, optional in refparams:
@@ -64,7 +94,17 @@ for id, scope, method in syscalls.methods:
         cog.outl( "        return j6_err_invalid_arg;")
         cog.outl()
 
-    cog.outl(f"""    return syscalls::{name}({", ".join(args)});""")
+    for type, inarg, outarg in handles:
+        if type.endswith('*'):
+            type = type[:-1].strip()
+
+        cog.outl(f"    obj::handle *{inarg}_handle = get_handle<typename {type}>({inarg});")
+        cog.outl(f"    if (!{inarg}_handle) return j6_err_invalid_arg;")
+        cog.outl(f"    {type} *{outarg} = {inarg}_handle->as<typename {type}>();")
+        cog.outl(f"    if (!{outarg}) return j6_err_invalid_arg;")
+        cog.outl()
+
+    cog.outl(f"""    return {name}({", ".join(args)});""")
     cog.outl("}")
     cog.outl("\n")
 ]]]*/

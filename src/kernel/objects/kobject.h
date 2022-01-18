@@ -7,6 +7,8 @@
 #include <j6/types.h>
 #include <util/vector.h>
 
+namespace obj {
+
 class thread;
 
 /// Base type for all user-interactable kernel objects
@@ -98,3 +100,5 @@ private:
 protected:
     util::vector<thread*> m_blocked_threads;
 };
+
+} // namespace obj

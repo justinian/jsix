@@ -10,9 +10,12 @@
 
 #include "page_table.h"
 
-class process;
 struct TCB;
-class vm_area;
+
+namespace obj {
+    class process;
+    class vm_area;
+}
 
 /// Tracks a region of virtual memory address space
 class vm_space
@@ -31,18 +34,18 @@ public:
     /// \arg base  The starting address of the area
     /// \arg area  The area to add
     /// \returns   True if the add succeeded
-    bool add(uintptr_t base, vm_area *area);
+    bool add(uintptr_t base, obj::vm_area *area);
 
     /// Remove a virtual memory area from this address space
     /// \arg area  The area to remove
     /// \returns   True if the area was removed
-    bool remove(vm_area *area);
+    bool remove(obj::vm_area *area);
 
     /// Get the virtual memory area corresponding to an address
     /// \arg addr  The address to check
     /// \arg base  [out] if not null, receives the base address of the area
     /// \returns   The vm_area, or nullptr if not found
-    vm_area * get(uintptr_t addr, uintptr_t *base = nullptr);
+    obj::vm_area * get(uintptr_t addr, uintptr_t *base = nullptr);
 
     /// Check if this is the kernel space
     inline bool is_kernel() const { return m_kernel; }
@@ -55,17 +58,17 @@ public:
     /// \arg offset Offset of the starting virutal address from the VMA base
     /// \arg phys   The starting physical address
     /// \arg count  The number of contiugous physical pages to map
-    void page_in(const vm_area &area, uintptr_t offset, uintptr_t phys, size_t count);
+    void page_in(const obj::vm_area &area, uintptr_t offset, uintptr_t phys, size_t count);
 
     /// Clear mappings from the given region
     /// \arg area   The VMA these mappings applies to
     /// \arg offset Offset of the starting virutal address from the VMA base
     /// \arg count  The number of pages worth of mappings to clear
     /// \arg free   If true, free the pages back to the system
-    void clear(const vm_area &vma, uintptr_t start, size_t count, bool free = false);
+    void clear(const obj::vm_area &vma, uintptr_t start, size_t count, bool free = false);
 
     /// Look up the address of a given VMA's offset
-    uintptr_t lookup(const vm_area &vma, uintptr_t offset);
+    uintptr_t lookup(const obj::vm_area &vma, uintptr_t offset);
 
     /// Check if this space is the current active space
     bool active() const;
@@ -108,26 +111,26 @@ public:
     static size_t copy(vm_space &source, vm_space &dest, const void *from, void *to, size_t length);
 
 private:
-    friend class vm_area;
+    friend class obj::vm_area;
 
     /// Find a given VMA in this address space
-    bool find_vma(const vm_area &vma, uintptr_t &base) const;
+    bool find_vma(const obj::vm_area &vma, uintptr_t &base) const;
 
     /// Check if a VMA can be resized
-    bool can_resize(const vm_area &vma, size_t size) const;
+    bool can_resize(const obj::vm_area &vma, size_t size) const;
 
     /// Copy a range of mappings from the given address space 
-    void copy_from(const vm_space &source, const vm_area &vma);
+    void copy_from(const vm_space &source, const obj::vm_area &vma);
 
     /// Remove an area's mappings from this space
-    void remove_area(vm_area *area);
+    void remove_area(obj::vm_area *area);
 
     bool m_kernel;
     page_table *m_pml4;
 
     struct area {
         uintptr_t base;
-        vm_area *area;
+        obj::vm_area *area;
         int compare(const struct area &o) const;
         bool operator==(const struct area &o) const;
     };

@@ -11,3 +11,5 @@ class Type:
     def cxx_names(self, options):
         raise NotImplemented("Call to base Type.c_names")
 
+    def needs_object(self, options):
+        return False

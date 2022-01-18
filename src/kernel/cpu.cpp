@@ -73,10 +73,10 @@ cpu_init(cpu_data *cpu, bool bsp)
     }
 
     // Set the initial process as the kernel "process"
-    extern process &g_kernel_process;
+    extern obj::process &g_kernel_process;
     cpu->process = &g_kernel_process;
 
-    thread *idle = thread::create_idle_thread(
+    obj::thread *idle = obj::thread::create_idle_thread(
             g_kernel_process,
             scheduler::max_priority,
             cpu->rsp0);

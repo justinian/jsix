@@ -6,6 +6,8 @@
 #include "page_tree.h"
 #include "vm_space.h"
 
+namespace obj {
+
 using mem::frame_size;
 
 vm_area::vm_area(size_t size, vm_flags flags) :
@@ -184,3 +186,5 @@ vm_area_guarded::get_page(uintptr_t offset, uintptr_t &phys)
 
     return vm_area_open::get_page(offset, phys);
 }
+
+} // namespace obj

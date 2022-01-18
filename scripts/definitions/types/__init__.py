@@ -2,6 +2,7 @@ def _indent(x):
     from textwrap import indent
     return indent(str(x), '    ')
 
+class CName(str): pass
 class Description(str): pass
 class Import(str): pass
 

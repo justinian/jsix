@@ -17,18 +17,10 @@ object process : kobject {
         param result int32    # The result to retrun to the parent process
     }
 
-    # Start the given process running. Note that the entrypoint
-    # address must be specified in the address space of the new
-    # process.
-    method start {
-        param entrypoint address            # The address of the main thread entrypoint
-        param handles object kobject [list] # A list of parent handles to send to the child process
-    }
-
     # Give the given process a handle that points to the same
     # object as the specified handle.
     method give_handle {
-        param sender object kobject                   # A handle in the caller process to send
-        param receiver object kobject [out optional]  # The handle as the recipient will see it
+        param target object kobject [handle]           # A handle in the caller process to send
+        param received object kobject [out optional]  # The handle as the recipient will see it
     }
 }

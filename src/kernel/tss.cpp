@@ -44,7 +44,7 @@ TSS::ist_stack(unsigned ist)
 void
 TSS::create_ist_stacks(uint8_t ist_entries)
 {
-    extern vm_area_guarded &g_kernel_stacks;
+    extern obj::vm_area_guarded &g_kernel_stacks;
     using mem::frame_size;
     using mem::kernel_stack_pages;
     constexpr size_t stack_bytes = kernel_stack_pages * frame_size;

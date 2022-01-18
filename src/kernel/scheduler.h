@@ -12,10 +12,13 @@ namespace args {
 
 struct cpu_data;
 class lapic;
-class process;
 struct page_table;
 struct run_queue;
 
+namespace obj {
+    class process;
+    class thread;
+}
 
 /// The task scheduler
 class scheduler
@@ -47,7 +50,7 @@ public:
     /// Create a new process from a program image in memory.
     /// \arg program  The descriptor of the pogram in memory
     /// \returns      The main thread of the loaded process
-    thread * load_process(kernel::args::program &program);
+    obj::thread * load_process(kernel::args::program &program);
 
     /// Create a new kernel task
     /// \arg proc     Function to run as a kernel task
@@ -77,7 +80,7 @@ public:
     static scheduler & get() { return *s_instance; }
 
 private:
-    friend class process;
+    friend class obj::process;
 
     static constexpr uint64_t promote_frequency = 10;
     static constexpr uint64_t steal_frequency = 10;
@@ -89,7 +92,7 @@ private:
     uint32_t m_next_pid;
     uint32_t m_tick_count;
 
-    process *m_kernel_process;
+    obj::process *m_kernel_process;
 
     util::vector<run_queue> m_run_queues;
 

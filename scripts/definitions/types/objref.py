@@ -20,11 +20,10 @@ class ObjectRef(Type):
 
         if "list" in options:
             two = "size_t"
+            one = f"{one} *"
+
             if out:
-                one = f"const {one} *"
                 two += " *"
-            else:
-                one = f"{one} *"
             return ((one, ""), (two, "_count"))
 
         else:
@@ -33,7 +32,13 @@ class ObjectRef(Type):
             return ((one, ""),)
 
     def cxx_names(self, options):
-        return self.c_names(options)
+        if not self.needs_object(options):
+            return self.c_names(options)
+        return ((f"obj::{self.name} *", ""),)
+
+    def needs_object(self, options):
+        return not bool({"out", "inout", "list", "handle"}.intersection(options))
+
 
     @classmethod
     def connect(cls, objects):

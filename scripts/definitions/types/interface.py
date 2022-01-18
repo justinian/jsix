@@ -30,7 +30,8 @@ class Interface:
         parts.extend(map(_indent, self.functions))
         return "\n".join(parts)
 
-    def __methods(self):
+    @property
+    def methods(self):
         mm = [(i, None, self.functions[i]) for i in range(len(self.functions))]
 
         base = len(mm)
@@ -39,5 +40,3 @@ class Interface:
             base += len(o.methods)
 
         return mm
-
-    methods = property(__methods)

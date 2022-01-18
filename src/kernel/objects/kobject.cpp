@@ -6,7 +6,8 @@
 #include "objects/kobject.h"
 #include "objects/thread.h"
 
-// TODO: per-cpu this?
+namespace obj {
+
 static j6_koid_t next_koids [static_cast<size_t>(kobject::type::max)] = { 0 };
 
 kobject::kobject(type t, j6_signal_t signals) :
@@ -26,7 +27,8 @@ kobject::koid_generate(type t)
 {
     kassert(t < type::max, "Object type out of bounds");
     uint64_t type_int = static_cast<uint64_t>(t);
-    return (type_int << 48) | next_koids[type_int]++;
+    uint64_t id = __atomic_fetch_add(&next_koids[type_int], 1, __ATOMIC_SEQ_CST);
+    return (type_int << 48) | id;
 }
 
 kobject::type
@@ -74,3 +76,5 @@ kobject::on_no_handles()
 {
     assert_signal(j6_signal_no_handles);
 }
+
+} // namespace obj

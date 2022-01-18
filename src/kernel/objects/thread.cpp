@@ -10,9 +10,12 @@
 #include "scheduler.h"
 
 extern "C" void kernel_to_user_trampoline();
-static constexpr j6_signal_t thread_default_signals = 0;
+extern obj::vm_area_guarded &g_kernel_stacks;
 
-extern vm_area_guarded &g_kernel_stacks;
+
+namespace obj {
+
+static constexpr j6_signal_t thread_default_signals = 0;
 
 thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
     kobject(kobject::type::thread, thread_default_signals),
@@ -32,7 +35,7 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
         m_tcb.rsp0 = rsp0;
 
     m_creator = current_cpu().thread;
-    m_self_handle = parent.add_handle(this);
+    m_self_handle = parent.add_handle(this, thread::parent_caps);
 }
 
 thread::~thread()
@@ -246,3 +249,5 @@ thread::create_idle_thread(process &kernel, uint8_t pri, uintptr_t rsp0)
     idle->set_state(state::ready);
     return idle;
 }
+
+} // namespace obj

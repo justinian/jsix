@@ -86,7 +86,7 @@ logger::output(level severity, logs area, const char *fmt, va_list args)
     memcpy(out, buffer, n);
     m_buffer.commit(n);
 
-    system &sys = system::get();
+    obj::system &sys = obj::system::get();
     sys.assert_signal(j6_signal_system_has_log);
 }
 

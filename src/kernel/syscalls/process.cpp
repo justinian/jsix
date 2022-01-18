@@ -5,41 +5,25 @@
 #include "objects/process.h"
 #include "syscalls/helpers.h"
 
+using namespace obj;
+
 namespace syscalls {
 
 j6_status_t
-process_create(j6_handle_t *handle)
+process_create(j6_handle_t *self)
 {
-    process *child = construct_handle<process>(handle);
-    log::debug(logs::task, "Process %llx created", child->koid());
+    process *p = construct_handle<process>(self);
+    log::debug(logs::task, "Process %llx created", p->koid());
     return j6_status_ok;
 }
 
 j6_status_t
-process_start(j6_handle_t handle, uintptr_t entrypoint, j6_handle_t * handles, size_t handles_count)
+process_kill(process *self)
 {
     process &p = process::current();
-    process *c = get_handle<process>(handle);
-    if (handles_count && !handles)
-        return j6_err_invalid_arg;
 
-    for (size_t i = 0; i < handles_count; ++i) {
-        kobject *o = p.lookup_handle(handles[i]);
-        if (o) c->add_handle(o);
-    }
-
-    return j6_err_nyi;
-}
-
-j6_status_t
-process_kill(j6_handle_t handle)
-{
-    process &p = process::current();
-    process *c = get_handle<process>(handle);
-    if (!c) return j6_err_invalid_arg;
-
-    log::debug(logs::task, "Process %llx killed by process %llx", c->koid(), p.koid());
-    c->exit(-1u);
+    log::debug(logs::task, "Process %llx killed by process %llx", self->koid(), p.koid());
+    self->exit(-1u);
 
     return j6_status_ok;
 }
@@ -57,16 +41,13 @@ process_exit(int32_t status)
 }
 
 j6_status_t
-process_give_handle(j6_handle_t handle, j6_handle_t sender, j6_handle_t *receiver)
+process_give_handle(process *self, j6_handle_t target, j6_handle_t *received)
 {
-    process *dest = get_handle<process>(handle);
-    if (!dest) return j6_err_invalid_arg;
+    handle *target_handle = get_handle<kobject>(target);
+    j6_handle_t out = self->add_handle(target_handle->object, target_handle->caps);
 
-    kobject *o = get_handle<kobject>(sender);
-    j6_handle_t out = dest->add_handle(o);
-
-    if (receiver)
-        *receiver = out;
+    if (received)
+        *received = out;
     return j6_status_ok;
 }
 

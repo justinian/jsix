@@ -7,11 +7,16 @@
 
 #include "objects/kobject.h"
 
+namespace obj {
+
 /// Channels are bi-directional means of sending messages
 class channel :
     public kobject
 {
 public:
+    /// Capabilities on a newly constructed channel handle
+    constexpr static j6_cap_t creation_caps = 0;
+
     channel();
     virtual ~channel();
 
@@ -48,3 +53,5 @@ private:
     uintptr_t m_data;
     util::bip_buffer m_buffer;
 };
+
+} // namespace obj

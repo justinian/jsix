@@ -125,7 +125,7 @@ isr_handler(cpu_state *regs)
                 static_cast<vm_space::fault_type>(regs->errorcode);
 
             vm_space &space = user
-                ? process::current().space()
+                ? obj::process::current().space()
                 : vm_space::kernel_space();
 
             if (cr2 && space.handle_fault(cr2, ft))

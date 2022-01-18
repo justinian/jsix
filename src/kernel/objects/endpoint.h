@@ -7,11 +7,16 @@
 
 #include "objects/kobject.h"
 
+namespace obj {
+
 /// Endpoints are objects that enable synchronous message-passing IPC
 class endpoint :
     public kobject
 {
 public:
+    /// Capabilities on a newly constructed endpoint handle
+    constexpr static j6_cap_t creation_caps = 0;
+
     endpoint();
     virtual ~endpoint();
 
@@ -69,3 +74,5 @@ private:
 
     util::vector<thread_data> m_blocked;
 };
+
+} // namespace obj

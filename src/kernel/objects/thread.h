@@ -9,7 +9,10 @@
 #include "objects/kobject.h"
 
 struct page_table;
-class process;
+
+namespace obj {
+    class thread;
+}
 
 struct TCB
 {
@@ -22,7 +25,7 @@ struct TCB
     uintptr_t pml4;
     // End of area used by asembly
 
-    thread* thread;
+    obj::thread* thread;
 
     uint8_t priority;
     // note: 3 bytes padding
@@ -38,6 +41,9 @@ struct TCB
 using tcb_list = util::linked_list<TCB>;
 using tcb_node = tcb_list::item_type;
 
+
+namespace obj {
+
 enum class wait_type : uint8_t
 {
     none   = 0x00,
@@ -47,10 +53,17 @@ enum class wait_type : uint8_t
 };
 is_bitfield(wait_type);
 
+class process;
+
 class thread :
     public kobject
 {
 public:
+    /// Capabilities on a newly constructed thread handle
+    constexpr static j6_cap_t creation_caps = 0;
+
+    /// Capabilities the parent process gets on new thread handles
+    constexpr static j6_cap_t parent_caps = 0;
 
     enum class state : uint8_t {
         ready    = 0x01,
@@ -203,3 +216,5 @@ private:
 
     j6_handle_t m_self_handle;
 };
+
+} // namespace obj

@@ -14,7 +14,7 @@
 #include "objects/endpoint.h"
 
 
-static endpoint * const ignore_endpoint = reinterpret_cast<endpoint*>(-1ull);
+static obj::endpoint * const ignore_endpoint = reinterpret_cast<obj::endpoint*>(-1ull);
 
 static const char expected_signature[] = "RSD PTR ";
 
@@ -380,7 +380,7 @@ device_manager::dispatch_irq(unsigned irq)
     if (irq >= m_irqs.count())
         return false;
 
-    endpoint *e = m_irqs[irq];
+    obj::endpoint *e = m_irqs[irq];
     if (!e || e == ignore_endpoint)
         return e == ignore_endpoint;
 
@@ -389,7 +389,7 @@ device_manager::dispatch_irq(unsigned irq)
 }
 
 bool
-device_manager::bind_irq(unsigned irq, endpoint *target)
+device_manager::bind_irq(unsigned irq, obj::endpoint *target)
 {
     // TODO: grow if under max size
     if (irq >= m_irqs.count())
@@ -400,7 +400,7 @@ device_manager::bind_irq(unsigned irq, endpoint *target)
 }
 
 void
-device_manager::unbind_irqs(endpoint *target)
+device_manager::unbind_irqs(obj::endpoint *target)
 {
     const size_t count = m_irqs.count();
     for (size_t i = 0; i < count; ++i) {

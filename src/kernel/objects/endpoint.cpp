@@ -5,6 +5,8 @@
 #include "objects/thread.h"
 #include "vm_space.h"
 
+namespace obj {
+
 endpoint::endpoint() :
     kobject {kobject::type::endpoint}
 {}
@@ -135,3 +137,5 @@ endpoint::do_message_copy(const endpoint::thread_data &sender, endpoint::thread_
 
     return j6_status_ok;
 }
+
+} // namespace obj

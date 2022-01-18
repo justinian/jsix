@@ -7,19 +7,22 @@
 #include "objects/vm_area.h"
 #include "scheduler.h"
 
+
 // This object is initialized _before_ global constructors are called,
 // so we don't want it to have a global constructor at all, lest it
 // overwrite the previous initialization.
-static util::no_construct<process> __g_kernel_process_storage;
-process &g_kernel_process = __g_kernel_process_storage.value;
+static util::no_construct<obj::process> __g_kernel_process_storage;
+obj::process &g_kernel_process = __g_kernel_process_storage.value;
 
+
+namespace obj {
 
 process::process() :
     kobject {kobject::type::process},
     m_next_handle {1},
     m_state {state::running}
 {
-    j6_handle_t self = add_handle(this);
+    j6_handle_t self = add_handle(this, process::self_caps);
     kassert(self == self_handle(), "Process self-handle is not 1");
 }
 
@@ -34,8 +37,6 @@ process::process(page_table *kpml4) :
 
 process::~process()
 {
-    for (auto &it : m_handles)
-        if (it.val) it.val->handle_release();
 }
 
 process & process::current() { return *current_cpu().process; }
@@ -123,27 +124,27 @@ process::thread_exited(thread *th)
 }
 
 j6_handle_t
-process::add_handle(kobject *obj)
+process::add_handle(kobject *obj, j6_cap_t caps)
 {
     if (!obj)
         return j6_handle_invalid;
 
-    obj->handle_retain();
-    j6_handle_t handle = m_next_handle++;
-    m_handles.insert(handle, obj);
-    return handle;
+    j6_handle_t id = m_next_handle++;
+    m_handles.insert(id, {id, obj, caps});
+
+    return id;
 }
 
 bool
-process::remove_handle(j6_handle_t handle)
+process::remove_handle(j6_handle_t id)
 {
-    kobject *obj = m_handles.find(handle);
-    if (obj) obj->handle_release();
-    return m_handles.erase(handle);
+    return m_handles.erase(id);
 }
 
-kobject *
-process::lookup_handle(j6_handle_t handle)
+handle *
+process::lookup_handle(j6_handle_t id)
 {
-    return m_handles.find(handle);
+    return m_handles.find(id);
 }
+
+} // namespace obj

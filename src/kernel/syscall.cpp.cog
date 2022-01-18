@@ -41,9 +41,9 @@ namespace syscalls
 
         args = []
         if method.constructor:
-            args.append("j6_handle_t *handle")
+            args.append("j6_handle_t *self")
         elif not method.static:
-            args.append("j6_handle_t handle")
+            args.append("j6_handle_t self")
 
         for param in method.params:
             for type, suffix in param.type.c_names(param.options):
