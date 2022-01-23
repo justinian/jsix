@@ -38,9 +38,12 @@ def stack_walk(frame, depth):
         except RuntimeError:
             pass
 
-        print("{:016x}: {:016x} {}".format(int(frame), int(ret), name))
+        try:
+            print("{:016x}: {:016x} {}".format(int(frame), int(ret), name))
+            frame = int(gdb.parse_and_eval(f"*(uint64_t*)({frame:#x})"))
+        except gdb.MemoryError:
+            return
 
-        frame = int(gdb.parse_and_eval(f"*(uint64_t*)({frame:#x})"))
         if frame == 0 or ret == 0:
             return
 
@@ -133,8 +136,22 @@ class TableWalkCommand(gdb.Command):
 
 
 class GetThreadsCommand(gdb.Command):
+    FLAGS = {
+        "ready":    0x01,
+        "loading":  0x02,
+        "exited":   0x04,
+        "constant": 0x80,
+    }
+
     def __init__(self):
         super().__init__("j6threads", gdb.COMMAND_DATA)
+
+    def get_flags(self, bitset):
+        flags = []
+        for k, v in GetThreadsCommand.FLAGS.items():
+            if bitset & v:
+                flags.append(k)
+        return " ".join(flags)
 
     def print_thread(self, addr):
         if addr == 0:
@@ -146,6 +163,7 @@ class GetThreadsCommand(gdb.Command):
         stack = int(gdb.parse_and_eval(f"{tcb}->kernel_stack"))
         rsp = int(gdb.parse_and_eval(f"{tcb}->rsp"))
         pri = int(gdb.parse_and_eval(f"{tcb}->priority"))
+        flags = int(gdb.parse_and_eval(f"{thread}->m_state"))
         koid = int(gdb.parse_and_eval(f"{thread}->m_koid"))
         proc = int(gdb.parse_and_eval(f"{thread}->m_parent.m_koid"))
 
@@ -159,6 +177,7 @@ class GetThreadsCommand(gdb.Command):
         print(f"  Thread {proc:x}:{koid:x}")
         print(f"         creator: {creator}")
         print(f"        priority: {pri}")
+        print(f"           flags: {self.get_flags(flags)}")
         print(f"          kstack: {stack:#x}")
         print(f"             rsp: {rsp:#x}")
         print("------------------------------------")
