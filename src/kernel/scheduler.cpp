@@ -163,7 +163,7 @@ scheduler::check_promotions(run_queue &queue, uint64_t now)
 {
     for (auto &pri_list : queue.ready) {
         for (auto *tcb : pri_list) {
-            const thread *th = queue.current->thread;
+            const thread *th = tcb->thread;
             const bool constant = th->has_state(thread::state::constant);
             if (constant)
                 continue;
