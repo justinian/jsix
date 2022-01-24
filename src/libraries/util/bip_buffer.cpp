@@ -71,16 +71,16 @@ void bip_buffer::commit(size_t size)
     scoped_lock lock {m_lock};
 
     assert(size <= m_size_r && "Tried to commit more than reserved");
-
-    if (m_start_r == m_start_a + m_size_a) {
-        // We were adding to A
-        m_size_a += size;
-    } else {
-        // We were adding to B
-        assert(m_start_r == m_start_b + m_size_b && "Bad m_start_r!");
-        m_size_b += size;
+    if (m_size_r) {
+        if (m_start_r == m_start_a + m_size_a) {
+            // We were adding to A
+            m_size_a += size;
+        } else {
+            // We were adding to B
+            assert(m_start_r == m_start_b + m_size_b && "Bad m_start_r!");
+            m_size_b += size;
+        }
     }
-
     m_start_r = m_size_r = 0;
 }
 
@@ -98,9 +98,16 @@ void bip_buffer::consume(size_t size)
 
     assert(size <= m_size_a && "Consumed more bytes than exist in A");
     if (size >= m_size_a) {
-        m_size_a = m_size_b;
-        m_start_a = m_start_b;
-        m_size_b = m_start_b = 0;
+        if (m_size_r && m_start_r == m_start_a + m_size_a) {
+            // A is still being appended to
+            m_start_a = m_start_r;
+            m_size_a = 0;
+        } else {
+            // A is done, B becomes A
+            m_size_a = m_size_b;
+            m_start_a = m_start_b;
+            m_size_b = m_start_b = 0;
+        }
     } else {
         m_size_a -= size;
         m_start_a += size;
