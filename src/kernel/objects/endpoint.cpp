@@ -1,3 +1,4 @@
+#include "assert.h"
 #include "clock.h"
 #include "device_manager.h"
 #include "objects/endpoint.h"
@@ -22,6 +23,8 @@ endpoint::close()
 {
     kobject::close();
 
+    util::scoped_lock lock {m_lock};
+
     for (auto &data : m_blocked) {
         if (data.th)
             data.th->wake_on_result(this, j6_status_closed);
@@ -37,9 +40,13 @@ endpoint::send(j6_tag_t tag, const void *data, size_t data_len)
     sender.len = data_len;
     sender.tag = tag;
 
+    util::scoped_lock lock {m_lock};
+
     if (!check_signal(j6_signal_endpoint_can_send)) {
         assert_signal(j6_signal_endpoint_can_recv);
         m_blocked.append(sender);
+
+        lock.release();
         sender.th->wait_on_object(this);
 
         // we woke up having already finished the send
@@ -68,9 +75,13 @@ endpoint::receive(j6_tag_t *tag, void *data, size_t *data_len, uint64_t timeout)
     if (timeout)
         timeout += clock::get().value();
 
+    util::scoped_lock lock {m_lock};
+
     if (!check_signal(j6_signal_endpoint_can_recv)) {
         assert_signal(j6_signal_endpoint_can_send);
         m_blocked.append(receiver);
+
+        lock.release();
         receiver.th->wait_on_object(this, timeout);
 
         // we woke up having already finished the recv
@@ -96,6 +107,8 @@ endpoint::signal_irq(unsigned irq)
 {
     j6_tag_t tag = j6_tag_from_irq(irq);
 
+    util::scoped_lock lock {m_lock};
+
     if (!check_signal(j6_signal_endpoint_can_send)) {
         assert_signal(j6_signal_endpoint_can_recv);
 
@@ -110,6 +123,9 @@ endpoint::signal_irq(unsigned irq)
     }
 
     thread_data receiver = m_blocked.pop_front();
+    kassert(receiver.len_p && receiver.tag_p,
+            "endpoint had can_send but m_blocked was empty");
+
     if (m_blocked.count() == 0)
         deassert_signal(j6_signal_endpoint_can_send);
 

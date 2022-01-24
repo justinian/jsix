@@ -3,6 +3,7 @@
 /// Definition of endpoint kobject types
 
 #include <j6/signals.h>
+#include <util/spinlock.h>
 #include <util/vector.h>
 
 #include "objects/kobject.h"
@@ -72,6 +73,7 @@ private:
 
     j6_status_t do_message_copy(const thread_data &sender, thread_data &receiver);
 
+    util::spinlock m_lock;
     util::vector<thread_data> m_blocked;
 };
 
