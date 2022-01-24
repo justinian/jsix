@@ -12,3 +12,4 @@ sysroot
 .peru
 __pycache__
 /venv
+compile_commands.json

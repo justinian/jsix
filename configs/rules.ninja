@@ -76,3 +76,6 @@ rule strip
 
 rule touch
     command = touch $out
+
+rule compdb
+    command = ninja -t compdb > $out

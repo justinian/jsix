@@ -141,7 +141,7 @@ class Module:
 
             inputs = []
             parse_deps = []
-            parse_dep = "${module_dir}/.parse_dep.phony"
+            parse_depfile = "${module_dir}/.parse_dep.phony"
 
             for start in self.sources:
                 source = start
@@ -150,7 +150,7 @@ class Module:
                     output = source.output
 
                     if source.action.parse_deps:
-                        oodeps = [parse_dep]
+                        oodeps = [parse_depfile]
                     else:
                         oodeps = []
 
@@ -177,7 +177,7 @@ class Module:
             build.newline()
             build.build(
                 rule = "touch",
-                outputs = [parse_dep],
+                outputs = [parse_depfile],
                 implicit = child_deps,
                 order_only = parse_deps,
             )

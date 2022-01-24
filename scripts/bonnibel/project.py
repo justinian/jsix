@@ -142,6 +142,8 @@ class Project:
                 build.default([out])
                 build.newline()
 
+            compdb = "${source_root}/compile_commands.json"
+
             build.rule("regen",
                 command = " ".join([str(root / 'configure')] + sys.argv[1:]),
                 description = "Regenerate build files",
@@ -155,6 +157,14 @@ class Project:
 
             for target in targets:
                 regen_implicits += target.depfiles
+
+            build.build(
+                rule = "compdb",
+                outputs = [compdb],
+                implicit = regen_implicits,
+                )
+            build.default([compdb])
+            build.newline()
 
             build.build(
                 rule = "regen",
