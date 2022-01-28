@@ -36,7 +36,7 @@ public:
     void set_ist(uint8_t i, uint8_t ist) { m_entries[i].ist = ist; }
 
     /// Get the IST entries that are used by this table, as a bitmap
-    uint8_t used_ist_entries() const;
+    static uint8_t used_ist_entries();
 
     /// Dump debug information about the IDT to the console.
     /// \arg index  Which entry to print, or -1 for all entries

@@ -64,20 +64,24 @@ struct cpu_data
 
 extern "C" cpu_data * _current_gsbase();
 
+/// Do early initialization of the BSP CPU.
+/// \returns  A pointer to the BSP cpu_data structure
+cpu_data * bsp_early_init();
+
+/// Do late initialization of the BSP CPU.
+void bsp_late_init();
+
+/// Create a new cpu_data struct with all requisite sub-objects.
+/// \arg id    The ACPI specified id of the CPU
+/// \arg index The kernel-specified initialization index of the CPU
+/// \returns   The new cpu_data structure
+cpu_data * cpu_create(uint16_t id, uint16_t index);
+
 /// Set up the running CPU. This sets GDT, IDT, and necessary MSRs as well as creating
 /// the cpu_data structure for this processor.
 /// \arg cpu  The cpu_data structure for this CPU
 /// \arg bsp  True if this CPU is the BSP
 void cpu_init(cpu_data *cpu, bool bsp);
 
-/// Do early (before cpu_init) initialization work. Only needs to be called manually for
-/// the BSP, otherwise cpu_init will call it.
-/// \arg cpu  The cpu_data structure for this CPU
-void cpu_early_init(cpu_data *cpu);
-
 /// Get the cpu_data struct for the current executing CPU
 inline cpu_data & current_cpu() { return *_current_gsbase(); }
-
-/// Validate the required CPU features are present. Really, the bootloader already
-/// validated the required features, but still iterate the options and log about them.
-void cpu_validate();

@@ -58,8 +58,7 @@ void panic_handler(const cpu_state *regs)
 
     // If we're running on the CPU that panicked, tell the
     // others we have finished
-    if (panic)
-        main_cpu_done = true;
+    main_cpu_done = true;
 
     if (__atomic_sub_fetch(&remaining, 1, order) == 0) {
         // No remaining CPUs, if we're running on QEMU,

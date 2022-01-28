@@ -100,14 +100,14 @@ isr_handler(cpu_state *regs)
 
     case isr::isrGPFault:
         if (regs->errorcode & 0xfff0) {
-            int index = (regs->errorcode & 0xffff) >> 4;
+            int index = (regs->errorcode & 0xffff) >> 3;
             int ti = (regs->errorcode & 0x07) >> 1;
             char const *table =
                 (ti & 1) ? "IDT" :
                 (!ti) ? "GDT" :
                 "LDT";
 
-            snprintf(message, sizeof(message), "General Protection Fault, error:%lx%s %s[%d]",
+            snprintf(message, sizeof(message), "General Protection Fault, error:0x%lx%s %s[%d]",
                 regs->errorcode, regs->errorcode & 1 ? " external" : "", table, index);
         } else {
             snprintf(message, sizeof(message), "General Protection Fault, error:%lx%s",

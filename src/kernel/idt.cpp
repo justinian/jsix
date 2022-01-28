@@ -78,7 +78,7 @@ IDT::add_ist_entries()
 }
 
 uint8_t
-IDT::used_ist_entries() const
+IDT::used_ist_entries()
 {
     constexpr uint8_t entries = 
 

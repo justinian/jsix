@@ -9,6 +9,10 @@
 
 #include <arch/memory.h>
 
+namespace bootproto {
+    struct args;
+}
+
 void * operator new (size_t, void *p) noexcept;
 
 /// Allocate from the default allocator.
@@ -80,5 +84,9 @@ constexpr uintptr_t page_align_down(uintptr_t a) { return a & ~(frame_size-1); }
 
 /// Get the given address, aligned to the next page
 constexpr uintptr_t page_align_up(uintptr_t a) { return page_align_down(a-1) + frame_size; }
+
+/// Initialize memory. Create the kernel vm space and its memory regions,
+/// the physical page allocator and heap allocator, and run global constructors.
+void initialize(bootproto::args &args);
 
 } // namespace mem

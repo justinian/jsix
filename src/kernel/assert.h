@@ -44,6 +44,11 @@ inline void panic(
     while (1) asm ("hlt");
 }
 
+/// Install a panic handler.
+/// \arg entrypoint   Virtual address of the panic handler's entrypoint
+/// \arg symbol_data  Pointer to the symbol table data
+void install(uintptr_t entrypoint, const void *symbol_data);
+
 } // namespace panic
 
 #ifndef NDEBUG

@@ -7,25 +7,21 @@
 #include "assert.h"
 #include "device_manager.h"
 #include "frame_allocator.h"
-#include "gdt.h"
 #include "heap_allocator.h"
-#include "io.h"
 #include "logger.h"
 #include "memory.h"
-#include "msr.h"
 #include "objects/process.h"
-#include "objects/thread.h"
-#include "objects/system.h"
 #include "objects/vm_area.h"
 #include "vm_space.h"
 
+extern "C" {
+    void (*__ctors)(void);
+    void (*__ctors_end)(void);
+}
+
 using bootproto::allocation_register;
-using bootproto::section_flags;
 
 using obj::vm_flags;
-
-extern "C" void initialize_main_thread();
-extern "C" uintptr_t initialize_main_user_stack();
 
 // These objects are initialized _before_ global constructors are called,
 // so we don't want them to have global constructors at all, lest they
@@ -61,6 +57,8 @@ uintptr_t
 get_physical_page(T *p) {
     return mem::page_align_down(reinterpret_cast<uintptr_t>(p));
 }
+
+namespace {
 
 void
 memory_initialize_pre_ctors(bootproto::args &kargs)
@@ -114,87 +112,26 @@ memory_initialize_post_ctors(bootproto::args &kargs)
         kargs.page_tables.count);
 }
 
-static void
-log_mtrrs()
+void
+run_constructors()
 {
-    uint64_t mtrrcap = rdmsr(msr::ia32_mtrrcap);
-    uint64_t mtrrdeftype = rdmsr(msr::ia32_mtrrdeftype);
-    unsigned vcap = mtrrcap & 0xff;
-    log::debug(logs::boot, "MTRRs: vcap=%d %s %s def=%02x %s %s",
-        vcap,
-        (mtrrcap & (1<< 8)) ? "fix" : "",
-        (mtrrcap & (1<<10)) ? "wc" : "",
-        mtrrdeftype & 0xff,
-        (mtrrdeftype & (1<<10)) ? "fe" : "",
-        (mtrrdeftype & (1<<11)) ? "enabled" : ""
-        );
-
-    for (unsigned i = 0; i < vcap; ++i) {
-        uint64_t base = rdmsr(find_mtrr(msr::ia32_mtrrphysbase, i));
-        uint64_t mask = rdmsr(find_mtrr(msr::ia32_mtrrphysmask, i));
-        log::debug(logs::boot, "       vcap[%2d] base:%016llx mask:%016llx type:%02x %s", i,
-            (base & ~0xfffull),
-            (mask & ~0xfffull),
-            (base & 0xff),
-            (mask & (1<<11)) ? "valid" : "");
+    void (**p)(void) = &__ctors;
+    while (p < &__ctors_end) {
+        void (*ctor)(void) = *p++;
+        if (ctor) ctor();
     }
-
-    msr mtrr_fixed[] = {
-        msr::ia32_mtrrfix64k_00000,
-        msr::ia32_mtrrfix16k_80000,
-        msr::ia32_mtrrfix16k_a0000,
-        msr::ia32_mtrrfix4k_c0000,
-        msr::ia32_mtrrfix4k_c8000,
-        msr::ia32_mtrrfix4k_d0000,
-        msr::ia32_mtrrfix4k_d8000,
-        msr::ia32_mtrrfix4k_e0000,
-        msr::ia32_mtrrfix4k_e8000,
-        msr::ia32_mtrrfix4k_f0000,
-        msr::ia32_mtrrfix4k_f8000,
-    };
-
-    for (int i = 0; i < 11; ++i) {
-        uint64_t v = rdmsr(mtrr_fixed[i]);
-        log::debug(logs::boot, "      fixed[%2d] %02x %02x %02x %02x %02x %02x %02x %02x", i,
-            ((v <<  0) & 0xff), ((v <<  8) & 0xff), ((v << 16) & 0xff), ((v << 24) & 0xff),
-            ((v << 32) & 0xff), ((v << 40) & 0xff), ((v << 48) & 0xff), ((v << 56) & 0xff));
-    }
-
-    uint64_t pat = rdmsr(msr::ia32_pat);
-    static const char *pat_names[] = {"UC ","WC ","XX ","XX ","WT ","WP ","WB ","UC-"};
-    log::debug(logs::boot, "      PAT: 0:%s 1:%s 2:%s 3:%s 4:%s 5:%s 6:%s 7:%s",
-        pat_names[(pat >> (0*8)) & 7], pat_names[(pat >> (1*8)) & 7],
-        pat_names[(pat >> (2*8)) & 7], pat_names[(pat >> (3*8)) & 7],
-        pat_names[(pat >> (4*8)) & 7], pat_names[(pat >> (5*8)) & 7],
-        pat_names[(pat >> (6*8)) & 7], pat_names[(pat >> (7*8)) & 7]);
 }
 
+} // namespace
+
+namespace mem {
 
 void
-load_init_server(bootproto::program &program, uintptr_t modules_address)
+initialize(bootproto::args &args)
 {
-    obj::process *p = new obj::process;
-    p->add_handle(&obj::system::get(), obj::system::init_caps);
-
-    vm_space &space = p->space();
-    for (const auto &sect : program.sections) {
-        vm_flags flags =
-            ((sect.type && section_flags::execute) ? vm_flags::exec : vm_flags::none) |
-            ((sect.type && section_flags::write) ? vm_flags::write : vm_flags::none);
-
-        obj::vm_area *vma = new obj::vm_area_fixed(sect.phys_addr, sect.size, flags);
-        space.add(sect.virt_addr, vma);
-    }
-
-    uint64_t iopl = (3ull << 12);
-
-    obj::thread *main = p->create_thread();
-    main->add_thunk_user(program.entrypoint, 0, iopl);
-    main->set_state(obj::thread::state::ready);
-
-    // Hacky: No process exists to have created a stack for init; it needs to create
-    // its own stack. We take advantage of that to use rsp to pass it the init modules
-    // address.
-    auto *tcb = main->tcb();
-    tcb->rsp3 = modules_address;
+    memory_initialize_pre_ctors(args);
+    run_constructors();
+    memory_initialize_post_ctors(args);
 }
+
+} // namespace mem
