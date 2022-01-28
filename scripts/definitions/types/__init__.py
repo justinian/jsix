@@ -5,16 +5,13 @@ def _indent(x):
 class CName(str): pass
 class Description(str): pass
 class Import(str): pass
+class Caps(list): pass
 
 class Options(dict):
     def __init__(self, opts = tuple()):
         for opt in opts:
             parts = opt.split(":", 1)
-            self[parts[0]] = "".join(parts[1:])
-
-    def __str__(self):
-        if not self: return ""
-        return "[{}]".format(" ".join(self.keys()))
+            self[parts[0]] = self.get(parts[0], []) + ["".join(parts[1:])]
 
 class UID(int):
     def __str__(self):

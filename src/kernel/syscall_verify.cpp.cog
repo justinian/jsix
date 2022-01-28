@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <arch/memory.h>
+#include <j6/caps.h>
 #include <j6/errors.h>
 #include <j6/types.h>
 #include <util/counted.h>
@@ -36,6 +37,10 @@ using util::buffer;
 /*[[[cog code generation
 cbool = {True: "true", False: "false"}
 
+def get_caps(opts, type):
+    caps = opts.get("cap", list())
+    return [f"j6_cap_{type.name}_{c}" for c in caps]
+
 for id, scope, method in syscalls.methods:
     if scope:
         name = f"{scope.name}_{method.name}"
@@ -58,7 +63,11 @@ for id, scope, method in syscalls.methods:
         argdefs.append("j6_handle_t self")
         cxxargdefs.append(f"obj::{scope.cname} *self")
         args.append("self_obj")
-        handles.append((f"obj::{scope.cname} *", "self", "self_obj"))
+        handles.append((
+            f"obj::{scope.cname} *",
+            "self",
+            "self_obj",
+            get_caps(method.options, scope)))
 
     for param in method.params:
         needs_obj = param.type.needs_object(param.options)
@@ -73,7 +82,7 @@ for id, scope, method in syscalls.methods:
 
             if needs_obj:
                 oarg = f"{arg}_obj"
-                handles.append((type, arg, oarg))
+                handles.append((type, arg, oarg, get_caps(param.options, param.type.object)))
                 args.append(oarg)
             else:
                 args.append(arg)
@@ -94,12 +103,18 @@ for id, scope, method in syscalls.methods:
         cog.outl( "        return j6_err_invalid_arg;")
         cog.outl()
 
-    for type, inarg, outarg in handles:
+    for type, inarg, outarg, caps in handles:
         if type.endswith('*'):
             type = type[:-1].strip()
 
         cog.outl(f"    obj::handle *{inarg}_handle = get_handle<typename {type}>({inarg});")
         cog.outl(f"    if (!{inarg}_handle) return j6_err_invalid_arg;")
+
+        if caps:
+            allcaps = " | ".join(caps)
+            cog.outl(f"    j6_cap_t {inarg}_caps_req = {allcaps};")
+            cog.outl(f"    if (!{inarg}_handle->has_cap({inarg}_caps_req)) return j6_err_denied;")
+
         cog.outl(f"    {type} *{outarg} = {inarg}_handle->as<typename {type}>();")
         cog.outl(f"    if (!{outarg}) return j6_err_invalid_arg;")
         cog.outl()

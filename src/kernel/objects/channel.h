@@ -2,6 +2,7 @@
 /// \file channel.h
 /// Definition of channel objects and related functions
 
+#include <j6/caps.h>
 #include <j6/signals.h>
 #include <util/bip_buffer.h>
 #include <util/counted.h>
@@ -17,7 +18,7 @@ class channel :
 {
 public:
     /// Capabilities on a newly constructed channel handle
-    constexpr static j6_cap_t creation_caps = 0;
+    constexpr static j6_cap_t creation_caps = j6_cap_channel_all;
 
     channel();
     virtual ~channel();

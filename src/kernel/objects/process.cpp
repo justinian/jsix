@@ -22,8 +22,7 @@ process::process() :
     m_next_handle {1},
     m_state {state::running}
 {
-    j6_handle_t self = add_handle(this, process::self_caps);
-    kassert(self == self_handle(), "Process self-handle is not 1");
+    m_self_handle = add_handle(this, process::self_caps);
 }
 
 // The "kernel process"-only constructor
@@ -129,9 +128,10 @@ process::add_handle(kobject *obj, j6_cap_t caps)
     if (!obj)
         return j6_handle_invalid;
 
-    j6_handle_t id = m_next_handle++;
-    m_handles.insert(id, {id, obj, caps});
+    handle h {m_next_handle++, obj, caps};
+    j6_handle_t id = h.id;
 
+    m_handles.insert(id, h);
     return id;
 }
 
@@ -145,6 +145,18 @@ handle *
 process::lookup_handle(j6_handle_t id)
 {
     return m_handles.find(id);
+}
+
+size_t
+process::list_handles(j6_handle_t *handles, size_t len)
+{
+    for (const auto &i : m_handles) {
+        if (len-- == 0)
+            break;
+        *handles++ = i.key;
+    }
+
+    return m_handles.count();
 }
 
 } // namespace obj

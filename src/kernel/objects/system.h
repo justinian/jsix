@@ -2,6 +2,7 @@
 /// \file system.h
 /// Definition of kobject type representing the system
 
+#include <j6/caps.h>
 #include "objects/kobject.h"
 
 namespace obj {
@@ -11,7 +12,7 @@ class system :
 {
 public:
     /// Capabilities on system given to init
-    constexpr static j6_cap_t init_caps = 0;
+    constexpr static j6_cap_t init_caps = j6_cap_system_all;
 
     static constexpr kobject::type type = kobject::type::system;
 

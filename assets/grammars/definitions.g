@@ -2,7 +2,7 @@ start: import_statement* (object|interface)+
 
 import_statement: "import" PATH
 
-object: description? "object" name options? super? "{" uid cname? method* "}"
+object: description? "object" name options? super? "{" uid cname? capabilities? method* "}"
 
 interface: description? "interface" name options? "{" uid interface_param* "}"
 
@@ -13,6 +13,8 @@ expose: "expose" type
 uid: "uid" UID
 
 cname: "cname" IDENTIFIER
+
+capabilities: "capabilities" "[" IDENTIFIER+ "]"
 
 super: ":" name
 

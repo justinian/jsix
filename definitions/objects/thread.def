@@ -1,13 +1,17 @@
 object thread : kobject {
     uid 11f23e593d5761bd
 
+    capabilities [
+        kill
+    ]
+
     method create [constructor] {
-        param process object process
+        param process object process [cap:create_thread]
         param stack_top address
         param entrypoint address
     }
 
-    method kill [destructor]
+    method kill [destructor cap:kill]
 
     method exit [static] {
         param status int32

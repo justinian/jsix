@@ -1,12 +1,13 @@
 from .parser import Transformer, v_args
 
 def get_opts(args):
-    from .types import CName, Description, Options, Type, UID
+    from .types import Caps, CName, Description, Options, Type, UID
 
     kinds = {
         Description: "desc",
         Options: "opts",
         CName: "cname",
+        Caps: "caps",
         UID: "uid",
         Type: "typename",
     }
@@ -112,6 +113,10 @@ class DefTransformer(Transformer):
         from .types import Options
         return Options([str(s) for s in args])
 
+    def capabilities(self, args):
+        from .types import Caps
+        return Caps([str(s) for s in args])
+
     def description(self, s):
         from .types import Description
         return Description("\n".join(s))
@@ -139,6 +144,9 @@ class DefTransformer(Transformer):
 
     def COMMENT(self, s):
         return s[2:].strip()
+
+    def OPTION(self, s):
+        return str(s)
 
     def IDENTIFIER(self, s):
         return str(s)

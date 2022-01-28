@@ -6,11 +6,16 @@ import "objects/kobject.def"
 object process : kobject {
     uid 0c69ee0b7502ba31
 
+    capabilities [
+        kill
+        create_thread
+    ]
+
     # Create a new empty process
     method create [constructor]
 
     # Stop all threads and exit the given process
-    method kill [destructor]
+    method kill [destructor cap:kill]
 
     # Stop all threads and exit the current process
     method exit [static] {

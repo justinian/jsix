@@ -3,7 +3,7 @@
 #include <j6/syscalls.h>
 //void *sbrk(intptr_t) __attribute__ ((weak));
 
-static j6_handle_t __core_handle = 0;
+static j6_handle_t __core_handle = j6_handle_invalid;
 static intptr_t __core_size = 0;
 
 static const uintptr_t __core_base = 0x1c0000000;

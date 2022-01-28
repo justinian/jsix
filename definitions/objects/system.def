@@ -6,21 +6,28 @@ import "objects/vma.def"
 object system : kobject {
     uid fa72506a2cf71a30
 
+    capabilities [
+        get_log
+        bind_irq
+        map_phys
+        change_iopl
+    ]
+
     # Get a log line from the kernel log
-    method get_log {
+    method get_log [cap:get_log] {
         param buffer buffer [out optional]   # Buffer for the log message data structure
     }
 
     # Ask the kernel to send this process messages whenever
     # the given IRQ fires
-    method bind_irq {
+    method bind_irq [cap:bind_irq] {
         param dest object endpoint  # Endpoint that will receive messages
         param irq uint              # IRQ number to bind
     }
 
     # Create a VMA and map an area of physical memory into it,
     # also mapping that VMA into the current process
-    method map_phys {
+    method map_phys [cap:map_phys] {
         param area object vma [out] # Receives a handle to the VMA created
         param phys address          # The physical address of the area
         param size size             # Size of the area, in pages
@@ -29,7 +36,7 @@ object system : kobject {
 
     # Request the kernel change the IOPL for this process. The only values
     # that make sense are 0 and 3.
-    method request_iopl {
+    method request_iopl [cap:change_iopl] {
         param iopl uint             # The IOPL to set for this process
     }
 }

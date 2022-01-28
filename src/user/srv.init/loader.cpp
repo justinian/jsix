@@ -12,8 +12,8 @@
 using bootproto::module_flags;
 using bootproto::module_program;
 
-extern j6_handle_t handle_self;
-extern j6_handle_t handle_system;
+extern j6_handle_t __handle_self;
+extern j6_handle_t __handle_sys;
 
 constexpr uintptr_t load_addr_base = 0xf8000000;
 constexpr size_t stack_size = 0x10000;
@@ -28,13 +28,13 @@ load_program(const module_program &prog, char *err_msg)
     }
 
     j6_handle_t elf_vma = j6_handle_invalid;
-    j6_status_t res = j6_system_map_phys(handle_system, &elf_vma, prog.base_address, prog.size, 0);
+    j6_status_t res = j6_system_map_phys(__handle_sys, &elf_vma, prog.base_address, prog.size, 0);
     if (res != j6_status_ok) {
         sprintf(err_msg, "  ** error loading program '%s': creating physical vma: %lx", prog.filename, res);
         return false;
     }
 
-    res = j6_vma_map(elf_vma, handle_self, prog.base_address);
+    res = j6_vma_map(elf_vma, __handle_self, prog.base_address);
     if (res != j6_status_ok) {
         sprintf(err_msg, "  ** error loading program '%s': mapping vma: %lx", prog.filename, res);
         return false;
@@ -55,7 +55,7 @@ load_program(const module_program &prog, char *err_msg)
         return false;
     }
 
-    res = j6_process_give_handle(proc, handle_system, nullptr);
+    res = j6_process_give_handle(proc, __handle_sys, nullptr);
     if (res != j6_status_ok) {
         sprintf(err_msg, "  ** error loading program '%s': giving system handle: %lx", prog.filename, res);
         return false;
@@ -90,7 +90,7 @@ load_program(const module_program &prog, char *err_msg)
             return false;
         }
 
-        res = j6_vma_unmap(sub_vma, handle_self);
+        res = j6_vma_unmap(sub_vma, __handle_self);
         if (res != j6_status_ok) {
             sprintf(err_msg, "  ** error loading program '%s': unmapping sub vma: %lx", prog.filename, res);
             return false;
@@ -115,7 +115,7 @@ load_program(const module_program &prog, char *err_msg)
         return false;
     }
 
-    res = j6_vma_unmap(stack_vma, handle_self);
+    res = j6_vma_unmap(stack_vma, __handle_self);
     if (res != j6_status_ok) {
         sprintf(err_msg, "  ** error loading program '%s': unmapping stack vma: %lx", prog.filename, res);
         return false;
@@ -128,7 +128,7 @@ load_program(const module_program &prog, char *err_msg)
         return false;
     }
 
-    res = j6_vma_unmap(elf_vma, handle_self);
+    res = j6_vma_unmap(elf_vma, __handle_self);
     if (res != j6_status_ok) {
         sprintf(err_msg, "  ** error loading program '%s': unmapping elf vma: %lx", prog.filename, res);
         return false;

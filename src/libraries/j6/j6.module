@@ -5,6 +5,7 @@ j6 = module("j6",
     includes = [ "include" ],
     sources = [
         "init.cpp",
+        "include/j6/caps.h.cog",
         "include/j6/syscalls.h.cog",
         "include/j6/sysconf.h.cog",
         "syscalls.s.cog",
@@ -18,6 +19,7 @@ sysconf = join(source_root, "definitions/sysconf.yaml")
 definitions = glob('definitions/**/*.def', recursive=True)
 
 j6.add_depends([
+        "include/j6/caps.h.cog",
         "include/j6/syscalls.h.cog",
         "syscalls.s.cog",
     ], definitions)

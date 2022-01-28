@@ -4,27 +4,33 @@ object vma : kobject {
     uid d6a12b63b3ed3937
     cname vm_area
 
+    capabilities [
+        map
+        unmap
+        resize
+    ]
+
     method create [constructor] {
         param size size
         param flags uint32
     }
 
-    method create_map [constructor] {
+    method create_map [constructor cap:map] {
         param size size
         param address address
         param flags uint32
     }
 
-    method map {
+    method map [cap:map] {
         param process object process
         param address address
     }
 
-    method unmap {
+    method unmap [cap:unmap] {
         param process object process
     }
 
-    method resize {
+    method resize [cap:resize] {
         param size size [inout]
     }
 }

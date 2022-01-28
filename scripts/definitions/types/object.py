@@ -1,8 +1,8 @@
 from . import _indent
-from . import Options
+from . import Caps, Options
 
 class Object:
-    def __init__(self, name, uid, typename=None, opts=Options(), desc="", children=tuple(), cname=None):
+    def __init__(self, name, uid, typename=None, opts=Options(), caps=Caps(), desc="", children=tuple(), cname=None):
         self.name = name
         self.uid = uid
         self.options = opts
@@ -10,6 +10,8 @@ class Object:
         self.super = typename
         self.methods = children
         self.cname = cname or name
+
+        self.caps = set(caps)
 
         from . import ObjectRef
         self.__ref = ObjectRef(name)

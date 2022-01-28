@@ -68,6 +68,14 @@ class Context:
         from .types import ObjectRef
         ObjectRef.connect(objects)
 
+        for obj in objects.values():
+            for method in obj.methods:
+                caps = method.options.get("cap", list())
+                for cap in caps:
+                    if not cap in obj.caps:
+                        from .errors import UnknownCapError
+                        raise UnknownCapError(f"Unknown capability {cap} on {obj.name}::{method.name}")
+
         self.objects.update(objects)
         self.interfaces.update(interfaces)
 

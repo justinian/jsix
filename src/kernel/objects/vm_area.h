@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <j6/caps.h>
 #include <j6/signals.h>
 #include <util/vector.h>
 #include <util/enum_bitfields.h>
@@ -34,7 +35,7 @@ class vm_area :
 {
 public:
     /// Capabilities on a newly constructed vma handle
-    constexpr static j6_cap_t creation_caps = 0;
+    constexpr static j6_cap_t creation_caps = j6_cap_vma_all;
 
     static constexpr kobject::type type = kobject::type::vma;
 

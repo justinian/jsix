@@ -27,13 +27,15 @@ typedef uint64_t j6_tag_t;
 #define j6_tag_from_irq(x)    ((x) | j6_tag_irq_base)
 #define j6_tag_to_irq(x)      ((x) & ~j6_tag_irq_base)
 
-/// Handles are references and capabilities to other objects.
-typedef uint32_t j6_handle_t;
+/// Handles are references and capabilities to other objects. A handle is
+/// an id in the lower 32 bits, a bitfield of capabilities in bits 32-55
+/// and a type id in bits 56-63.
+typedef uint64_t j6_handle_t;
+
+/// Bitfield for storage of capabilities on their own
+typedef uint32_t j6_cap_t;
 
 #define j6_handle_invalid ((j6_handle_t)-1)
-
-/// Bitfield for storage of capabilities
-typedef uint32_t j6_cap_t;
 
 enum j6_object_type {
 #define OBJECT_TYPE( name, val ) j6_object_type_ ## name = val,

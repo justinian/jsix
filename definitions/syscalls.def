@@ -1,9 +1,11 @@
-import "objects/system.def"
 import "objects/kobject.def"
-import "objects/process.def"
-import "objects/thread.def"
+
 import "objects/channel.def"
 import "objects/endpoint.def"
+import "objects/event.def"
+import "objects/process.def"
+import "objects/system.def"
+import "objects/thread.def"
 import "objects/vma.def"
 
 interface syscalls [syscall] {
@@ -11,6 +13,7 @@ interface syscalls [syscall] {
 
     expose object system
     expose object kobject
+    expose object event
     expose object process
     expose object thread
     expose object channel
@@ -23,5 +26,12 @@ interface syscalls [syscall] {
     # Write a message to the kernel log
     function log {
         param message string
+    }
+
+    # Get a list of handles owned by this process. If the
+    # supplied list is not big enough, will set the size
+    # needed in `size` and return j6_err_insufficient
+    function handle_list {
+        param handles object kobject [list inout optional] # A list of handles to be filled
     }
 }

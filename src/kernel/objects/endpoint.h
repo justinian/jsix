@@ -2,6 +2,7 @@
 /// \file endpoint.h
 /// Definition of endpoint kobject types
 
+#include <j6/caps.h>
 #include <j6/signals.h>
 #include <util/spinlock.h>
 #include <util/vector.h>
@@ -16,7 +17,7 @@ class endpoint :
 {
 public:
     /// Capabilities on a newly constructed endpoint handle
-    constexpr static j6_cap_t creation_caps = 0;
+    constexpr static j6_cap_t creation_caps = j6_cap_endpoint_all;
 
     endpoint();
     virtual ~endpoint();

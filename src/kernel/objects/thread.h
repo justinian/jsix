@@ -2,6 +2,7 @@
 /// \file thread.h
 /// Definition of thread kobject types
 
+#include <j6/caps.h>
 #include <util/enum_bitfields.h>
 #include <util/linked_list.h>
 #include <util/spinlock.h>
@@ -60,10 +61,10 @@ class thread :
 {
 public:
     /// Capabilities on a newly constructed thread handle
-    constexpr static j6_cap_t creation_caps = 0;
+    constexpr static j6_cap_t creation_caps = j6_cap_thread_all;
 
     /// Capabilities the parent process gets on new thread handles
-    constexpr static j6_cap_t parent_caps = 0;
+    constexpr static j6_cap_t parent_caps = j6_cap_thread_all;
 
     enum class state : uint8_t {
         ready    = 0x01,

@@ -1,14 +1,20 @@
 object channel : kobject {
     uid 3ea38b96aa0e54c8
 
-    method create [constructor] 
-    method close [destructor]
+    capabilities [
+        send
+        receive
+        close
+    ]
 
-    method send {
+    method create [constructor] 
+    method close [destructor cap:close]
+
+    method send [cap:send] {
         param data buffer [inout]
     }
 
-    method receive {
+    method receive [cap:receive] {
         param data buffer [out]
     }
 }

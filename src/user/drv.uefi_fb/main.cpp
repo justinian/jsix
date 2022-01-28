@@ -37,7 +37,6 @@ main(int argc, const char **argv)
 
     size_t initc = 0;
     j6_init_value *initv = nullptr;
-    _get_init(&initc, &initv);
 
     j6_init_framebuffer *fb = nullptr;
     for (unsigned i = 0; i < initc; ++i) {

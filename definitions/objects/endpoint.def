@@ -4,18 +4,23 @@
 object endpoint : kobject {
     uid c5882f24a4c03b7e
 
+    capabilities [
+        send
+        receive
+    ]
+
     method create [constructor]
 
     # Send a message on a channel. Blocks until the message
     # is received.
-    method send {
+    method send [cap:send] {
         param tag uint64
         param data buffer
     }
 
     # Receieve a message on a channel. Blocks until a message
     # is available.
-    method receive {
+    method receive [cap:receive] {
         param tag uint64 [out]
         param data buffer [out optional]
         param timeout uint64    # Receive timeout in nanoseconds
@@ -24,7 +29,7 @@ object endpoint : kobject {
     # Send a message on a channel and then await a new message.
     # Equivalent to calling send and then recieve, as a single
     # operation.
-    method sendrecv {
+    method sendrecv [cap:send cap:receive] {
         param tag uint64 [inout]
         param data buffer [inout]
         param timeout uint64      # Receive timeout in nanoseconds

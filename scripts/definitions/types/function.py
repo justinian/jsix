@@ -43,6 +43,11 @@ class Param:
         self.options = opts
         self.desc = desc
 
+        self.caps = set()
+        for key, values in opts.items():
+            if key == "cap":
+                self.caps.update(values)
+
     def __str__(self):
         return "param {} {} {}  {}".format(
                 self.name, repr(self.type), self.options, self.desc or "")

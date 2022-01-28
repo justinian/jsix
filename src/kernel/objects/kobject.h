@@ -16,7 +16,7 @@ class kobject
 {
 public:
     /// Types of kernel objects.
-    enum class type : uint16_t
+    enum class type : uint8_t
     {
 #define OBJECT_TYPE( name, val ) name = val,
 #include <j6/tables/object_types.inc>

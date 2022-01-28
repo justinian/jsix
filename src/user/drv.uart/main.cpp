@@ -18,8 +18,8 @@ extern "C" {
     int main(int, const char **);
 }
 
-constexpr j6_handle_t handle_self = 1;
-constexpr j6_handle_t handle_sys = 2;
+extern j6_handle_t __handle_self;
+extern j6_handle_t __handle_sys;
 
 struct entry
 {
@@ -76,13 +76,13 @@ log_pump_proc()
     void *message_buffer = nullptr;
     char stringbuf[300];
 
-    j6_status_t result = j6_system_request_iopl(handle_sys, 3);
+    j6_status_t result = j6_system_request_iopl(__handle_sys, 3);
     if (result != j6_status_ok)
         return;
 
     while (true) {
         size_t size = buffer_size;
-        j6_status_t s = j6_system_get_log(handle_sys, message_buffer, &size);
+        j6_status_t s = j6_system_get_log(__handle_sys, message_buffer, &size);
 
         if (s == j6_err_insufficient) {
             free(message_buffer);
@@ -96,7 +96,7 @@ log_pump_proc()
 
         if (size == 0) {
             j6_signal_t sigs = 0;
-            j6_kobject_wait(handle_sys, j6_signal_system_has_log, &sigs);
+            j6_kobject_wait(__handle_sys, j6_signal_system_has_log, &sigs);
             continue;
         }
 
@@ -121,7 +121,7 @@ main(int argc, const char **argv)
     j6_handle_t endp = j6_handle_invalid;
     j6_status_t result = j6_status_ok;
 
-    result = j6_system_request_iopl(handle_sys, 3);
+    result = j6_system_request_iopl(__handle_sys, 3);
     if (result != j6_status_ok)
         return result;
 
@@ -129,11 +129,11 @@ main(int argc, const char **argv)
     if (result != j6_status_ok)
         return result;
 
-    result = j6_system_bind_irq(handle_sys, endp, 3);
+    result = j6_system_bind_irq(__handle_sys, endp, 3);
     if (result != j6_status_ok)
         return result;
 
-    result = j6_system_bind_irq(handle_sys, endp, 4);
+    result = j6_system_bind_irq(__handle_sys, endp, 4);
     if (result != j6_status_ok)
         return result;
 
@@ -153,7 +153,7 @@ main(int argc, const char **argv)
     sp[0] = sp[1] = 0;
 
     j6_handle_t child = j6_handle_invalid;
-    result = j6_thread_create(&child, handle_self, stack_top - 0x10, reinterpret_cast<uintptr_t>(&log_pump_proc));
+    result = j6_thread_create(&child, __handle_self, stack_top - 0x10, reinterpret_cast<uintptr_t>(&log_pump_proc));
     if (result != j6_status_ok)
         return result;
 

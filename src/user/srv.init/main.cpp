@@ -1,6 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
 
+#include <j6/errors.h>
 #include <j6/syscalls.h>
+#include <j6/types.h>
 #include <bootproto/init.h>
 
 #include "loader.h"
@@ -16,15 +19,15 @@ extern "C" {
 
 uintptr_t _arg_modules_phys;   // This gets filled in in _start
 
-j6_handle_t handle_self   = 1; // Self program handle is always 1
-j6_handle_t handle_system = 2; // boot protocol is that init gets the system as handle 2
+extern j6_handle_t __handle_self;
+extern j6_handle_t __handle_sys;
 
 int
 main(int argc, const char **argv)
 {
     j6_log("srv.init starting");
 
-    modules mods = modules::load_modules(_arg_modules_phys, handle_system, handle_self);
+    modules mods = modules::load_modules(_arg_modules_phys, __handle_sys, __handle_self);
 
     for (auto &mod : mods.of_type(module_type::program)) {
         auto &prog = static_cast<const module_program&>(mod);
