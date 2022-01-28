@@ -2,6 +2,7 @@
 /// \file vector.h
 /// Definition of a simple dynamic vector collection for use in kernel space
 
+#include <new>
 #include <assert.h>
 #include <string.h>
 #include <utility>

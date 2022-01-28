@@ -1,3 +1,4 @@
+#include <new>
 #include <stddef.h>
 #include <stdint.h>
 #include <util/misc.h> // for checksum

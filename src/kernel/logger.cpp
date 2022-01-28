@@ -1,3 +1,4 @@
+#include <new>
 #include <string.h>
 
 #include <util/no_construct.h>

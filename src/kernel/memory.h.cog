@@ -13,8 +13,6 @@ namespace bootproto {
     struct args;
 }
 
-void * operator new (size_t, void *p) noexcept;
-
 /// Allocate from the default allocator.
 /// \arg size  The size in bytes requested
 /// \returns   A pointer to the newly allocated memory,
