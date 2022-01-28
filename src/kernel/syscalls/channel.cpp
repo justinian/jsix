@@ -1,5 +1,6 @@
 #include <j6/errors.h>
 #include <j6/types.h>
+#include <util/counted.h>
 
 #include "objects/channel.h"
 #include "syscalls/helpers.h"
@@ -16,15 +17,37 @@ channel_create(j6_handle_t *self)
 }
 
 j6_status_t
-channel_send(channel *self, size_t *len, void *data)
+channel_send(channel *self, void *data, size_t *data_len)
 {
-    return self->enqueue(len, data);
+    if (self->closed())
+        return j6_status_closed;
+
+    const util::buffer buffer {data, *data_len};
+    *data_len = self->enqueue(buffer);
+
+    return j6_status_ok;
 }
 
 j6_status_t
-channel_receive(channel *self, size_t *len, void *data)
+channel_receive(channel *self, void *data, size_t *data_len)
 {
-    return self->dequeue(len, data);
+    if (self->closed())
+        return j6_status_closed;
+
+    util::buffer buffer {data, *data_len};
+    *data_len = self->dequeue(buffer);
+
+    return j6_status_ok;
+}
+
+j6_status_t
+channel_close(channel *self)
+{
+    if (self->closed())
+        return j6_status_closed;
+
+    self->close();
+    return j6_status_ok;
 }
 
 } // namespace syscalls

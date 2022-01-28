@@ -4,12 +4,14 @@
 
 #include <j6/signals.h>
 #include <util/bip_buffer.h>
+#include <util/counted.h>
+#include <util/spinlock.h>
 
 #include "objects/kobject.h"
 
 namespace obj {
 
-/// Channels are bi-directional means of sending messages
+/// Channels are uni-directional means of sending data
 class channel :
     public kobject
 {
@@ -29,17 +31,14 @@ public:
     inline bool can_receive() const { return check_signal(j6_signal_channel_can_recv); }
 
     /// Put a message into the channel
-    /// \arg len  [in] Bytes in data buffer [out] number of bytes written
-    /// \arg data Pointer to the message data
-    /// \returns  j6_status_ok on success
-    j6_status_t enqueue(size_t *len, const void *data);
+    /// \arg data Buffer of data to write
+    /// \returns  The number of bytes successfully written
+    size_t enqueue(const util::buffer &data);
 
     /// Get a message from the channel, copied into a provided buffer
-    /// \arg len  On input, the size of the provided buffer. On output,
-    ///           the size of the message copied into the buffer.
-    /// \arg data Pointer to the buffer
-    /// \returns  j6_status_ok on success
-    j6_status_t dequeue(size_t *len, void *data);
+    /// \arg buffer  The buffer to copy data into
+    /// \returns     The number of bytes copied into the provided buffer
+    size_t dequeue(util::buffer buffer);
 
     /// Mark this channel as closed, all future calls to enqueue or
     /// dequeue messages will fail with j6_status_closed.
@@ -52,6 +51,7 @@ private:
     size_t m_len;
     uintptr_t m_data;
     util::bip_buffer m_buffer;
+    util::spinlock m_close_lock;
 };
 
 } // namespace obj

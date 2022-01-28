@@ -1,3 +1,14 @@
 object channel : kobject {
     uid 3ea38b96aa0e54c8
+
+    method create [constructor] 
+    method close [destructor]
+
+    method send {
+        param data buffer [inout]
+    }
+
+    method receive {
+        param data buffer [out]
+    }
 }

@@ -24,63 +24,59 @@ channel::~channel()
     if (!closed()) close();
 }
 
-j6_status_t
-channel::enqueue(size_t *len, const void *data)
+size_t
+channel::enqueue(const util::buffer &data)
 {
-    // TODO: Make this thread safe!
-    if (closed())
-        return j6_status_closed;
+    util::scoped_lock lock {m_close_lock};
 
-    if (!len || !*len)
-        return j6_err_invalid_arg;
+    if (closed()) return 0;
 
-    if (m_buffer.free_space() == 0)
-        return j6_err_not_ready;
-
+    size_t len = data.count;
     void *buffer = nullptr;
-    size_t avail = m_buffer.reserve(*len, &buffer);
-    *len = *len > avail ? avail : *len;
+    size_t avail = m_buffer.reserve(len, &buffer);
 
-    memcpy(buffer, data, *len);
-    m_buffer.commit(*len);
+    len = len > avail ? avail : len;
 
-    assert_signal(j6_signal_channel_can_recv);
+    memcpy(buffer, data.pointer, len);
+    m_buffer.commit(len);
+
+    if (len)
+        assert_signal(j6_signal_channel_can_recv);
+
     if (m_buffer.free_space() == 0)
         deassert_signal(j6_signal_channel_can_send);
 
-    return j6_status_ok;
+    return len;
 }
 
-j6_status_t
-channel::dequeue(size_t *len, void *data)
+size_t
+channel::dequeue(util::buffer buffer)
 {
-    // TODO: Make this thread safe!
-    if (closed())
-        return j6_status_closed;
+    util::scoped_lock lock {m_close_lock};
 
-    if (!len || !*len)
-        return j6_err_invalid_arg;
+    if (closed()) return 0;
 
-    if (m_buffer.size() == 0)
-        return j6_err_not_ready;
+    void *data = nullptr;
+    size_t avail = m_buffer.get_block(&data);
+    size_t len = buffer.count > avail ? avail : buffer.count;
 
-    void *buffer = nullptr;
-    size_t avail = m_buffer.get_block(&buffer);
-    *len = *len > avail ? avail : *len;
+    memcpy(data, buffer.pointer, len);
+    m_buffer.consume(len);
 
-    memcpy(data, buffer, *len);
-    m_buffer.consume(*len);
+    if (len)
+        assert_signal(j6_signal_channel_can_send);
 
-    assert_signal(j6_signal_channel_can_send);
     if (m_buffer.size() == 0)
         deassert_signal(j6_signal_channel_can_recv);
 
-    return j6_status_ok;
+    return len;
 }
 
 void
 channel::close()
 {
+    util::scoped_lock lock {m_close_lock};
+
     kobject::close();
     g_kernel_buffers.return_section(m_data);
 }
