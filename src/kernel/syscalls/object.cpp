@@ -13,14 +13,14 @@ using namespace obj;
 namespace syscalls {
 
 j6_status_t
-kobject_koid(kobject *self, j6_koid_t *koid)
+object_koid(kobject *self, j6_koid_t *koid)
 {
     *koid = self->koid();
     return j6_status_ok;
 }
 
 j6_status_t
-kobject_wait(kobject *self, j6_signal_t mask, j6_signal_t *sigs)
+object_wait(kobject *self, j6_signal_t mask, j6_signal_t *sigs)
 {
     j6_signal_t current = self->signals();
     if ((current & mask) != 0) {
@@ -40,7 +40,7 @@ kobject_wait(kobject *self, j6_signal_t mask, j6_signal_t *sigs)
 }
 
 j6_status_t
-kobject_wait_many(j6_handle_t * handles, size_t handles_count, uint64_t mask, j6_handle_t * woken, uint64_t * signals)
+object_wait_many(j6_handle_t * handles, size_t handles_count, uint64_t mask, j6_handle_t * woken, uint64_t * signals)
 {
     util::vector<kobject*> objects {uint32_t(handles_count)};
 
@@ -90,7 +90,7 @@ kobject_wait_many(j6_handle_t * handles, size_t handles_count, uint64_t mask, j6
 }
 
 j6_status_t
-kobject_signal(kobject *self, j6_signal_t signals)
+object_signal(kobject *self, j6_signal_t signals)
 {
     if ((signals & j6_signal_user_mask) != signals)
         return j6_err_invalid_arg;
@@ -100,7 +100,7 @@ kobject_signal(kobject *self, j6_signal_t signals)
 }
 
 j6_status_t
-kobject_close(kobject *self)
+object_close(kobject *self)
 {
     self->close();
     return j6_status_ok;

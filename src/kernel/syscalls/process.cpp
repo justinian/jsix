@@ -44,7 +44,7 @@ j6_status_t
 process_give_handle(process *self, j6_handle_t target, j6_handle_t *received)
 {
     handle *target_handle = get_handle<kobject>(target);
-    j6_handle_t out = self->add_handle(target_handle->object, target_handle->caps);
+    j6_handle_t out = self->add_handle(target_handle->object, target_handle->caps());
 
     if (received)
         *received = out;

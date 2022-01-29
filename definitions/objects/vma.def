@@ -1,6 +1,6 @@
 import "objects/process.def"
 
-object vma : kobject {
+object vma : object {
     uid d6a12b63b3ed3937
     cname vm_area
 
@@ -22,12 +22,12 @@ object vma : kobject {
     }
 
     method map [cap:map] {
-        param process object process
+        param process ref process
         param address address
     }
 
     method unmap [cap:unmap] {
-        param process object process
+        param process ref process
     }
 
     method resize [cap:resize] {

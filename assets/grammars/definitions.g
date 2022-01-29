@@ -26,7 +26,7 @@ param: "param" name type options? description?
 
 ?type: PRIMITIVE | object_name
 
-object_name: "object" name
+object_name: "ref" name
 
 id: NUMBER
 name: IDENTIFIER

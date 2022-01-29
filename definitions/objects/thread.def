@@ -1,4 +1,4 @@
-object thread : kobject {
+object thread : object {
     uid 11f23e593d5761bd
 
     capabilities [
@@ -6,7 +6,7 @@ object thread : kobject {
     ]
 
     method create [constructor] {
-        param process object process [cap:create_thread]
+        param process ref process [cap:create_thread]
         param stack_top address
         param entrypoint address
     }

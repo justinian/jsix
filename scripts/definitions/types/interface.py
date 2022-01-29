@@ -18,7 +18,7 @@ class Interface:
         self.desc = desc
 
         self.functions = [c for c in children if isinstance(c, Function)]
-        self.exposes = [e.type for e in children if isinstance(e, Expose)]
+        self.__exposes = [e.type for e in children if isinstance(e, Expose)]
 
     def __str__(self):
         parts = [f"interface {self.name}: {self.uid}"]
@@ -35,8 +35,12 @@ class Interface:
         mm = [(i, None, self.functions[i]) for i in range(len(self.functions))]
 
         base = len(mm)
-        for o in [e.object for e in self.exposes]:
+        for o in self.exposes:
             mm.extend([(base + i, o, o.methods[i]) for i in range(len(o.methods))])
             base += len(o.methods)
 
         return mm
+
+    @property
+    def exposes(self):
+        return [ref.object for ref in self.__exposes]

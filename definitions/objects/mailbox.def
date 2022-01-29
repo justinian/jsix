@@ -1,5 +1,4 @@
 # Mailboxes are objects that enable asynchronous IPC via event notification.
-# This is a second line of documentation
 
 object mailbox {
     uid 99934ad04ece1e07
@@ -11,7 +10,7 @@ object mailbox {
 
     method bind {
         param index uint
-        param source object kobject
+        param source ref object
         param event uint
     }
 

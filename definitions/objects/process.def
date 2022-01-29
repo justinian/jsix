@@ -1,9 +1,9 @@
-import "objects/kobject.def"
+import "objects/object.def"
 
 # Processes are a collection of handles and a virtual memory
 # space inside which threads are run.
 
-object process : kobject {
+object process : object {
     uid 0c69ee0b7502ba31
 
     capabilities [
@@ -25,7 +25,7 @@ object process : kobject {
     # Give the given process a handle that points to the same
     # object as the specified handle.
     method give_handle {
-        param target object kobject [handle]           # A handle in the caller process to send
-        param received object kobject [out optional]  # The handle as the recipient will see it
+        param target ref object [handle]          # A handle in the caller process to send
+        param received ref object [out optional]  # The handle as the recipient will see it
     }
 }

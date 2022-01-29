@@ -96,7 +96,7 @@ log_pump_proc()
 
         if (size == 0) {
             j6_signal_t sigs = 0;
-            j6_kobject_wait(__handle_sys, j6_signal_system_has_log, &sigs);
+            j6_object_wait(__handle_sys, j6_signal_system_has_log, &sigs);
             continue;
         }
 

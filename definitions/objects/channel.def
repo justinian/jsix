@@ -1,4 +1,4 @@
-object channel : kobject {
+object channel : object {
     uid 3ea38b96aa0e54c8
 
     capabilities [

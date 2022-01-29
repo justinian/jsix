@@ -1,7 +1,7 @@
 # Channels are objects that enable synchronous IPC of
 # arbitrary-sized messages.
 
-object endpoint : kobject {
+object endpoint : object {
     uid c5882f24a4c03b7e
 
     capabilities [

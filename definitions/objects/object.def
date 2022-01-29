@@ -1,6 +1,11 @@
 # The base type of all kernel-exposed objects
-object kobject [virtual] {
+object object [virtual] {
     uid 667f61fb2cd57bb4
+    cname kobject
+
+    capabilities [
+        clone
+    ]
 
     # Get the internal kernel object id of an object
     method koid {
@@ -17,9 +22,9 @@ object kobject [virtual] {
     # Block the current thread waiting for an one of multiple
     # objects to assert one of a set of signals
     method wait_many [static] {
-        param handles object kobject [list] # The objects to wait on
-        param mask uint64 # Bitmap of which signals to wait for
-        param handle object kobject [out] # Returns the object that signalled
-        param signals uint64 [out] # Returns the state of the signals
+        param handles ref object [list] # The objects to wait on
+        param mask uint64               # Bitmap of which signals to wait for
+        param handle ref object [out]   # Returns the object that signalled
+        param signals uint64 [out]      # Returns the state of the signals
     }
 }

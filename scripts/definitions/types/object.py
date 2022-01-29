@@ -7,10 +7,11 @@ class Object:
         self.uid = uid
         self.options = opts
         self.desc = desc
-        self.super = typename
         self.methods = children
         self.cname = cname or name
         self.caps = caps
+
+        self.__super = typename
 
         from . import ObjectRef
         self.__ref = ObjectRef(name)
@@ -25,3 +26,8 @@ class Object:
         return "\n".join(parts)
 
     reftype = property(lambda self: self.__ref)
+
+    @property
+    def super(self):
+        if self.__super is not None:
+            return self.__super.object

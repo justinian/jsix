@@ -3,7 +3,7 @@ import "objects/vma.def"
 
 # The system object represents a handle to kernel functionality
 # needed by drivers and other priviledged services
-object system : kobject {
+object system : object {
     uid fa72506a2cf71a30
 
     capabilities [
@@ -21,17 +21,17 @@ object system : kobject {
     # Ask the kernel to send this process messages whenever
     # the given IRQ fires
     method bind_irq [cap:bind_irq] {
-        param dest object endpoint  # Endpoint that will receive messages
-        param irq uint              # IRQ number to bind
+        param dest ref endpoint  # Endpoint that will receive messages
+        param irq uint           # IRQ number to bind
     }
 
     # Create a VMA and map an area of physical memory into it,
     # also mapping that VMA into the current process
     method map_phys [cap:map_phys] {
-        param area object vma [out] # Receives a handle to the VMA created
-        param phys address          # The physical address of the area
-        param size size             # Size of the area, in pages
-        param flags uint32          # Flags to apply to the created VMA
+        param area ref vma [out] # Receives a handle to the VMA created
+        param phys address       # The physical address of the area
+        param size size          # Size of the area, in pages
+        param flags uint32       # Flags to apply to the created VMA
     }
 
     # Request the kernel change the IOPL for this process. The only values
