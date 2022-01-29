@@ -34,4 +34,12 @@ interface syscalls [syscall] {
     function handle_list {
         param handles object kobject [list inout optional] # A list of handles to be filled
     }
+
+    # Create a clone of an existing handle, possibly with
+    # some capabilities masked out.
+    function handle_clone {
+        param handle object kobject [handle] # The handle to clone
+        param clone object kobject [out]     # The new handle
+        param mask uint32                    # The capability bitmask
+    }
 }

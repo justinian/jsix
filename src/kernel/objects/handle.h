@@ -9,11 +9,18 @@ namespace obj {
 
 struct handle
 {
+    constexpr static uint64_t id_mask   = 0x00000000ffffffff;
+    constexpr static uint64_t cap_mask  = 0x00ffffff00000000;
+    constexpr static uint64_t type_mask = 0xff00000000000000;
+
+    constexpr static unsigned cap_shift  = 32;
+    constexpr static unsigned type_shift = 56;
+
     // A j6_handle_t is an id in the low 32 bits, caps in bits 32-55, and type in 56-63
     static inline j6_handle_t make_id(j6_handle_t id, j6_cap_t caps, kobject *obj) {
         return (id & 0xffffffffull) |
-            static_cast<j6_handle_t>(caps) << 32 |
-            static_cast<j6_handle_t>(obj ? obj->get_type() : kobject::type::none) << 56;
+            ((static_cast<j6_handle_t>(caps) << cap_shift) & cap_mask) |
+            static_cast<j6_handle_t>(obj ? obj->get_type() : kobject::type::none) << type_shift;
     }
 
     inline handle(j6_handle_t in_id, kobject *in_obj, j6_cap_t caps) :
@@ -50,7 +57,7 @@ struct handle
         if (object) object->handle_release();
     }
 
-    inline j6_cap_t caps() const { return id >> 32; }
+    inline j6_cap_t caps() const { return (id & cap_mask) >> cap_shift; }
 
     inline bool has_cap(j6_cap_t test) const {
         return (caps() & test) == test;

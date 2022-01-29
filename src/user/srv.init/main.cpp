@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <j6/caps.h>
 #include <j6/errors.h>
 #include <j6/syscalls.h>
 #include <j6/types.h>
@@ -29,6 +30,12 @@ main(int argc, const char **argv)
 
     modules mods = modules::load_modules(_arg_modules_phys, __handle_sys, __handle_self);
 
+    j6_handle_t drv_sys_handle = j6_handle_invalid;
+    j6_status_t s = j6_handle_clone(__handle_sys, &drv_sys_handle,
+            j6_cap_system_bind_irq | j6_cap_system_map_phys | j6_cap_system_change_iopl);
+    if (s != j6_status_ok)
+        return s;
+
     for (auto &mod : mods.of_type(module_type::program)) {
         auto &prog = static_cast<const module_program&>(mod);
 
@@ -36,7 +43,7 @@ main(int argc, const char **argv)
         sprintf(message, "  loading program module '%s' at %lx", prog.filename, prog.base_address);
         j6_log(message);
 
-        if (!load_program(prog, message)) {
+        if (!load_program(prog, __handle_sys, message)) {
             j6_log(message);
             return 1;
         }

@@ -10,8 +10,7 @@ class Object:
         self.super = typename
         self.methods = children
         self.cname = cname or name
-
-        self.caps = set(caps)
+        self.caps = caps
 
         from . import ObjectRef
         self.__ref = ObjectRef(name)
