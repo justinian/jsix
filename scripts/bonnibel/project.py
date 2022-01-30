@@ -171,7 +171,7 @@ class Project:
                 outputs = ['build.ninja'],
                 implicit = regen_implicits,
                 implicit_outputs = 
-                    [f"{mod.name}.ninja" for mod in modules.values()] +
+                    [f"module.{mod.name}.ninja" for mod in modules.values()] +
                     [f"{target.name}/target.ninja" for target in targets] +
                     [boot_config],
                 )
@@ -212,4 +212,4 @@ class Project:
                         build.newline()
 
                 for mod in mods:
-                    build.subninja(f"{mod}.ninja")
+                    build.subninja(f"module.{mod}.ninja")

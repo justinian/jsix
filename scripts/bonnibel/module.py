@@ -85,7 +85,7 @@ class Module:
                 children |= {m for m in child.depmods if not m in closed}
 
     def generate(self, output):
-        filename = str(output / f"{self.name}.ninja")
+        filename = str(output / f"module.{self.name}.ninja")
 
         with open(filename, "w") as buildfile:
             from pathlib import Path
