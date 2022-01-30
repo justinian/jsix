@@ -22,7 +22,7 @@ object endpoint : object {
     # is available.
     method receive [cap:receive] {
         param tag uint64 [out]
-        param data buffer [out optional]
+        param data buffer [out zero_ok]
         param timeout uint64    # Receive timeout in nanoseconds
     }
 
@@ -31,7 +31,7 @@ object endpoint : object {
     # operation.
     method sendrecv [cap:send cap:receive] {
         param tag uint64 [inout]
-        param data buffer [inout]
+        param data buffer [inout zero_ok]
         param timeout uint64      # Receive timeout in nanoseconds
     }
 }

@@ -22,11 +22,34 @@ for obj in syscalls.exposes:
 //[[[end]]]
 
 namespace {
+    enum class req { required, optional, zero_ok };
+
     template <typename T>
     __attribute__((always_inline))
-    inline bool check_refparam(const T* param, bool optional) {
-        return reinterpret_cast<uintptr_t>(param) < arch::kernel_offset &&
-            (optional || param);
+    inline bool range_check(const T* param) {
+        return reinterpret_cast<uintptr_t>(param) < arch::kernel_offset;
+    }
+
+    template <typename T>
+    __attribute__((always_inline))
+    inline bool check_refparam(const T* param, req required) {
+        return range_check(param) && ((required == req::optional) || param);
+    }
+
+    template <typename T>
+    __attribute__((always_inline))
+    inline bool check_refparam(const T* param, size_t len, req required) {
+        bool nullok = (required == req::optional) || (required == req::zero_ok && !len);
+        return range_check(param) && (param || nullok);
+    }
+
+    template <typename T>
+    __attribute__((always_inline))
+    inline bool check_refparam(const T* param, size_t *len, req required) {
+        if (!range_check(len)) return false;
+        if (len) return check_refparam(param, *len, required);
+        // if len is null but param is not, call that invalid.
+        else return !param && required == req::optional;
     }
 
     // When called with more than 6 arguments, the 7th argument to the
@@ -67,7 +90,7 @@ for id, scope, method in syscalls.methods:
         argdefs.append(("j6_handle_t *", "self"))
         cxxargdefs.append("j6_handle_t *self")
         args.append("self")
-        refparams.append(("self", False))
+        refparams.append(("self", "required"))
 
     elif not method.static:
         argdefs.append(("j6_handle_t", "self"))
@@ -104,10 +127,9 @@ for id, scope, method in syscalls.methods:
 
         if param.refparam:
             subs = param.type.c_names(param.options)
-            refparams.append((param.name + subs[0][1], param.optional))
-            if param.outparam:
-                for sub in subs[1:]:
-                    refparams.append((param.name + sub[1], param.optional))
+            checkargs = map(lambda x: f"{param.name}{x[1]}", subs)
+
+            refparams.append((", ".join(checkargs), param.optional))
 
     first_args = ", ".join(map(lambda x: f"{x[0]} {x[1]}", argdefs[:6]))
     extra_argdefs = argdefs[6:]
@@ -124,8 +146,8 @@ for id, scope, method in syscalls.methods:
     if extra_argdefs:
         cog.outl()
 
-    for pname, optional in refparams:
-        cog.outl(f"    if (!check_refparam({pname}, {cbool[optional]}))")
+    for checkargs, optional in refparams:
+        cog.outl(f"    if (!check_refparam({checkargs}, req::{optional}))")
         cog.outl( "        return j6_err_invalid_arg;")
         cog.outl()
 
