@@ -50,6 +50,11 @@ syscall_handler_prelude:
 	push r14
 	push r15
 
+	; if we've got more than 6 arguments, the rest
+	; are on the user stack, and pointed to by rbx.
+	; push rbx so that it's the 7th argument.
+	push rbx
+
 	inc qword [rel __counter_syscall_enter]
 
 	cmp rax, NUM_SYSCALLS
@@ -61,6 +66,8 @@ syscall_handler_prelude:
 	je .bad_syscall
 
 	call r11
+
+	add rsp, 8 ; account for passing rbx on the stack
 
 	inc qword [rel __counter_syscall_sysret]
 	jmp kernel_to_user_trampoline

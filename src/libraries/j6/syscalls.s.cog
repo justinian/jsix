@@ -6,6 +6,15 @@
         push rbp
         mov rbp, rsp
 
+        ; if the syscall has more than 6 arguments, the rest
+        ; will be pushed on the stack. in that case, we'd need
+        ; to pass this stack pointer to the kernel, so stash
+        ; off rbx (callee-saved) and pass the pointer to the
+        ; arguments there.
+        push rbx
+        mov rbx, rbp
+        add rbx, 16 ; account for stack frame
+
         ; args should already be in rdi, etc, but rcx will
         ; get stomped, so stash it in r10, which isn't a
         ; callee-saved register, but also isn't used in the
@@ -16,6 +25,7 @@
         syscall
         ; result is now already in rax, so just return
 
+        pop rbx
         pop rbp
         ret
 %endmacro

@@ -28,6 +28,14 @@ namespace {
         return reinterpret_cast<uintptr_t>(param) < arch::kernel_offset &&
             (optional || param);
     }
+
+    // When called with more than 6 arguments, the 7th argument to the
+    // verify function is the stack pointer holding the rest. "Pop" them
+    // into variables to be passed normally with pop_from.
+    template <typename T>
+    inline T pop_from(uint64_t *&sp) {
+        return *reinterpret_cast<T*>(sp++);
+    }
 }
 
 namespace syscalls {
@@ -56,13 +64,13 @@ for id, scope, method in syscalls.methods:
     objparams = []
 
     if method.constructor:
-        argdefs.append("j6_handle_t *self")
+        argdefs.append(("j6_handle_t *", "self"))
         cxxargdefs.append("j6_handle_t *self")
         args.append("self")
         refparams.append(("self", False))
 
     elif not method.static:
-        argdefs.append("j6_handle_t self")
+        argdefs.append(("j6_handle_t", "self"))
         cxxargdefs.append(f"obj::{scope.cname} *self")
         args.append("self_obj")
 
@@ -75,7 +83,7 @@ for id, scope, method in syscalls.methods:
 
         for type, suffix in param.type.c_names(param.options):
             arg = f"{param.name}{suffix}"
-            argdefs.append(f"{type} {arg}")
+            argdefs.append((type, arg))
 
         for type, suffix in param.type.cxx_names(param.options):
             arg = f"{param.name}{suffix}"
@@ -101,8 +109,20 @@ for id, scope, method in syscalls.methods:
                 for sub in subs[1:]:
                     refparams.append((param.name + sub[1], param.optional))
 
+    first_args = ", ".join(map(lambda x: f"{x[0]} {x[1]}", argdefs[:6]))
+    extra_argdefs = argdefs[6:]
+
+    if extra_argdefs:
+        first_args += ", uint64_t *sp"
+
     cog.outl(f"""j6_status_t {name} ({", ".join(cxxargdefs)});""")
-    cog.outl(f"""j6_status_t _syscall_verify_{name} ({", ".join(argdefs)}) {{""")
+    cog.outl(f"""j6_status_t _syscall_verify_{name} ({first_args}) {{""")
+
+    for type, arg in extra_argdefs:
+        cog.outl(f"    {type} {arg} = pop_from<{type}>(sp);")
+
+    if extra_argdefs:
+        cog.outl()
 
     for pname, optional in refparams:
         cog.outl(f"    if (!check_refparam({pname}, {cbool[optional]}))")
