@@ -1,4 +1,20 @@
 object event : object {
     uid f441e03da5516b1a
+
+    capabilities [
+        signal
+    ]
+
+    method create [constructor]
+
+    # Assert signals on the event from the given bitset
+    method signal [cap:signal] {
+        param signals uint64
+    }
+
+    # De-assert signals on the event from the given bitset
+    method clear [cap:signal] {
+        param mask uint64
+    }
 }
 

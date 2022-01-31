@@ -90,16 +90,6 @@ object_wait_many(j6_handle_t * handles, size_t handles_count, uint64_t mask, j6_
 }
 
 j6_status_t
-object_signal(kobject *self, j6_signal_t signals)
-{
-    if ((signals & j6_signal_user_mask) != signals)
-        return j6_err_invalid_arg;
-
-    self->assert_signal(signals);
-    return j6_status_ok;
-}
-
-j6_status_t
 object_close(kobject *self)
 {
     self->close();
