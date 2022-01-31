@@ -37,32 +37,69 @@ kobject::koid_type(j6_koid_t koid)
     return static_cast<type>((koid >> 48) & 0xffffull);
 }
 
-void
+j6_signal_t
 kobject::assert_signal(j6_signal_t s)
 {
-    m_signals |= s;
+    j6_signal_t old =
+        __atomic_fetch_or(&m_signals, s, __ATOMIC_SEQ_CST);
     notify_signal_observers();
+    return old;
+}
+
+j6_signal_t
+kobject::deassert_signal(j6_signal_t s)
+{
+    return __atomic_fetch_and(&m_signals, ~s, __ATOMIC_SEQ_CST);
 }
 
 void
-kobject::deassert_signal(j6_signal_t s)
+kobject::compact_blocked_threads()
 {
-    m_signals &= ~s;
+    // Clean up what we can of the list
+    while (!m_blocked_threads.empty() && !m_blocked_threads.first())
+        m_blocked_threads.pop_front();
+    while (!m_blocked_threads.empty() && !m_blocked_threads.last())
+        m_blocked_threads.pop_back();
 }
 
 void
 kobject::notify_signal_observers()
 {
-    size_t i = 0;
-    while (i < m_blocked_threads.count()) {
-        thread *t = m_blocked_threads[i];
+    for (auto &entry : m_blocked_threads) {
+        if (entry == nullptr) continue;
+        if (entry->wake_on_signals(this, m_signals))
+            entry = nullptr;
+    }
+    compact_blocked_threads();
+}
 
-        if (t->wake_on_signals(this, m_signals)) {
-            m_blocked_threads.remove_swap_at(i);
-        } else {
-            ++i;
+void
+kobject::notify_object_observers(size_t count)
+{
+    if (!count) return;
+
+    for (auto &entry : m_blocked_threads) {
+        if (entry == nullptr) continue;
+        if (entry->wake_on_object(this)) {
+            entry = nullptr;
+            if (--count) break;
         }
     }
+    compact_blocked_threads();
+}
+
+void
+kobject::remove_blocked_thread(thread *t)
+{
+    // Can't really remove from a deque, so just
+    // null out removed entries.
+    for (auto &entry : m_blocked_threads) {
+        if (entry == t) {
+            entry = nullptr;
+            break;
+        }
+    }
+    compact_blocked_threads();
 }
 
 void

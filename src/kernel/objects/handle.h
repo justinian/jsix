@@ -23,6 +23,8 @@ struct handle
             static_cast<j6_handle_t>(obj ? obj->get_type() : kobject::type::none) << type_shift;
     }
 
+    inline handle() : id {j6_handle_invalid}, object {nullptr} {}
+
     inline handle(j6_handle_t in_id, kobject *in_obj, j6_cap_t caps) :
         id {make_id(in_id, caps, in_obj)}, object {in_obj} {
         if (object) object->handle_retain();
@@ -90,6 +92,7 @@ struct handle
     inline const kobject * as<kobject>() const { return object; }
 
     j6_handle_t id;
+    uint64_t badge;
     kobject *object;
 };
 

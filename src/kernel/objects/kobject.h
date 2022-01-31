@@ -5,7 +5,7 @@
 #include <j6/errors.h>
 #include <j6/signals.h>
 #include <j6/types.h>
-#include <util/vector.h>
+#include <util/deque.h>
 
 namespace obj {
 
@@ -45,12 +45,14 @@ public:
     inline j6_koid_t koid() const { return m_koid; }
 
     /// Set the given signals active on this object
-    /// \arg s  The set of signals to assert
-    void assert_signal(j6_signal_t s);
+    /// \arg s    The set of signals to assert
+    /// \returns  The previous state of the signals
+    j6_signal_t assert_signal(j6_signal_t s);
 
     /// Clear the given signals on this object
-    /// \arg s  The set of signals to deassert
-    void deassert_signal(j6_signal_t s);
+    /// \arg s    The set of signals to deassert
+    /// \returns  The previous state of the signals
+    j6_signal_t deassert_signal(j6_signal_t s);
 
     /// Check if the given signals are set on this object
     /// \arg s  The set of signals to check
@@ -68,10 +70,10 @@ public:
     }
 
     /// Add the given thread to the list of threads waiting on this object.
-    inline void add_blocked_thread(thread *t) { m_blocked_threads.append(t); }
+    inline void add_blocked_thread(thread *t) { m_blocked_threads.push_back(t); }
 
     /// Remove the given thread from the list of threads waiting on this object.
-    inline void remove_blocked_thread(thread *t) { m_blocked_threads.remove_swap(t); }
+    void remove_blocked_thread(thread *t);
 
     /// Perform any cleanup actions necessary to mark this object closed
     virtual void close();
@@ -93,12 +95,19 @@ private:
     /// \arg result  The result to pass to the observers
     void notify_signal_observers();
 
+    /// Compact the blocked threads deque
+    void compact_blocked_threads();
+
     j6_koid_t m_koid;
     j6_signal_t m_signals;
     uint16_t m_handle_count;
 
 protected:
-    util::vector<thread*> m_blocked_threads;
+    /// Notify threads waiting on this object
+    /// \arg count  Number of observers to wake, or -1ull for all
+    void notify_object_observers(size_t count = -1ull);
+
+    util::deque<thread*, 8> m_blocked_threads;
 };
 
 } // namespace obj
