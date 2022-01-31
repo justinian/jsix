@@ -15,3 +15,6 @@
 
 - name: buffers
   size: 64G
+
+- name: slabs
+  size: 64G

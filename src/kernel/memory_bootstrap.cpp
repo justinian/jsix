@@ -23,6 +23,8 @@ using bootproto::allocation_register;
 
 using obj::vm_flags;
 
+uintptr_t g_slabs_bump_pointer;
+
 // These objects are initialized _before_ global constructors are called,
 // so we don't want them to have global constructors at all, lest they
 // overwrite the previous initialization.
@@ -42,6 +44,10 @@ obj::vm_area_guarded g_kernel_buffers {
     mem::buffers_offset,
     mem::kernel_buffer_pages,
     mem::buffers_size,
+    vm_flags::write};
+
+obj::vm_area_open g_kernel_slabs {
+    mem::slabs_size,
     vm_flags::write};
 
 void * operator new(size_t size)           { return g_kernel_heap.allocate(size); }
@@ -106,6 +112,8 @@ memory_initialize_post_ctors(bootproto::args &kargs)
 {
     vm_space &vm = vm_space::kernel_space();
     vm.add(mem::buffers_offset, &g_kernel_buffers);
+    vm.add(mem::slabs_offset, &g_kernel_slabs);
+    g_slabs_bump_pointer = mem::slabs_offset;
 
     g_frame_allocator.free(
         get_physical_page(kargs.page_tables.pointer),
