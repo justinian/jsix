@@ -20,7 +20,7 @@ static constexpr j6_signal_t thread_default_signals = 0;
 thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
     kobject(kobject::type::thread, thread_default_signals),
     m_parent(parent),
-    m_state(state::loading),
+    m_state(state::none),
     m_wait_type(wait_type::none),
     m_wait_data(0),
     m_wait_obj(0)

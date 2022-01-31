@@ -67,11 +67,11 @@ public:
     constexpr static j6_cap_t parent_caps = j6_cap_thread_all;
 
     enum class state : uint8_t {
+        none     = 0x00,
         ready    = 0x01,
-        loading  = 0x02,
-        exited   = 0x04,
-        constant = 0x80,
-        none     = 0x00
+        exited   = 0x02,
+
+        constant = 0x80
     };
 
     /// Destructor
@@ -85,10 +85,6 @@ public:
     /// Get the `ready` state of the thread.
     /// \returns True if the thread is ready to execute.
     inline bool ready() const { return has_state(state::ready); }
-
-    /// Get the `loading` state of the thread.
-    /// \returns True if the thread has not finished loading.
-    inline bool loading() const { return has_state(state::loading); }
 
     /// Get the `constant` state of the thread.
     /// \returns True if the thread has constant priority.
