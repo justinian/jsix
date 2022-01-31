@@ -32,7 +32,7 @@ interface syscalls [syscall] {
     # supplied list is not big enough, will set the size
     # needed in `size` and return j6_err_insufficient
     function handle_list {
-        param handles ref object [list inout optional] # A list of handles to be filled
+        param handles ref object [list inout zero_ok] # A list of handles to be filled
     }
 
     # Create a clone of an existing handle, possibly with

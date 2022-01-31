@@ -62,7 +62,7 @@ class Param:
 
     @property
     def optional(self):
-        if "zero_ok" in self.options: return "zero_ok"
-        elif "optional" in self.options: return "optional"
+        if "optional" in self.options: return "optional"
+        elif "zero_ok" in self.options: return "zero_ok"
         else: return "required"
 

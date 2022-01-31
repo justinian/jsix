@@ -15,7 +15,7 @@ object system : object {
 
     # Get a log line from the kernel log
     method get_log [cap:get_log] {
-        param buffer buffer [out optional]   # Buffer for the log message data structure
+        param buffer buffer [out zero_ok]   # Buffer for the log message data structure
     }
 
     # Ask the kernel to send this process messages whenever

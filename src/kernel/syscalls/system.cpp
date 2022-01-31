@@ -39,11 +39,6 @@ noop()
 j6_status_t
 system_get_log(system *self, void *buffer, size_t *buffer_len)
 {
-    // Buffer is marked optional, but we need the length, and if length > 0,
-    // buffer is not optional.
-    if (!buffer_len || (*buffer_len && !buffer))
-        return j6_err_invalid_arg;
-
     size_t orig_size = *buffer_len;
     *buffer_len = g_logger.get_entry(buffer, *buffer_len);
     if (!g_logger.has_log())

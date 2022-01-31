@@ -98,11 +98,12 @@ for id, scope, method in syscalls.methods:
         args.append("self_obj")
 
         type = f"obj::{scope.cname} *"
-        handles.append((type, "self", get_caps(method.options, scope)))
+        handles.append((scope.cname, "self", get_caps(method.options, scope)))
         objparams.append((type, "self"))
 
     for param in method.params:
         needs_obj = param.type.needs_object(param.options)
+        needs_handle = ("handle" in param.options) or needs_obj
 
         for type, suffix in param.type.c_names(param.options):
             arg = f"{param.name}{suffix}"
@@ -110,17 +111,22 @@ for id, scope, method in syscalls.methods:
 
         for type, suffix in param.type.cxx_names(param.options):
             arg = f"{param.name}{suffix}"
-            cxxargdefs.append(f"{type} {arg}")
 
-            if needs_obj:
-                handles.append((type, arg, get_caps(param.options, param.type.object)))
-                objparams.append((type, arg))
-                args.append(f"{arg}_obj")
+            if needs_handle:
+                handles.append((param.type.object.cname, arg, get_caps(param.options, param.type.object)))
+                if needs_obj:
+                    objparams.append((type, arg))
+                    args.append(f"{arg}_obj")
+                    cxxargdefs.append(f"{type} {arg}")
+                else:
+                    args.append(f"{arg}_handle")
+                    cxxargdefs.append(f"obj::handle *{arg}_handle")
                 break
             else:
+                cxxargdefs.append(f"{type} {arg}")
                 args.append(arg)
 
-        if not needs_obj and param.caps:
+        if not needs_handle and param.caps:
             handles.append((
                 f"obj::{param.type.object.cname}",
                 arg, get_caps(param.options, param.type.object)))
@@ -152,10 +158,7 @@ for id, scope, method in syscalls.methods:
         cog.outl()
 
     for type, arg, caps in handles:
-        if type.endswith('*'):
-            type = type[:-1].strip()
-
-        cog.outl(f"    obj::handle *{arg}_handle = get_handle<typename {type}>({arg});")
+        cog.outl(f"    obj::handle *{arg}_handle = get_handle<typename obj::{type}>({arg});")
         cog.outl(f"    if (!{arg}_handle) return j6_err_invalid_arg;")
 
         if caps:

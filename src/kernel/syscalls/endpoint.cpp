@@ -28,11 +28,6 @@ endpoint_send(endpoint *self, uint64_t tag, const void * data, size_t data_len)
 j6_status_t
 endpoint_receive(endpoint *self, uint64_t * tag, void * data, size_t * data_len, uint64_t timeout)
 {
-    // Data is marked optional, but we need the length, and if length > 0,
-    // data is not optional.
-    if (!data_len || (*data_len && !data))
-        return j6_err_invalid_arg;
-
     // Use local variables instead of the passed-in pointers, since
     // they may get filled in when the sender is running, which means
     // a different user VM space would be active.

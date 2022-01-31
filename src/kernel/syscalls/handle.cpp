@@ -11,9 +11,6 @@ namespace syscalls {
 j6_status_t
 handle_list(j6_handle_t *handles, size_t *handles_len)
 {
-    if (!handles_len || (*handles_len && !handles))
-        return j6_err_invalid_arg;
-
     process &p = process::current();
     size_t requested = *handles_len;
 
@@ -26,16 +23,12 @@ handle_list(j6_handle_t *handles, size_t *handles_len)
 }
 
 j6_status_t
-handle_clone(j6_handle_t orig, j6_handle_t *clone, uint32_t mask)
+handle_clone(handle *orig, j6_handle_t *clone, uint32_t mask)
 {
-    handle *orig_handle = get_handle<kobject>(orig);
-    if (!orig_handle)
-        return j6_err_invalid_arg;
-
     process &p = process::current();
     *clone = p.add_handle(
-            orig_handle->object,
-            orig_handle->caps() & mask);
+            orig->object,
+            orig->caps() & mask);
 
     return j6_status_ok;
 }
