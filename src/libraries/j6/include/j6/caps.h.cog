@@ -18,11 +18,11 @@ for obj in syscalls.exposes:
 
     for cap in obj.caps:
         name = f"j6_cap_{obj.name}_{cap}"
-        cog.outl(f"#define {name:<30} (1 << {i})")
+        cog.outl(f"#define {name:<30} (1ull << {i})")
         i += 1
 
     name = f"j6_cap_{obj.name}_all"
-    cog.outl(f"#define {name:<30} ((1<<{i})-1)")
+    cog.outl(f"#define {name:<30} ((1ull<<{i})-1)")
     cog.outl()
 ]]]*/
 /// [[[end]]]

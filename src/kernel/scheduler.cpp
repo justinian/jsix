@@ -116,7 +116,8 @@ scheduler::add_thread(TCB *t)
     t->time_left = quantum(t->priority);
 }
 
-void scheduler::prune(run_queue &queue, uint64_t now)
+void
+scheduler::prune(run_queue &queue, uint64_t now)
 {
     // Find processes that are ready or have exited and
     // move them to the appropriate lists.
