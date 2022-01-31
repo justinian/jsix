@@ -216,7 +216,7 @@ class GetThreadsCommand(gdb.Command):
             self.print_thread_list(ready, f"PRIORITY {pri}")
 
         blocked = int(gdb.parse_and_eval(f"{runlist}.blocked.m_head"))
-        self.print_thread_list(ready, "BLOCKED")
+        self.print_thread_list(blocked, "BLOCKED")
 
 PrintStackCommand()
 PrintBacktraceCommand()
