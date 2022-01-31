@@ -67,6 +67,7 @@ kernel_main(bootproto::args *args)
     interrupts_enable();
 
     scheduler *sched = new scheduler {g_num_cpus};
+    smp::ready();
 
     // Load the init server
     load_init_server(*args->init, args->modules);
