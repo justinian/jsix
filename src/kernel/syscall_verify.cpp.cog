@@ -94,12 +94,16 @@ for id, scope, method in syscalls.methods:
 
     elif not method.static:
         argdefs.append(("j6_handle_t", "self"))
-        cxxargdefs.append(f"obj::{scope.cname} *self")
-        args.append("self_obj")
 
-        type = f"obj::{scope.cname} *"
+        if "handle" in method.options:
+            args.append("self_handle")
+            cxxargdefs.append(f"obj::handle *self_handle")
+        else:
+            args.append("self_obj")
+            cxxargdefs.append(f"obj::{scope.cname} *self")
+            objparams.append((f"obj::{scope.cname} *", "self"))
+
         handles.append((scope.cname, "self", get_caps(method.options, scope)))
-        objparams.append((type, "self"))
 
     for param in method.params:
         needs_obj = param.type.needs_object(param.options)
