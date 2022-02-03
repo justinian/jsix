@@ -23,35 +23,35 @@ struct handle
             static_cast<j6_handle_t>(obj ? obj->get_type() : kobject::type::none) << type_shift;
     }
 
-    inline handle() : id {j6_handle_invalid}, object {nullptr} {}
+    inline handle() : id {j6_handle_invalid}, badge {0}, object {nullptr} {}
 
-    inline handle(j6_handle_t in_id, kobject *in_obj, j6_cap_t caps) :
-        id {make_id(in_id, caps, in_obj)}, object {in_obj} {
+    inline handle(j6_handle_t in_id, kobject *in_obj, j6_cap_t caps, uint64_t in_badge = 0) :
+        id {make_id(in_id, caps, in_obj)}, badge {in_badge}, object {in_obj} {
         if (object) object->handle_retain();
     }
 
-    inline handle(const handle &other) :
-        id {other.id}, object {other.object} {
+    inline handle(const handle &o) :
+        id {o.id}, badge {o.badge}, object {o.object} {
         if (object) object->handle_retain();
     }
 
-    inline handle(handle &&other) :
-        id {other.id}, object {other.object} {
-        other.id = 0;
-        other.object = nullptr;
+    inline handle(handle &&o) :
+        id {o.id}, badge {o.badge}, object {o.object} {
+        o.id = 0;
+        o.object = nullptr;
     }
 
-    inline handle & operator=(const handle &other) {
+    inline handle & operator=(const handle &o) {
         if (object) object->handle_release();
-        id = other.id; object = other.object;
+        id = o.id; badge = o.badge; object = o.object;
         if (object) object->handle_retain();
         return *this;
     }
 
-    inline handle & operator=(handle &&other) {
+    inline handle & operator=(handle &&o) {
         if (object) object->handle_release();
-        id = other.id; object = other.object;
-        other.id = 0; other.object = nullptr;
+        id = o.id; badge = o.badge; object = o.object;
+        o.id = 0; o.badge = 0; o.object = nullptr;
         return *this;
     }
 
