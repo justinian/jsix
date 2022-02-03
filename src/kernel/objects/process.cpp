@@ -135,6 +135,19 @@ process::add_handle(kobject *obj, j6_cap_t caps)
     return id;
 }
 
+j6_handle_t
+process::add_handle(const handle &hnd)
+{
+    if (!hnd.object || hnd.id == j6_handle_invalid)
+        return j6_handle_invalid;
+
+    handle h {m_next_handle++, hnd.object, hnd.caps()};
+    j6_handle_t id = h.id;
+
+    m_handles.insert(id, h);
+    return id;
+}
+
 bool
 process::remove_handle(j6_handle_t id)
 {

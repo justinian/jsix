@@ -62,8 +62,13 @@ public:
     /// Start tracking an object with a handle.
     /// \args obj  The object this handle refers to
     /// \args caps The capabilities on this handle
-    /// \returns   The new handle for this object
+    /// \returns   The new handle id for this object
     j6_handle_t add_handle(kobject *obj, j6_cap_t caps);
+
+    /// Start tracking an object with a handle.
+    /// \args hnd  An existing handle to copy into this process
+    /// \returns   The new handle id for this object
+    j6_handle_t add_handle(const handle &hnd);
 
     /// Stop tracking an object with a handle.
     /// \args handle The handle that refers to the object
