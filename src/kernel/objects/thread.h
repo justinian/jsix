@@ -98,17 +98,20 @@ public:
     inline void set_priority(uint8_t p) { if (!constant()) m_tcb.priority = p; }
 
     /// Block the thread, waiting an object's signals.
-    /// \arg signals Mask of signals to wait for
-    void wait_on_signals(j6_signal_t signals);
+    /// \arg signals  Mask of signals to wait for
+    /// \returns      j6_status_ok on success
+    j6_status_t wait_on_signals(j6_signal_t signals);
 
     /// Block the thread, waiting for a given clock value
-    /// \arg t  Clock value to wait for
-    void wait_on_time(uint64_t t);
+    /// \arg t    Clock value to wait for
+    /// \returns  j6_status_ok on success
+    j6_status_t wait_on_time(uint64_t t);
 
     /// Block the thread, waiting on the given object
-    /// \arg o  The object that should wake this thread
-    /// \arg t  The timeout clock value to wait for
-    void wait_on_object(kobject *o, uint64_t t = 0);
+    /// \arg o    The object that should wake this thread
+    /// \arg t    The timeout clock value to wait for
+    /// \returns  j6_status_ok on success
+    j6_status_t wait_on_object(void *o, uint64_t t = 0);
 
     /// Wake the thread if it is waiting on signals.
     /// \arg obj     Object that changed signals
@@ -122,9 +125,10 @@ public:
     bool wake_on_time(uint64_t now);
 
     /// Wake the thread if it is waiting on the given object.
-    /// \arg o  Object trying to wake the thread
+    /// \arg o   Object trying to wake the thread
+    /// \arg id  Id of the object trying to wake the thread
     /// \returns  True if this action unblocked the thread
-    bool wake_on_object(kobject *o);
+    bool wake_on_object(void *o, uint64_t id = 0);
 
     /// Wake the thread with a given result code.
     /// \arg obj     Object that changed signals
@@ -139,6 +143,12 @@ public:
 
     /// Get the current blocking operation's wait ojbect (as a handle)
     j6_koid_t get_wait_object() const { return m_wait_obj; }
+
+    /// Primitive thread blocking, instead of using wait framework
+    void block();
+
+    /// Primitive thread unblocking, instead of using wait framework
+    void wake();
 
     inline bool has_state(state s) const {
         return static_cast<uint8_t>(m_state) & static_cast<uint8_t>(s);
@@ -208,7 +218,7 @@ private:
     uint64_t m_wait_data;
     uint64_t m_wait_time;
     j6_status_t m_wait_result;
-    j6_koid_t m_wait_obj;
+    uint64_t m_wait_obj;
     util::spinlock m_wait_lock;
 
     j6_handle_t m_self_handle;

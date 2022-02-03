@@ -45,49 +45,50 @@ thread::~thread()
 
 thread & thread::current() { return *current_cpu().thread; }
 
-inline void schedule_if_current(thread *t) { if (t == current_cpu().thread) scheduler::get().schedule(); }
-
-void
+j6_status_t
 thread::wait_on_signals(j6_signal_t signals)
 {
-    {
-        util::scoped_lock lock {m_wait_lock};
-        m_wait_type = wait_type::signal;
-        m_wait_data = signals;
-        clear_state(state::ready);
-    }
-    schedule_if_current(this);
+    util::scoped_lock lock {m_wait_lock};
+
+    m_wait_type = wait_type::signal;
+    m_wait_data = signals;
+
+    lock.release();
+    block();
+
+    return m_wait_result;
 }
 
-void
+j6_status_t
 thread::wait_on_time(uint64_t t)
 {
-    {
-        util::scoped_lock lock {m_wait_lock};
-        m_wait_type = wait_type::time;
-        m_wait_time = t;
-        clear_state(state::ready);
-    }
-    schedule_if_current(this);
+    util::scoped_lock lock {m_wait_lock};
+
+    m_wait_type = wait_type::time;
+    m_wait_time = t;
+
+    lock.release();
+    block();
+
+    return m_wait_result;
 }
 
-void
-thread::wait_on_object(kobject *o, uint64_t t)
+j6_status_t
+thread::wait_on_object(void *o, uint64_t t)
 {
-    {
-        util::scoped_lock lock {m_wait_lock};
+    util::scoped_lock lock {m_wait_lock};
 
-        m_wait_type = wait_type::object;
-        m_wait_data = reinterpret_cast<uint64_t>(o);
+    m_wait_type = wait_type::object;
+    m_wait_data = reinterpret_cast<uint64_t>(o);
 
-        if (t) {
-            m_wait_type |= wait_type::time;
-            m_wait_time = t;
-        }
-
-        clear_state(state::ready);
+    if (t) {
+        m_wait_type |= wait_type::time;
+        m_wait_time = t;
     }
-    schedule_if_current(this);
+
+    lock.release();
+    block();
+    return m_wait_result;
 }
 
 bool
@@ -129,7 +130,7 @@ thread::wake_on_time(uint64_t now)
 }
 
 bool
-thread::wake_on_object(kobject *o)
+thread::wake_on_object(void *o, uint64_t id)
 {
     util::scoped_lock lock {m_wait_lock};
 
@@ -139,7 +140,7 @@ thread::wake_on_object(kobject *o)
 
     m_wait_type = wait_type::none;
     m_wait_result = j6_status_ok;
-    m_wait_obj = o->koid();
+    m_wait_obj = id;
     set_state(state::ready);
     return true;
 }
@@ -157,14 +158,26 @@ thread::wake_on_result(kobject *obj, j6_status_t result)
 }
 
 void
+thread::block()
+{
+    clear_state(state::ready);
+    if (current_cpu().thread == this)
+        scheduler::get().schedule();
+}
+
+void
+thread::wake()
+{
+    set_state(state::ready);
+}
+
+void
 thread::exit(int32_t code)
 {
     m_return_code = code;
     set_state(state::exited);
-    clear_state(state::ready);
     close();
-
-    schedule_if_current(this);
+    block();
 }
 
 void
