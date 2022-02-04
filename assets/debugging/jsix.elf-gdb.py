@@ -225,4 +225,5 @@ GetThreadsCommand()
 
 gdb.execute("display/i $rip")
 if not gdb.selected_inferior().was_attached:
+    gdb.execute("add-symbol-file build/panic.serial.elf")
     gdb.execute("target remote :1234")
