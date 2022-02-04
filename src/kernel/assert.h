@@ -13,6 +13,7 @@ constexpr uint32_t send_nmi_command =
 extern uint32_t *apic_icr;
 extern void const *symbol_table;
 
+[[ noreturn ]]
 __attribute__ ((always_inline))
 inline void panic(
         const char *message = nullptr,
