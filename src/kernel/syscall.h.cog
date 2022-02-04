@@ -17,5 +17,5 @@ cog.outl(f"constexpr size_t num_syscalls = {len(syscalls.methods)};")
 ]]]*/
 /// [[[end]]]
 
-void syscall_initialize();
+void syscall_initialize(bool enable_test);
 extern "C" void syscall_enable();

@@ -1,0 +1,8 @@
+---
+init: srv.init
+flags: ["test"]
+programs:
+  - name: panic.serial
+    target: kernel
+    flags: panic
+  - name: drv.uart

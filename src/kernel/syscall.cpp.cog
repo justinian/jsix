@@ -66,7 +66,7 @@ syscall_invalid(uint64_t call)
 }
 
 void
-syscall_initialize()
+syscall_initialize(bool enable_test)
 {
     memset(&syscall_registry, 0, sizeof(syscall_registry));
 
@@ -77,8 +77,17 @@ syscall_initialize()
         else:
             name = method.name
 
-        cog.outl(f"syscall_registry[{id}] = reinterpret_cast<uintptr_t>(syscalls::_syscall_verify_{name});")
-        cog.outl(f"""log::debug(logs::syscall, "Enabling syscall {id:02x} as {name}");""")
+        indent = ""
+        if "test" in method.options:
+            cog.outl("if (enable_test) {")
+            indent = "    "
+
+        cog.outl(f"{indent}syscall_registry[{id}] = reinterpret_cast<uintptr_t>(syscalls::_syscall_verify_{name});")
+        cog.outl(f"""{indent}log::debug(logs::syscall, "Enabling syscall {id:02x} as {name}");""")
+
+        if "test" in method.options:
+            cog.outl("}")
+
         cog.outl("")
     ]]]*/
     //[[[end]]]

@@ -41,7 +41,8 @@ bootconfig::bootconfig(util::buffer data, uefi::boot_services *bs)
     data += 1; // reserved byte
     uint16_t num_programs = *util::read<uint16_t>(data);
     uint16_t num_data = *util::read<uint16_t>(data);
-    data += 2; // reserved short
+
+    m_flags = *util::read<uint16_t>(data);
 
     read_descriptor(m_kernel, data);
     read_descriptor(m_init, data);

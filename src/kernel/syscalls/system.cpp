@@ -36,6 +36,14 @@ noop()
     return j6_status_ok;
 }
 
+[[ noreturn ]] j6_status_t
+test_finish(uint32_t exit_code)
+{
+    // Tell QEMU to exit
+    asm ( "out %0, %1" :: "a"(exit_code), "Nd"(0xf4) );
+    while (1) asm ("hlt");
+}
+
 j6_status_t
 system_get_log(system *self, void *buffer, size_t *buffer_len)
 {

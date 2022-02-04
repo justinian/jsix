@@ -77,6 +77,7 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
 
     args->kernel = loader::load_program(disk, bc.kernel(), true);
     args->init = loader::load_program(disk, bc.init());
+    args->flags = static_cast<bootproto::boot_flags>(bc.flags());
 
     namespace bits = util::bits;
     using bootproto::desc_flags;

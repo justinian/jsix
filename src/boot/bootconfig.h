@@ -28,12 +28,14 @@ public:
     /// Constructor. Loads bootconfig from the given buffer.
     bootconfig(util::buffer data, uefi::boot_services *bs);
 
-    inline const descriptor & kernel() { return m_kernel; }
-    inline const descriptor & init() { return m_init; }
+    inline uint16_t flags() const { return m_flags; }
+    inline const descriptor & kernel() const { return m_kernel; }
+    inline const descriptor & init() const { return m_init; }
     descriptors programs() { return m_programs; }
     descriptors data() { return m_data; }
 
 private:
+    uint16_t m_flags;
     descriptor m_kernel;
     descriptor m_init;
     descriptors m_programs;

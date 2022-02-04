@@ -114,8 +114,10 @@ struct frame_block
 
 enum class boot_flags : uint16_t {
     none  = 0x0000,
-    debug = 0x0001
+    debug = 0x0001,
+    test  = 0x0002,
 };
+is_bitfield(boot_flags);
 
 struct args
 {

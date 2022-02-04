@@ -10,6 +10,11 @@ class Manifest:
         "symbols":   0x04,
     }
 
+    boot_flags = {
+        "debug": 0x01,
+        "test":  0x02,
+    }
+
     def __init__(self, path, modules):
         from . import load_config
 
@@ -24,6 +29,8 @@ class Manifest:
 
         self.programs = [self.__build_entry(modules, i)
                 for i in config.get("programs", tuple())]
+
+        self.flags = config.get("flags", tuple())
 
         self.data = []
         for d in config.get("data", tuple()):
@@ -65,10 +72,12 @@ class Manifest:
             version = 0
             reserved = 0
 
+            bootflags = sum([Manifest.boot_flags.get(s, 0) for s in self.flags])
+
             outfile.write(struct.pack("<8sBBHHH",
                 magic, version, reserved,
                 len(self.programs), len(self.data),
-                reserved))
+                bootflags))
 
             def write_str(s):
                 outfile.write(struct.pack("<H", (len(s)+1)*2))

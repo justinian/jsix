@@ -98,8 +98,6 @@ bsp_late_init()
     asm ("mov %%cr4, %0" : "=r"(cr4));
     uint64_t efer = rdmsr(msr::ia32_efer);
     log::debug(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx", cr0, cr4, efer);
-
-    syscall_initialize();
 }
 
 cpu_data *

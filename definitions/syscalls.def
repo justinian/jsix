@@ -42,4 +42,9 @@ interface syscalls [syscall] {
         param clone ref object [out]             # The new handle
         param mask uint32                        # The capability bitmask
     }
+
+    # Testing mode only: Have the kernel finish and exit QEMU with the given exit code
+    function test_finish [test] {
+        param exit_code uint32
+    }
 }

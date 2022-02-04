@@ -18,6 +18,7 @@
 #include "objects/vm_area.h"
 #include "scheduler.h"
 #include "smp.h"
+#include "syscall.h"
 #include "sysconf.h"
 
 extern "C" {
@@ -54,6 +55,10 @@ kernel_main(bootproto::args *args)
     mem::initialize(*args);
 
     bsp_late_init();
+
+    using bootproto::boot_flags;
+    bool enable_test = util::bits::has(args->flags, boot_flags::test);
+    syscall_initialize(enable_test);
 
     device_manager &devices = device_manager::get();
     devices.parse_acpi(args->acpi_table);
