@@ -6,7 +6,6 @@ variables:
   ar: ar
   nasm: nasm
   objcopy: objcopy
-  cog: cog
 
   ccflags: [
     "-I${source_root}/src/include",
@@ -38,8 +37,3 @@ variables:
 
   cflags: [ "-std=c11" ]
   cxxflags: [ "-std=c++17" ]
-
-  cogflags: [
-    "-I", "${source_root}/scripts",
-    "-D", "definitions_path=${source_root}/definitions" ]
-

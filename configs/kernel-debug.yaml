@@ -30,8 +30,8 @@ variables:
     "-DPRINTF_ALIAS_STANDARD_FUNCTION_NAMES=1",
     "-DPRINTF_INCLUDE_CONFIG_H=1",
 
+    "-isystem${build_root}/include/libc",
     "-isystem${source_root}/sysroot/include",
-    "-isystem${source_root}/src/libraries/libc/include",
     "--sysroot='${source_root}/sysroot'" ]
 
 

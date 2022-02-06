@@ -16,7 +16,7 @@ variables:
     "-U__linux__",
 
     "-isystem${source_root}/sysroot/include",
-    "-isystem${source_root}/src/libraries/libc/include",
+    "-isystem${build_root}/include/libc",
     "--sysroot='${source_root}/sysroot'" ]
 
 

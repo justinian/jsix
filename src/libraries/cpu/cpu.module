@@ -2,7 +2,10 @@
 
 module("cpu",
     kind = "lib",
-    includes = ["include"],
     sources = [
         "cpu_id.cpp",
+    ],
+    public_headers = [
+        "cpu/cpu_id.h",
+        "cpu/features.inc",
     ])

@@ -2,14 +2,25 @@
 
 j6 = module("j6",
     kind = "lib",
-    includes = [ "include" ],
     sources = [
         "init.cpp",
-        "include/j6/caps.h.cog",
-        "include/j6/syscalls.h.cog",
-        "include/j6/sysconf.h.cog",
         "syscalls.s.cog",
         "sysconf.cpp.cog",
+    ],
+    public_headers = [
+        "j6/caps.h.cog",
+        "j6/errors.h",
+        "j6/flags.h",
+        "j6/init.h",
+        "j6/signals.h",
+        "j6/syscalls.h.cog",
+        "j6/sysconf.h.cog",
+        "j6/types.h",
+
+        "j6/tables/log_areas.inc",
+        "j6/tables/object_types.inc",
+        "j6/tables/syscalls.inc",
+        "j6/tables/vm_flags.inc",
     ])
 
 from glob import glob
@@ -19,13 +30,13 @@ sysconf = join(source_root, "definitions/sysconf.yaml")
 definitions = glob('definitions/**/*.def', recursive=True)
 
 j6.add_depends([
-        "include/j6/caps.h.cog",
-        "include/j6/syscalls.h.cog",
+        "j6/caps.h.cog",
+        "j6/syscalls.h.cog",
         "syscalls.s.cog",
     ], definitions)
 
 j6.add_depends([
-        "include/j6/sysconf.h.cog",
+        "j6/sysconf.h.cog",
         "sysconf.cpp.cog",
     ], [sysconf])
 

@@ -2,8 +2,24 @@
 
 module("util",
     kind = "lib",
-    includes = [ "include" ],
     sources = [
         "bip_buffer.cpp",
         "spinlock.cpp",
+    ],
+    public_headers = [
+        "util/basic_types.h",
+        "util/bip_buffer.h",
+        "util/constexpr_hash.h",
+        "util/counted.h",
+        "util/deque.h",
+        "util/enum_bitfields.h",
+        "util/hash.h",
+        "util/linked_list.h",
+        "util/map.h",
+        "util/misc.h",
+        "util/no_construct.h",
+        "util/pointers.h",
+        "util/spinlock.h",
+        "util/util.h",
+        "util/vector.h",
     ])

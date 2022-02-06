@@ -112,6 +112,8 @@ void free( void * ptr );
 */
 void * realloc( void * ptr, size_t size );
 
+int posix_memalign(void**, size_t, size_t);
+
 /* Communication with the environment */
 
 /* These two can be passed to exit() or _Exit() as status values, to signal

@@ -1,87 +1,119 @@
-class Action:
-    name = property(lambda self: self.__name)
-    implicit = property(lambda self: False)
-    rule = property(lambda self: None)
-    deps = property(lambda self: tuple())
-    parse_deps = property(lambda self: False)
+from os.path import join, splitext
+from . import mod_rel
 
-    def __init__(self, name):
-        self.__name = name
-
-    def output_of(self, path):
-        return None
-
-
-class Compile(Action):
-    rule = property(lambda self: f'compile_{self.name}')
-    deps = property(lambda self: ("${module_dir}/.parse_dep.phony",))
-    parse_deps = property(lambda self: True)
-
-    def __init__(self, name, suffix = ".o"):
-        super().__init__(name)
-        self.__suffix = suffix
-
-    def output_of(self, path):
-        return str(path) + self.__suffix
-
-
-class Parse(Action):
-    rule = property(lambda self: f'parse_{self.name}')
-
-    def output_of(self, path):
-        suffix = "." + self.name
-        if path.suffix == suffix:
-            return path.with_suffix('')
+def _resolve(path):
+    if path.startswith('/') or path.startswith('$'):
         return path
+    from pathlib import Path
+    return str(Path(path).resolve())
 
-
-class Link(Action): pass
-
-
-class Header(Action):
-    implicit = property(lambda self: True)
+def _dynamic_action(name):
+    def prop(self):
+        root, suffix = splitext(self.path)
+        return f"{name}{suffix}"
+    return prop
 
 
 class Source:
-    Actions = {
-        '.c': Compile('c'),
-        '.cpp': Compile('cxx'),
-        '.s': Compile('asm'),
-        '.cog': Parse('cog'),
-        '.o': Link('o'),
-        '.h': Header('h'),
-        '.inc': Header('inc'),
-    }
+    next = tuple()
+    action = None
+    args = dict()
+    gather = False
+    outputs = tuple()
+    input = False
 
-    def __init__(self, root, path, output=None, deps=tuple()):
-        from pathlib import Path
-        self.__root = Path(root)
-        self.__path = Path(path)
-        self.__output = output
-        self.__deps = tuple(deps)
-
-    def __str__(self):
-        return self.input
+    def __init__(self, path, root = "${module_dir}", deps=tuple()): 
+        self.path = path
+        self.root = root
+        self.deps = deps
 
     def add_deps(self, deps):
-        self.__deps += tuple(deps)
+        self.deps += tuple(deps)
 
     @property
-    def action(self):
-        suffix = self.__path.suffix
-        return self.Actions.get(suffix)
+    def fullpath(self):
+        return join(self.root, self.path)
+
+class ParseSource(Source):
+    action = property(_dynamic_action("parse"))
 
     @property
     def output(self):
-        if not self.action:
-            return None
+        root, _ = splitext(self.path)
+        return root
 
-        path = self.__output
-        if path is None:
-            path = self.action.output_of(self.__path)
+    @property
+    def outputs(self):
+        return (self.output,)
 
-        return path and Source("${module_dir}", path)
+    @property
+    def gather(self):
+        _, suffix = splitext(self.output)
+        return suffix in (".h", ".inc")
 
-    deps = property(lambda self: self.__deps)
-    name = property(lambda self: str(self.__path))
-    input = property(lambda self: str(self.__root / self.__path))
+    @property
+    def next(self):
+        _, suffix = splitext(self.output)
+        nextType = {
+            ".s": CompileSource,
+            ".cpp": CompileSource,
+            }.get(suffix)
+
+        if nextType:
+            return (nextType(self.output),)
+        return tuple()
+
+    @property
+    def args(self):
+        return dict(
+            outputs = list(map(mod_rel, self.outputs)),
+            inputs = [self.fullpath],
+            implicit = list(map(_resolve, self.deps)),
+            variables = dict(name=self.path),
+            )
+
+class HeaderSource(Source):
+    action = "cp"
+    gather = True
+
+    @property
+    def outputs(self):
+        return (self.path,)
+
+    @property
+    def args(self):
+        return dict(
+            outputs = [mod_rel(self.path)],
+            inputs = [join(self.root, self.path)],
+            implicit = list(map(_resolve, self.deps)),
+            variables = dict(name=self.path),
+            )
+
+class CompileSource(Source):
+    action = property(_dynamic_action("compile"))
+    input = True
+
+    @property
+    def outputs(self):
+        return (self.path + ".o",)
+
+    @property
+    def args(self):
+        return dict(
+            outputs = list(map(mod_rel, self.outputs)),
+            inputs = [join(self.root, self.path)],
+            implicit = list(map(_resolve, self.deps)) + [mod_rel(".headers.phony")],
+            variables = dict(name=self.path),
+            )
+
+def make_source(root, path):
+    _, suffix = splitext(path)
+
+    if suffix in (".s", ".c", ".cpp"):
+        return CompileSource(path, root)
+    elif suffix in (".cog",):
+        return ParseSource(path, root)
+    elif suffix in (".h", ".inc"):
+        return HeaderSource(path, root)
+    else:
+        raise RuntimeError(f"{path} has no Source type")

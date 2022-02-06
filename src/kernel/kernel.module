@@ -7,7 +7,6 @@ kernel = module("kernel",
     targets = [ "kernel" ],
     description = "jsix kernel",
     deps = [ "util", "cpu", "bootproto", "j6" ],
-    includes = [ "." ],
     sources = [
         "apic.cpp",
         "assert.cpp",

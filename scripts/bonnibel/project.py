@@ -15,7 +15,6 @@ class Project:
         import bonnibel
         from os.path import join
         from ninja.ninja_syntax import Writer
-        from . import load_config
         from .target import Target
 
         targets = set()
@@ -40,9 +39,30 @@ class Project:
             build.variable("version_sha", self.version.sha)
             build.newline()
 
+            build.variable("cogflags", [
+                "-I", "${source_root}/scripts",
+                "-D", "definitions_path=${source_root}/definitions",
+                ])
+            build.newline()
+
             for target in targets:
                 build.subninja(output / target.name / "target.ninja")
             build.newline()
+
+            for mod in modules.values():
+                build.subninja(output / f"headers.{mod.name}.ninja")
+            build.newline()
+
+            build.build(
+                rule = "touch",
+                outputs = "${build_root}/.all_headers",
+                implicit = [f"${{build_root}}/include/{m.name}/.headers.phony"
+                    for m in modules.values() if m.public_headers],
+                )
+            build.build(
+                rule = "phony",
+                outputs = ["all-headers"],
+                inputs = ["${build_root}/.all_headers"])
 
             debugroot = output / ".debug"
             debugroot.mkdir(exist_ok=True)
@@ -82,7 +102,6 @@ class Project:
                     })
 
                 add_fatroot(intermediary, entry)
-                return mod.location
 
             from .manifest import Manifest
             manifest = Manifest(manifest_file, modules)

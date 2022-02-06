@@ -2,8 +2,11 @@
 
 module("elf",
     kind = "lib",
-    includes = [ "include" ],
     deps = [ "util" ],
     sources = [
         "file.cpp",
+    ],
+    public_headers = [
+        "elf/file.h",
+        "elf/headers.h",
     ])

@@ -2,11 +2,14 @@
 
 bp = module("bootproto",
     kind = "lib",
-    includes = [ "include" ],
-    sources = [
+    public_headers = [
+        "bootproto/bootconfig.h",
+        "bootproto/init.h",
+        "bootproto/kernel.h",
+        "bootproto/memory.h.cog",
     ])
 
 from os.path import join
 
 layout = join(source_root, "definitions/memory_layout.yaml")
-bp.add_input("include/bootproto/memory.h.cog", deps=[layout])
+bp.add_depends("bootproto/memory.h.cog", deps=[layout])
