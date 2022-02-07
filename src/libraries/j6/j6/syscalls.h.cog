@@ -39,7 +39,11 @@ for id, scope, method in syscalls.methods:
         for type, suffix in param.type.c_names(param.options):
             args.append(f"{type} {param.name}{suffix}")
 
-    cog.outl(f"""j6_status_t j6_{name} ({", ".join(args)});""")
+    attr = ""
+    if "noreturn" in method.options:
+        attr += "_Noreturn "
+
+    cog.outl(f"""{attr}j6_status_t j6_{name} ({", ".join(args)});""")
 ]]]*/
 /// [[[end]]]
 

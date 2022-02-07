@@ -147,8 +147,12 @@ for id, scope, method in syscalls.methods:
     if extra_argdefs:
         first_args += ", uint64_t *sp"
 
-    cog.outl(f"""j6_status_t {name} ({", ".join(cxxargdefs)});""")
-    cog.outl(f"""j6_status_t _syscall_verify_{name} ({first_args}) {{""")
+    attr = ""
+    if "noreturn" in method.options:
+        attr = "[[noreturn]] "
+
+    cog.outl(f"""{attr}j6_status_t {name} ({", ".join(cxxargdefs)});""")
+    cog.outl(f"""{attr}j6_status_t _syscall_verify_{name} ({first_args}) {{""")
 
     for type, arg in extra_argdefs:
         cog.outl(f"    {type} {arg} = pop_from<{type}>(sp);")
@@ -178,7 +182,10 @@ for id, scope, method in syscalls.methods:
         cog.outl(f"    if (!{arg}_obj) return j6_err_invalid_arg;")
         cog.outl()
 
-    cog.outl(f"""    return {name}({", ".join(args)});""")
+    if "noreturn" in method.options:
+        cog.outl(f"""    {name}({", ".join(args)});""")
+    else:
+        cog.outl(f"""    return {name}({", ".join(args)});""")
     cog.outl("}")
     cog.outl("\n")
 ]]]*/

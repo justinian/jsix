@@ -18,7 +18,7 @@ object process : object {
     method kill [destructor cap:kill]
 
     # Stop all threads and exit the current process
-    method exit [static] {
+    method exit [static noreturn] {
         param result int32    # The result to retrun to the parent process
     }
 
