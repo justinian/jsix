@@ -16,7 +16,7 @@ handle_list(j6_handle_t *handles, size_t *handles_len)
 
     *handles_len = p.list_handles(handles, requested);
 
-    if (*handles_len < requested)
+    if (*handles_len > requested)
         return j6_err_insufficient;
 
     return j6_status_ok;
