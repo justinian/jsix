@@ -78,17 +78,17 @@ class Module:
     def update(cls, mods):
         from . import BonnibelError
 
-        def resolve(modlist):
+        def resolve(source, modlist):
             resolved = set()
             for dep in modlist:
                 if not dep in mods:
-                    raise BonnibelError(f"module '{mod.name}' references unknown module '{dep}'")
+                    raise BonnibelError(f"module '{source.name}' references unknown module '{dep}'")
                 mod = mods[dep]
                 resolved.add(mod)
             return resolved
 
         for mod in mods.values():
-            mod.depmods = resolve(mod.deps)
+            mod.depmods = resolve(mod, mod.deps)
 
         target_mods = [mod for mod in mods.values() if mod.targets]
         for mod in target_mods:

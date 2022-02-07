@@ -1,0 +1,157 @@
+#pragma once
+/** \file stdatomic.h
+  * Atomics
+  *
+  * This file is part of the C standard library for the jsix operating
+  * system.
+  *
+  * This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  */
+
+#include <stdint.h>
+#include <__j6libc/uchar.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**[[[cog code generation
+from j6libc import atomic_types
+
+deftypes = ["BOOL", "CHAR16", "CHAR32", "CHAR", "INT",
+            "LLONG", "SHORT", "WCHAR_T", "POINTER"]
+
+for t in deftypes:
+    name = f"ATOMIC_{t}_LOCK_FREE"
+    cog.outl(f"#define {name:24} __CLANG_ATOMIC_{t}_LOCK_FREE")
+
+cog.outl()
+for name, abbrev in atomic_types.items():
+    cog.outl(f"typedef _Atomic {name:18}  atomic_{abbrev};")
+]]]*/
+/*[[[end]]]*/
+
+typedef enum {
+    memory_order_relaxed = __ATOMIC_RELAXED,
+    memory_order_consume = __ATOMIC_CONSUME,
+    memory_order_acquire = __ATOMIC_ACQUIRE,
+    memory_order_release = __ATOMIC_RELEASE,
+    memory_order_acq_rel = __ATOMIC_ACQ_REL,
+    memory_order_seq_cst = __ATOMIC_SEQ_CST,
+} memory_order;
+
+#define ATOMIC_FLAG_INIT {0}
+typedef struct {
+    atomic_uint flag;
+} atomic_flag;
+
+#define ATOMIC_VAR_INIT(value) (value)
+#define kill_dependency(value) (value)
+
+#define atomic_init(obj, value)    __c11_atomic_init((obj), (value))
+#define atomic_thread_fence(order) __c11_atomic_thread_fence((order))
+#define atomic_signal_fence(order) __c11_atomic_signal_fence((order))
+#define atomic_is_lock_free(obj)   __c11_atomic_is_lock_free((sizeof(*(obj))))
+
+/**[[[cog code generation
+default_ordering = ("order",)
+cas_ordering = ("success", "failure")
+
+def make_atomic_generic(fname, *arg_names, orders = None):
+    if orders is None:
+        orders = default_ordering
+
+    args = ', '.join(arg_names)
+    oargs = ', '.join(orders)
+
+    clang_args = ', '.join([f"({n})" for n in arg_names])
+    clang_oargs = ', '.join([f"({n})" for n in orders])
+    clang_oarg_def = ', '.join(["memory_order_seq_cst" for n in orders])
+
+    fnames = (f"atomic_{fname}", f"atomic_{fname}_explicit")
+    argnames = (f"({args})", f"({args}, {oargs})")
+    dn = len(fnames[1]) - len(fnames[0])
+    al = len(argnames[1])
+
+    cog.outl(f"#define {fnames[0]}{argnames[0]}  \\")
+    cog.outl(f"        __c11_{fnames[0]}({clang_args}, {clang_oarg_def})")
+    cog.outl()
+    cog.outl(f"#define {fnames[1]}{argnames[1]}  \\")
+    cog.outl(f"        __c11_{fnames[0]}({clang_args}, {clang_oargs})")
+    cog.outl()
+
+make_atomic_generic("store",    "obj", "desired")
+make_atomic_generic("load",     "obj")
+make_atomic_generic("exchange", "obj", "desired")
+make_atomic_generic("compare_exchange_strong", "obj", "expected", "desired", orders=cas_ordering)
+make_atomic_generic("compare_exchange_weak", "obj", "expected", "desired", orders=cas_ordering)
+
+cog.outl()
+make_atomic_generic("fetch_add", "obj", "operand")
+make_atomic_generic("fetch_sub", "obj", "operand")
+make_atomic_generic("fetch_or",  "obj", "operand")
+make_atomic_generic("fetch_xor", "obj", "operand")
+make_atomic_generic("fetch_and", "obj", "operand")
+
+]]]*/
+/*[[[end]]]*/
+
+inline _Bool atomic_flag_set_and_set (volatile atomic_flag *object) {
+    return atomic_fetch_or(&object->flag, 1) != 0;
+}
+
+inline _Bool atomic_flag_set_and_set_explicit (volatile atomic_flag *object, memory_order order) {
+    return atomic_fetch_or_explicit(&object->flag, 1, order) != 0;
+}
+
+inline void atomic_flag_clear (volatile atomic_flag *object) {
+    atomic_store(&object->flag, 0);
+}
+
+inline void atomic_flag_clear_explicit (volatile atomic_flag *object, memory_order order) {
+    atomic_store_explicit(&object->flag, 0, order);
+}
+
+/**[[[cog code generation
+def make_atomic_generic(return_type, fname, arg_types, arg_names, generic_arg = 0):
+    cog.outl(f"#define {fname}(" + ', '.join(arg_names) + ") \\")
+    cog.outl(f"    _Generic(({arg_names[generic_arg]}), \\")
+
+    for name, abbrev in atypes.items():
+        casetype = arg_types[generic_arg].format(atomic=f"atomic_{abbrev}", standard=name)
+        cog.outl(f"        {casetype}: __{fname}_{abbrev},  \\")
+
+    cog.outl("        )(" + ', '.join(arg_names) + ")")
+    cog.outl()
+
+    for name, abbrev in atypes.items():
+        args = [
+            f"{arg_types[i]} {arg_names[i]}".format(atomic=f"atomic_{abbrev}", standard=name)
+            for i in range(len(arg_types))]
+
+        cog.out(f"{return_type}  __{fname}_{abbrev}  (")
+        cog.out(', '.join(args))
+
+        if body:
+            cog.outl(f")  {body}")
+        else:
+            cog.outl(f");")
+
+    cog.outl()
+
+
+#make_atomic_generic(
+#"void", "atomic_init",
+#("volatile {atomic} *", "{standard}"),
+#("obj", "value"),
+#body = "{ *obj = value; }")
+
+]]]*/
+/*[[[end]]]*/
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
+/* vim: set ft=c: */

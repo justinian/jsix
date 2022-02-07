@@ -1,0 +1,68 @@
+#pragma once
+/** \file stdint.h
+  * Fixed-width integer types
+  *
+  * This file is part of the C standard library for the jsix operating
+  * system.
+  *
+  * This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  */
+
+/**[[[cog code generation
+import cog
+from j6libc import definition, int_widths, int_mods
+
+for width in int_widths:
+    definition("typedef", f"__INT{width}_TYPE__",  f"int{width}_t;")
+    definition("#define", f"INT{width}_WIDTH",     f"{width}")
+    definition("#define", f"INT{width}_MAX",       f"__INT{width}_MAX__")
+    definition("#define", f"INT{width}_MIN",       f"((-__INT{width}_MAX__) - 1)")
+    definition("#define", f"INT{width}_C( x )",    f"x ## __INT{width}_C_SUFFIX__")
+
+    cog.outl()
+    definition("typedef", f"__UINT{width}_TYPE__", f"uint{width}_t;")
+    definition("#define", f"UINT{width}_WIDTH",    f"{width}")
+    definition("#define", f"UINT{width}_MAX",      f"__UINT{width}_MAX__")
+    definition("#define", f"UINT{width}_C( x )",   f"x ## __UINT{width}_C_SUFFIX__")
+
+    for mod in int_mods:
+        cog.outl()
+        definition("typedef", f"__INT_{mod.upper()}{width}_TYPE__",  f"int_{mod}{width}_t;")
+        definition("typedef", f"__UINT_{mod.upper()}{width}_TYPE__", f"uint_{mod}{width}_t;")
+        definition("#define", f"INT_{mod.upper()}{width}_WIDTH",     f"{width}")
+        definition("#define", f"INT_{mod.upper()}{width}_MAX",       f"__INT_{mod.upper()}{width}_MAX__")
+        definition("#define", f"INT_{mod.upper()}{width}_MIN",       f"((-__INT_{mod.upper()}{width}_MAX) - 1)")
+
+        cog.outl()
+        definition("typedef", f"__UINT_{mod.upper()}{width}_TYPE__", f"uint_least{width}_t;")
+        definition("#define", f"UINT_{mod.upper()}{width}_WIDTH",    f"{width}")
+        definition("#define", f"UINT_{mod.upper()}{width}_MAX",      f"__UINT_{mod.upper()}{width}_MAX__")
+
+    cog.outl()
+
+]]]*/
+/*[[[end]]]*/
+
+typedef __INTMAX_TYPE__          intmax_t;
+#define INTMAX_WIDTH             __INTMAX_WIDTH__
+#define INTMAX_MAX               __INTMAX_MAX__
+#define INTMAX_MIN               ((-__INTMAX_MAX__) - 1)
+#define INTMAX_C( x )            x ## __INTMAX_C_SUFFIX__
+
+typedef __UINTMAX_TYPE__         uintmax_t;
+#define UINTMAX_WIDTH            __UINTMAX_WIDTH__
+#define UINTMAX_MAX              __UINTMAX_MAX__
+#define UINTMAX_C( x )           x ## __UINTMAX_C_SUFFIX__
+
+typedef __INTPTR_TYPE__          intptr_t;
+#define INTPTR_WIDTH             __INTPTR_WIDTH__
+#define INTPTR_MAX               __INTPTR_MAX__
+#define INTPTR_MIN               ((-__INTPTR_MAX__) - 1)
+
+typedef __UINTPTR_TYPE__         uintptr_t;
+#define UINTPTR_WIDTH            __UINTPTR_WIDTH__
+#define UINTPTR_MAX              __UINTPTR_MAX__
+
+/* vim: set ft=c: */

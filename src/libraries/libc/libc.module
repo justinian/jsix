@@ -15,28 +15,23 @@ def glob(ext):
     return list(map(resolve, glob(f"{module_root}/**/*.{ext}", recursive=True)))
 
 sources = []
-for ext in ("c", "cpp", "s"):
+for ext in ("c", "cpp", "s", "inc"):
     sources += glob(ext) + glob(ext + ".cog")
 
 headers = []
-for ext in ("h", "inc"):
+for ext in ("h",):
     headers += glob(ext) + glob(ext + ".cog")
 
 libc = module("libc",
     kind = "lib",
     deps = [ "j6" ],
+    output = "libc.a",
     sources = sources,
     public_headers = headers,
     )
 
 libc.variables["ccflags"] = [
-        "${ccflags}",
-        "-DDISABLE_SSE",
-        "-DLACKS_UNISTD_H",
-        "-DLACKS_FCNTL_H",
-        "-DLACKS_SYS_PARAM_H",
-        "-DLACKS_SYS_MMAN_H",
-        "-DLACKS_SCHED_H",
-        "-DLACKS_STRINGS_H",
-        "-DHAVE_MMAP=0",
+    "${ccflags}",
+    "-DPRINTF_SUPPORT_DECIMAL_SPECIFIERS=0",
+    "-DPRINTF_SUPPORT_EXPONENTIAL_SPECIFIERS=0",
 ]

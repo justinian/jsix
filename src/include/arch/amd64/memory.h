@@ -2,6 +2,7 @@
 /// \file arch/amd64/memory.h
 /// Architecture-specific constants related to memory and paging
 
+#include <stddef.h>
 #include <stdint.h>
 
 namespace arch {

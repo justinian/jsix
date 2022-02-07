@@ -16,6 +16,6 @@ install(uintptr_t entrypoint, const void *symbol_data)
 } // namespace panic
 
 extern "C"
-void _PDCLIB_assert(const char *message, const char *function, const char *file, unsigned line) {
+void __assert_fail(const char *message, const char *file, unsigned line, const char *function) {
     panic::panic(message, nullptr, function, file, line);
 }

@@ -1,6 +1,6 @@
 extern main
 extern exit
-extern _init_libj6
+extern __init_libj6
 extern _arg_modules_phys
 
 section .bss
@@ -27,7 +27,7 @@ _start:
 
  	mov rbp, rsp
 	mov rdi, rsp
-	call _init_libj6
+	call __init_libj6
 
 	pop rdi
 	mov rsi, rsp

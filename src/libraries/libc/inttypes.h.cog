@@ -1,0 +1,82 @@
+#pragma once
+/** \file inttypes.h
+  * Format conversion of integer types
+  *
+  * This file is part of the C standard library for the jsix operating
+  * system.
+  *
+  * This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  */
+
+/**[[[cog code generation
+import cog
+from j6libc import definition, int_widths, int_mods
+
+for width in int_widths:
+    definition("#define", f"PRId{width}", f"__INT{width}_FMTd__")
+    definition("#define", f"PRIi{width}", f"__INT{width}_FMTi__")
+    definition("#define", f"PRIu{width}", f"__UINT{width}_FMTu__")
+    definition("#define", f"PRIo{width}", f"__UINT{width}_FMTo__")
+    definition("#define", f"PRIx{width}", f"__UINT{width}_FMTx__")
+    definition("#define", f"PRIX{width}", f"__UINT{width}_FMTX__")
+
+    cog.outl()
+    definition("#define", f"SCNd{width}", f"__INT{width}_FMTd__")
+    definition("#define", f"SCNi{width}", f"__INT{width}_FMTi__")
+    definition("#define", f"SCNu{width}", f"__UINT{width}_FMTu__")
+    definition("#define", f"SCNo{width}", f"__UINT{width}_FMTo__")
+    definition("#define", f"SCNx{width}", f"__UINT{width}_FMTx__")
+    definition("#define", f"SCNX{width}", f"__UINT{width}_FMTX__")
+
+    for mod in int_mods:
+        cog.outl()
+        definition("#define", f"PRId{mod.upper()}{width}", f"__INT_{mod.upper()}{width}_FMTd__")
+        definition("#define", f"PRIi{mod.upper()}{width}", f"__INT_{mod.upper()}{width}_FMTi__")
+        definition("#define", f"PRIu{mod.upper()}{width}", f"__UINT{mod.upper()}{width}_FMTu__")
+        definition("#define", f"PRIo{mod.upper()}{width}", f"__UINT{mod.upper()}{width}_FMTo__")
+        definition("#define", f"PRIx{mod.upper()}{width}", f"__UINT{mod.upper()}{width}_FMTx__")
+        definition("#define", f"PRIX{mod.upper()}{width}", f"__UINT{mod.upper()}{width}_FMTX__")
+
+        cog.outl()
+        definition("#define", f"SCNd{mod.upper()}{width}", f"__INT_{mod.upper()}{width}_FMTd__")
+        definition("#define", f"SCNi{mod.upper()}{width}", f"__INT_{mod.upper()}{width}_FMTi__")
+        definition("#define", f"SCNu{mod.upper()}{width}", f"__UINT{mod.upper()}{width}_FMTu__")
+        definition("#define", f"SCNo{mod.upper()}{width}", f"__UINT{mod.upper()}{width}_FMTo__")
+        definition("#define", f"SCNx{mod.upper()}{width}", f"__UINT{mod.upper()}{width}_FMTx__")
+        definition("#define", f"SCNX{mod.upper()}{width}", f"__UINT{mod.upper()}{width}_FMTX__")
+
+    cog.outl()
+]]]*/
+/*[[[end]]]*/
+
+#define PRIdMAX                  __INTMAX_FMTd__
+#define PRIiMAX                  __INTMAX_FMTi__
+#define PRIuMAX                  __UINTMAX_FMTu__
+#define PRIoMAX                  __UINTMAX_FMTo__
+#define PRIxMAX                  __UINTMAX_FMTx__
+#define PRIXMAX                  __UINTMAX_FMTX__
+
+#define SCNdMAX                  __INTMAX_FMTd__
+#define SCNiMAX                  __INTMAX_FMTi__
+#define SCNuMAX                  __UINTMAX_FMTu__
+#define SCNoMAX                  __UINTMAX_FMTo__
+#define SCNxMAX                  __UINTMAX_FMTx__
+#define SCNXMAX                  __UINTMAX_FMTX__
+
+#define PRIdPTR                  __INTPTR_FMTd__
+#define PRIiPTR                  __INTPTR_FMTi__
+#define PRIuPTR                  __UINTPTR_FMTu__
+#define PRIoPTR                  __UINTPTR_FMTo__
+#define PRIxPTR                  __UINTPTR_FMTx__
+#define PRIXPTR                  __UINTPTR_FMTX__
+
+#define SCNdPTR                  __INTPTR_FMTd__
+#define SCNiPTR                  __INTPTR_FMTi__
+#define SCNuPTR                  __UINTPTR_FMTu__
+#define SCNoPTR                  __UINTPTR_FMTo__
+#define SCNxPTR                  __UINTPTR_FMTx__
+#define SCNXPTR                  __UINTPTR_FMTX__
+
+/* vim: set ft=c: */

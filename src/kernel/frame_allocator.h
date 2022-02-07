@@ -2,6 +2,7 @@
 /// \file frame_allocator.h
 /// Allocator for physical memory frames
 
+#include <stddef.h>
 #include <stdint.h>
 #include <util/spinlock.h>
 

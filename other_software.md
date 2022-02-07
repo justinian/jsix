@@ -35,9 +35,9 @@ Boost Software license:
 
 ## printf
 
-jsix uses Marco Paland and Eyal Rozenberg's tiny [printf][] library for
-in-kernel `*printf()` functions, which is also released under the terms of the
-MIT license:
+The implementation of jsix's `*printf()` family of functions is derived from
+Marco Paland and Eyal Rozenberg's tiny [printf][] library, which is also
+released under the terms of the MIT license:
 
 [printf]: https://github.com/eyalroz/printf
 

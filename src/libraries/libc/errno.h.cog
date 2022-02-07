@@ -1,0 +1,28 @@
+#pragma once
+/** \file errno.h
+  * Errors
+  *
+  * This file is part of the C standard library for the jsix operating
+  * system.
+  *
+  * This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  */
+
+
+/**[[[cog code generation
+from j6libc import arch_includes
+
+arch_includes("errno.h")
+
+]]]*/
+/*[[[end]]]*/
+
+#define EDOM     0x800
+#define EILSEQ   0x801
+#define ERANGE   0x802
+#define EINVAL   0x803
+#define ENOMEM   0x804
+
+/* vim: set ft=c: */
