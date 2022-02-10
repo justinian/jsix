@@ -20,7 +20,7 @@ extern "C" {
 #define assert( argument ) ( (void) 0 )
 #else
 
-noreturn void __assert_fail( const char *, const char *, unsigned, const char * );
+_Noreturn void __assert_fail( const char *, const char *, unsigned, const char * );
 
 #define assert( argument ) \
     do { if (!(argument)) { __assert_fail( #argument, __FILE__, __LINE__, __func__ ); }} while(0)

@@ -10,10 +10,8 @@
   * file, You can obtain one at https://mozilla.org/MPL/2.0/.
   */
 
-#ifdef __cplusplus
-#define noreturn [[noreturn]]
-#elif __STDC_VERSION__ >= 201103L
+#if !defined(__cplusplus) && __STDC_VERSION__ >= 201103L
 #define noreturn _Noreturn
-#else
+#elif !defined(__cplusplus)
 #define noreturn
 #endif
