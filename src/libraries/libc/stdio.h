@@ -36,6 +36,10 @@ typedef size_t fpos_t;
 #define SEEK_END 1
 #define SEEK_SET 2
 
+extern FILE *stdin;
+extern FILE *stdout;
+extern FILE *stderr;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -111,6 +115,10 @@ void clearerr(FILE *stream);
 int feof(FILE *stream);
 int ferror(FILE *stream);
 void perror(const char *s);
+
+// Environment functions
+//
+char * getenv(const char *name);
 
 #ifdef __cplusplus
 } // extern "C"
