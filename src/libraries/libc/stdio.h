@@ -116,10 +116,6 @@ int feof(FILE *stream);
 int ferror(FILE *stream);
 void perror(const char *s);
 
-// Environment functions
-//
-char * getenv(const char *name);
-
 #ifdef __cplusplus
 } // extern "C"
 #endif
