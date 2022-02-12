@@ -15,7 +15,7 @@ using bootproto::module_program;
 extern j6_handle_t __handle_self;
 extern j6_handle_t __handle_sys;
 
-constexpr uintptr_t load_addr_base = 0xf8000000;
+constexpr uintptr_t load_addr = 0xf8000000;
 constexpr size_t stack_size = 0x10000;
 constexpr uintptr_t stack_top = 0x80000000000;
 
@@ -61,8 +61,6 @@ load_program(const module_program &prog, j6_handle_t sys, char *err_msg)
         return false;
     }
 
-    uintptr_t load_addr = load_addr_base;
-
     for (auto &seg : progelf.programs()) {
         if (seg.type != elf::segment_type::load)
             continue;
@@ -95,8 +93,6 @@ load_program(const module_program &prog, j6_handle_t sys, char *err_msg)
             sprintf(err_msg, "  ** error loading program '%s': unmapping sub vma: %lx", prog.filename, res);
             return false;
         }
-
-        load_addr += 0x1000 * ((seg.mem_size + 0xfff) >> 12);
     }
 
     j6_handle_t stack_vma = j6_handle_invalid;

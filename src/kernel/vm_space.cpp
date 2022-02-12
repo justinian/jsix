@@ -228,6 +228,12 @@ vm_space::clear(const obj::vm_area &vma, uintptr_t offset, size_t count, bool fr
         uintptr_t phys = e & ~0xfffull;
 
         if (e & page_table::flag::present) {
+            uint64_t orig = e;
+            e = 0;
+            if (orig & page_table::flag::accessed) {
+                auto *addr = reinterpret_cast<const uint8_t *>(it.vaddress());
+                asm ( "invlpg %0" :: "m"(*addr) : "memory" );
+            }
             if (free_count && phys == free_start + (free_count * frame_size)) {
                 ++free_count;
             } else {
@@ -238,7 +244,6 @@ vm_space::clear(const obj::vm_area &vma, uintptr_t offset, size_t count, bool fr
             }
         }
 
-        e = 0;
         ++it;
     }
 
@@ -286,12 +291,14 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
     if (fault && fault_type::present)
         return false;
 
+    uintptr_t page = (addr & ~0xfffull);
+
     uintptr_t base = 0;
     obj::vm_area *area = get(addr, &base);
     if (!area)
         return false;
 
-    uintptr_t offset = (addr & ~0xfffull) - base;
+    uintptr_t offset = page - base;
     uintptr_t phys_page = 0;
     if (!area->get_page(offset, phys_page))
         return false;
