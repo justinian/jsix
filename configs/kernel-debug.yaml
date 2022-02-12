@@ -5,7 +5,9 @@ variables:
   asflags: [ "-I${source_root}/src/kernel/" ]
 
   ccflags: [
-    "--target=x86_64-unknown-elf",
+    "--target=x86_64-jsix-elf",
+    "-fno-stack-protector",
+
     "-I${source_root}/external",
 
     "-nostdinc",
@@ -47,6 +49,7 @@ variables:
     "-g",
     "-nostdlib",
     "-Bstatic",
+    "--no-eh-frame-hdr",
     "-z", "norelro",
     "-z", "separate-code" ]
 

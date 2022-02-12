@@ -5,8 +5,10 @@ variables:
   asflags: [ "-I${source_root}/src/kernel/" ]
 
   ccflags: [
+    "--target=x86_64-jsix-elf",
     "-mno-sse",
     "-fno-omit-frame-pointer",
+    "-fno-stack-protector",
 
     "-g",
 
@@ -30,5 +32,8 @@ variables:
     "-Bstatic",
     "--sysroot='${source_root}/sysroot'",
     "-L", "${source_root}/sysroot/lib",
-    "-z", "separate-code" ]
+    "-z", "separate-code",
+    "-lc++", "-lc++abi", "-lunwind",
+    "--no-dependent-libraries",
+  ]
 

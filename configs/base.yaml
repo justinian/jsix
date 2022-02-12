@@ -1,8 +1,8 @@
 ---
 variables:
-  cc: clang
-  cxx: clang++
-  ld: ld.lld
+  cc: "${source_root}/sysroot/bin/clang"
+  cxx: "${source_root}/sysroot/bin/clang++"
+  ld: "${source_root}/sysroot/bin/ld.lld"
   ar: ar
   nasm: nasm
   objcopy: objcopy
