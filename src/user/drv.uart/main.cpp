@@ -31,8 +31,8 @@ struct entry
 };
 
 static const uint8_t level_colors[] = {0x07, 0x07, 0x0f, 0x0b, 0x09};
-const char *level_names[] = {"", "debug", "info", "warn", "error", "fatal"};
-const char *area_names[] = {
+char const * const level_names[] = {"", "debug", "info", "warn", "error", "fatal"};
+char const * const area_names[] = {
 #define LOG(name, lvl) #name ,
 #include <j6/tables/log_areas.inc>
 #undef LOG
