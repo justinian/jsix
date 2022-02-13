@@ -20,7 +20,7 @@
 namespace __j6libc {
 
 constexpr size_t log2(size_t n) {
-    return n < 2 ? 1 : 1 + log2(n/2);
+    return n < 2 ? 0 : 1 + log2(n/2);
 }
 
 constexpr size_t word_bytes = sizeof(void*);
