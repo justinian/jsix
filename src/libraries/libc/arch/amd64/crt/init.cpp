@@ -1,21 +1,29 @@
 #include <stddef.h>
 
 using cb = void (*)(void);
-extern cb __init_array_start[0];
+extern cb __preinit_array_start;
+extern cb __preinit_array_end;
+extern cb __init_array_start;
 extern cb __init_array_end;
 
 namespace {
 
 void
-run_global_ctors()
+run_ctor_list(cb *array, cb *end)
 {
     size_t i = 0;
     while (true) {
-        const cb &fp = __init_array_start[i++];
-        if (&fp == &__init_array_end)
-            return;
-        fp();
+        const cb &ctor = array[i++];
+        if (&ctor == end) return;
+        ctor();
     }
+}
+
+void
+run_global_ctors()
+{
+    run_ctor_list(&__preinit_array_start, &__preinit_array_end);
+    run_ctor_list(&__init_array_start, &__init_array_end);
 }
 
 } // namespace
