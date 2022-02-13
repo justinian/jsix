@@ -113,11 +113,34 @@ print_cpu_state(serial_port &out, const cpu_state &regs)
     out.write(clear);
 }
 
+static void
+print_rip(serial_port &out, uintptr_t addr)
+{
+    constexpr size_t per_line = 16;
+    addr -= per_line;
+    uint8_t *data = reinterpret_cast<uint8_t*>(addr);
+
+    char bit[100];
+
+    out.write("\n");
+    for (unsigned i = 0; i < per_line*3; i += per_line) {
+        snprintf(bit, sizeof(bit), "\e[0;33m%20lx: \e[0m", addr + i);
+        out.write(bit);
+
+        for (unsigned j = 0; j < per_line; ++j) {
+            snprintf(bit, sizeof(bit), "%02x ", data[i+j]);
+            out.write(bit);
+        }
+        out.write("\n");
+    }
+}
+
 void
 print_user_state(serial_port &out, const cpu_state &regs)
 {
     out.write("\n\e[1;35m USER:\e[0 ");
     print_cpu_state(out, regs);
+    print_rip(out, regs.rip);
 }
 
 } // namespace panicking
