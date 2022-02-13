@@ -80,7 +80,7 @@ elif [[ $DESKTOP_SESSION = "i3" ]]; then
 	fi
 fi
 
-exec qemu-system-x86_64 \
+qemu-system-x86_64 \
 	-drive "if=pflash,format=raw,readonly,file=${assets}/ovmf/x64/ovmf_code.fd" \
 	-drive "if=pflash,format=raw,file=${build}/ovmf_vars.fd" \
 	-drive "format=raw,file=${build}/jsix.img" \
@@ -93,3 +93,6 @@ exec qemu-system-x86_64 \
 	-M q35 \
 	-no-reboot \
 	$isaexit $log $gfx $vga $kvm $debug
+
+((result = ($? >> 1) - 1))
+exit $result

@@ -6,3 +6,4 @@ programs:
     target: kernel
     flags: panic
   - name: drv.uart
+  - name: test_runner

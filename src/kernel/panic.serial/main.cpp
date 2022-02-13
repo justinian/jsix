@@ -63,8 +63,8 @@ void panic_handler(const cpu_state *regs)
     if (__atomic_sub_fetch(&remaining, 1, order) == 0) {
         // No remaining CPUs, if we're running on QEMU,
         // tell it to exit
-        constexpr uint32_t exit_code = 0;
-        asm ( "out %0, %1" :: "a"(exit_code), "Nd"(0xf4) );
+        constexpr uint32_t exit_code = 255;
+        asm ( "outl %%eax, %%dx" :: "a"(exit_code), "d"(0xf4) );
     }
 
     while (1) asm ("hlt");

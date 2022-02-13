@@ -1,0 +1,15 @@
+# vim: ft=python
+
+module("test_runner",
+    targets = [ "user" ],
+    deps = [ "libc", "util" ],
+    description = "Unit test runner",
+    sources = [
+        "main.cpp",
+        "test_case.cpp",
+
+        "tests/constexpr_hash.cpp",
+        "tests/linked_list.cpp",
+        "tests/map.cpp",
+        "tests/vector.cpp",
+    ])

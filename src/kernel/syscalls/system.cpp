@@ -40,7 +40,7 @@ noop()
 test_finish(uint32_t exit_code)
 {
     // Tell QEMU to exit
-    asm ( "out %0, %1" :: "a"(exit_code), "Nd"(0xf4) );
+    asm ( "out %0, %1" :: "a"(exit_code+1), "Nd"(0xf4) );
     while (1) asm ("hlt");
 }
 
