@@ -71,22 +71,22 @@ load_program(const module_program &prog, j6_handle_t sys, char *err_msg)
         if (seg.flags && elf::segment_flags::exec)
             flags |= j6_vm_flag_exec;
 
+        uintptr_t start = prog.base_address + seg.offset;
+        size_t prologue = start & 0xfff;
+        size_t epilogue = seg.mem_size - (prologue+seg.file_size);
+
         j6_handle_t sub_vma = j6_handle_invalid;
-        res = j6_vma_create_map(&sub_vma, seg.mem_size, load_addr, flags);
+        res = j6_vma_create_map(&sub_vma, seg.mem_size+prologue, load_addr, flags);
         if (res != j6_status_ok) {
             sprintf(err_msg, "  ** error loading program '%s': creating sub vma: %lx", prog.filename, res);
             return false;
         }
 
-        uintptr_t start = prog.base_address + seg.offset;
-        size_t prelude = start & 0xfff;
-        size_t prologue = seg.mem_size - (prelude+seg.file_size);
-
         uint8_t *src = reinterpret_cast<uint8_t *>(start);
         uint8_t *dest = reinterpret_cast<uint8_t *>(load_addr);
-        memset(dest, 0, prelude);
-        memcpy(dest+prelude, src, seg.file_size);
-        memset(dest+prelude+seg.file_size, 0, prologue);
+        memset(dest, 0, prologue);
+        memcpy(dest+prologue, src, seg.file_size);
+        memset(dest+prologue+seg.file_size, 0, epilogue);
 
         res = j6_vma_map(sub_vma, proc, seg.vaddr & ~0xfffull);
         if (res != j6_status_ok) {
