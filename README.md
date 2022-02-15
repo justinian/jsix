@@ -9,7 +9,7 @@ Roadmap* section, below.
 The design goals of the project are:
 
 * Modernity - I'm not interested in designing for legacy systems, or running on
-  all hardware out there. My target is only 64 bit architecutres, and modern
+  all hardware out there. My target is only 64 bit architectures, and modern
   commodity hardware. Currently that means x64 systems with Nehalem or newer
   CPUs and UEFI firmware. (See [this list][cpu_features] for the currently
   required CPU features.) Eventually I'd like to work on an AArch64 port,
@@ -58,11 +58,17 @@ Remaining to do:
 
 - TLB shootdowns
 - Page swapping
+- Large / huge page support
 
 _Physical page allocation: Sufficient._ The current physical page allocator
-implementation suses a group of block representing up-to-1GiB areas of usable
+implementation uses a group of blocks representing up-to-1GiB areas of usable
 memory as defined by the bootloader. Each block has a three-level bitmap
 denoting free/used pages.
+
+Future work:
+
+- Align blocks so that their first page is 1GiB-aligned, making finding free
+  large/huge pages easier.
 
 #### Multitasking
 
@@ -77,32 +83,37 @@ only the timekeeping task should be a separate kernel-only thread.
 #### API
 
 _In progress._ User-space tasks are able to make syscalls to the kernel via
-fast SYSCALL/SYSRET instructions.
+fast SYSCALL/SYSRET instructions. Syscalls made via `libj6` look to both the
+callee and the caller like standard SysV ABI function calls. The
+implementations are wrapped in generated wrapper functions which validate the
+request, check capabilities, and find the appropriate kernel objects or handles
+before calling the implementation functions.
 
-Major tasks still to do:
+Current work in this area:
 
-- The process initialization protocol needs to be re-built entirely.
-- Processes' handles to kernel objects need the ability to check capabilities
+- The protocol for processes and their children for both initialization and
+  sharing resources. The kernel is ignorant of this, except for providing IPC
+  capabilities.
 
 #### Hardware Support
 
   * Framebuffer driver: _In progress._ Currently on machines with a video
-	device accessible by UEFI, jsix starts a user-space framebuffer driver that
-	only prints out kernel logs.
-  * Serial driver: _To do._ Machines without a video device should have a
-	user-space log output task like the framebuffer driver, but currently this
-	is done inside the kernel.
+    device accessible by UEFI, jsix starts a user-space framebuffer driver that
+    only prints out kernel logs.
+  * Serial driver: _In progress._ The current UART driver does not expose the
+    UART as an output resource yet, it merely gets the kernel logs and sends
+    them over serial.
   * USB driver: _To do_
   * AHCI (SATA) driver: _To do_
 
 ## Building
 
 jsix uses the [Ninja][] build tool, and generates the build files for it with
-the `configure` script. The build also relies on a custom sysroot, which can be
-downloaded via the [Peru][] tool, or built locally.
+the `configure` script. The build also relies on a custom toolchain sysroot, which can be
+downloaded or built using the scripts in [jsix-os/toolchain][].
 
-[Ninja]:    https://ninja-build.org
-[Peru]:     https://github.com/buildinspace/peru
+[Ninja]:             https://ninja-build.org
+[jsix-os/toolchain]: https://github.com/jsix-os/toolchain
 
 Other build dependencies:
 
@@ -110,13 +121,11 @@ Other build dependencies:
 * [nasm][]: the assembler
 * [lld][]: the linker
 * [mtools][]: for creating the FAT image
-* [curl][]: if using `peru` below to download the sysroot
 
 [clang]:    https://clang.llvm.org
 [nasm]:     https://www.nasm.us
 [lld]:      https://lld.llvm.org
 [mtools]:   https://www.gnu.org/software/mtools/
-[curl]:     https://curl.se
 
 The `configure` script has some Python dependencies - these can be installed via
 `pip`, though doing so in a python virtual environment is recommended.
@@ -135,18 +144,14 @@ peru sync
 
 ### Setting up the sysroot
 
-Running `peru sync` as in the above section will download and unpack the
-toolchain into `sysroot`. 
+Build or download the toolchain sysroot as mentioned above with
+[jsix-os/toolchain][], and symlink the built toolchain directory as `sysroot`
+at the root of this project.
 
-#### Compiling the sysroot yourself
-
-If you have CMake installed, runing the `scripts/build_sysroot.sh` script will
-download and build a LLVM toolchain configured for building the sysroot, and
-then build the sysroot with it.
-
-Built sysroots are actually stored in `~/.local/lib/jsix/sysroots` and installed
-in the project dir via symbolic link, so having mulitple jsix working trees or
-switching sysroot versions is easy.
+```bash
+# Example if both the toolchain and this project are cloned under ~/src
+ln -s ~/src/toolchain/toolchains/llvm-13 ~/src/jsix/sysroot
+```
 
 ### Building and running jsix
 
@@ -159,3 +164,15 @@ to run jsix in QEMU `-nographic` mode.
 I personally run this either from a real debian amd64 bullseye machine or
 a windows WSL debian bullseye installation. Your mileage may vary with other
 setups and distros.
+
+### Running the test suite
+
+jsix now has the `test_runner` userspace program that runs various automated
+tests. It is not included in the default build, but if you use the `test.yml`
+manifest it will be built, and can be run with the `test.sh` script or the
+`qemu.sh` script.
+
+```bash
+./configure --manifest=assets/manifests/test.yml
+if ./test.sh; then echo "All tests passed!"; else echo "Failed."; fi
+```

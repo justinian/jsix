@@ -1,7 +1,0 @@
-imports:
-  sysroot: sysroot/
-
-curl module sysroot:
-  url: https://f000.backblazeb2.com/file/jsix-os/sysroot-llvm-11.tar.gz
-  unpack: tar
-  sha1: 7dffa388bdb2e20e1b0eb73600024e0c07d95abd
