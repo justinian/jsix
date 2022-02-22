@@ -1,7 +1,8 @@
 #include <j6/errors.h>
-#include <j6/signals.h>
 
+#include "clock.h"
 #include "objects/event.h"
+#include "objects/thread.h"
 #include "syscalls/helpers.h"
 
 using namespace obj;
@@ -18,17 +19,21 @@ event_create(j6_handle_t *self)
 j6_status_t
 event_signal(event *self, j6_signal_t signals)
 {
-    if (signals & j6_signal_global_mask)
-        return j6_err_invalid_arg;
-
-    self->assert_signal(signals);
+    self->signal(signals);
     return j6_status_ok;
 }
 
 j6_status_t
-event_clear(event *self, j6_signal_t mask)
+event_wait(event *self, j6_signal_t *signals, uint64_t timeout)
 {
-    self->deassert_signal(~mask);
+    thread& t = thread::current();
+
+    if (timeout) {
+        timeout += clock::get().value();
+        t.set_wake_timeout(timeout);
+    }
+
+    *signals = self->wait();
     return j6_status_ok;
 }
 

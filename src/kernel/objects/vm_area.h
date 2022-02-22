@@ -6,7 +6,6 @@
 #include <stdint.h>
 
 #include <j6/caps.h>
-#include <j6/signals.h>
 #include <util/vector.h>
 #include <util/enum_bitfields.h>
 
@@ -76,7 +75,10 @@ public:
     virtual bool get_page(uintptr_t offset, uintptr_t &phys) = 0;
 
 protected:
+    /// A VMA is not deleted until both no handles remain AND it's not
+    /// mapped by any VM space.
     virtual void on_no_handles() override;
+
     bool can_resize(size_t size);
 
     size_t m_size;

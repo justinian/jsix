@@ -12,7 +12,7 @@ struct acpi_table_header;
 class block_device;
 
 namespace obj {
-    class endpoint;
+    class event;
 }
 
 using irq_callback = void (*)(void *);
@@ -45,12 +45,13 @@ public:
     /// Bind an IRQ to an endpoint
     /// \arg irq    The IRQ number to bind
     /// \arg target The endpoint to recieve messages when the IRQ is signalled
+    /// \arg signal The event's signal number to bind to
     /// \returns    True on success
-    bool bind_irq(unsigned irq, obj::endpoint *target);
+    bool bind_irq(unsigned irq, obj::event *target, unsigned signal);
 
     /// Remove IRQ bindings for an endpoint
     /// \arg target The endpoint to remove
-    void unbind_irqs(obj::endpoint *target);
+    void unbind_irqs(obj::event *target);
 
     /// Allocate an MSI IRQ for a device
     /// \arg name    Name of the interrupt, for display to user
@@ -164,7 +165,12 @@ private:
     util::vector<pci_group> m_pci;
     util::vector<pci_device> m_devices;
 
-    util::vector<obj::endpoint*> m_irqs;
+    struct irq_binding
+    {
+        obj::event *target = nullptr;
+        unsigned signal = 0;
+    };
+    util::vector<irq_binding> m_irqs;
 
     util::vector<block_device *> m_blockdevs;
 

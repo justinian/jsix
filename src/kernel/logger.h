@@ -8,6 +8,8 @@
 #include <util/bip_buffer.h>
 #include <util/spinlock.h>
 
+#include "objects/event.h"
+
 enum class logs : uint8_t {
 #define LOG(name, lvl) name,
 #include <j6/tables/log_areas.inc>
@@ -106,6 +108,8 @@ private:
     inline level get_level(logs area) {
         return m_levels[static_cast<unsigned>(area)];
     }
+
+    obj::event m_event;
 
     level m_levels[areas_count];
     immediate_cb m_immediate;

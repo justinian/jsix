@@ -6,7 +6,7 @@
 #include "frame_allocator.h"
 #include "logger.h"
 #include "memory.h"
-#include "objects/endpoint.h"
+#include "objects/event.h"
 #include "objects/thread.h"
 #include "objects/system.h"
 #include "objects/vm_area.h"
@@ -49,16 +49,13 @@ system_get_log(system *self, void *buffer, size_t *buffer_len)
 {
     size_t orig_size = *buffer_len;
     *buffer_len = g_logger.get_entry(buffer, *buffer_len);
-    if (!g_logger.has_log())
-        self->deassert_signal(j6_signal_system_has_log);
-
     return (*buffer_len > orig_size) ? j6_err_insufficient : j6_status_ok;
 }
 
 j6_status_t
-system_bind_irq(system *self, endpoint *endp, unsigned irq)
+system_bind_irq(system *self, event *dest, unsigned irq, unsigned signal)
 {
-    if (device_manager::get().bind_irq(irq, endp))
+    if (device_manager::get().bind_irq(irq, dest, signal))
         return j6_status_ok;
 
     return j6_err_invalid_arg;

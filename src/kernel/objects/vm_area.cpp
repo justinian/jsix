@@ -35,15 +35,13 @@ void
 vm_area::remove_from(vm_space *space)
 {
     m_spaces.remove_swap(space);
-    if (!m_spaces.count() &&
-        check_signal(j6_signal_no_handles))
+    if (!m_spaces.count() && !handle_count())
         delete this;
 }
 
 void
 vm_area::on_no_handles()
 {
-    kobject::on_no_handles();
     if (!m_spaces.count())
         delete this;
 }

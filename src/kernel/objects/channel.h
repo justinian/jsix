@@ -3,7 +3,6 @@
 /// Definition of channel objects and related functions
 
 #include <j6/caps.h>
-#include <j6/signals.h>
 #include <util/bip_buffer.h>
 #include <util/counted.h>
 #include <util/spinlock.h>
@@ -26,10 +25,10 @@ public:
     static constexpr kobject::type type = kobject::type::channel;
 
     /// Check if the channel has space for a message to be sent
-    inline bool can_send() const { return check_signal(j6_signal_channel_can_send); }
+    inline bool can_send() const { return m_can_send; }
 
     /// Check if the channel has a message wiating already
-    inline bool can_receive() const { return check_signal(j6_signal_channel_can_recv); }
+    inline bool can_receive() const { return m_can_recv; }
 
     /// Put a message into the channel
     /// \arg data Buffer of data to write
@@ -43,14 +42,17 @@ public:
 
     /// Mark this channel as closed, all future calls to enqueue or
     /// dequeue messages will fail with j6_status_closed.
-    virtual void close() override;
+    void close();
 
-protected:
-    virtual void on_no_handles() override;
+    /// Check if this channel has been closed.
+    inline bool closed() const { return m_closed; }
 
 private:
     size_t m_len;
     uintptr_t m_data;
+    bool m_closed;
+    bool m_can_send;
+    bool m_can_recv;
     util::bip_buffer m_buffer;
     util::spinlock m_close_lock;
 };

@@ -12,10 +12,10 @@
 #include "interrupts.h"
 #include "logger.h"
 #include "memory.h"
-#include "objects/endpoint.h"
+#include "objects/event.h"
 
 
-static obj::endpoint * const ignore_endpoint = reinterpret_cast<obj::endpoint*>(-1ull);
+static obj::event * const ignore_event = reinterpret_cast<obj::event*>(-1ull);
 
 static const char expected_signature[] = "RSD PTR ";
 
@@ -58,9 +58,9 @@ device_manager::device_manager() :
     m_irqs.ensure_capacity(32);
     m_irqs.set_size(16);
     for (int i = 0; i < 16; ++i)
-        m_irqs[i] = nullptr;
+        m_irqs[i] = {nullptr, 0};
 
-    m_irqs[2] = ignore_endpoint;
+    m_irqs[2] = {ignore_event, 0};
 }
 
 template <typename T> static const T *
@@ -381,32 +381,32 @@ device_manager::dispatch_irq(unsigned irq)
     if (irq >= m_irqs.count())
         return false;
 
-    obj::endpoint *e = m_irqs[irq];
-    if (!e || e == ignore_endpoint)
-        return e == ignore_endpoint;
+    irq_binding &binding = m_irqs[irq];
+    if (!binding.target || binding.target == ignore_event)
+        return binding.target == ignore_event;
 
-    e->signal_irq(irq);
+    binding.target->signal(1 << binding.signal);
     return true;
 }
 
 bool
-device_manager::bind_irq(unsigned irq, obj::endpoint *target)
+device_manager::bind_irq(unsigned irq, obj::event *target, unsigned signal)
 {
     // TODO: grow if under max size
     if (irq >= m_irqs.count())
         return false;
 
-    m_irqs[irq]= target;
+    m_irqs[irq] = {target, signal};
     return true;
 }
 
 void
-device_manager::unbind_irqs(obj::endpoint *target)
+device_manager::unbind_irqs(obj::event *target)
 {
     const size_t count = m_irqs.count();
     for (size_t i = 0; i < count; ++i) {
-        if (m_irqs[i] == target)
-            m_irqs[i] = nullptr;
+        if (m_irqs[i].target == target)
+            m_irqs[i] = {nullptr, 0};
     }
 }
 

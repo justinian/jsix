@@ -33,6 +33,7 @@ kernel = module("kernel",
         "msr.cpp",
         "objects/channel.cpp",
         "objects/endpoint.cpp",
+        "objects/event.cpp",
         "objects/kobject.cpp",
         "objects/thread.cpp",
         "objects/process.cpp",
@@ -64,6 +65,7 @@ kernel = module("kernel",
         "task.s",
         "tss.cpp",
         "vm_space.cpp",
+        "wait_queue.cpp",
     ])
 
 from glob import glob

@@ -3,18 +3,20 @@ object event : object {
 
     capabilities [
         signal
+        wait
     ]
 
     method create [constructor]
 
-    # Assert signals on the event from the given bitset
+    # Signal events on this object
     method signal [cap:signal] {
-        param signals uint64
+        param signals uint64        # A bitset of which events to signal
     }
 
-    # De-assert signals on the event from the given bitset
-    method clear [cap:signal] {
-        param mask uint64
+    # Wait for signaled events on this object
+    method wait [cap:wait] {
+        param signals uint64 [out]  # A bitset of which events were signaled
+        param timeout uint64        # Wait timeout in nanoseconds
     }
 }
 

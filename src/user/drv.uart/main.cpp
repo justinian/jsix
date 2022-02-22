@@ -5,7 +5,7 @@
 
 #include <j6/errors.h>
 #include <j6/flags.h>
-#include <j6/signals.h>
+#include <j6/init.h>
 #include <j6/syscalls.h>
 #include <j6/sysconf.h>
 #include <j6/types.h>
@@ -19,7 +19,7 @@ extern "C" {
 }
 
 extern j6_handle_t __handle_self;
-extern j6_handle_t __handle_sys;
+j6_handle_t g_handle_sys = j6_handle_invalid;
 
 struct entry
 {
@@ -76,13 +76,13 @@ log_pump_proc()
     void *message_buffer = nullptr;
     char stringbuf[300];
 
-    j6_status_t result = j6_system_request_iopl(__handle_sys, 3);
+    j6_status_t result = j6_system_request_iopl(g_handle_sys, 3);
     if (result != j6_status_ok)
         return;
 
     while (true) {
         size_t size = buffer_size;
-        j6_status_t s = j6_system_get_log(__handle_sys, message_buffer, &size);
+        j6_status_t s = j6_system_get_log(g_handle_sys, message_buffer, &size);
 
         if (s == j6_err_insufficient) {
             free(message_buffer);
@@ -91,12 +91,6 @@ log_pump_proc()
             continue;
         } else if (s != j6_status_ok) {
             j6_log("uart driver got error from get_log");
-            continue;
-        }
-
-        if (size == 0) {
-            j6_signal_t sigs = 0;
-            j6_object_wait(__handle_sys, j6_signal_system_has_log, &sigs);
             continue;
         }
 
@@ -118,22 +112,26 @@ main(int argc, const char **argv)
 {
     j6_log("uart driver starting");
 
-    j6_handle_t endp = j6_handle_invalid;
+    j6_handle_t event = j6_handle_invalid;
     j6_status_t result = j6_status_ok;
 
-    result = j6_system_request_iopl(__handle_sys, 3);
+    g_handle_sys = j6_find_first_handle(j6_object_type_system);
+    if (g_handle_sys == j6_handle_invalid)
+        return 1;
+
+    result = j6_system_request_iopl(g_handle_sys, 3);
     if (result != j6_status_ok)
         return result;
 
-    result = j6_endpoint_create(&endp);
+    result = j6_event_create(&event);
     if (result != j6_status_ok)
         return result;
 
-    result = j6_system_bind_irq(__handle_sys, endp, 3);
+    result = j6_system_bind_irq(g_handle_sys, event, 3, 0);
     if (result != j6_status_ok)
         return result;
 
-    result = j6_system_bind_irq(__handle_sys, endp, 4);
+    result = j6_system_bind_irq(g_handle_sys, event, 4, 1);
     if (result != j6_status_ok)
         return result;
 
@@ -159,8 +157,8 @@ main(int argc, const char **argv)
 
     size_t len = 0;
     while (true) {
-        uint64_t tag = 0;
-        result = j6_endpoint_receive(endp, &tag, nullptr, &len, 10000);
+        uint64_t signals = 0;
+        result = j6_event_wait(event, &signals, 1000);
         if (result == j6_err_timed_out) {
             com1.handle_interrupt();
             com2.handle_interrupt();
@@ -172,22 +170,10 @@ main(int argc, const char **argv)
             continue;
         }
 
-        if (!j6_tag_is_irq(tag)) {
-            j6_log("uart driver got non-irq waiting for irq");
-            continue;
-        }
-
-        unsigned irq = j6_tag_to_irq(tag);
-        switch (irq) {
-            case 3:
-                com2.handle_interrupt();
-                break;
-            case 4:
-                com1.handle_interrupt();
-                break;
-            default:
-                j6_log("uart driver got unknown irq waiting for irq");
-        }
+        if (signals & (1<<0))
+            com2.handle_interrupt();
+        if (signals & (1<<1))
+            com1.handle_interrupt();
     }
 
     j6_log("uart driver somehow got to the end of main");

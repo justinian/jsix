@@ -11,20 +11,4 @@ object object [virtual] {
     method koid {
         param koid uint64 [out]
     }
-
-    # Block the current thread waiting for an object to assert
-    # one of a set of signals
-    method wait {
-        param mask uint64 # Bitmap of which signals to wait for
-        param signals uint64 [out] # Returns the state of the signals
-    }
-
-    # Block the current thread waiting for an one of multiple
-    # objects to assert one of a set of signals
-    method wait_many [static] {
-        param handles ref object [list] # The objects to wait on
-        param mask uint64               # Bitmap of which signals to wait for
-        param handle ref object [out]   # Returns the object that signalled
-        param signals uint64 [out]      # Returns the state of the signals
-    }
 }

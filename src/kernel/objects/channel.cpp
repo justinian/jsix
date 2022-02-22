@@ -15,7 +15,7 @@ channel::channel() :
     m_len(0),
     m_data(g_kernel_buffers.get_section()),
     m_buffer(reinterpret_cast<uint8_t*>(m_data), buffer_bytes),
-    kobject(kobject::type::channel, j6_signal_channel_can_send)
+    kobject(kobject::type::channel)
 {
 }
 
@@ -41,10 +41,10 @@ channel::enqueue(const util::buffer &data)
     m_buffer.commit(len);
 
     if (len)
-        assert_signal(j6_signal_channel_can_recv);
+        m_can_recv = true;
 
     if (m_buffer.free_space() == 0)
-        deassert_signal(j6_signal_channel_can_send);
+        m_can_send = false;
 
     return len;
 }
@@ -64,10 +64,10 @@ channel::dequeue(util::buffer buffer)
     m_buffer.consume(len);
 
     if (len)
-        assert_signal(j6_signal_channel_can_send);
+        m_can_send = true;
 
     if (m_buffer.size() == 0)
-        deassert_signal(j6_signal_channel_can_recv);
+        m_can_recv = false;
 
     return len;
 }
@@ -76,16 +76,8 @@ void
 channel::close()
 {
     util::scoped_lock lock {m_close_lock};
-
-    kobject::close();
     g_kernel_buffers.return_section(m_data);
-}
-
-void
-channel::on_no_handles()
-{
-    kobject::on_no_handles();
-    delete this;
+    m_closed = true;
 }
 
 } // namespace obj

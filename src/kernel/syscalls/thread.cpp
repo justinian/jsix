@@ -47,20 +47,13 @@ thread_kill(thread *self)
 }
 
 j6_status_t
-thread_pause()
-{
-    thread &th = thread::current();
-    th.wait_on_signals(-1ull);
-    return j6_status_ok;
-}
-
-j6_status_t
 thread_sleep(uint64_t til)
 {
     thread &th = thread::current();
     log::debug(logs::task, "Thread %llx sleeping until %llu", th.koid(), til);
 
-    th.wait_on_time(til);
+    th.set_wake_timeout(til);
+    th.block();
     return j6_status_ok;
 }
 

@@ -119,7 +119,22 @@ public:
     {
         node *n = lookup(k);
         if (!n) return false;
+        erase(n);
+        return true;
+    }
 
+    inline size_t count() const { return m_count; }
+    inline size_t capacity() const { return m_capacity; }
+    inline size_t threshold() const { return (m_capacity * max_load) / 100; }
+
+protected:
+    inline size_t mod(uint64_t i) const { return i & (m_capacity - 1); }
+    inline size_t offset(uint64_t h, size_t i) const {
+        return mod(i + m_capacity - mod(h));
+    }
+
+    void erase(node *n)
+    {
         n->~node();
         --m_count;
 
@@ -132,18 +147,6 @@ public:
             m.~node();
             i = mod(++i);
         }
-
-        return true;
-    }
-
-    inline size_t count() const { return m_count; }
-    inline size_t capacity() const { return m_capacity; }
-    inline size_t threshold() const { return (m_capacity * max_load) / 100; }
-
-protected:
-    inline size_t mod(uint64_t i) const { return i & (m_capacity - 1); }
-    inline size_t offset(uint64_t h, size_t i) const {
-        return mod(i + m_capacity - mod(h));
     }
 
     void set_capacity(size_t capacity) {
@@ -263,7 +266,8 @@ public:
 
     V * find(const K &k) {
         node *n = this->lookup(k);
-        return n ? &n->val : nullptr;
+        V *val = n ? &n->val : nullptr;
+        return val;
     }
 
     const V * find(const K &k) const {
@@ -284,6 +288,12 @@ class map <K, V*> :
 public:
     map(size_t capacity = 0) :
         base(capacity) {}
+
+    V * find(const K &k) {
+        node *n = this->lookup(k);
+        V *val = n ? n->val : nullptr;
+        return val;
+    }
 
     V * find(const K &k) const {
         const node *n = this->lookup(k);

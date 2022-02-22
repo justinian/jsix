@@ -126,12 +126,14 @@ scheduler::prune(run_queue &queue, uint64_t now)
         thread *th = tcb->thread;
         uint8_t priority = tcb->priority;
 
+        uint64_t timeout = th->wake_timeout();
+        if (timeout && timeout <= now)
+            th->wake();
+
         bool ready = th->has_state(thread::state::ready);
         bool exited = th->has_state(thread::state::exited);
         bool constant = th->has_state(thread::state::constant);
         bool current = tcb == queue.current;
-
-        ready |= th->wake_on_time(now);
 
         auto *remove = tcb;
         tcb = tcb->next();

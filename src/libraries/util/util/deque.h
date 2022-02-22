@@ -3,6 +3,7 @@
 /// A generic templatized linked list.
 
 #include <assert.h>
+#include <string.h>
 #include <util/linked_list.h>
 
 namespace util {
@@ -42,7 +43,9 @@ public:
 
     inline void push_front(const T& item) {
         if (!m_first) { // need a new block at the start
-            m_list.push_front(new node_type);
+            node_type *n = new node_type;
+            memset(n, 0, sizeof(node_type));
+            m_list.push_front(n);
             m_first = N;
         }
         m_list.front()->items[--m_first] = item;
@@ -50,7 +53,9 @@ public:
 
     inline void push_back(const T& item) {
         if (m_next == N) { // need a new block at the end
-            m_list.push_back(new node_type);
+            node_type *n = new node_type;
+            memset(n, 0, sizeof(node_type));
+            m_list.push_back(n);
             m_next = 0;
         }
         m_list.back()->items[m_next++] = item;
@@ -80,7 +85,10 @@ public:
         return value;
     }
 
-    inline bool empty() const { return m_list.empty(); }
+    inline bool empty() const {
+        return m_list.empty() ||
+            m_list.length() == 1 && m_first == m_next;
+    }
 
     inline T& first() {
         assert(!empty() && "Calling first() on an empty deque");

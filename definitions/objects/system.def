@@ -21,8 +21,9 @@ object system : object {
     # Ask the kernel to send this process messages whenever
     # the given IRQ fires
     method bind_irq [cap:bind_irq] {
-        param dest ref endpoint  # Endpoint that will receive messages
+        param dest ref event     # Event object that will receive messages
         param irq uint           # IRQ number to bind
+        param signal uint        # Signal number on the event to bind to
     }
 
     # Create a VMA and map an area of physical memory into it,

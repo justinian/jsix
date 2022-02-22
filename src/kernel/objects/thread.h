@@ -29,14 +29,14 @@ struct TCB
     obj::thread* thread;
 
     uint8_t priority;
+
     // note: 3 bytes padding
-
     // TODO: move state into TCB?
-
-    uintptr_t kernel_stack;
 
     uint32_t time_left;
     uint64_t last_ran;
+
+    uintptr_t kernel_stack;
 };
 
 using tcb_list = util::linked_list<TCB>;
@@ -90,6 +90,10 @@ public:
     /// \returns True if the thread has constant priority.
     inline bool constant() const { return has_state(state::constant); }
 
+    /// Get the `exited` state of the thread.
+    /// \returns True if the thread has exited.
+    inline bool exited() const { return has_state(state::exited); }
+
     /// Get the thread priority.
     inline uint8_t priority() const { return m_tcb.priority; }
 
@@ -97,58 +101,21 @@ public:
     /// \arg p  The new thread priority
     inline void set_priority(uint8_t p) { if (!constant()) m_tcb.priority = p; }
 
-    /// Block the thread, waiting an object's signals.
-    /// \arg signals  Mask of signals to wait for
-    /// \returns      j6_status_ok on success
-    j6_status_t wait_on_signals(j6_signal_t signals);
+    /// Block this thread, waiting for a value
+    /// \returns  The value passed to wake()
+    uint64_t block();
 
-    /// Block the thread, waiting for a given clock value
-    /// \arg t    Clock value to wait for
-    /// \returns  j6_status_ok on success
-    j6_status_t wait_on_time(uint64_t t);
+    /// Wake this thread, giving it a value
+    /// \arg value  The value that block() should return
+    void wake(uint64_t value = 0);
 
-    /// Block the thread, waiting on the given object
-    /// \arg o    The object that should wake this thread
-    /// \arg t    The timeout clock value to wait for
-    /// \returns  j6_status_ok on success
-    j6_status_t wait_on_object(void *o, uint64_t t = 0);
+    /// Set a timeout to unblock this thread
+    /// \arg time  The clock time at which to wake. 0 for no timeout.
+    inline void set_wake_timeout(uint64_t time) { m_wake_timeout = time; }
 
-    /// Wake the thread if it is waiting on signals.
-    /// \arg obj     Object that changed signals
-    /// \arg signals Signal state of the object
-    /// \returns     True if this action unblocked the thread
-    bool wake_on_signals(kobject *obj, j6_signal_t signals);
-
-    /// Wake the thread if it is waiting on the clock.
-    /// \arg now  Current clock value
-    /// \returns  True if this action unblocked the thread
-    bool wake_on_time(uint64_t now);
-
-    /// Wake the thread if it is waiting on the given object.
-    /// \arg o   Object trying to wake the thread
-    /// \arg id  Id of the object trying to wake the thread
-    /// \returns  True if this action unblocked the thread
-    bool wake_on_object(void *o, uint64_t id = 0);
-
-    /// Wake the thread with a given result code.
-    /// \arg obj     Object that changed signals
-    /// \arg result  Result code to return to the thread
-    void wake_on_result(kobject *obj, j6_status_t result);
-
-    /// Get the result status code from the last blocking operation
-    j6_status_t get_wait_result() const { return m_wait_result; }
-
-    /// Get the current blocking opreation's wait data
-    uint64_t get_wait_data() const { return m_wait_data; }
-
-    /// Get the current blocking operation's wait ojbect (as a handle)
-    j6_koid_t get_wait_object() const { return m_wait_obj; }
-
-    /// Primitive thread blocking, instead of using wait framework
-    void block();
-
-    /// Primitive thread unblocking, instead of using wait framework
-    void wake();
+    /// Get the timeout at which to unblock this thread
+    /// \returns  The clock time at which to wake. 0 for no timeout.
+    inline uint64_t wake_timeout() const { return m_wake_timeout; }
 
     inline bool has_state(state s) const {
         return static_cast<uint8_t>(m_state) & static_cast<uint8_t>(s);
@@ -189,6 +156,11 @@ public:
     /// \arg rsp    The existing stack for the idle thread
     static thread * create_idle_thread(process &kernel, uint8_t pri, uintptr_t rsp);
 
+protected:
+    /// Don't delete a thread on no handles, the scheduler takes
+    /// care of that.
+    virtual void on_no_handles() override {}
+
 private:
     thread() = delete;
     thread(const thread &other) = delete;
@@ -210,16 +182,13 @@ private:
     thread *m_creator;
 
     state m_state;
-    wait_type m_wait_type;
-    // There should be 1 byte of padding here
+
+    // There should be 3 bytes of padding here
 
     int32_t m_return_code;
 
-    uint64_t m_wait_data;
-    uint64_t m_wait_time;
-    j6_status_t m_wait_result;
-    uint64_t m_wait_obj;
-    util::spinlock m_wait_lock;
+    uint64_t m_wake_value;
+    uint64_t m_wake_timeout;
 
     j6_handle_t m_self_handle;
 };

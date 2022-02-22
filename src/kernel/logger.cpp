@@ -7,6 +7,7 @@
 #include "logger.h"
 #include "memory.h"
 #include "objects/system.h"
+#include "objects/thread.h"
 #include "printf/printf.h"
 
 static uint8_t log_buffer[128 * 1024];
@@ -87,13 +88,14 @@ logger::output(level severity, logs area, const char *fmt, va_list args)
     memcpy(out, buffer, n);
     m_buffer.commit(n);
 
-    obj::system &sys = obj::system::get();
-    sys.assert_signal(j6_signal_system_has_log);
+    m_event.signal(1);
 }
 
 size_t
 logger::get_entry(void *buffer, size_t size)
 {
+    m_event.wait();
+
     util::scoped_lock lock {m_lock};
 
     void *out;

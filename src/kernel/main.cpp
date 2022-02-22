@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include <bootproto/kernel.h>
-#include <j6/signals.h>
 #include <util/vector.h>
 
 #include "assert.h"

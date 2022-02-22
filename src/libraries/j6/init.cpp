@@ -9,43 +9,38 @@
 #include <j6/syscalls.h>
 #include <j6/types.h>
 
-j6_handle_t __handle_sys;
 j6_handle_t __handle_self;
 
 namespace {
-    constexpr size_t __static_arr_size = 4;
-    j6_handle_t __handle_array[__static_arr_size];
-
-    static j6_status_t
-    load_handles()
-    {
-        size_t count = __static_arr_size;
-        j6_handle_t *handles = __handle_array;
-        j6_status_t s = j6_handle_list(handles, &count);
-
-        if (s != j6_err_insufficient && s != j6_status_ok)
-            return s;
-
-        if (count > __static_arr_size)
-            count = __static_arr_size;
-
-        for (size_t i = 0; i < count; ++i) {
-            uint8_t type = (handles[i] >> 56);
-            if (type == j6_object_type_system && __handle_sys == j6_handle_invalid)
-                __handle_sys = handles[i];
-            else if (type == j6_object_type_process && __handle_self == j6_handle_invalid)
-                __handle_self = handles[i];
-        }
-
-        return s;
-    }
+    constexpr size_t static_arr_size = 8;
+    j6_handle_t handle_array[static_arr_size];
 } // namespace
+
+j6_handle_t
+j6_find_first_handle(j6_object_type obj_type)
+{
+    size_t count = static_arr_size;
+    j6_handle_t *handles = handle_array;
+    j6_status_t s = j6_handle_list(handles, &count);
+
+    if (s != j6_err_insufficient && s != j6_status_ok)
+        return j6_handle_invalid;
+
+    if (count > static_arr_size)
+        count = static_arr_size;
+
+    for (size_t i = 0; i < count; ++i) {
+        uint8_t type = (handles[i] >> 56);
+        if (type == obj_type) return handles[i];
+    }
+
+    return j6_handle_invalid;
+}
 
 extern "C" void
 __init_libj6(uint64_t *rsp)
 {
-    __handle_sys = __handle_self = j6_handle_invalid;
-    load_handles();
+    __handle_self = j6_find_first_handle(j6_object_type_process);
 }
 
 #endif // __j6kernel

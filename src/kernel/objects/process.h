@@ -103,6 +103,11 @@ public:
     /// \returns  The kernel process object
     static process * create_kernel_process(page_table *pml4);
 
+protected:
+    /// Don't delete a process on no handles, the scheduler takes
+    /// care of that.
+    virtual void on_no_handles() override {}
+
 private:
     // This constructor is called by create_kernel_process
     process(page_table *kpml4);

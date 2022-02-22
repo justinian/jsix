@@ -13,7 +13,6 @@ using bootproto::module_flags;
 using bootproto::module_program;
 
 extern j6_handle_t __handle_self;
-extern j6_handle_t __handle_sys;
 
 constexpr uintptr_t load_addr = 0xf8000000;
 constexpr size_t stack_size = 0x10000;
@@ -28,7 +27,7 @@ load_program(const module_program &prog, j6_handle_t sys, char *err_msg)
     }
 
     j6_handle_t elf_vma = j6_handle_invalid;
-    j6_status_t res = j6_system_map_phys(__handle_sys, &elf_vma, prog.base_address, prog.size, 0);
+    j6_status_t res = j6_system_map_phys(sys, &elf_vma, prog.base_address, prog.size, 0);
     if (res != j6_status_ok) {
         sprintf(err_msg, "  ** error loading program '%s': creating physical vma: %lx", prog.filename, res);
         return false;

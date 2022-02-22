@@ -3,6 +3,7 @@
 
 #include <j6/caps.h>
 #include <j6/errors.h>
+#include <j6/init.h>
 #include <j6/syscalls.h>
 #include <j6/types.h>
 #include <bootproto/init.h>
@@ -21,20 +22,33 @@ extern "C" {
 uintptr_t _arg_modules_phys;   // This gets filled in in _start
 
 extern j6_handle_t __handle_self;
-extern j6_handle_t __handle_sys;
 
 int
 main(int argc, const char **argv)
 {
+    j6_status_t s;
+
+    j6_handle_t sys = j6_handle_invalid;
+    j6_handle_t sys_child = j6_handle_invalid;
+
     j6_log("srv.init starting");
 
-    modules mods = modules::load_modules(_arg_modules_phys, __handle_sys, __handle_self);
+    sys = j6_find_first_handle(j6_object_type_system);
+    if (sys == j6_handle_invalid)
+        return 1;
 
-    j6_handle_t drv_sys_handle = j6_handle_invalid;
-    j6_status_t s = j6_handle_clone(__handle_sys, &drv_sys_handle,
-            j6_cap_system_bind_irq | j6_cap_system_map_phys | j6_cap_system_change_iopl);
+    s = j6_handle_clone(sys, &sys_child,
+            j6_cap_system_bind_irq |
+            j6_cap_system_get_log |
+            j6_cap_system_map_phys |
+            j6_cap_system_change_iopl);
     if (s != j6_status_ok)
         return s;
+
+    if (s != j6_status_ok)
+        return s;
+
+    modules mods = modules::load_modules(_arg_modules_phys, sys, __handle_self);
 
     for (auto &mod : mods.of_type(module_type::program)) {
         auto &prog = static_cast<const module_program&>(mod);
@@ -43,7 +57,7 @@ main(int argc, const char **argv)
         sprintf(message, "  loading program module '%s' at %lx", prog.filename, prog.base_address);
         j6_log(message);
 
-        if (!load_program(prog, __handle_sys, message)) {
+        if (!load_program(prog, sys_child, message)) {
             j6_log(message);
             return 1;
         }

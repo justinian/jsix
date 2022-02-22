@@ -53,7 +53,6 @@ process::exit(int32_t code)
     // TODO: make this thread-safe
     m_state = state::exited;
     m_return_code = code;
-    close();
 
     for (auto *thread : m_threads) {
         thread->exit(code);
