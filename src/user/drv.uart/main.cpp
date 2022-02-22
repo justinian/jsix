@@ -9,7 +9,6 @@
 #include <j6/syscalls.h>
 #include <j6/sysconf.h>
 #include <j6/types.h>
-#include <util/constexpr_hash.h>
 
 #include "io.h"
 #include "serial.h"

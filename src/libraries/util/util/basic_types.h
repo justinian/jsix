@@ -2,6 +2,8 @@
 /// file basic_types.h
 /// Type properties that would normally come from <type_traits>
 
+#include <stdint.h>
+
 namespace types {
 
 template <bool B, typename T = void> struct enable_if {};
@@ -59,5 +61,16 @@ template<typename B1> struct conjunction<B1> : B1 {};
 template<typename B1, typename... Bn>
 struct conjunction<B1, Bn...> : conditional<bool(B1::value), conjunction<Bn...>, B1>::type {};
 
+template <unsigned N> struct sized_uint_type {};
+template <> struct sized_uint_type<8>  { using type = uint8_t; };
+template <> struct sized_uint_type<16> { using type = uint16_t; };
+template <> struct sized_uint_type<32> { using type = uint32_t; };
+template <> struct sized_uint_type<64> { using type = uint64_t; };
+
+template <unsigned N> struct sized_uint {
+    static constexpr uint64_t mask = ((1<<N)-1);
+    static constexpr unsigned bits = N;
+    using type = typename sized_uint_type<N>::type;
+};
 
 } // namespace types

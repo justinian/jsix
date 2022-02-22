@@ -9,7 +9,6 @@ module("util",
     public_headers = [
         "util/basic_types.h",
         "util/bip_buffer.h",
-        "util/constexpr_hash.h",
         "util/counted.h",
         "util/deque.h",
         "util/enum_bitfields.h",
