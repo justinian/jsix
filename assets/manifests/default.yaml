@@ -4,6 +4,4 @@ programs:
   - name: panic.serial
     target: kernel
     flags: panic
-  - name: drv.uefi_fb
-    flags: graphical
   - name: drv.uart

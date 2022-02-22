@@ -8,9 +8,13 @@
 
 #define j6_status_ok                0x0000
 
+/// Errors 0001h-0fffh are reserved to avoid collision with
+/// libc errno values
+
 #define j6_status_closed            0x1000
 #define j6_status_destroyed         0x1001
 #define j6_status_exists            0x1002
+#define j6_status_would_block       0x1003
 
 #define j6_err_nyi                  j6_err(0x0001)
 #define j6_err_unexpected           j6_err(0x0002)

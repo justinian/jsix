@@ -5,6 +5,8 @@
 // but should not include the user-specific code.
 #ifndef __j6kernel
 
+#include <stddef.h>
+#include <stdint.h>
 #include <j6/types.h>
 
 #ifdef __cplusplus

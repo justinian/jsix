@@ -1,32 +1,63 @@
-# Mailboxes are objects that enable asynchronous IPC via event notification.
+# Mailboxes are objects that enable synchronous or asynchronous
+# IPC via short message-passing of bytes and handles.
 
-object mailbox {
+object mailbox : object {
     uid 99934ad04ece1e07
 
-    # Create an unbound mailbox
+    capabilities [
+        send
+        receive
+        close
+    ]
+
     method create [constructor]
+    method close [destructor cap:close]
 
-    method close [destructor]
-
-    method bind {
-        param index uint
-        param source ref object
-        param event uint
+    # Asynchronously send a message to the reciever
+    method send [cap:send handle] {
+        param tag uint64
+        param data buffer [zero_ok]
+        param handles ref object [list]
     }
 
-    method unbind {
-        param index uint
+    # Receive a pending message, or block waiting for a message to
+    # arrive if block is true.
+    method receive [cap:receive] {
+        param tag uint64 [out]
+        param data buffer [out zero_ok]
+        param handles ref object [out list zero_ok]
+        param reply_tag uint16 [out optional]
+        param badge uint64 [out optional]
+        param flags uint64
     }
 
-    method notify {
-        param index uint
+    # Send a message to the reciever, and block until a
+    # response is sent. Note that getting this response
+    # does not require the receive capability.
+    method call [cap:send handle] {
+        param tag uint64 [inout]
+        param data buffer [inout zero_ok]
+        param handles ref object [inout list zero_ok]
     }
 
-    method wait {
-        param bitmap uint64 [out]
+    # Respond to a message sent using call. Note that this
+    # requires the receive capability and not the send capability.
+    method respond [cap:receive] {
+        param tag uint64
+        param data buffer [zero_ok]
+        param handles ref object [list zero_ok]
+        param reply_tag uint16
     }
 
-    method ack {
-        param bitmap uint64
+    # Respond to a message sent using call, and wait for another
+    # message to arrive. Note that this does not require the send
+    # capability.
+    method respond_receive [cap:receive] {
+        param tag uint64 [inout]
+        param data buffer [inout zero_ok]
+        param handles ref object [inout list zero_ok]
+        param reply_tag uint16 [inout]
+        param badge uint64 [out]
+        param flags uint64
     }
 }

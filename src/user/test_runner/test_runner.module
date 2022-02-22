@@ -10,6 +10,7 @@ module("test_runner",
 
         "tests/constexpr_hash.cpp",
         "tests/linked_list.cpp",
+        "tests/mailbox.cpp",
         "tests/map.cpp",
         "tests/vector.cpp",
     ])

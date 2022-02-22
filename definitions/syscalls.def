@@ -1,8 +1,8 @@
 import "objects/object.def"
 
 import "objects/channel.def"
-import "objects/endpoint.def"
 import "objects/event.def"
+import "objects/mailbox.def"
 import "objects/process.def"
 import "objects/system.def"
 import "objects/thread.def"
@@ -16,8 +16,8 @@ interface syscalls [syscall] {
     expose ref event
     expose ref process
     expose ref thread
+    expose ref mailbox
     expose ref channel
-    expose ref endpoint
     expose ref vma
 
     # Simple no-op syscall for testing
