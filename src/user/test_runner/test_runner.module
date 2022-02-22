@@ -9,6 +9,7 @@ module("test_runner",
         "test_case.cpp",
 
         "tests/constexpr_hash.cpp",
+        "tests/handles.cpp",
         "tests/linked_list.cpp",
         "tests/mailbox.cpp",
         "tests/map.cpp",

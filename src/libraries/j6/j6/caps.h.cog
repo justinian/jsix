@@ -4,6 +4,8 @@
 /// \file caps.h
 /// Capability bitfield constants
 
+#define j6_handle_caps(h)  (((h)>>32) & 0xffffff)
+
 /*[[[cog code generation
 from definitions.context import Context
 

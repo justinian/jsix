@@ -28,7 +28,7 @@ TEST_CASE( mailbox_tests, would_block )
     size_t buffer_size = 128;
     j6_handle_t handles[10];
     size_t handle_count = 10;
-    uint64_t reply_tag = 0;
+    uint16_t reply_tag = 0;
     uint64_t badge = 0;
     uint64_t flags = 0;
 
@@ -66,7 +66,7 @@ TEST_CASE( mailbox_tests, send_receive )
     size_t in_buffer_size = 128;
     j6_handle_t in_handles[10];
     size_t in_handle_count = 10;
-    uint64_t in_reply_tag = 0;
+    uint16_t in_reply_tag = 0;
     uint64_t in_badge = 0;
     uint64_t in_flags = 0;
 
