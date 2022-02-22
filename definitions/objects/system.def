@@ -1,6 +1,3 @@
-import "objects/endpoint.def"
-import "objects/vma.def"
-
 # The system object represents a handle to kernel functionality
 # needed by drivers and other priviledged services
 object system : object {

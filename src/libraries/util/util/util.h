@@ -2,6 +2,7 @@
 /// \file util.h
 /// Utility functions used in other util code
 
+#include <stddef.h>
 #include <stdint.h>
 
 namespace util {
