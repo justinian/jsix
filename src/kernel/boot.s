@@ -32,11 +32,14 @@ _kernel_start:
 	extern kernel_main
 	call kernel_main
 
-	; Kernel init is over, wait for the scheduler to
-	; take over
-.hang:
+    ; Kernel init is over, fall through to bsp_idle and wait for
+    ; the scheduler to take over
+.end:
+
+global bsp_idle:function (bsp_idle.end - bsp_idle)
+bsp_idle:
 	hlt
-	jmp .hang
+	jmp bsp_idle
 .end:
 
 global interrupts_enable
