@@ -19,7 +19,7 @@ variables:
     "-mno-sse",
     "-fno-omit-frame-pointer",
     "-mno-red-zone",
-    "-mcmodel=large",
+    "-mcmodel=kernel",
 
     "-g3",
     "-ggdb",

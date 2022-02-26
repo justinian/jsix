@@ -7,6 +7,7 @@
 #include <j6/types.h>
 #include <util/counted.h>
 
+#include "profiler.h"
 #include "syscalls/helpers.h"
 
 /*[[[cog code generation
@@ -21,6 +22,12 @@ for obj in syscalls.exposes:
 ]]]*/
 //[[[end]]]
 
+
+/*[[[cog code generation
+cog.outl(f'constexpr size_t syscall_count = {len(syscalls.methods)};')
+]]]*/
+//[[[end]]]
+DECLARE_PROFILE_CLASS(syscall_profiles, syscall_count);
 namespace {
     enum class req { required, optional, zero_ok };
 
@@ -60,6 +67,8 @@ namespace {
         return *reinterpret_cast<T*>(sp++);
     }
 }
+
+DEFINE_PROFILE_CLASS(syscall_profiles);
 
 namespace syscalls {
 
@@ -185,6 +194,7 @@ for id, scope, method in syscalls.methods:
     if "noreturn" in method.options:
         cog.outl(f"""    {name}({", ".join(args)});""")
     else:
+        cog.outl(f"""    profiler<syscall_profiles, {id}> profile {{"{name}"}};""")
         cog.outl(f"""    return {name}({", ".join(args)});""")
     cog.outl("}")
     cog.outl("\n")

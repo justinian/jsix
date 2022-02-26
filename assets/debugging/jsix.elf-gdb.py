@@ -201,27 +201,67 @@ class GetThreadsCommand(gdb.Command):
 
     def invoke(self, arg, from_tty):
         args = gdb.string_to_argv(arg)
+        if len(args) > 1:
+            raise RuntimeError("Usage: j6threads [cpu]")
+
+        ncpus = int(gdb.parse_and_eval("g_num_cpus"))
+        cpus = list(range(ncpus))
+        if len(args) == 1:
+            cpus = [int(args[0])]
+
+        for cpu in cpus:
+            runlist = f"scheduler::s_instance->m_run_queues.m_elements[{cpu:#x}]"
+
+            print(f"=== CPU {cpu:2}: CURRENT ===")
+            current = int(gdb.parse_and_eval(f"{runlist}.current"))
+            self.print_thread(current)
+
+            for pri in range(8):
+                ready = int(gdb.parse_and_eval(f"{runlist}.ready[{pri:#x}].m_head"))
+                self.print_thread_list(ready, f"CPU {cpu:2}: PRIORITY {pri}")
+
+            blocked = int(gdb.parse_and_eval(f"{runlist}.blocked.m_head"))
+            self.print_thread_list(blocked, f"CPU {cpu:2}: BLOCKED")
+
+
+class PrintProfilesCommand(gdb.Command):
+    def __init__(self):
+        super().__init__("j6prof", gdb.COMMAND_DATA)
+
+    def invoke(self, arg, from_tty):
+        args = gdb.string_to_argv(arg)
         if len(args) != 1:
-            raise RuntimeError("Usage: j6threads <cpu>")
+            raise RuntimeError("Usage: j6prof <profiler class>")
 
-        ncpu = int(args[0])
-        runlist = f"scheduler::s_instance->m_run_queues.m_elements[{ncpu:#x}]"
+        profclass = args[0]
+        root_type = f"profile_class<{profclass}>"
 
-        print("CURRENT:")
-        current = int(gdb.parse_and_eval(f"{runlist}.current"))
-        self.print_thread(current)
+        try:
+            baseclass = gdb.lookup_type(root_type)
+        except Exception as e:
+            print(e)
+            return
 
-        for pri in range(8):
-            ready = int(gdb.parse_and_eval(f"{runlist}.ready[{pri:#x}].m_head"))
-            self.print_thread_list(ready, f"PRIORITY {pri}")
+        results = {}
+        max_len = 0
+        count = gdb.parse_and_eval(f"{profclass}::count")
+        for i in range(count):
+            name = gdb.parse_and_eval(f"{root_type}::function_names[{i:#x}]")
+            if name == 0: continue
 
-        blocked = int(gdb.parse_and_eval(f"{runlist}.blocked.m_head"))
-        self.print_thread_list(blocked, "BLOCKED")
+            call_counts = gdb.parse_and_eval(f"{root_type}::call_counts[{i:#x}]")
+            call_durations = gdb.parse_and_eval(f"{root_type}::call_durations[{i:#x}]")
+            results[name.string()] = float(call_durations) / float(call_counts)
+            max_len = max(max_len, len(name.string()))
+
+        for name, avg in results.items():
+            print(f"{name:>{max_len}}: {avg:15.3f}")
 
 PrintStackCommand()
 PrintBacktraceCommand()
 TableWalkCommand()
 GetThreadsCommand()
+PrintProfilesCommand()
 
 gdb.execute("display/i $rip")
 if not gdb.selected_inferior().was_attached:
