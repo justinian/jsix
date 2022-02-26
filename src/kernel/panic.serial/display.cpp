@@ -81,27 +81,27 @@ print_cpu_state(serial_port &out, const cpu_state &regs)
     print_reg(out, "rsp", regs.rsp, "1;34");
     print_reg(out, "rax", regs.rax, "0;37");
     print_reg(out, "r8",  regs.r8,  "0;37");
-    print_reg(out, "r9",  regs.r9,  "0;37");
+    print_reg(out, "r12", regs.r12, "0;37");
     out.write("\n");
 
     // Row 2
     print_reg(out, "rbp", regs.rbp, "1;34");
     print_reg(out, "rbx", regs.rbx, "0;37");
-    print_reg(out, "r10", regs.r10, "0;37");
-    print_reg(out, "r11", regs.r11, "0;37");
-    out.write("\n");
-
-    // Row 3
-    print_reg(out, "rdi", regs.rdi, "1;34");
-    print_reg(out, "rcx", regs.rcx, "0;37");
-    print_reg(out, "r12", regs.r12, "0;37");
+    print_reg(out, "r9",  regs.r9,  "0;37");
     print_reg(out, "r13", regs.r13, "0;37");
     out.write("\n");
 
-    // Row 4
-    print_reg(out, "rsi", regs.rdi, "1;34");
-    print_reg(out, "rdx", regs.rcx, "0;37");
+    // Row 3
+    print_reg(out, "rdi", regs.rdi, "0;37");
+    print_reg(out, "rcx", regs.rcx, "0;37");
+    print_reg(out, "r10", regs.r10, "0;37");
     print_reg(out, "r14", regs.r12, "0;37");
+    out.write("\n");
+
+    // Row 4
+    print_reg(out, "rsi", regs.rdi, "0;37");
+    print_reg(out, "rdx", regs.rcx, "0;37");
+    print_reg(out, "r11", regs.r11, "0;37");
     print_reg(out, "r15", regs.r13, "0;37");
     out.write("\n");
 
@@ -109,7 +109,7 @@ print_cpu_state(serial_port &out, const cpu_state &regs)
     print_reg(out, "rip", regs.rip, "1;35");
     print_reg(out, "ss",  regs.ss,  "1;33");
     print_reg(out, "cs",  regs.cs,  "1;33");
-    print_reg(out, "flg", regs.rflags, "0;37");
+    print_reg(out, "flg", regs.rflags, "1;33");
     out.write(clear);
 }
 
@@ -140,7 +140,18 @@ print_user_state(serial_port &out, const cpu_state &regs)
 {
     out.write("\n\e[1;35m USER:\e[0 ");
     print_cpu_state(out, regs);
-    print_rip(out, regs.rip);
+
+    // This will print out the bytes around RIP - useful to
+    // see if corruption of the .text segment has happened.
+    // This online disassembler can be useful for looking at
+    // a pile of hex bytes:
+    // https://onlinedisassembler.com/odaweb/
+    //
+    // However, normally this should be commented out, as any
+    // page fault due to a jump to a bad address will also
+    // cause a page fault in the panic handler.
+    //
+    // print_rip(out, regs.rip);
 }
 
 } // namespace panicking
