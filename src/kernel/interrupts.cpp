@@ -150,6 +150,10 @@ isr_handler(cpu_state *regs)
     case isr::isrLINT1:
         break;
 
+    case isr::ipiSchedule:
+        scheduler::get().schedule();
+        break;
+
     case isr::isrSpurious:
         // No EOI for the spurious interrupt
         return;

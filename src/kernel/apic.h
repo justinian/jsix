@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <util/enum_bitfields.h>
 
+#include "interrupts.h"
+
 enum class isr : uint8_t;
 
 /// Base class for other APIC types
@@ -51,13 +53,13 @@ public:
     /// \arg mode   The sending mode
     /// \arg vector The interrupt vector
     /// \arg dest   The APIC ID of the destination
-    void send_ipi(ipi mode, uint8_t vector, uint8_t dest);
+    void send_ipi(ipi mode, isr vector, uint8_t dest);
 
     /// Send an inter-processor broadcast interrupt to all other CPUs
     /// \arg mode   The sending mode
     /// \arg self   If true, include this CPU in the broadcast
     /// \arg vector The interrupt vector
-    void send_ipi_broadcast(ipi mode, bool self, uint8_t vector);
+    void send_ipi_broadcast(ipi mode, bool self, isr vector);
 
     /// Wait for an IPI to finish sending. This is done automatically
     /// before sending another IPI with send_ipi().

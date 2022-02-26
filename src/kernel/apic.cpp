@@ -71,7 +71,7 @@ lapic::get_id()
 }
 
 void
-lapic::send_ipi(ipi mode, uint8_t vector, uint8_t dest)
+lapic::send_ipi(ipi mode, isr vector, uint8_t dest)
 {
     // Wait until the APIC is ready to send
     ipi_wait();
@@ -85,7 +85,7 @@ lapic::send_ipi(ipi mode, uint8_t vector, uint8_t dest)
 }
 
 void
-lapic::send_ipi_broadcast(ipi mode, bool self, uint8_t vector)
+lapic::send_ipi_broadcast(ipi mode, bool self, isr vector)
 {
     // Wait until the APIC is ready to send
     ipi_wait();

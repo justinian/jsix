@@ -53,7 +53,17 @@ thread::block()
 void
 thread::wake(uint64_t value)
 {
+    if (has_state(state::ready))
+        return;
+
     m_wake_value = value;
+    wake_only();
+    scheduler::get().maybe_schedule(tcb());
+}
+
+void
+thread::wake_only()
+{
     m_wake_timeout = 0;
     set_state(state::ready);
 }

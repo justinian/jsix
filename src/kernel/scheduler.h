@@ -71,6 +71,10 @@ public:
     /// Run the scheduler, possibly switching to a new task
     void schedule();
 
+    /// Check if the CPU is running a more important task. If not,
+    /// run the scheduler.
+    void maybe_schedule(TCB *t);
+
     /// Start scheduling a new thread.
     /// \arg t  The new thread's TCB
     void add_thread(TCB *t);

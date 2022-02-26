@@ -242,6 +242,8 @@ ISR (0xe1, 0, isrLINT0)
 ISR (0xe2, 0, isrLINT1)
 ISR (0xe3, 0, isrAPICError)
 
+ISR (0xe4, 0, ipiSchedule)
+
 ISR (0xef, 0, isrSpurious)
 
 ISR (0xf0, 0, isrIgnore0)

@@ -9,6 +9,7 @@
 
 #include "objects/kobject.h"
 
+struct cpu_data;
 struct page_table;
 
 namespace obj {
@@ -37,6 +38,7 @@ struct TCB
     uint64_t last_ran;
 
     uintptr_t kernel_stack;
+    cpu_data *cpu;
 };
 
 using tcb_list = util::linked_list<TCB>;
@@ -44,15 +46,6 @@ using tcb_node = tcb_list::item_type;
 
 
 namespace obj {
-
-enum class wait_type : uint8_t
-{
-    none   = 0x00,
-    signal = 0x01,
-    time   = 0x02,
-    object = 0x04,
-};
-is_bitfield(wait_type);
 
 class process;
 
@@ -108,6 +101,10 @@ public:
     /// Wake this thread, giving it a value
     /// \arg value  The value that block() should return
     void wake(uint64_t value = 0);
+
+    /// Set this thread as awake, but do not call the scheduler
+    /// or set the wake value.
+    void wake_only();
 
     /// Set a timeout to unblock this thread
     /// \arg time  The clock time at which to wake. 0 for no timeout.

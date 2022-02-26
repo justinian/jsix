@@ -3,6 +3,7 @@
 #include "apic.h"
 #include "clock.h"
 #include "device_manager.h"
+#include "interrupts.h"
 #include "logger.h"
 #include "memory.h"
 #include "objects/vm_area.h"
@@ -51,7 +52,7 @@ start(cpu_data &bsp, void *kpml4)
 
     // Copy the startup code somwhere the real mode trampoline can run
     uintptr_t addr = 0x8000; // TODO: find a valid address, rewrite addresses
-    uint8_t vector = addr >> 12;
+    isr vector = static_cast<isr>(addr >> 12);
     obj::vm_area *vma = new obj::vm_area_fixed(addr, 0x1000, vm_flags::write);
     vm_space::kernel_space().add(addr, vma);
     memcpy(
@@ -70,7 +71,7 @@ start(cpu_data &bsp, void *kpml4)
 
     lapic &apic = *bsp.apic;
     lapic::ipi mode = lapic::ipi::init | lapic::ipi::level | lapic::ipi::assert;
-    apic.send_ipi_broadcast(mode, false, 0);
+    apic.send_ipi_broadcast(mode, false, static_cast<isr>(0));
 
     for (uint8_t id : ids) {
         if (id == bsp.id) continue;

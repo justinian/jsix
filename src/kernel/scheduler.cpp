@@ -112,8 +112,9 @@ scheduler::add_thread(TCB *t)
     run_queue &queue = m_run_queues[cpu.index];
     util::scoped_lock lock {queue.lock};
 
-    queue.blocked.push_back(static_cast<tcb_node*>(t));
+    t->cpu = &cpu;
     t->time_left = quantum(t->priority);
+    queue.blocked.push_back(static_cast<tcb_node*>(t));
 }
 
 void
@@ -128,7 +129,7 @@ scheduler::prune(run_queue &queue, uint64_t now)
 
         uint64_t timeout = th->wake_timeout();
         if (timeout && timeout <= now)
-            th->wake();
+            th->wake_only();
 
         bool ready = th->has_state(thread::state::ready);
         bool exited = th->has_state(thread::state::exited);
@@ -167,8 +168,8 @@ scheduler::check_promotions(run_queue &queue, uint64_t now)
     for (auto &pri_list : queue.ready) {
         for (auto *tcb : pri_list) {
             const thread *th = tcb->thread;
-            const bool constant = th->has_state(thread::state::constant);
-            if (constant)
+
+            if (th->has_state(thread::state::constant))
                 continue;
 
             const uint64_t age = now - tcb->last_ran;
@@ -176,8 +177,7 @@ scheduler::check_promotions(run_queue &queue, uint64_t now)
 
             bool stale =
                 age > quantum(priority) * 2 &&
-                tcb->priority > promote_limit &&
-                !constant;
+                tcb->priority > promote_limit;
 
             if (stale) {
                 // If the thread is stale, promote it
@@ -195,7 +195,7 @@ scheduler::check_promotions(run_queue &queue, uint64_t now)
 }
 
 static size_t
-balance_lists(tcb_list &to, tcb_list &from)
+balance_lists(tcb_list &to, tcb_list &from, cpu_data &new_cpu)
 {
     size_t to_len = to.length();
     size_t from_len = from.length();
@@ -205,17 +205,18 @@ balance_lists(tcb_list &to, tcb_list &from)
         return 0;
 
     size_t steal = (from_len - to_len) / 2;
-    for (size_t i = 0; i < steal; ++i)
-        to.push_front(from.pop_front());
+    for (size_t i = 0; i < steal; ++i) {
+        tcb_node *node = from.pop_front();
+        node->cpu = &new_cpu;
+        to.push_front(node);
+    }
     return steal;
 }
 
 void
 scheduler::steal_work(cpu_data &cpu)
 {
-    // Lock this cpu's queue for the whole time while we modify it
     run_queue &my_queue = m_run_queues[cpu.index];
-    util::scoped_lock my_queue_lock {my_queue.lock};
 
     const unsigned count = m_run_queues.count();
     for (unsigned i = 0; i < count; ++i) {
@@ -228,9 +229,9 @@ scheduler::steal_work(cpu_data &cpu)
 
         // Don't steal from max_priority, that's the idle thread
         for (unsigned pri = 0; pri < max_priority; ++pri)
-            stolen += balance_lists(my_queue.ready[pri], other_queue.ready[pri]);
+            stolen += balance_lists(my_queue.ready[pri], other_queue.ready[pri], cpu);
 
-        stolen += balance_lists(my_queue.blocked, other_queue.blocked);
+        stolen += balance_lists(my_queue.blocked, other_queue.blocked, cpu);
 
         if (stolen)
             log::debug(logs::sched, "CPU%02x stole %2d tasks from CPU%02x",
@@ -244,9 +245,17 @@ scheduler::schedule()
     cpu_data &cpu = current_cpu();
     run_queue &queue = m_run_queues[cpu.index];
     lapic &apic = *cpu.apic;
-    uint32_t remaining = apic.stop_timer();
 
+    uint32_t remaining = apic.stop_timer();
     uint64_t now = clock::get().value();
+
+    // We need to explicitly lock/unlock here instead of
+    // using a scoped lock, because the scope doesn't "end"
+    // for the current thread until it gets scheduled again,
+    // and _new_ threads start their life at the end of this
+    // function, which screws up RAII
+    util::spinlock::waiter waiter {false, nullptr, "schedule"};
+    queue.lock.acquire(&waiter);
 
     // Only one CPU can be stealing at a time
     if (m_steal_turn == cpu.index &&
@@ -255,12 +264,6 @@ scheduler::schedule()
         queue.last_steal = now;
         m_steal_turn = (m_steal_turn + 1) % m_run_queues.count();
     }
-
-    // We need to explicitly lock/unlock here instead of
-    // using a scoped lock, because the scope doesn't "end"
-    // for the current thread until it gets scheduled again
-    util::spinlock::waiter waiter;
-    queue.lock.acquire(&waiter);
 
     queue.current->time_left = remaining;
     thread *th = queue.current->thread;
@@ -324,4 +327,18 @@ scheduler::schedule()
 
     queue.lock.release(&waiter);
     task_switch(queue.current);
+}
+
+void
+scheduler::maybe_schedule(TCB *t)
+{
+    cpu_data *cpu = t->cpu;
+
+    run_queue &queue = m_run_queues[cpu->index];
+    uint8_t current_pri = queue.current->priority;
+    if (current_pri <= t->priority)
+        return;
+
+    current_cpu().apic->send_ipi(
+        lapic::ipi::fixed, isr::ipiSchedule, cpu->id);
 }
