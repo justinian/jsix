@@ -94,14 +94,18 @@ logger::output(level severity, logs area, const char *fmt, va_list args)
 size_t
 logger::get_entry(void *buffer, size_t size)
 {
-    m_event.wait();
 
     util::scoped_lock lock {m_lock};
 
     void *out;
     size_t out_size = m_buffer.get_block(&out);
-    if (out_size == 0 || out == 0)
-        return 0;
+    if (out_size == 0 || out == 0) {
+        m_event.wait();
+        out_size = m_buffer.get_block(&out);
+
+        if (out_size == 0 || out == 0)
+            return 0;
+    }
 
     kassert(out_size >= sizeof(entry), "Couldn't read a full entry");
     if (out_size < sizeof(entry))
