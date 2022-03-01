@@ -41,8 +41,8 @@ mailbox::close()
 
     for (auto &p : m_pending) {
         delete p.val.msg;
-        p.val.sender->wake(no_message);
     }
+    m_queue.clear();
 }
 
 void

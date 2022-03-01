@@ -76,6 +76,7 @@ void
 channel::close()
 {
     util::scoped_lock lock {m_close_lock};
+    m_queue.clear();
     g_kernel_buffers.return_section(m_data);
     m_closed = true;
 }

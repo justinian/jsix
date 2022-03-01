@@ -1,14 +1,7 @@
 #include "objects/thread.h"
 #include "wait_queue.h"
 
-wait_queue::~wait_queue()
-{
-    util::scoped_lock lock {m_lock};
-    for (auto *t : m_threads) {
-        if (!t->exited()) t->wake();
-        t->handle_release();
-    }
-}
+wait_queue::~wait_queue() { clear(); }
 
 void
 wait_queue::add_thread(obj::thread *t)
@@ -23,7 +16,7 @@ wait_queue::pop_exited()
 {
     while (!m_threads.empty()) {
         obj::thread *t = m_threads.first();
-        if (!t->exited())
+        if (!t->exited() && !t->ready())
             break;
 
         m_threads.pop_front();
@@ -47,4 +40,14 @@ wait_queue::pop_next_unlocked()
     if (m_threads.empty())
         return nullptr;
     return m_threads.pop_front();
+}
+
+void
+wait_queue::clear()
+{
+    util::scoped_lock lock {m_lock};
+    for (auto *t : m_threads) {
+        if (!t->exited()) t->wake();
+        t->handle_release();
+    }
 }

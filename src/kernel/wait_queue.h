@@ -37,6 +37,9 @@ public:
     /// Get the spinlock to lock this queue
     util::spinlock & get_lock() { return m_lock; }
 
+    /// Wake and clear out all threads.
+    void clear();
+
 private:
     /// Get rid of any exited threads that are next
     /// in the queue. Caller must hold the queue lock.
