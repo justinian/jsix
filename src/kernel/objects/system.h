@@ -18,6 +18,10 @@ public:
 
     inline static system & get() { return s_instance; }
 
+protected:
+    /// Don't delete the system object on no handles.
+    virtual void on_no_handles() override {}
+
 private:
     static system s_instance;
     system() : kobject(type::system) {}
