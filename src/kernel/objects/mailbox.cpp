@@ -11,7 +11,8 @@ namespace obj {
 static_assert(mailbox::message::slab_size % sizeof(mailbox::message) == 0,
         "mailbox message size does not fit cleanly into N pages.");
 
-constexpr uint64_t no_message = 1;
+constexpr uint64_t no_message = 0;
+constexpr uint64_t has_message = 1;
 
 mailbox::mailbox() :
     kobject(kobject::type::mailbox),
@@ -52,26 +53,31 @@ mailbox::send(message *msg)
     m_messages.push_back(msg);
 
     thread *t = m_queue.pop_next();
-    if (t) t->wake();
+
+    lock.release();
+    if (t) t->wake(has_message);
 }
 
 bool
 mailbox::call(message *msg)
 {
+    uint16_t reply_tag = next_reply_tag();
+
     util::scoped_lock lock {m_message_lock};
 
-    if (!++m_next_reply_tag) ++m_next_reply_tag;
-    msg->reply_tag = m_next_reply_tag;
-
+    msg->reply_tag = reply_tag;
     thread &current = thread::current();
-    m_pending.insert(m_next_reply_tag, {&current, msg});
+    m_pending.insert(reply_tag, {&current, msg});
 
     m_messages.push_back(msg);
 
     thread *t = m_queue.pop_next();
-    if (t) t->wake();
 
-    return (current.block() != no_message);
+    lock.release();
+    if (t) t->wake(has_message);
+
+    uint64_t result = current.block();
+    return result == has_message;
 }
 
 bool
@@ -113,11 +119,13 @@ mailbox::reply(uint16_t reply_tag)
     message *msg = p->msg;
     m_pending.erase(reply_tag);
 
-    return {msg, caller};
+    return {msg, caller, has_message};
 }
 
 mailbox::replyer::~replyer()
 {
+    if (caller)
+        caller->wake(status);
 }
 
 } // namespace obj

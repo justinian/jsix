@@ -55,9 +55,11 @@ object mailbox : object {
     method respond_receive [cap:receive] {
         param tag uint64 [inout]
         param data buffer [inout zero_ok]
+        param data_in size
         param handles ref object [inout list zero_ok]
+        param handles_in size
         param reply_tag uint16 [inout]
-        param badge uint64 [out]
+        param badge uint64 [out optional]
         param flags uint64
     }
 }

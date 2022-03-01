@@ -71,6 +71,10 @@ public:
     replyer reply(uint16_t reply_tag);
 
 private:
+    inline uint16_t next_reply_tag() {
+        return (__atomic_add_fetch(&m_next_reply_tag, 1, __ATOMIC_SEQ_CST) << 1) | 1;
+    }
+
     bool m_closed;
     uint16_t m_next_reply_tag;
 
@@ -104,14 +108,14 @@ struct mailbox::message :
 class mailbox::replyer
 {
 public:
-    replyer() : msg {nullptr}, caller {nullptr} {}
-    replyer(mailbox::message *m, thread *c) : msg {m}, caller {c} {}
-    replyer(replyer &&o) : msg {o.msg}, caller {o.caller} {
-        o.msg = nullptr; o.caller = nullptr;
+    replyer() : msg {nullptr}, caller {nullptr}, status {0} {}
+    replyer(mailbox::message *m, thread *c, uint64_t s) : msg {m}, caller {c}, status {s} {}
+    replyer(replyer &&o) : msg {o.msg}, caller {o.caller}, status {o.status} {
+        o.msg = nullptr; o.caller = nullptr; o.status = 0;
     }
 
     replyer & operator=(replyer &&o) {
-        msg = o.msg; caller = o.caller;
+        msg = o.msg; caller = o.caller; status = o.status;
         o.msg = nullptr; o.caller = nullptr;
         return *this;
     }

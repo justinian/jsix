@@ -47,7 +47,7 @@ prep_send(
 
     msg->handle_count = handle_count;
     for (unsigned i = 0; i < handle_count; ++i) {
-        handle *h = get_handle<kobject>(handles[i]);
+        handle const *h = get_handle<kobject>(handles[i]);
         if (!h)
             return j6_err_invalid_arg;
         msg->handles[i] = *h;
@@ -78,10 +78,10 @@ prep_receive(
 
     *handle_count = msg->handle_count;
     process &proc = process::current();
-    for (size_t i = 0; i < msg->handle_count; ++i)
+    for (size_t i = 0; i < msg->handle_count; ++i) {
         handles[i] = proc.add_handle(msg->handles[i]);
-
-    delete msg;
+        msg->handles[i] = {};
+    }
 }
 
 j6_status_t
@@ -142,6 +142,8 @@ mailbox_receive(
             data, data_len,
             handles, handle_count);
 
+    if (*reply_tag == 0)
+        delete msg;
     return j6_status_ok;
 }
 
@@ -217,17 +219,23 @@ mailbox_respond_receive(
         uint64_t * tag,
         void * data,
         size_t * data_len,
+        size_t data_in,
         j6_handle_t * handles,
         size_t * handle_count,
+        size_t handles_in,
         uint16_t * reply_tag,
         uint64_t * badge,
         uint64_t flags)
 {
-    j6_status_t s = mailbox_respond(self, *tag, data, *data_len, handles, *handle_count, *reply_tag);
+    j6_status_t s = mailbox_respond(self, *tag, data, data_in, handles, handles_in, *reply_tag);
     if (s != j6_status_ok)
         return s;
 
-    return mailbox_receive(self, tag, data, data_len, handles, handle_count, reply_tag, badge, flags);
+    s = mailbox_receive(self, tag, data, data_len, handles, handle_count, reply_tag, badge, flags);
+    if (s != j6_status_ok)
+        return s;
+
+    return j6_status_ok;
 }
 
 

@@ -41,6 +41,7 @@ event::wake_observer()
     uint64_t value = read();
     if (value) {
         m_queue.pop_next_unlocked();
+        lock.release();
         t->wake(value);
     }
 }
