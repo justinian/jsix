@@ -3,8 +3,9 @@
 # The jsix operating system
 
 **jsix** is a custom multi-core x64 operating system that I am building from
-scratch. It's far from finished, or even being usable - see the *Status and
-Roadmap* section, below.
+scratch. It's far from finished, or even being usable (see the *Status and
+Roadmap* section, below) but all currently-planned major kernel features are
+now implemented to at least a passable level.
 
 The design goals of the project are:
 
@@ -77,34 +78,36 @@ per core. Cores periodically attempt to balance load via work stealing.
 
 User-space tasks are able to create threads as well as other processes.
 
-Several kernel-only tasks exist, though I'm trying to reduce that. Eventually
-only the timekeeping task should be a separate kernel-only thread.
-
 #### API
 
-_In progress._ User-space tasks are able to make syscalls to the kernel via
-fast SYSCALL/SYSRET instructions. Syscalls made via `libj6` look to both the
-callee and the caller like standard SysV ABI function calls. The
+_Syscalls: Sufficient._ User-space tasks are able to make syscalls to the
+kernel via fast SYSCALL/SYSRET instructions. Syscalls made via `libj6` look to
+both the callee and the caller like standard SysV ABI function calls. The
 implementations are wrapped in generated wrapper functions which validate the
 request, check capabilities, and find the appropriate kernel objects or handles
 before calling the implementation functions.
 
-Current work in this area:
+_IPC: Working, needs optimization._ The current IPC primitives are:
 
-- The protocol for processes and their children for both initialization and
-  sharing resources. The kernel is ignorant of this, except for providing IPC
-  capabilities.
+- _Mailboxes_: endpoints for asynchronously-delivered small messages. Currently
+  these messages are double-copied - once from the caller into a kernel buffer,
+  and once from the kernel to the receiver. This works and is not a major cause
+  of slowdown, but will need to be optimized in the future.
+- _Channels_: endpoints for asynchronous uni-directional streams of bytes.
+  Currently these also suffer from a double-copy problem, and should probably
+  be replaced eventually by userspace shared memory communication.
+- _Events_: objects that can be signalled to send asynchronous notifications to
+  waiting threads.
 
 #### Hardware Support
 
-  * Framebuffer driver: _In progress._ Currently on machines with a video
-    device accessible by UEFI, jsix starts a user-space framebuffer driver that
-    only prints out kernel logs.
-  * Serial driver: _In progress._ The current UART driver does not expose the
-    UART as an output resource yet, it merely gets the kernel logs and sends
-    them over serial.
-  * USB driver: _To do_
-  * AHCI (SATA) driver: _To do_
+- Framebuffer driver: _In progress._ Currently on machines with a video
+  device accessible by UEFI, jsix starts a user-space framebuffer driver that
+  only prints out kernel logs.
+- Serial driver: _In progress._ The current UART currently only exposes COM1
+  as an output channel, but no input or other serial ports are exposed.
+- USB driver: _To do_
+- AHCI (SATA) driver: _To do_
 
 ## Building
 
