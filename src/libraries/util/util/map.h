@@ -171,6 +171,7 @@ protected:
 
         for (size_t i = 0; i < count; ++i) {
             node &n = old[i];
+            if (!n.hash()) continue;
             insert_node(n.hash(), std::move(n.key), std::move(n.val));
             n.~node();
         }
@@ -183,6 +184,8 @@ protected:
     }
 
     node * insert_node(uint64_t h, K &&k, V &&v) {
+        assert(h);
+
         size_t i = mod(h);
         size_t dist = 0;
 

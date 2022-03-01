@@ -62,10 +62,13 @@ constexpr inline typename types::sized_uint<N>::type hash_fold(typename types::s
 template <typename T>
 inline uint64_t hash(const T &v) { return fnv1a::hash64(reinterpret_cast<const void*>(&v), sizeof(T)); } 
 
+template <> inline uint64_t hash<uint8_t> (const uint8_t &i)  { return i; }
+template <> inline uint64_t hash<uint16_t>(const uint16_t &i) { return i; }
+template <> inline uint64_t hash<uint32_t>(const uint32_t &i) { return i; }
 template <> inline uint64_t hash<uint64_t>(const uint64_t &i) { return i; }
 template <> inline uint64_t hash<const char *>(const char * const &s) { return fnv1a::hash64_string(s); }
 
 } // namespace util
 
-constexpr inline uint8_t operator "" _id (const char *s, size_t len) { return util::fnv1a::hash64_const(s); }
+constexpr inline uint64_t operator "" _id (const char *s, size_t len) { return util::fnv1a::hash64_const(s); }
 constexpr inline uint8_t operator "" _id8 (const char *s, size_t len) { return util::hash_fold<8>(util::fnv1a::hash32_const(s)); }
