@@ -1,4 +1,5 @@
 #include <j6/errors.h>
+#include <j6/flags.h>
 #include <j6/types.h>
 #include <util/counted.h>
 
@@ -29,13 +30,15 @@ channel_send(channel *self, void *data, size_t *data_len)
 }
 
 j6_status_t
-channel_receive(channel *self, void *data, size_t *data_len)
+channel_receive(channel *self, void *data, size_t *data_len, uint64_t flags)
 {
     if (self->closed())
         return j6_status_closed;
 
     util::buffer buffer {data, *data_len};
-    *data_len = self->dequeue(buffer);
+
+    const bool block = flags & j6_channel_block;
+    *data_len = self->dequeue(buffer, block);
 
     return j6_status_ok;
 }

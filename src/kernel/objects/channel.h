@@ -8,6 +8,7 @@
 #include <util/spinlock.h>
 
 #include "objects/kobject.h"
+#include "wait_queue.h"
 
 namespace obj {
 
@@ -24,12 +25,6 @@ public:
 
     static constexpr kobject::type type = kobject::type::channel;
 
-    /// Check if the channel has space for a message to be sent
-    inline bool can_send() const { return m_can_send; }
-
-    /// Check if the channel has a message wiating already
-    inline bool can_receive() const { return m_can_recv; }
-
     /// Put a message into the channel
     /// \arg data Buffer of data to write
     /// \returns  The number of bytes successfully written
@@ -37,8 +32,9 @@ public:
 
     /// Get a message from the channel, copied into a provided buffer
     /// \arg buffer  The buffer to copy data into
+    /// \arg block   If true, block the calling thread until there is data
     /// \returns     The number of bytes copied into the provided buffer
-    size_t dequeue(util::buffer buffer);
+    size_t dequeue(util::buffer buffer, bool block = false);
 
     /// Mark this channel as closed, all future calls to enqueue or
     /// dequeue messages will fail with j6_status_closed.
@@ -51,10 +47,9 @@ private:
     size_t m_len;
     uintptr_t m_data;
     bool m_closed;
-    bool m_can_send;
-    bool m_can_recv;
     util::bip_buffer m_buffer;
     util::spinlock m_close_lock;
+    wait_queue m_queue;
 };
 
 } // namespace obj

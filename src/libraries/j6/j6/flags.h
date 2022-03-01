@@ -9,6 +9,10 @@ enum j6_vm_flags {
     j6_vm_flag_MAX
 };
 
+enum j6_channel_flags {
+    j6_channel_block = 0x01,
+};
+
 enum j6_mailbox_flags {
     j6_mailbox_block = 0x01,
 };

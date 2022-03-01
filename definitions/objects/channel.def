@@ -16,5 +16,6 @@ object channel : object {
 
     method receive [cap:receive] {
         param data buffer [out]
+        param flags uint64
     }
 }
