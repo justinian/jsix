@@ -1,6 +1,7 @@
 #include <j6/errors.h>
 #include <j6/types.h>
 
+#include "clock.h"
 #include "logger.h"
 #include "objects/process.h"
 #include "objects/thread.h"
@@ -47,11 +48,13 @@ thread_kill(thread *self)
 }
 
 j6_status_t
-thread_sleep(uint64_t til)
+thread_sleep(uint64_t duration)
 {
     thread &th = thread::current();
-    log::debug(logs::task, "Thread %llx sleeping until %llu", th.koid(), til);
 
+    uint64_t til = clock::get().value() + duration;
+
+    log::debug(logs::task, "Thread %llx sleeping until %llu", th.koid(), til);
     th.set_wake_timeout(til);
     th.block();
     return j6_status_ok;

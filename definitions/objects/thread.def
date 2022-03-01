@@ -18,6 +18,6 @@ object thread : object {
     }
 
     method sleep [static] {
-        param until uint64
+        param duration uint64
     }
 }
