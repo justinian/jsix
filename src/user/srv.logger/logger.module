@@ -1,0 +1,9 @@
+# vim: ft=python
+
+init = module("srv.logger",
+    targets = [ "user" ],
+    deps = [ "libc" ],
+    description = "Logging server",
+    sources = [
+        "main.cpp",
+    ])

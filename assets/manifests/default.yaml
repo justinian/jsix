@@ -4,4 +4,5 @@ programs:
   - name: panic.serial
     target: kernel
     flags: panic
+  - name: srv.logger
   - name: drv.uart

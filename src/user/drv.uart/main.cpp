@@ -3,12 +3,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <j6/caps.h>
 #include <j6/errors.h>
 #include <j6/flags.h>
 #include <j6/init.h>
+#include <j6/protocols/service_locator.h>
 #include <j6/syscalls.h>
 #include <j6/sysconf.h>
 #include <j6/types.h>
+#include <util/hash.h>
 
 #include "io.h"
 #include "serial.h"
@@ -19,24 +22,6 @@ extern "C" {
 
 extern j6_handle_t __handle_self;
 j6_handle_t g_handle_sys = j6_handle_invalid;
-
-struct entry
-{
-    uint8_t bytes;
-    uint8_t area;
-    uint8_t severity;
-    uint8_t sequence;
-    char message[0];
-};
-
-static const uint8_t level_colors[] = {0x07, 0x07, 0x0f, 0x0b, 0x09};
-char const * const level_names[] = {"", "debug", "info", "warn", "error", "fatal"};
-char const * const area_names[] = {
-#define LOG(name, lvl) #name ,
-#include <j6/tables/log_areas.inc>
-#undef LOG
-    nullptr
-};
 
 constexpr size_t in_buf_size = 512;
 constexpr size_t out_buf_size = 128 * 1024;
@@ -52,58 +37,57 @@ serial_port *g_com2;
 constexpr size_t stack_size = 0x10000;
 constexpr uintptr_t stack_top = 0xf80000000;
 
-void
-print_header()
+int
+channel_pump_loop()
 {
-    char stringbuf[150];
+    j6_status_t result;
+    constexpr size_t buffer_size = 512;
+    char buffer[buffer_size];
 
-    unsigned version_major = j6_sysconf(j6sc_version_major);
-    unsigned version_minor = j6_sysconf(j6sc_version_minor);
-    unsigned version_patch = j6_sysconf(j6sc_version_patch);
-    unsigned version_git = j6_sysconf(j6sc_version_gitsha);
+    j6_handle_t slp = j6_find_first_handle(j6_object_type_mailbox);
+    if (slp == j6_handle_invalid)
+        return 1;
 
-    size_t len = snprintf(stringbuf, sizeof(stringbuf),
-            "\e[38;5;21mjsix OS\e[38;5;8m %d.%d.%d (%07x) booting...\e[0m\r\n",
-            version_major, version_minor, version_patch, version_git);
-    g_com1->write(stringbuf, len);
-}
-
-void
-log_pump_proc()
-{
-    size_t buffer_size = 0;
-    void *message_buffer = nullptr;
-    char stringbuf[300];
-
-    j6_status_t result = j6_system_request_iopl(g_handle_sys, 3);
+    j6_handle_t cout = j6_handle_invalid;
+    result = j6_channel_create(&cout);
     if (result != j6_status_ok)
-        return;
+        return 2;
+
+    j6_handle_t cout_write = j6_handle_invalid;
+    result = j6_handle_clone(cout, &cout_write,
+            j6_cap_channel_send | j6_cap_object_clone);
+    if (result != j6_status_ok)
+        return 3;
+
+    uint64_t tag = j6_proto_sl_register;
+    uint64_t data = "jsix.protocol.stream.ouput"_id;
+    size_t data_len = sizeof(data);
+    size_t handle_count = 1;
+    result = j6_mailbox_call(slp, &tag,
+            &data, &data_len, 
+            &cout_write, &handle_count);
+    if (result != j6_status_ok)
+        return 4;
+
+    if (tag != j6_proto_base_status || data != j6_status_ok)
+        return 5;
+
+    result = j6_system_request_iopl(g_handle_sys, 3);
+    if (result != j6_status_ok)
+        return 6;
 
     while (true) {
         size_t size = buffer_size;
-        j6_status_t s = j6_system_get_log(g_handle_sys, message_buffer, &size);
-
-        if (s == j6_err_insufficient) {
-            free(message_buffer);
-            buffer_size = size * 2;
-            message_buffer = malloc(buffer_size);
-            continue;
-        } else if (s != j6_status_ok) {
-            j6_log("uart driver got error from get_log");
-            continue;
-        }
-
-        const entry *e = reinterpret_cast<entry*>(message_buffer);
-
-        const char *area_name = area_names[e->area];
-        const char *level_name = level_names[e->severity];
-        uint8_t level_color = level_colors[e->severity];
-
-        size_t len = snprintf(stringbuf, sizeof(stringbuf),
-                "\e[38;5;%dm%7s %5s: %s\e[38;5;0m\r\n",
-                level_color, area_name, level_name, e->message);
-        g_com1->write(stringbuf, len);
+        j6_status_t s = j6_channel_receive(cout, buffer, &size, j6_channel_block);
+        if (s == j6_status_ok)
+            g_com1->write(buffer, size);
     }
+}
+
+void
+pump_proc()
+{
+    j6_thread_exit(channel_pump_loop());
 }
 
 int
@@ -139,8 +123,6 @@ main(int argc, const char **argv)
     g_com1 = &com1;
     g_com2 = &com2;
 
-    print_header();
-
     j6_handle_t child_stack_vma = j6_handle_invalid;
     result = j6_vma_create_map(&child_stack_vma, stack_size, stack_top-stack_size, j6_vm_flag_write);
     if (result != j6_status_ok)
@@ -150,14 +132,14 @@ main(int argc, const char **argv)
     sp[0] = sp[1] = 0;
 
     j6_handle_t child = j6_handle_invalid;
-    result = j6_thread_create(&child, __handle_self, stack_top - 0x10, reinterpret_cast<uintptr_t>(&log_pump_proc));
+    result = j6_thread_create(&child, __handle_self, stack_top - 0x10, reinterpret_cast<uintptr_t>(&pump_proc));
     if (result != j6_status_ok)
         return result;
 
     size_t len = 0;
     while (true) {
         uint64_t signals = 0;
-        result = j6_event_wait(event, &signals, 1000);
+        result = j6_event_wait(event, &signals, 100);
         if (result == j6_err_timed_out) {
             com1.handle_interrupt();
             com2.handle_interrupt();
