@@ -19,7 +19,10 @@ constexpr size_t stack_size = 0x10000;
 constexpr uintptr_t stack_top = 0x80000000000;
 
 bool
-load_program(const module_program &prog, j6_handle_t sys, char *err_msg)
+load_program(
+        const module_program &prog,
+        j6_handle_t sys, j6_handle_t slp,
+        char *err_msg)
 {
     if (prog.mod_flags && module_flags::no_load) {
         sprintf(err_msg, "  skipping pre-loaded program module '%s' at %lx", prog.filename, prog.base_address);
@@ -57,6 +60,12 @@ load_program(const module_program &prog, j6_handle_t sys, char *err_msg)
     res = j6_process_give_handle(proc, sys, nullptr);
     if (res != j6_status_ok) {
         sprintf(err_msg, "  ** error loading program '%s': giving system handle: %lx", prog.filename, res);
+        return false;
+    }
+
+    res = j6_process_give_handle(proc, slp, nullptr);
+    if (res != j6_status_ok) {
+        sprintf(err_msg, "  ** error loading program '%s': giving SLP handle: %lx", prog.filename, res);
         return false;
     }
 
