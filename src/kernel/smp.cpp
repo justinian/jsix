@@ -60,14 +60,7 @@ start(cpu_data &bsp, void *kpml4)
         reinterpret_cast<void*>(&ap_startup),
         ap_startup_code_size);
 
-    // AP idle stacks need less room than normal stacks, so pack multiple
-    // into a normal stack area
-    static constexpr size_t idle_stack_bytes = 2048; // 2KiB is generous
-    static constexpr size_t full_stack_bytes = kernel_stack_pages * frame_size;
-    static constexpr size_t idle_stacks_per = full_stack_bytes / idle_stack_bytes;
-
     size_t free_stack_count = 0;
-    uintptr_t stack_area_start = 0;
 
     lapic &apic = *bsp.apic;
     lapic::ipi mode = lapic::ipi::init | lapic::ipi::level | lapic::ipi::assert;
@@ -78,13 +71,10 @@ start(cpu_data &bsp, void *kpml4)
 
         cpu_data *cpu = cpu_create(id, ++index);
 
-        // Set up the CPU's idle task stack
-        if (free_stack_count == 0) {
-            stack_area_start = g_kernel_stacks.get_section();
-            free_stack_count = idle_stacks_per;
-        }
+        static constexpr size_t stack_bytes = kernel_stack_pages * frame_size;
+        const uintptr_t stack_start = g_kernel_stacks.get_section();
+        uintptr_t stack_end = stack_start + stack_bytes;
 
-        uintptr_t stack_end = stack_area_start + free_stack_count-- * idle_stack_bytes;
         stack_end -= 2 * sizeof(void*); // Null frame
         *reinterpret_cast<uint64_t*>(stack_end) = 0; // pre-fault the page
         cpu->rsp0 = stack_end;
