@@ -75,8 +75,6 @@ isr_handler(cpu_state *regs)
     // this stack
     IDT &idt = IDT::current();
     uint8_t old_ist = idt.get_ist(vector);
-    if (old_ist)
-        idt.set_ist(vector, 0);
 
     char message[200];
 
@@ -165,7 +163,7 @@ isr_handler(cpu_state *regs)
 
     // Return the IST for this vector to what it was
     if (old_ist)
-        idt.set_ist(vector, old_ist);
+        idt.return_ist(vector, old_ist);
     *reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
 }
 

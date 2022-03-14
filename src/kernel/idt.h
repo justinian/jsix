@@ -2,6 +2,7 @@
 /// \file idt.h
 /// Definitions relating to a CPU's IDT table
 #include <stdint.h>
+#include "assert.h"
 
 class IDT
 {
@@ -23,17 +24,30 @@ public:
     /// stacks can be created.
     void add_ist_entries();
 
-    /// Get the IST entry used by an entry.
+    /// Get the IST entry used by an entry, clearing it in the process.
     /// \arg i   Which IDT entry to look in
     /// \returns The IST index used by entry i, or 0 for none
-    inline uint8_t get_ist(uint8_t i) const {
-        return m_entries[i].ist;
+    inline uint8_t get_ist(uint8_t i) {
+        return __atomic_exchange_n(&m_entries[i].ist, 0, __ATOMIC_SEQ_CST);
     }
 
-    /// Set the IST entry used by an entry.
+    /// Restore the IST entry used by an entry when done using it.
+    /// \arg i   Which IDT entry to restore
+    /// \arg ist The IST index for entry i, or 0 for none
+    inline void return_ist(uint8_t i, uint8_t ist) {
+        if (!ist) return;
+        uint8_t expected = 0;
+        bool result = __atomic_compare_exchange_n(
+                &m_entries[i].ist, &expected, ist,
+                false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+        kassert(result, "Tried to overwrite a non-zero IST value in IDT");
+    }
+
+    /// Set the IST entry used by an entry. This should not be called
+    /// by interrupt handlers.
     /// \arg i   Which IDT entry to set
     /// \arg ist The IST index for entry i, or 0 for none
-    void set_ist(uint8_t i, uint8_t ist) { m_entries[i].ist = ist; }
+    inline void set_ist(uint8_t i, uint8_t ist) { m_entries[i].ist = ist; }
 
     /// Get the IST entries that are used by this table, as a bitmap
     static uint8_t used_ist_entries();
