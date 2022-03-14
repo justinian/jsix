@@ -29,24 +29,13 @@ constexpr unsigned areas_count =
 class logger
 {
 public:
-    /// Callback type for immediate-mode logging
-    typedef void (*immediate_cb)(logs, level, const char *);
-
     /// Default constructor. Creates a logger without a backing store.
-    /// \arg output  Immediate-mode logging output function
-    logger(immediate_cb output = nullptr);
+    logger();
 
     /// Constructor. Logs are written to the given buffer.
     /// \arg buffer  Buffer to which logs are written
     /// \arg size    Size of `buffer`, in bytes
-    /// \arg output  Immediate-mode logging output function
-    logger(uint8_t *buffer, size_t size, immediate_cb output = nullptr);
-
-    /// Get the current immediate-mode callback
-    inline immediate_cb get_immediate() const { return m_immediate; }
-
-    /// Register an immediate-mode log callback
-    inline void set_immediate(immediate_cb cb) { m_immediate = cb; }
+    logger(uint8_t *buffer, size_t size);
 
     /// Get the default logger.
     inline logger & get() { return *s_log; }
@@ -78,7 +67,6 @@ public:
         uint8_t bytes;
         logs area;
         level severity;
-        uint8_t sequence;
         char message[0];
     };
 
@@ -112,9 +100,6 @@ private:
     obj::event m_event;
 
     level m_levels[areas_count];
-    immediate_cb m_immediate;
-
-    uint8_t m_sequence;
 
     util::bip_buffer m_buffer;
     util::spinlock m_lock;

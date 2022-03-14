@@ -25,7 +25,6 @@ struct entry
     uint8_t bytes;
     uint8_t area;
     uint8_t severity;
-    uint8_t sequence;
     char message[0];
 };
 

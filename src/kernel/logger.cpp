@@ -1,6 +1,7 @@
 #include <new>
 #include <string.h>
 
+#include <util/format.h>
 #include <util/no_construct.h>
 
 #include "assert.h"
@@ -8,7 +9,6 @@
 #include "memory.h"
 #include "objects/system.h"
 #include "objects/thread.h"
-#include "printf/printf.h"
 
 static uint8_t log_buffer[128 * 1024];
 
@@ -17,9 +17,6 @@ static uint8_t log_buffer[128 * 1024];
 // from being called here so as to not overwrite the previous initialization.
 static util::no_construct<log::logger> __g_logger_storage;
 log::logger &g_logger = __g_logger_storage.value;
-
-// For printf.c
-extern "C" void putchar_(char c) {}
 
 
 namespace log {
@@ -33,19 +30,15 @@ const char *logger::s_area_names[] = {
     nullptr
 };
 
-logger::logger(logger::immediate_cb output) :
-    m_buffer(nullptr, 0),
-    m_immediate(output),
-    m_sequence(0)
+logger::logger() :
+    m_buffer(nullptr, 0)
 {
     memset(&m_levels, 0, sizeof(m_levels));
     s_log = this;
 }
 
-logger::logger(uint8_t *buffer, size_t size, logger::immediate_cb output) :
-    m_buffer(buffer, size),
-    m_immediate(output),
-    m_sequence(0)
+logger::logger(uint8_t *buffer, size_t size) :
+    m_buffer(buffer, size)
 {
     memset(&m_levels, 0, sizeof(m_levels));
     s_log = this;
@@ -64,19 +57,12 @@ logger::output(level severity, logs area, const char *fmt, va_list args)
     header->bytes = sizeof(entry);
     header->area = area;
     header->severity = severity;
-    header->sequence = m_sequence++;
 
-    size_t mlen = vsnprintf(header->message, sizeof(buffer) - sizeof(entry) - 1, fmt, args);
+    size_t mlen = util::vformat({header->message, sizeof(buffer) - sizeof(entry) - 1}, fmt, args);
     header->message[mlen] = 0;
     header->bytes += mlen + 1;
 
     util::scoped_lock lock {m_lock};
-
-    if (m_immediate) {
-        buffer[header->bytes] = 0;
-        m_immediate(area, severity, header->message);
-        return;
-    }
 
     uint8_t *out;
     size_t n = m_buffer.reserve(header->bytes, reinterpret_cast<void**>(&out));
@@ -94,13 +80,14 @@ logger::output(level severity, logs area, const char *fmt, va_list args)
 size_t
 logger::get_entry(void *buffer, size_t size)
 {
-
     util::scoped_lock lock {m_lock};
 
     void *out;
     size_t out_size = m_buffer.get_block(&out);
     if (out_size == 0 || out == 0) {
+        lock.release();
         m_event.wait();
+        lock.reacquire();
         out_size = m_buffer.get_block(&out);
 
         if (out_size == 0 || out == 0)
@@ -155,5 +142,5 @@ void fatal(logs area, const char *fmt, ...)
 
 void logger_init()
 {
-    new (&g_logger) log::logger(log_buffer, sizeof(log_buffer), nullptr);
+    new (&g_logger) log::logger(log_buffer, sizeof(log_buffer));
 }

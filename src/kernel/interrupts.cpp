@@ -1,5 +1,5 @@
 #include <stdint.h>
-
+#include <util/format.h>
 
 #include "assert.h"
 #include "cpu.h"
@@ -10,7 +10,6 @@
 #include "logger.h"
 #include "memory.h"
 #include "objects/process.h"
-#include "printf/printf.h"
 #include "scheduler.h"
 #include "vm_space.h"
 
@@ -105,10 +104,10 @@ isr_handler(cpu_state *regs)
                 (!ti) ? "GDT" :
                 "LDT";
 
-            snprintf(message, sizeof(message), "General Protection Fault, error:0x%lx%s %s[%d]",
+            util::format({message, sizeof(message)}, "General Protection Fault, error:0x%lx%s %s[%d]",
                 regs->errorcode, regs->errorcode & 1 ? " external" : "", table, index);
         } else {
-            snprintf(message, sizeof(message), "General Protection Fault, error:%lx%s",
+            util::format({message, sizeof(message)}, "General Protection Fault, error:%lx%s",
                 regs->errorcode, regs->errorcode & 1 ? " external" : "");
         }
         kassert(false, message, regs);
@@ -129,7 +128,7 @@ isr_handler(cpu_state *regs)
             if (cr2 && space.handle_fault(cr2, ft))
                 break;
 
-            snprintf(message, sizeof(message),
+            util::format({message, sizeof(message)},
                 "Page fault: %016lx%s%s%s%s%s", cr2,
                 (regs->errorcode & 0x01) ? " present" : "",
                 (regs->errorcode & 0x02) ? " write" : "",
@@ -157,7 +156,7 @@ isr_handler(cpu_state *regs)
         return;
 
     default:
-        snprintf(message, sizeof(message), "Unknown interrupt 0x%lx", regs->interrupt);
+        util::format({message, sizeof(message)}, "Unknown interrupt 0x%lx", regs->interrupt);
         kassert(false, message, regs);
     }
 
