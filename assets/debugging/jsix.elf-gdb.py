@@ -180,13 +180,10 @@ class GetThreadsCommand(gdb.Command):
         print(f"           flags: {self.get_flags(flags)}")
         print(f"          kstack: {stack:#x}")
         print(f"             rsp: {rsp:#x}")
-        print("------------------------------------")
 
-        if stack != 0:
-            rsp = int(gdb.parse_and_eval(f"{tcb}->rsp"))
-            stack_walk(rsp + 5*8, 5)
+        if stack == 0: return 0
+        return int(gdb.parse_and_eval(f"{tcb}->rsp"))
 
-        print("")
 
     def print_thread_list(self, addr, name):
         if addr == 0:
@@ -195,9 +192,23 @@ class GetThreadsCommand(gdb.Command):
         print(f"=== {name} ===")
 
         while addr != 0:
-            self.print_thread(addr)
-            addr = int(gdb.parse_and_eval(f"((tcb_node*){addr:#x})->m_next"))
+            rsp = self.print_thread(addr)
+            if rsp != 0:
+                print("------------------------------------")
+                stack_walk(rsp + 5*8, 5)
 
+            addr = int(gdb.parse_and_eval(f"((tcb_node*){addr:#x})->m_next"))
+            print()
+
+    def print_cpudata(self, index):
+        cpu = f"(g_cpu_data[{index}])"
+        tss = f"{cpu}->tss"
+        tss_rsp0 = int(gdb.parse_and_eval(f"{tss}->m_rsp[0]"))
+        tss_ist = [int(gdb.parse_and_eval(f"{tss}->m_ist[{i}]")) for i in range(8)]
+        print(f"        tss rsp0: {tss_rsp0:#x}")
+        for i in range(1,8):
+            if tss_ist[i] == 0: continue
+            print(f"        tss ist{i}: {tss_ist[i]:#x}")
 
     def invoke(self, arg, from_tty):
         args = gdb.string_to_argv(arg)
@@ -215,6 +226,15 @@ class GetThreadsCommand(gdb.Command):
             print(f"=== CPU {cpu:2}: CURRENT ===")
             current = int(gdb.parse_and_eval(f"{runlist}.current"))
             self.print_thread(current)
+            self.print_cpudata(cpu)
+
+            previous = int(gdb.parse_and_eval(f"{runlist}.prev"))
+            if previous != 0:
+                tcb = f"((TCB*){previous:#x})"
+                thread = f"({tcb}->thread)"
+                koid = int(gdb.parse_and_eval(f"{thread}->m_koid"))
+                print(f"            prev: {koid:x}")
+            print()
 
             for pri in range(8):
                 ready = int(gdb.parse_and_eval(f"{runlist}.ready[{pri:#x}].m_head"))
@@ -222,6 +242,7 @@ class GetThreadsCommand(gdb.Command):
 
             blocked = int(gdb.parse_and_eval(f"{runlist}.blocked.m_head"))
             self.print_thread_list(blocked, f"CPU {cpu:2}: BLOCKED")
+            print()
 
 
 class PrintProfilesCommand(gdb.Command):
