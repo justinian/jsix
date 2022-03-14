@@ -13,6 +13,51 @@ namespace obj {
     class thread;
 }
 
+enum class cr0
+{
+    PE =  0,    // Protected mode enable
+    MP =  1,    // Monitor co-processor
+    ET =  4,    // Extension type
+    NE =  5,    // Numeric error
+    WP = 16,    // (ring 0) Write protect
+    PG = 31,    // Paging
+};
+
+enum class cr4
+{
+    DE         =  3, // Debugging extensions
+    PAE        =  5, // Physical address extension
+    MCE        =  6, // Machine check exception
+    PGE        =  7, // Page global enable
+    OSXFSR     =  9, // OS supports FXSAVE
+    OSXMMEXCPT = 10, // OS supports SIMD FP exceptions
+    FSGSBASE   = 16, // Enable {RD|WR}{F|G}SBASE instructions
+    PCIDE      = 17, // PCID enable
+    OSXSAVE    = 18, // OS supports XSAVE and extended states
+};
+
+enum class xcr0
+{
+    X87,
+    SSE,
+    AVX,
+    BINDREG,
+    BINDCSR,
+    OPMASK,
+    ZMM_Hi256,
+    ZMM_Hi16,
+    PKRU = 9,
+};
+
+enum class efer
+{
+    SCE   =  0, // System call extensions (SYSCALL/SYSRET)
+    LME   =  8, // Long mode enable
+    LMA   = 10, // Long mode active
+    NXE   = 11, // No-execute enable
+    FFXSR = 14, // Fast FXSAVE
+};
+
 struct cpu_state
 {
     uint64_t r15, r14, r13, r12, r11, r10, r9,  r8;

@@ -60,12 +60,7 @@ setup_control_regs()
 {
     uint64_t cr4 = 0;
     asm volatile ( "mov %%cr4, %0" : "=r" (cr4) );
-    cr4 |=
-        0x000080 | // Enable global pages
-        0x000200 | // Enable FXSAVE/FXRSTOR
-        0x010000 | // Enable FSGSBASE
-        0x020000 | // Enable PCIDs
-        0;
+    cr4 |= 0x000080; // Enable global pages
     asm volatile ( "mov %0, %%cr4" :: "r" (cr4) );
 
     // Set up IA32_EFER

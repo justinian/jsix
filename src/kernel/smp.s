@@ -12,16 +12,9 @@ CR0_WP  equ (1 << 16)
 CR0_PG  equ (1 << 31)
 CR0_VAL equ CR0_PE|CR0_MP|CR0_ET|CR0_NE|CR0_WP|CR0_PG
 
-CR4_DE         equ (1 << 3)
 CR4_PAE        equ (1 << 5)
-CR4_MCE        equ (1 << 6)
 CR4_PGE        equ (1 << 7)
-CR4_OSFXSR     equ (1 << 9)
-CR4_OSCMMEXCPT equ (1 << 10)
-CR4_FSGSBASE   equ (1 << 16)
-CR4_PCIDE      equ (1 << 17)
-CR4_INIT equ CR4_PAE|CR4_PGE
-CR4_VAL equ CR4_DE|CR4_PAE|CR4_MCE|CR4_PGE|CR4_OSFXSR|CR4_OSCMMEXCPT|CR4_FSGSBASE|CR4_PCIDE
+CR4_INIT       equ CR4_PAE|CR4_PGE
 
 EFER_MSR  equ 0xC0000080
 EFER_SCE  equ (1 << 0)
@@ -102,10 +95,9 @@ align 8
 	mov gs, ax
 	mov ss, ax
 
-	mov eax, CR4_VAL
-
 	mov rdi, [BASE + (.cpu - ap_startup)]
 	mov rax, [rdi + CPU_DATA.rsp0]
+    mov rbp, rax
 	mov rsp, rax
 
 	mov rax, [BASE + (.ret - ap_startup)]

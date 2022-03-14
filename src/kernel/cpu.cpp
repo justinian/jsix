@@ -64,6 +64,22 @@ cpu_early_init(cpu_data *cpu)
     cpu->idt->install();
     cpu->gdt->install();
 
+    util::bitset64 cr4_val = 0;
+    asm ("mov %%cr4, %0" : "=r"(cr4_val));
+    cr4_val
+        .set(cr4::OSXFSR)
+        .set(cr4::OSXMMEXCPT)
+        .set(cr4::PCIDE)
+        .set(cr4::OSXSAVE);
+    asm volatile ( "mov %0, %%cr4" :: "r" (cr4_val) );
+
+    // Enable SYSCALL and NX bit
+    util::bitset64 efer_val = rdmsr(msr::ia32_efer);
+    efer_val
+        .set(efer::SCE)
+        .set(efer::NXE);
+    wrmsr(msr::ia32_efer, efer_val);
+
     // Install the GS base pointint to the cpu_data
     wrmsr(msr::ia32_gs_base, reinterpret_cast<uintptr_t>(cpu));
 }
@@ -100,11 +116,12 @@ bsp_late_init()
     uint8_t ist_entries = IDT::used_ist_entries();
     g_bsp_tss.create_ist_stacks(ist_entries);
 
-    uint64_t cr0, cr4;
-    asm ("mov %%cr0, %0" : "=r"(cr0));
-    asm ("mov %%cr4, %0" : "=r"(cr4));
+    uint64_t cr0v, cr4v;
+    asm ("mov %%cr0, %0" : "=r"(cr0v));
+    asm ("mov %%cr4, %0" : "=r"(cr4v));
+
     uint64_t efer = rdmsr(msr::ia32_efer);
-    log::debug(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx", cr0, cr4, efer);
+    log::debug(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx", cr0v, cr4v, efer);
 }
 
 cpu_data *
