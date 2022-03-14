@@ -2,6 +2,7 @@
 /// \file cpu_id.h Definition of required cpu features for jsix
 
 #include <stdint.h>
+#include <util/bitset.h>
 
 namespace cpu {
 
@@ -18,6 +19,7 @@ enum class feature {
 class cpu_id
 {
 public:
+    using features = util::bitset<(unsigned)feature::max>;
     static constexpr uint32_t cpuid_extended = 0x80000000;
 
     /// CPUID result register values
@@ -42,6 +44,10 @@ public:
 
     cpu_id();
 
+    /// Check which of the cpu::feature flags this CPU supports.
+    /// \returns  A util::bitset mapping to cpu::feature values
+    features validate() const;
+
     /// The the result of a given CPUID leaf/subleaf
     /// \arg leaf     The leaf selector (initial EAX)
     /// \arg subleaf  The subleaf selector (initial ECX)
@@ -54,8 +60,11 @@ public:
     /// Get the name of the cpu vendor (eg, "GenuineIntel")
     inline const char * vendor_id() const   { return m_vendor_id; }
 
-    /// Get the brand name of this processor model
-    inline const char * brand_name() const  { return m_brand_name; }
+    /// Put the brand name of this processor model into the
+    /// provided buffer.
+    /// \arg buffer  Pointer to a buffer at least 48 bytes long
+    /// \returns     True if the brand name was obtained
+    bool brand_name(char *buffer) const;
 
     /// Get the highest basic CPUID leaf supported
     inline uint32_t highest_basic() const   { return m_high_basic; }
@@ -63,22 +72,10 @@ public:
     /// Get the highest extended CPUID leaf supported
     inline uint32_t highest_ext() const     { return m_high_ext; }
 
-    /// Get which required options are missing as flags
-    inline uint64_t missing() const         { return m_missing; }
-
-    /// Validate the CPU supports the necessary options for jsix
-    inline bool supported() const           { return m_missing; }
-
-    /// Return true if the CPU claims to support the given feature
-    bool has_feature(feature feat);
-
 private:
     uint32_t m_high_basic;
     uint32_t m_high_ext;
-    uint64_t m_features;
-    uint64_t m_missing;
     char m_vendor_id[13];
-    char m_brand_name[48];
 };
 
 }
