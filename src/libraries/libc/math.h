@@ -12,8 +12,12 @@
 
 // NOTE: libc math.h is only stubbed out currently!
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define NAN 0
-#define INFINITY 0
+#define INFINITY        __builtin_inff()
 
 #define FP_NAN     (-1)
 #define FP_ZERO      0
@@ -25,7 +29,7 @@
 typedef float float_t;
 typedef double double_t;
 
-#define isinf(x)       0
+#define isinf(x)       (__builtin_isinf_sign((x)) != 0)
 #define isnan(x)       0
 #define isnormal(x)    0
 
@@ -38,7 +42,7 @@ typedef double double_t;
                         FP_SUBNORMAL)
 
 
-#define signbit(x)     0
+#define signbit(x)     (__builtin_signbit((x)))
 
 
 double acos(double x);
@@ -265,3 +269,8 @@ long double fminl(long double x, long double y);
 double fma(double x, double y, double z);
 float fmaf(float x, float y, float z);
 long double fmal(long double x, long double y, long double z);
+
+
+#ifdef __cplusplus
+} // extern C
+#endif

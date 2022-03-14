@@ -6,7 +6,6 @@ variables:
 
   ccflags: [
     "--target=x86_64-jsix-elf",
-    "-mno-sse",
     "-fno-omit-frame-pointer",
     "-fno-stack-protector",
 
