@@ -73,7 +73,7 @@ pci_device::pci_device() :
     m_subclass(0),
     m_progif(0),
     m_revision(0),
-    m_irq(isr::isrIgnoreF),
+    m_irq(isr::isrIgnore0),
     m_header_type(0)
 {
 }
@@ -82,7 +82,7 @@ pci_device::pci_device(pci_group &group, uint8_t bus, uint8_t device, uint8_t fu
     m_base(group.base_for(bus, device, func)),
     m_msi(nullptr),
     m_bus_addr(bus_addr(bus, device, func)),
-    m_irq(isr::isrIgnoreF)
+    m_irq(isr::isrIgnore0)
 {
     m_vendor = m_base[0] & 0xffff;
     m_device = (m_base[0] >> 16) & 0xffff;

@@ -45,27 +45,33 @@ void
 disable_legacy_pic()
 {
     // Mask all interrupts
-    outb(PIC2+1, 0xfc);
+    outb(PIC2+1, 0xff);
     outb(PIC1+1, 0xff);
 
-    // Start initialization sequence
-    outb(PIC1, 0x11); io_wait();
-    outb(PIC2, 0x11); io_wait();
+    // ICW1: Start initialization sequence
+    outb(PIC1, 0x11);
+    outb(PIC2, 0x11);
 
-    // Remap into ignore ISRs
-    outb(PIC1+1, static_cast<uint8_t>(isr::isrIgnore0)); io_wait();
-    outb(PIC2+1, static_cast<uint8_t>(isr::isrIgnore8)); io_wait();
+    // ICW2: Remap into ignore ISRs
+    outb(PIC1+1, static_cast<uint8_t>(isr::isrIgnore0));
+    outb(PIC2+1, static_cast<uint8_t>(isr::isrIgnore0));
 
-    // Tell PICs about each other
-    outb(PIC1+1, 0x04); io_wait();
-    outb(PIC2+1, 0x02); io_wait();
+    // ICW3: Tell PICs about each other
+    outb(PIC1+1, 0x04);
+    outb(PIC2+1, 0x02);
+
+    // ICW4: Set x86 mode
+    outb(PIC1+1, 0x01);
+    outb(PIC2+1, 0x01);
 }
 
 void
 isr_handler(cpu_state *regs)
 {
     uint8_t vector = regs->interrupt & 0xff;
-    if ((vector & 0xf0) == 0xf0) {
+
+    if ((vector & 0xf8) == 0x20) {
+        // Vectors 0x20-0x27 are the ignore vectors
         *reinterpret_cast<uint32_t *>(apic_eoi_addr) = 0;
         return;
     }
@@ -139,6 +145,10 @@ isr_handler(cpu_state *regs)
         }
         break;
 
+    case isr::isrSpurious:
+        // No EOI for the spurious interrupt
+        return;
+
     case isr::isrTimer:
         scheduler::get().schedule();
         break;
@@ -150,10 +160,6 @@ isr_handler(cpu_state *regs)
     case isr::ipiSchedule:
         scheduler::get().schedule();
         break;
-
-    case isr::isrSpurious:
-        // No EOI for the spurious interrupt
-        return;
 
     default:
         util::format({message, sizeof(message)}, "Unknown interrupt 0x%lx", regs->interrupt);
