@@ -34,7 +34,7 @@ public:
     static size_t run_all_tests();
 
 private:
-    static util::vector<fixture*> m_tests;
+    static util::vector<fixture*> *m_tests;
 };
 
 template <typename T>
