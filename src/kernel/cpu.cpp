@@ -85,7 +85,7 @@ bsp_early_init()
     cpu->idt = new (&g_bsp_idt) IDT;
     cpu->tss = new (&g_bsp_tss) TSS;
     cpu->gdt = new (&g_bsp_gdt) GDT {cpu->tss};
-    cpu->rsp0 = idle_stack_end;
+    cpu->rsp0 = reinterpret_cast<uintptr_t>(&idle_stack_end);
     cpu_early_init(cpu);
 
     return cpu;
