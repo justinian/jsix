@@ -1,0 +1,168 @@
+#pragma once
+/// \file bitset.h
+/// Definition of the `bitset` template class
+
+#if __has_include(<assert.h>)
+#include <assert.h>
+#else
+#define assert(...)
+#endif
+
+#include <stdint.h>
+
+
+namespace util {
+
+/// A statically-sized templated bitset
+template <unsigned N>
+class bitset
+{
+    static constexpr unsigned num_elems = (N + 63) / 64;
+
+public:
+    template <typename T>
+    inline bool get(T i) const {
+        assert(static_cast<unsigned>(i) < N);
+        return bits(i) & bit(i);
+    }
+
+    template <typename T>
+    inline bitset & set(T i) {
+        assert(static_cast<unsigned>(i) < N);
+        bits(i) |= bit(i);
+        return *this;
+    }
+
+    template <typename T>
+    inline bitset & clear(T i) {
+        assert(static_cast<unsigned>(i) < N);
+        bits(i) &= ~bit(i);
+        return *this;
+    }
+
+    template <typename T>
+    inline bool operator[](T i) const { return get(i); }
+
+    inline bool empty() const {
+        for (uint64_t i = 0; i < num_elems; ++i)
+            if (m_bits[i]) return false;
+        return true;
+    }
+
+private:
+    template <typename T>
+    inline uint64_t bit(T i) const { return (1ull << (static_cast<uint64_t>(i) & 63)); }
+
+    template <typename T>
+    inline uint64_t &bits(T i) { return m_bits[static_cast<uint64_t>(i) >> 6]; }
+
+    template <typename T>
+    inline uint64_t bits(T i) const { return m_bits[static_cast<uint64_t>(i) >> 6]; }
+
+    uint64_t m_bits[num_elems] = {0};
+};
+
+/// A statically-sized templated bitset
+template <>
+class bitset<64>
+{
+    static constexpr unsigned num_elems = 1;
+
+public:
+    bitset(uint64_t v = 0) : m_bits {v} {}
+
+    bitset(const bitset<64> &o) : m_bits {o.m_bits} {}
+
+    template <typename T>
+    inline bitset & operator=(T v) { m_bits = static_cast<uint64_t>(v); return *this; }
+
+    inline operator uint64_t () const { return m_bits; }
+
+    template <typename T>
+    inline bool get(T i) const {
+        assert(static_cast<unsigned>(i) < 64);
+        return m_bits & bit(i);
+    }
+
+    template <typename T>
+    inline bitset & set(T i) {
+        assert(static_cast<unsigned>(i) < 64);
+        m_bits |= bit(i);
+        return *this;
+    }
+
+    template <typename T>
+    inline bitset & clear(T i) {
+        assert(static_cast<unsigned>(i) < 64);
+        m_bits &= ~bit(i);
+        return *this;
+    }
+
+    template <typename T>
+    inline bool operator[](T i) const { return get(i); }
+
+    inline bool empty() const { return m_bits == 0; }
+
+    inline uint64_t value() const { return m_bits; }
+
+private:
+    template <typename T>
+    inline uint64_t bit(T i) const { return (1ull << static_cast<uint64_t>(i)); }
+
+    uint64_t m_bits;
+};
+
+/// A statically-sized templated bitset
+template <>
+class bitset<32>
+{
+    static constexpr unsigned num_elems = 1;
+
+public:
+    bitset(uint32_t v = 0) : m_bits {v} {}
+
+    bitset(const bitset<32> &o) : m_bits {o.m_bits} {}
+
+    template <typename T>
+    inline bitset & operator=(T v) { m_bits = static_cast<uint32_t>(v); return *this; }
+
+    inline operator uint32_t () const { return m_bits; }
+
+    template <typename T>
+    inline bool get(T i) const {
+        assert(static_cast<unsigned>(i) < 32);
+        return m_bits & bit(i);
+    }
+
+    template <typename T>
+    inline bitset & set(T i) {
+        assert(static_cast<unsigned>(i) < 32);
+        m_bits |= bit(i);
+        return *this;
+    }
+
+    template <typename T>
+    inline bitset & clear(T i) {
+        assert(static_cast<unsigned>(i) < 32);
+        m_bits &= ~bit(i);
+        return *this;
+    }
+
+    template <typename T>
+    inline bool operator[](T i) const { return get(i); }
+
+    inline bool empty() const { return m_bits == 0; }
+
+    inline uint32_t value() const { return m_bits; }
+
+private:
+    template <typename T>
+    inline uint32_t bit(T i) const { return (1u << static_cast<uint32_t>(i)); }
+
+    uint32_t m_bits;
+};
+
+using bitset64 = bitset<64>;
+using bitset32 = bitset<32>;
+
+} // namespace util
