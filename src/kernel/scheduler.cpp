@@ -29,6 +29,7 @@ scheduler *scheduler::s_instance = nullptr;
 struct run_queue
 {
     tcb_node *current = nullptr;
+    tcb_node *prev = nullptr;
     tcb_list ready[scheduler::num_priorities];
     tcb_list blocked;
 
@@ -38,7 +39,7 @@ struct run_queue
 };
 
 scheduler::scheduler(unsigned cpus) :
-    m_next_pid {1}
+    m_add_index {0}
 {
     kassert(!s_instance, "Created multiple schedulers!");
     if (!s_instance)
@@ -108,11 +109,11 @@ scheduler::start()
 void
 scheduler::add_thread(TCB *t)
 {
-    cpu_data &cpu = current_cpu();
-    run_queue &queue = m_run_queues[cpu.index];
+    cpu_data *cpu = g_cpu_data[m_add_index++ % g_num_cpus];
+    run_queue &queue = m_run_queues[cpu->index];
     util::scoped_lock lock {queue.lock};
 
-    t->cpu = &cpu;
+    t->cpu = cpu;
     t->time_left = quantum(t->priority);
     queue.blocked.push_back(static_cast<tcb_node*>(t));
 }
@@ -232,6 +233,7 @@ scheduler::steal_work(cpu_data &cpu)
             stolen += balance_lists(my_queue.ready[pri], other_queue.ready[pri], cpu);
 
         stolen += balance_lists(my_queue.blocked, other_queue.blocked, cpu);
+        other_queue_lock.release();
 
         if (stolen)
             log::debug(logs::sched, "CPU%02x stole %2d tasks from CPU%02x",
@@ -313,6 +315,7 @@ scheduler::schedule()
         return;
     }
 
+    queue.prev = queue.current;
     thread *next_thread = next->thread;
 
     cpu.thread = next_thread;

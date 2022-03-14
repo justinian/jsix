@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <util/vector.h>
 
+extern cpu_data** g_cpu_data;
+
 namespace kernel {
 namespace args {
     struct program;
@@ -86,14 +88,14 @@ public:
 private:
     friend class obj::process;
 
-    static constexpr uint64_t promote_frequency = 10;
+    static constexpr uint64_t promote_frequency = 100;
     static constexpr uint64_t steal_frequency = 10;
 
     void prune(run_queue &queue, uint64_t now);
     void check_promotions(run_queue &queue, uint64_t now);
     void steal_work(cpu_data &cpu);
 
-    uint32_t m_next_pid;
+    uint32_t m_add_index;
     uint32_t m_tick_count;
 
     obj::process *m_kernel_process;
