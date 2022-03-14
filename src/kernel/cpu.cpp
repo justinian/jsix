@@ -22,6 +22,7 @@ panic_data g_panic_data;
 panic_data *g_panic_data_p = &g_panic_data;
 
 cpu_data g_bsp_cpu_data;
+cpu_data **g_cpu_data = nullptr;
 
 
 // Validate the required CPU features are present. Really, the bootloader already
@@ -115,6 +116,7 @@ cpu_create(uint16_t id, uint16_t index)
     GDT *gdt = new GDT {tss};
     cpu_data *cpu = new cpu_data;
     memset(cpu, 0, sizeof(cpu_data));
+    g_cpu_data[index] = cpu;
 
     cpu->self = cpu;
     cpu->id = id;

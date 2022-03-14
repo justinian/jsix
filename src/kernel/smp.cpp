@@ -22,6 +22,8 @@ extern size_t ap_startup_code_size;
 extern obj::process &g_kernel_process;
 extern obj::vm_area_guarded &g_kernel_stacks;
 
+extern cpu_data **g_cpu_data;
+
 namespace smp {
 
 volatile size_t ap_startup_count;
@@ -35,12 +37,14 @@ start(cpu_data &bsp, void *kpml4)
     using mem::kernel_stack_pages;
     using obj::vm_flags;
 
-
     ap_startup_count = 1; // Count the BSP
 
     clock &clk = clock::get();
 
     const auto &ids = device_manager::get().get_apic_ids();
+
+    g_cpu_data = new cpu_data* [ids.count()];
+    g_cpu_data[bsp.index] = &bsp;
 
     log::info(logs::boot, "Starting %d other CPUs", ids.count() - 1);
 
