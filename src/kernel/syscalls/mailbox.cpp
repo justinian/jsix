@@ -133,7 +133,7 @@ mailbox_receive(
     if (!self->receive(msg, block)) {
         // No message received
         return self->closed() ? j6_status_closed :
-               block ? j6_status_would_block :
+               !block ? j6_status_would_block :
                j6_err_unexpected;
     }
 
