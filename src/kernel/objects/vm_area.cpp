@@ -143,9 +143,8 @@ vm_area_open::get_page(uintptr_t offset, uintptr_t &phys)
 
 
 vm_area_guarded::vm_area_guarded(uintptr_t start, size_t buf_pages, size_t size, vm_flags flags) :
-    m_start {start},
-    m_pages {buf_pages},
-    m_next {mem::frame_size},
+    m_pages {buf_pages + 1}, // Sections are N+1 pages for the leading guard page
+    m_stacks {start, m_pages*mem::frame_size},
     vm_area_open {size, flags}
 {
 }
@@ -155,31 +154,26 @@ vm_area_guarded::~vm_area_guarded() {}
 uintptr_t
 vm_area_guarded::get_section()
 {
-    if (m_cache.count() > 0) {
-        return m_cache.pop();
-    }
-
-    uintptr_t addr = m_next;
-    m_next += (m_pages + 1) * mem::frame_size;
-    return m_start + addr;
+    // Account for the leading guard page
+    return m_stacks.allocate() + mem::frame_size;
 }
 
 void
 vm_area_guarded::return_section(uintptr_t addr)
 {
-    m_cache.append(addr);
+    // Account for the leading guard page
+    return m_stacks.free(addr - mem::frame_size);
 }
 
 bool
 vm_area_guarded::get_page(uintptr_t offset, uintptr_t &phys)
 {
-    if (offset > m_next)
+    if (offset >= m_stacks.end())
         return false;
 
-    // make sure this isn't in a guard page. (sections are
-    // m_pages big plus 1 leading guard page, so page 0 is
-    // invalid)
-    if ((offset >> 12) % (m_pages+1) == 0)
+    // make sure this isn't in a guard page. (sections have 1 leading
+    // guard page, so page 0 is invalid)
+    if ((offset >> 12) % m_pages == 0)
         return false;
 
     return vm_area_open::get_page(offset, phys);

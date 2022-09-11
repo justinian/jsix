@@ -9,6 +9,7 @@
 #include <util/vector.h>
 #include <util/enum_bitfields.h>
 
+#include "block_allocator.h"
 #include "objects/kobject.h"
 
 class page_tree;
@@ -174,10 +175,8 @@ public:
     virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
 
 private:
-    util::vector<uintptr_t> m_cache;
-    uintptr_t m_start;
     size_t m_pages;
-    uintptr_t m_next;
+    block_allocator m_stacks;
 };
 
 } // namespace obj
