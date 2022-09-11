@@ -10,7 +10,6 @@
 
 #include <stdint.h>
 
-
 namespace util {
 
 /// A statically-sized templated bitset
@@ -62,25 +61,36 @@ private:
     uint64_t m_bits[num_elems] = {0};
 };
 
+namespace {
+}
+
 /// A statically-sized templated bitset
 template <>
 class bitset<64>
 {
     static constexpr unsigned num_elems = 1;
 
+    template <typename T>
+    static constexpr uint64_t bit_or(T b) { return 1ull << uint64_t(b); }
+
+    template <typename T, typename ...Args>
+    static constexpr uint64_t bit_or(T b, Args... bs) { return (1ull << uint64_t(b)) | bit_or(bs...); }
+
 public:
     bitset(uint64_t v = 0) : m_bits {v} {}
 
     bitset(const bitset<64> &o) : m_bits {o.m_bits} {}
 
+    template <typename ...Args>
+    constexpr explicit bitset(Args... args) : m_bits(bit_or(args...)) {}
+
     template <typename T>
     inline bitset & operator=(T v) { m_bits = static_cast<uint64_t>(v); return *this; }
 
-    inline operator uint64_t () const { return m_bits; }
+    inline constexpr operator const uint64_t () const { return m_bits; }
 
     template <typename T>
-    inline bool get(T i) const {
-        assert(static_cast<unsigned>(i) < 64);
+    inline constexpr bool get(T i) const {
         return m_bits & bit(i);
     }
 
@@ -99,15 +109,15 @@ public:
     }
 
     template <typename T>
-    inline bool operator[](T i) const { return get(i); }
+    inline constexpr bool operator[](T i) const { return get(i); }
 
-    inline bool empty() const { return m_bits == 0; }
+    inline constexpr bool empty() const { return m_bits == 0; }
 
-    inline uint64_t value() const { return m_bits; }
+    inline constexpr uint64_t value() const { return m_bits; }
 
 private:
     template <typename T>
-    inline uint64_t bit(T i) const { return (1ull << static_cast<uint64_t>(i)); }
+    inline constexpr uint64_t bit(T i) const { return (1ull << static_cast<uint64_t>(i)); }
 
     uint64_t m_bits;
 };
@@ -118,19 +128,27 @@ class bitset<32>
 {
     static constexpr unsigned num_elems = 1;
 
+    template <typename T>
+    static constexpr uint32_t bit_or(T b) { return 1u << uint32_t(b); }
+
+    template <typename T, typename ...Args>
+    static constexpr uint32_t bit_or(T b, Args... bs) { return (1u << uint32_t(b)) | bit_or(bs...); }
+
 public:
     bitset(uint32_t v = 0) : m_bits {v} {}
 
     bitset(const bitset<32> &o) : m_bits {o.m_bits} {}
 
+    template <typename ...Args>
+    constexpr bitset(Args... args) : m_bits(bit_or(args...)) {}
+
     template <typename T>
     inline bitset & operator=(T v) { m_bits = static_cast<uint32_t>(v); return *this; }
 
-    inline operator uint32_t () const { return m_bits; }
+    inline constexpr operator uint32_t () const { return m_bits; }
 
     template <typename T>
-    inline bool get(T i) const {
-        assert(static_cast<unsigned>(i) < 32);
+    inline constexpr bool get(T i) const {
         return m_bits & bit(i);
     }
 
@@ -153,7 +171,7 @@ public:
 
     inline bool empty() const { return m_bits == 0; }
 
-    inline uint32_t value() const { return m_bits; }
+    inline constexpr uint32_t value() const { return m_bits; }
 
 private:
     template <typename T>
