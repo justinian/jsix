@@ -88,9 +88,11 @@ kernel_to_user_trampoline:
 	pop rbp
 	pop rcx
 
-	mov r11, [gs:CPU_DATA.rflags3]
+	mov r11, [gs:CPU_DATA.tss]
+	mov [r11 + TSS.rsp0], rsp
 	mov [gs:CPU_DATA.rsp0], rsp
 	mov rsp, [gs:CPU_DATA.rsp3]
+	mov r11, [gs:CPU_DATA.rflags3]
 
 	swapgs
 	o64 sysret
