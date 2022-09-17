@@ -47,6 +47,7 @@ variables:
 
   ldflags: [
     "-g",
+    "-m", "elf_x86_64",
     "-nostdlib",
     "-Bstatic",
     "--no-eh-frame-hdr",

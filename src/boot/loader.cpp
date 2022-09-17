@@ -72,8 +72,19 @@ load_program(
         create_module(data, desc, true);
 
     elf::file program(data.pointer, data.count);
-    if (!program.valid())
+    if (!program.valid()) {
+        auto *header = program.header();
+        console::print(L"        progam size: %d\r\n", data.count);
+        console::print(L"          word size: %d\r\n", header->word_size);
+        console::print(L"         endianness: %d\r\n", header->endianness);
+        console::print(L"  ELF ident version: %d\r\n", header->ident_version);
+        console::print(L"             OS ABI: %d\r\n", header->os_abi);
+        console::print(L"          file type: %d\r\n", header->file_type);
+        console::print(L"       machine type: %d\r\n", header->machine_type);
+        console::print(L"        ELF version: %d\r\n", header->version);
+
         error::raise(uefi::status::load_error, L"ELF file not valid");
+    }
 
     size_t num_sections = 0;
     for (auto &seg : program.programs()) {
