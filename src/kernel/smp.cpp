@@ -88,7 +88,7 @@ start(cpu_data &bsp, void *kpml4)
 
         // Kick it off!
         size_t current_count = ap_startup_count;
-        log::debug(logs::boot, "Starting AP %d: stack %llx", cpu->index, stack_end);
+        log::verbose(logs::boot, "Starting AP %d: stack %llx", cpu->index, stack_end);
 
         lapic::ipi startup = lapic::ipi::startup | lapic::ipi::assert;
 

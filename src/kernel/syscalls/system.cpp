@@ -32,7 +32,7 @@ j6_status_t
 noop()
 {
     thread &th = thread::current();
-    log::debug(logs::syscall, "Thread %llx called noop syscall.", th.koid());
+    log::verbose(logs::syscall, "Thread %llx called noop syscall.", th.koid());
     return j6_status_ok;
 }
 

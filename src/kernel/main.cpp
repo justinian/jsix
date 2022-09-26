@@ -43,11 +43,11 @@ kernel_main(bootproto::args *args)
     kassert(args->magic == bootproto::args_magic,
             "Bad kernel args magic number");
 
-    log::debug(logs::boot, "jsix init args are at: %016lx", args);
-    log::debug(logs::boot, "     Memory map is at: %016lx", args->mem_map);
-    log::debug(logs::boot, "ACPI root table is at: %016lx", args->acpi_table);
-    log::debug(logs::boot, "Runtime service is at: %016lx", args->runtime_services);
-    log::debug(logs::boot, "    Kernel PML4 is at: %016lx", args->pml4);
+    log::verbose(logs::boot, "jsix init args are at: %016lx", args);
+    log::verbose(logs::boot, "     Memory map is at: %016lx", args->mem_map);
+    log::verbose(logs::boot, "ACPI root table is at: %016lx", args->acpi_table);
+    log::verbose(logs::boot, "Runtime service is at: %016lx", args->runtime_services);
+    log::verbose(logs::boot, "    Kernel PML4 is at: %016lx", args->pml4);
 
     disable_legacy_pic();
 

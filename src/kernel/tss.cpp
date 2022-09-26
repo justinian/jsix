@@ -56,7 +56,7 @@ TSS::create_ist_stacks(uint8_t ist_entries)
         uintptr_t stack_bottom = g_kernel_stacks.get_section();
         uintptr_t stack_top = stack_bottom + stack_bytes - 2 * sizeof(uintptr_t);
 
-        log::debug(logs::memory, "Created IST stack at %016lx size 0x%lx",
+        log::verbose(logs::memory, "Created IST stack at %016lx size 0x%lx",
                 stack_bottom, stack_bytes);
 
         // Pre-realize these stacks, they're no good if they page fault

@@ -20,7 +20,7 @@ enum class logs : uint8_t {
 namespace log {
 
 enum class level : uint8_t {
-    none, debug, info, warn, error, fatal, max
+    silent, fatal, error, warn, info, verbose, spam, max
 };
 
 constexpr unsigned areas_count =
@@ -53,8 +53,7 @@ public:
     inline void log(level severity, logs area, const char *fmt, ...)
     {
         level limit = get_level(area);
-        if (limit == level::none || severity < limit)
-            return;
+        if (severity > limit) return;
 
         va_list args;
         va_start(args, fmt);
@@ -81,11 +80,12 @@ public:
     inline bool has_log() const { return m_buffer.size(); }
 
 private:
-    friend void debug(logs area, const char *fmt, ...);
-    friend void info (logs area, const char *fmt, ...);
-    friend void warn (logs area, const char *fmt, ...);
-    friend void error(logs area, const char *fmt, ...);
-    friend void fatal(logs area, const char *fmt, ...);
+    friend void spam   (logs area, const char *fmt, ...);
+    friend void verbose(logs area, const char *fmt, ...);
+    friend void info   (logs area, const char *fmt, ...);
+    friend void warn   (logs area, const char *fmt, ...);
+    friend void error  (logs area, const char *fmt, ...);
+    friend void fatal  (logs area, const char *fmt, ...);
 
     void output(level severity, logs area, const char *fmt, va_list args);
 
@@ -109,11 +109,12 @@ private:
     static const char *s_level_names[static_cast<unsigned>(level::max)];
 };
 
-void debug(logs area, const char *fmt, ...);
-void info (logs area, const char *fmt, ...);
-void warn (logs area, const char *fmt, ...);
-void error(logs area, const char *fmt, ...);
-void fatal(logs area, const char *fmt, ...);
+void spam   (logs area, const char *fmt, ...);
+void verbose(logs area, const char *fmt, ...);
+void info   (logs area, const char *fmt, ...);
+void warn   (logs area, const char *fmt, ...);
+void error  (logs area, const char *fmt, ...);
+void fatal  (logs area, const char *fmt, ...);
 
 extern log::logger &g_logger;
 

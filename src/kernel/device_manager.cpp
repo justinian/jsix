@@ -137,7 +137,7 @@ device_manager::load_xsdt(const acpi_table_header *header)
     log::info(logs::device, "ACPI 2.0+ tables loading");
 
     put_sig(sig, xsdt->header.type);
-    log::debug(logs::device, "  Found table %s", sig);
+    log::verbose(logs::device, "  Found table %s", sig);
 
     size_t num_tables = acpi_table_entries(xsdt, sizeof(void*));
     for (size_t i = 0; i < num_tables; ++i) {
@@ -145,7 +145,7 @@ device_manager::load_xsdt(const acpi_table_header *header)
             mem::to_virtual(xsdt->headers[i]);
 
         put_sig(sig, header->type);
-        log::debug(logs::device, "  Found table %s", sig);
+        log::verbose(logs::device, "  Found table %s", sig);
 
         kassert(header->validate(), "Table failed validation.");
 
@@ -216,7 +216,7 @@ device_manager::load_apic(const acpi_table_header *header)
                 uint8_t id = util::read_from<uint8_t>(p+3);
                 m_apic_ids.append(id);
 
-                log::debug(logs::device, "    Local APIC uid %x id %x", uid, id);
+                log::spam(logs::device, "    Local APIC uid %x id %x", uid, id);
             }
             break;
 
@@ -225,7 +225,7 @@ device_manager::load_apic(const acpi_table_header *header)
                 uint32_t base_gsi = util::read_from<uint32_t>(p+8);
                 m_ioapics.emplace(base, base_gsi);
 
-                log::debug(logs::device, "    IO APIC gsi %x base %x", base_gsi, base);
+                log::spam(logs::device, "    IO APIC gsi %x base %x", base_gsi, base);
             }
             break;
 
@@ -236,7 +236,7 @@ device_manager::load_apic(const acpi_table_header *header)
                 o.flags = util::read_from<uint16_t>(p+8);
                 m_overrides.append(o);
 
-                log::debug(logs::device, "    Intr source override IRQ %d -> %d Pol %d Tri %d",
+                log::spam(logs::device, "    Intr source override IRQ %d -> %d Pol %d Tri %d",
                         o.source, o.gsi, (o.flags & 0x3), ((o.flags >> 2) & 0x3));
             }
             break;
@@ -248,13 +248,13 @@ device_manager::load_apic(const acpi_table_header *header)
             nmi.flags = util::read_from<uint16_t>(p + 3);
             m_nmis.append(nmi);
 
-            log::debug(logs::device, "    LAPIC NMI Proc %02x LINT%d Pol %d Tri %d",
+            log::spam(logs::device, "    LAPIC NMI Proc %02x LINT%d Pol %d Tri %d",
                     nmi.cpu, nmi.lint, nmi.flags & 0x3, (nmi.flags >> 2) & 0x3);
             }
             break;
 
         default:
-            log::debug(logs::device, "    APIC entry type %d", type);
+            log::spam(logs::device, "    APIC entry type %d", type);
         }
 
         p += length;
@@ -281,7 +281,7 @@ device_manager::load_mcfg(const acpi_table_header *header)
         m_pci[i].bus_end = mcfge.bus_end;
         m_pci[i].base = mem::to_virtual<uint32_t>(mcfge.base);
 
-        log::debug(logs::device, "  Found MCFG entry: base %lx  group %d  bus %d-%d",
+        log::spam(logs::device, "  Found MCFG entry: base %lx  group %d  bus %d-%d",
                 mcfge.base, mcfge.group, mcfge.bus_start, mcfge.bus_end);
     }
 
@@ -293,7 +293,7 @@ device_manager::load_hpet(const acpi_table_header *header)
 {
     const auto *hpet = check_get_table<acpi_hpet>(header);
 
-    log::debug(logs::device, "  Found HPET device #%3d: base %016lx  pmin %d  attr %02x",
+    log::verbose(logs::device, "  Found HPET device #%3d: base %016lx  pmin %d  attr %02x",
             hpet->index, hpet->base_address.address, hpet->periodic_min, hpet->attributes);
 
     uint32_t hwid = hpet->hardware_id;
@@ -303,9 +303,9 @@ device_manager::load_hpet(const acpi_table_header *header)
     uint8_t legacy_replacement = (hwid >> 15) & 1;
     uint32_t pci_vendor_id = (hwid >> 16);
 
-    log::debug(logs::device, "      rev:%02d comparators:%02d count_size_cap:%1d legacy_repl:%1d",
+    log::spam(logs::device, "      rev:%02d comparators:%02d count_size_cap:%1d legacy_repl:%1d",
             rev_id, comparators, count_size_cap, legacy_replacement);
-    log::debug(logs::device, "      pci vendor id: %04x", pci_vendor_id);
+    log::spam(logs::device, "      pci vendor id: %04x", pci_vendor_id);
 
     m_hpets.emplace(hpet->index,
         reinterpret_cast<uint64_t*>(hpet->base_address.address + mem::linear_offset));
@@ -315,7 +315,7 @@ void
 device_manager::probe_pci()
 {
     for (auto &pci : m_pci) {
-        log::debug(logs::device, "Probing PCI group at base %016lx", pci.base);
+        log::verbose(logs::device, "Probing PCI group at base %016lx", pci.base);
 
         for (int bus = pci.bus_start; bus <= pci.bus_end; ++bus) {
             for (int dev = 0; dev < 32; ++dev) {
@@ -419,7 +419,7 @@ device_manager::allocate_msi(const char *name, pci_device &device, irq_callback 
     isr vector = isr::irq00 + irq;
     m_irqs.append({name, cb, data});
 
-    log::debug(logs::device, "Allocating IRQ %02x to %s.", irq, name);
+    log::spam(logs::device, "Allocating IRQ %02x to %s.", irq, name);
 
     device.write_msi_regs(
             0xFEE00000,

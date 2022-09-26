@@ -103,13 +103,16 @@ pci_device::pci_device(pci_group &group, uint8_t bus, uint8_t device, uint8_t fu
     log::info(logs::device, "Found PCIe device at %02d:%02d:%d of type %x.%x.%x id %04x:%04x",
             bus, device, func, m_class, m_subclass, m_progif, m_vendor, m_device);
 
+    log::spam(logs::device, "  = BAR0 %016lld", get_bar(0));
+    log::spam(logs::device, "  = BAR1 %016lld", get_bar(1));
+
     if (*status & 0x0010) {
         // Walk the extended capabilities list
         uint8_t next = m_base[13] & 0xff;
         while (next) {
             pci_cap *cap = reinterpret_cast<pci_cap *>(util::offset_pointer(m_base, next));
             next = cap->next;
-            log::debug(logs::device, "  - found PCI cap type %02x", cap->id);
+            log::verbose(logs::device, "  - found PCI cap type %02x", cap->id);
 
             if (cap->id == pci_cap::type::msi) {
                 m_msi = cap;

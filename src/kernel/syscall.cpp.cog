@@ -83,7 +83,7 @@ syscall_initialize(bool enable_test)
             indent = "    "
 
         cog.outl(f"{indent}syscall_registry[{id}] = reinterpret_cast<uintptr_t>(syscalls::_syscall_verify_{name});")
-        cog.outl(f"""{indent}log::debug(logs::syscall, "Enabling syscall {id:02x} as {name}");""")
+        cog.outl(f"""{indent}log::spam(logs::syscall, "Enabling syscall {id:02x} as {name}");""")
 
         if "test" in method.options:
             cog.outl("}")

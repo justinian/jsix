@@ -200,7 +200,7 @@ vm_space::page_in(const obj::vm_area &vma, uintptr_t offset, uintptr_t phys, siz
     for (size_t i = 0; i < count; ++i) {
         uint64_t &entry = it.entry(page_table::level::pt);
         entry = (phys + i * frame_size) | flags;
-        log::debug(logs::paging, "Setting entry for %016llx: %016llx [%04llx]",
+        log::spam(logs::paging, "Setting entry for %016llx: %016llx [%04llx]",
                 it.vaddress(), (phys + i * frame_size), flags);
         ++it;
     }

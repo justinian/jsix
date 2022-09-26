@@ -15,8 +15,8 @@ log::area_t hash2 = "test_area2"_h;
 TEST_CASE( "logger writing", "[logger]" )
 {
     log::logger logger(test_log_buffer, sizeof(test_log_buffer));
-    logger.register_area(hash1, name1, log::level::debug);
-    logger.register_area(hash2, name2, log::level::debug);
+    logger.register_area(hash1, name1, log::level::verbose);
+    logger.register_area(hash2, name2, log::level::verbose);
     CHECK( hash1 != hash2 );
 
     const char *check1 = logger.area_name(hash1);
@@ -25,7 +25,7 @@ TEST_CASE( "logger writing", "[logger]" )
     CHECK( check1 == name1 );
     CHECK( check2 == name2 );
 
-    log::debug(hash1, "This is a thing %016lx", 35);
+    log::verbose(hash1, "This is a thing %016lx", 35);
     log::info(hash2, "This is a string %s", "foo");
     log::warn(hash1, "This is a thing %016lx", 682);
     log::error(hash2, "This is a string %s", "bar");

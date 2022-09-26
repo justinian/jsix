@@ -28,8 +28,8 @@ struct entry
     char message[0];
 };
 
-static const uint8_t level_colors[] = {0x07, 0x07, 0x0f, 0x0b, 0x09};
-char const * const level_names[] = {"", "debug", "info", "warn", "error", "fatal"};
+static const uint8_t level_colors[] = {0x00, 0x09, 0x01, 0x0b, 0x0f, 0x07, 0x08};
+char const * const level_names[] = {"", "fatal", "error", "warn", "info", "verbose", "spam"};
 char const * const area_names[] = {
 #define LOG(name, lvl) #name ,
 #include <j6/tables/log_areas.inc>
@@ -100,7 +100,7 @@ log_pump_proc(j6_handle_t cout)
         uint8_t level_color = level_colors[e->severity];
 
         size_t len = snprintf(stringbuf, sizeof(stringbuf),
-                "\e[38;5;%dm%7s %5s: %s\e[38;5;0m\r\n",
+                "\e[38;5;%dm%7s %7s: %s\e[38;5;0m\r\n",
                 level_color, area_name, level_name, e->message);
         send_all(cout, stringbuf, len);
     }

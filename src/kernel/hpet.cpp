@@ -41,30 +41,30 @@ hpet::hpet(uint8_t index, uint64_t *base) :
     //  .install_irq(2, "HPET Timer", hpet_irq_callback, this);
     // kassert(installed, "Installing HPET IRQ handler");
 
-    log::debug(logs::timer, "HPET %d capabilities:", index);
-    log::debug(logs::timer, "       revision: %d", caps & 0xff);
-    log::debug(logs::timer, "         timers: %d", m_timers);
-    log::debug(logs::timer, "           bits: %d", ((caps >> 13) & 1) ? 64 : 32);
-    log::debug(logs::timer, "    LRR capable: %d", ((caps >> 15) & 1));
-    log::debug(logs::timer, "         period: %dns", m_period / 1000000);
-    log::debug(logs::timer, " global enabled: %d", config & 1);
-    log::debug(logs::timer, "     LRR enable: %d", (config >> 1) & 1);
+    log::spam(logs::timer, "HPET %d capabilities:", index);
+    log::spam(logs::timer, "       revision: %d", caps & 0xff);
+    log::spam(logs::timer, "         timers: %d", m_timers);
+    log::spam(logs::timer, "           bits: %d", ((caps >> 13) & 1) ? 64 : 32);
+    log::spam(logs::timer, "    LRR capable: %d", ((caps >> 15) & 1));
+    log::spam(logs::timer, "         period: %dns", m_period / 1000000);
+    log::spam(logs::timer, " global enabled: %d", config & 1);
+    log::spam(logs::timer, "     LRR enable: %d", (config >> 1) & 1);
 
     for (unsigned i = 0; i < m_timers; ++i) {
         disable_timer(i);
         uint64_t config = *timer_config(m_base, i);
 
-        log::debug(logs::timer, "HPET %d timer %d:", index, i);
-        log::debug(logs::timer, "       int type: %d", (config >> 1) & 1);
-        log::debug(logs::timer, "     int enable: %d", (config >> 2) & 1);
-        log::debug(logs::timer, "     timer type: %d", (config >> 3) & 1);
-        log::debug(logs::timer, "   periodic cap: %d", (config >> 4) & 1);
-        log::debug(logs::timer, "           bits: %d", ((config >> 5) & 1) ? 64 : 32);
-        log::debug(logs::timer, "        32 mode: %d", (config >> 8) & 1);
-        log::debug(logs::timer, "      int route: %d", (config >> 9) & 0x1f);
-        log::debug(logs::timer, "     FSB enable: %d", (config >> 14) & 1);
-        log::debug(logs::timer, "    FSB capable: %d", (config >> 15) & 1);
-        log::debug(logs::timer, "     rotung cap: %08x", (config >> 32));
+        log::spam(logs::timer, "HPET %d timer %d:", index, i);
+        log::spam(logs::timer, "       int type: %d", (config >> 1) & 1);
+        log::spam(logs::timer, "     int enable: %d", (config >> 2) & 1);
+        log::spam(logs::timer, "     timer type: %d", (config >> 3) & 1);
+        log::spam(logs::timer, "   periodic cap: %d", (config >> 4) & 1);
+        log::spam(logs::timer, "           bits: %d", ((config >> 5) & 1) ? 64 : 32);
+        log::spam(logs::timer, "        32 mode: %d", (config >> 8) & 1);
+        log::spam(logs::timer, "      int route: %d", (config >> 9) & 0x1f);
+        log::spam(logs::timer, "     FSB enable: %d", (config >> 14) & 1);
+        log::spam(logs::timer, "    FSB capable: %d", (config >> 15) & 1);
+        log::spam(logs::timer, "     rotung cap: %08x", (config >> 32));
     }
 
 }
@@ -95,13 +95,13 @@ hpet::disable_timer(unsigned timer)
 void
 hpet::callback()
 {
-    log::debug(logs::timer, "HPET %d got irq", m_index);
+    log::spam(logs::timer, "HPET %d got irq", m_index);
 }
 
 void
 hpet::enable()
 {
-    log::debug(logs::timer, "HPET %d enabling", m_index);
+    log::verbose(logs::timer, "HPET %d enabling", m_index);
     *configuration(m_base) = (*configuration(m_base) & 0x3) | 1;
 }
 

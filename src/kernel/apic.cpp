@@ -32,7 +32,7 @@ apic_read(uint32_t volatile *apic, uint16_t offset)
 static void
 apic_write(uint32_t volatile *apic, uint16_t offset, uint32_t value)
 {
-    log::debug(logs::apic, "LAPIC write: %x = %08lx", offset, value);
+    log::spam(logs::apic, "LAPIC write: %x = %08lx", offset, value);
     *(apic + offset/sizeof(uint32_t)) = value;
 }
 
@@ -161,7 +161,7 @@ lapic::enable_timer(isr vector, bool repeat)
         lvte |= 0x20000;
     apic_write(m_base, lapic_lvt_timer, lvte);
 
-    log::debug(logs::apic, "Enabling APIC timer at isr %02x", vector);
+    log::verbose(logs::apic, "Enabling APIC timer at isr %02x", vector);
 }
 
 uint32_t
@@ -200,7 +200,7 @@ lapic::enable_lint(uint8_t num, isr vector, bool nmi, uint16_t flags)
         lvte |= (1 << 15);
 
     apic_write(m_base, off, lvte);
-    log::debug(logs::apic, "APIC LINT%d enabled as %s %d %s-triggered, active %s.",
+    log::verbose(logs::apic, "APIC LINT%d enabled as %s %d %s-triggered, active %s.",
             num, nmi ? "NMI" : "ISR", vector,
             polarity == 3 ? "level" : "edge",
             trigger == 3 ? "low" : "high");
@@ -211,7 +211,7 @@ lapic::enable()
 {
     apic_write(m_base, lapic_spurious,
             apic_read(m_base, lapic_spurious) | 0x100);
-    log::debug(logs::apic, "LAPIC enabled!");
+    log::verbose(logs::apic, "LAPIC enabled!");
 }
 
 void
@@ -219,7 +219,7 @@ lapic::disable()
 {
     apic_write(m_base, lapic_spurious,
             apic_read(m_base, lapic_spurious) & ~0x100);
-    log::debug(logs::apic, "LAPIC disabled.");
+    log::verbose(logs::apic, "LAPIC disabled.");
 }
 
 
@@ -233,7 +233,7 @@ ioapic::ioapic(uintptr_t base, uint32_t base_gsi) :
     m_id = (id >> 24) & 0xff;
     m_version = version & 0xff;
     m_num_gsi = (version >> 16) & 0xff;
-    log::debug(logs::apic, "IOAPIC %d loaded, version %d, GSIs %d-%d",
+    log::verbose(logs::apic, "IOAPIC %d loaded, version %d, GSIs %d-%d",
             m_id, m_version, base_gsi, base_gsi + (m_num_gsi - 1));
 
     for (uint8_t i = 0; i < m_num_gsi; ++i) {
@@ -246,7 +246,7 @@ ioapic::ioapic(uintptr_t base, uint32_t base_gsi) :
 void
 ioapic::redirect(uint8_t irq, isr vector, uint16_t flags, bool masked)
 {
-    log::debug(logs::apic, "IOAPIC %d redirecting irq %3d to vector %3d [%04x]%s",
+    log::verbose(logs::apic, "IOAPIC %d redirecting irq %3d to vector %3d [%04x]%s",
             m_id, irq, vector, flags, masked ? " (masked)" : "");
 
     uint64_t entry = static_cast<uint64_t>(vector);
@@ -269,7 +269,7 @@ ioapic::redirect(uint8_t irq, isr vector, uint16_t flags, bool masked)
 void
 ioapic::mask(uint8_t irq, bool masked)
 {
-    log::debug(logs::apic, "IOAPIC %d %smasking irq %3d",
+    log::verbose(logs::apic, "IOAPIC %d %smasking irq %3d",
             m_id, masked ? "" : "un", irq);
 
     uint32_t entry = ioapic_read(m_base, (2 * irq) + 0x10);
@@ -284,7 +284,7 @@ ioapic::mask(uint8_t irq, bool masked)
 void
 ioapic::dump_redirs() const
 {
-    log::debug(logs::apic, "IOAPIC %d redirections:", m_id);
+    log::spam(logs::apic, "IOAPIC %d redirections:", m_id);
 
     for (uint8_t i = 0; i < m_num_gsi; ++i) {
         uint64_t low = ioapic_read(m_base, 0x10 + (2 *i));
@@ -300,7 +300,7 @@ ioapic::dump_redirs() const
         uint8_t mask = (redir >> 16) & 0x1;
         uint8_t dest = (redir >> 56) & 0xff;
 
-        log::debug(logs::apic, "  %2d: vec %3d %s active, %s-triggered %s dest %d: %x",
+        log::spam(logs::apic, "  %2d: vec %3d %s active, %s-triggered %s dest %d: %x",
                 m_base_gsi + i, vector,
                 polarity ? "low" : "high",
                 trigger ? "level" : "edge",

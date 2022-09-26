@@ -144,7 +144,7 @@ IDT::dump(unsigned index) const
         }
 
         if (idt[i].flags & 0x80) {
-            log::debug(logs::boot,
+            log::spam(logs::boot,
                     "   Entry %3d: Base:%lx Sel(rpl %d, ti %d, %3d) IST:%d %s DPL:%d", i, base,
                     (idt[i].selector & 0x3),
                     ((idt[i].selector & 0x4) >> 2),

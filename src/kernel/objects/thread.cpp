@@ -143,7 +143,7 @@ thread::setup_kernel_stack()
     for (unsigned i = 0; i < null_frame_entries; ++i)
         null_frame[i] = 0;
 
-    log::debug(logs::memory, "Created kernel stack at %016lx size 0x%lx",
+    log::verbose(logs::memory, "Created kernel stack at %016lx size 0x%lx",
             stack_addr, stack_bytes);
 
     m_tcb.kernel_stack = stack_addr;

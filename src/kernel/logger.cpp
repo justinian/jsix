@@ -22,7 +22,7 @@ log::logger &g_logger = __g_logger_storage.value;
 namespace log {
 
 logger *logger::s_log = nullptr;
-const char *logger::s_level_names[] = {"", "debug", "info", "warn", "error", "fatal"};
+const char *logger::s_level_names[] = {"", "fatal", "error", "warn", "info", "verbose", "spam"};
 const char *logger::s_area_names[] = {
 #define LOG(name, lvl) #name ,
 #include <j6/tables/log_areas.inc>
@@ -112,14 +112,15 @@ logger::get_entry(void *buffer, size_t size)
         logger *l = logger::s_log; \
         if (!l) return; \
         level limit = l->get_level(area); \
-        if (limit == level::none || level::name < limit) return; \
+        if (level::name > limit) return; \
         va_list args; \
         va_start(args, fmt); \
         l->output(level::name, area, fmt, args); \
         va_end(args); \
     }
 
-LOG_LEVEL_FUNCTION(debug);
+LOG_LEVEL_FUNCTION(spam);
+LOG_LEVEL_FUNCTION(verbose);
 LOG_LEVEL_FUNCTION(info);
 LOG_LEVEL_FUNCTION(warn);
 LOG_LEVEL_FUNCTION(error);

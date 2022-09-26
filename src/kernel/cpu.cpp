@@ -38,16 +38,16 @@ cpu_validate()
     cpu::cpu_id::features features = cpu.validate();
 
     log::info(logs::boot, "CPU: %s", brand_name);
-    log::debug(logs::boot, "    Vendor is %s", cpu.vendor_id());
+    log::info(logs::boot, "    Vendor is %s", cpu.vendor_id());
 
-    log::debug(logs::boot, "    Higest basic CPUID: 0x%02x", cpu.highest_basic());
-    log::debug(logs::boot, "    Higest ext CPUID:   0x%02x", cpu.highest_ext() & ~cpu::cpu_id::cpuid_extended);
+    log::spam(logs::boot, "    Higest basic CPUID: 0x%02x", cpu.highest_basic());
+    log::spam(logs::boot, "    Higest ext CPUID:   0x%02x", cpu.highest_ext() & ~cpu::cpu_id::cpuid_extended);
 
 #define CPU_FEATURE_OPT(name, ...) \
-    log::debug(logs::boot, "    Supports %9s: %s", #name, features[cpu::feature::name] ? "yes" : "no");
+    log::verbose(logs::boot, "    Supports %9s: %s", #name, features[cpu::feature::name] ? "yes" : "no");
 
 #define CPU_FEATURE_REQ(name, feat_leaf, feat_sub, regname, bit) \
-    log::debug(logs::boot, "    Supports %9s: %s", #name, features[cpu::feature::name] ? "yes" : "no"); \
+    log::verbose(logs::boot, "    Supports %9s: %s", #name, features[cpu::feature::name] ? "yes" : "no"); \
     kassert(features[cpu::feature::name], "Missing required CPU feature " #name );
 
 #include "cpu/features.inc"
@@ -121,7 +121,7 @@ bsp_late_init()
     asm ("mov %%cr4, %0" : "=r"(cr4v));
 
     uint64_t efer = rdmsr(msr::ia32_efer);
-    log::debug(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx", cr0v, cr4v, efer);
+    log::spam(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx", cr0v, cr4v, efer);
 }
 
 cpu_data *

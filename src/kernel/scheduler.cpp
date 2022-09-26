@@ -78,10 +78,10 @@ scheduler::create_kernel_task(void (*task)(), uint8_t priority, bool constant)
 
     th->set_state(thread::state::ready);
 
-    log::debug(logs::task, "Creating kernel task: thread %llx  pri %d", th->koid(), tcb->priority);
-    log::debug(logs::task, "    RSP0 %016lx", tcb->rsp0);
-    log::debug(logs::task, "     RSP %016lx", tcb->rsp);
-    log::debug(logs::task, "    PML4 %016lx", tcb->pml4);
+    log::verbose(logs::task, "Creating kernel task: thread %llx  pri %d", th->koid(), tcb->priority);
+    log::verbose(logs::task, "    RSP0 %016lx", tcb->rsp0);
+    log::verbose(logs::task, "     RSP %016lx", tcb->rsp);
+    log::verbose(logs::task, "    PML4 %016lx", tcb->pml4);
 }
 
 uint32_t
@@ -157,7 +157,7 @@ scheduler::prune(run_queue &queue, uint64_t now)
                 delete &p;
         } else {
             queue.blocked.remove(remove);
-            log::debug(logs::sched, "Prune: readying unblocked thread %llx", th->koid());
+            log::spam(logs::sched, "Prune: readying unblocked thread %llx", th->koid());
             queue.ready[remove->priority].push_back(remove);
         }
     }
@@ -186,7 +186,7 @@ scheduler::check_promotions(run_queue &queue, uint64_t now)
                 tcb->priority -= 1;
                 tcb->time_left = quantum(tcb->priority);
                 queue.ready[tcb->priority].push_back(tcb);
-                log::info(logs::sched, "Scheduler promoting thread %llx, priority %d",
+                log::verbose(logs::sched, "Scheduler promoting thread %llx, priority %d",
                         th->koid(), tcb->priority);
             }
         }
@@ -236,7 +236,7 @@ scheduler::steal_work(cpu_data &cpu)
         other_queue_lock.release();
 
         if (stolen)
-            log::debug(logs::sched, "CPU%02x stole %2d tasks from CPU%02x",
+            log::verbose(logs::sched, "CPU%02x stole %2d tasks from CPU%02x",
                     cpu.index, stolen, i);
     }
 }
@@ -276,7 +276,7 @@ scheduler::schedule()
         if (priority < max_priority && !constant) {
             // Process used its whole timeslice, demote it
             ++queue.current->priority;
-            log::debug(logs::sched, "Scheduler  demoting thread %llx, priority %d",
+            log::verbose(logs::sched, "Scheduler  demoting thread %llx, priority %d",
                     th->koid(), queue.current->priority);
         }
         queue.current->time_left = quantum(queue.current->priority);
@@ -322,11 +322,11 @@ scheduler::schedule()
     cpu.process = &next_thread->parent();
     queue.current = next;
 
-    log::debug(logs::sched, "CPU%02x switching threads %llx->%llx",
+    log::spam(logs::sched, "CPU%02x switching threads %llx->%llx",
             cpu.index, th->koid(), next_thread->koid());
-    log::debug(logs::sched, "    priority %d time left %d @ %lld.",
+    log::spam(logs::sched, "    priority %d time left %d @ %lld.",
             next->priority, next->time_left, now);
-    log::debug(logs::sched, "    PML4 %llx", next->pml4);
+    log::spam(logs::sched, "    PML4 %llx", next->pml4);
 
     queue.lock.release(&waiter);
     task_switch(queue.current);
