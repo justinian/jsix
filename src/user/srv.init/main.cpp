@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <j6/caps.h>
+#include <j6/cap_flags.h>
 #include <j6/errors.h>
 #include <j6/init.h>
 #include <j6/syscalls.h>

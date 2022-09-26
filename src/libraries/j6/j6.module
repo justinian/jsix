@@ -10,7 +10,7 @@ j6 = module("j6",
         "sysconf.cpp.cog",
     ],
     public_headers = [
-        "j6/caps.h.cog",
+        "j6/cap_flags.h.cog",
         "j6/errors.h",
         "j6/flags.h",
         "j6/init.h",
@@ -33,7 +33,7 @@ sysconf = join(source_root, "definitions/sysconf.yaml")
 definitions = glob('definitions/**/*.def', recursive=True)
 
 j6.add_depends([
-        "j6/caps.h.cog",
+        "j6/cap_flags.h.cog",
         "j6/syscalls.h.cog",
         "syscalls.s.cog",
     ], definitions)

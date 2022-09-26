@@ -1,4 +1,4 @@
-#include <j6/caps.h>
+#include <j6/cap_flags.h>
 #include <j6/errors.h>
 #include <j6/syscalls.h>
 #include <j6/types.h>

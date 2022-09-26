@@ -1,7 +1,7 @@
 #pragma once
 // vim: ft=cpp
 
-/// \file caps.h
+/// \file cap_flags.h
 /// Capability bitfield constants
 
 #define j6_handle_caps(h)  (((h)>>32) & 0xffffff)

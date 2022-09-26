@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <j6/caps.h>
+#include <j6/cap_flags.h>
 #include <j6/errors.h>
 #include <j6/flags.h>
 #include <j6/init.h>

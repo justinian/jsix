@@ -2,7 +2,7 @@
 /// \file system.h
 /// Definition of kobject type representing the system
 
-#include <j6/caps.h>
+#include <j6/cap_flags.h>
 #include "objects/kobject.h"
 
 namespace obj {

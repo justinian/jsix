@@ -2,7 +2,7 @@
 /// \file process.h
 /// Definition of process kobject types
 
-#include <j6/caps.h>
+#include <j6/cap_flags.h>
 #include <util/map.h>
 #include <util/vector.h>
 

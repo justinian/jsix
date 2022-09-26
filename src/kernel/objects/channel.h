@@ -2,7 +2,7 @@
 /// \file channel.h
 /// Definition of channel objects and related functions
 
-#include <j6/caps.h>
+#include <j6/cap_flags.h>
 #include <util/bip_buffer.h>
 #include <util/counted.h>
 #include <util/spinlock.h>

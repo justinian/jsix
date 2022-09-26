@@ -2,7 +2,7 @@
 /// \file mailbox.h
 /// Definition of mailbox kobject types
 
-#include <j6/caps.h>
+#include <j6/cap_flags.h>
 #include <util/counted.h>
 #include <util/map.h>
 #include <util/spinlock.h>

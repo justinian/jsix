@@ -3,7 +3,7 @@
 /// Definition of event kobject types
 
 #include <stdint.h>
-#include <j6/caps.h>
+#include <j6/cap_flags.h>
 
 #include "objects/kobject.h"
 #include "wait_queue.h"

@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <arch/memory.h>
-#include <j6/caps.h>
+#include <j6/cap_flags.h>
 #include <j6/errors.h>
 #include <j6/types.h>
 #include <util/counted.h>

@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <j6/caps.h>
+#include <j6/cap_flags.h>
 #include <util/vector.h>
 #include <util/enum_bitfields.h>
 
