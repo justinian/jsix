@@ -37,6 +37,9 @@ frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
 static util::no_construct<obj::vm_area_untracked> __g_kernel_heap_area_storage;
 obj::vm_area_untracked &g_kernel_heap_area = __g_kernel_heap_area_storage.value;
 
+static util::no_construct<obj::vm_area_untracked> __g_kernel_heapmap_area_storage;
+obj::vm_area_untracked &g_kernel_heapmap_area = __g_kernel_heapmap_area_storage.value;
+
 static util::no_construct<obj::vm_area_guarded> __g_kernel_stacks_storage;
 obj::vm_area_guarded &g_kernel_stacks = __g_kernel_stacks_storage.value;
 
@@ -73,7 +76,6 @@ memory_initialize_pre_ctors(bootproto::args &kargs)
 
     page_table *kpml4 = static_cast<page_table*>(kargs.pml4);
 
-    new (&g_kernel_heap) heap_allocator {mem::heap_offset, mem::heap_size};
 
     frame_block *blocks = reinterpret_cast<frame_block*>(mem::bitmap_offset);
     new (&g_frame_allocator) frame_allocator {blocks, kargs.frame_blocks.count};
@@ -87,13 +89,20 @@ memory_initialize_pre_ctors(bootproto::args &kargs)
         reg = reg->next;
     }
 
+
     obj::process *kp = obj::process::create_kernel_process(kpml4);
     vm_space &vm = kp->space();
 
     obj::vm_area *heap = new (&g_kernel_heap_area)
         obj::vm_area_untracked(mem::heap_size, vm_flags::write);
 
+    obj::vm_area *heap_map = new (&g_kernel_heapmap_area)
+        obj::vm_area_untracked(mem::heapmap_size, vm_flags::write);
+
     vm.add(mem::heap_offset, heap);
+    vm.add(mem::heapmap_offset, heap_map);
+
+    new (&g_kernel_heap) heap_allocator {mem::heap_offset, mem::heap_size, mem::heapmap_offset};
 
     obj::vm_area *stacks = new (&g_kernel_stacks) obj::vm_area_guarded {
         mem::stacks_offset,

@@ -1,6 +1,10 @@
 #include <util/hash.h>
 #include "test_case.h"
 
+constexpr static uint64_t hash1_expected = 0x3d8342e701016873;
+constexpr static uint64_t hash3_expected = 0xf0ac589d837f11b8;
+constexpr static uint64_t hash4_expected = 0x034742bc87c5c1bc;
+
 class hash_tests :
     public test::fixture
 {
@@ -8,19 +12,17 @@ class hash_tests :
 
 TEST_CASE( hash_tests, equality_test64 )
 {
-    const auto hash1 = static_cast<unsigned>("hash1!"_id);
-    CHECK( hash1 == 210, "hash gave unexpected value");
+    const uint64_t hash1 = "hash1!"_id;
+    const uint64_t hash2 = "hash1!"_id;
+    const uint64_t hash3 = "not hash1!"_id;
+    const uint64_t hash4 = "another thing that's longer"_id;
 
-    const auto hash2 = static_cast<unsigned>("hash1!"_id);
-    CHECK(hash1 == hash2, "hashes of equal strings should be equal");
-
-    const auto hash3 = static_cast<unsigned>("not hash1!"_id);
-    CHECK(hash1 != hash3, "hashes of different strings should not be equal");
-    CHECK(hash3 == 37, "hash gave unexpected value");
-
-    const auto hash4 = static_cast<unsigned>("another thing that's longer"_id);
-    CHECK(hash1 != hash4, "hashes of different strings should not be equal");
-    CHECK(hash4 == 212, "hash gave unexpected value");
+    CHECK( hash1 == hash1_expected, "hash gave unexpected value");
+    CHECK( hash1 == hash2, "hashes of equal strings should be equal");
+    CHECK( hash1 != hash3, "hashes of different strings should not be equal");
+    CHECK( hash3 == hash3_expected, "hash gave unexpected value");
+    CHECK( hash1 != hash4, "hashes of different strings should not be equal");
+    CHECK( hash4 == hash4_expected, "hash gave unexpected value");
 }
 
 TEST_CASE( hash_tests, equality_test8 )

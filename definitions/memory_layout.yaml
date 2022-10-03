@@ -7,8 +7,11 @@
   size: 1T
   shared: true
 
+- name: heapmap
+  size: 32G
+
 - name: heap
-  size: 64G
+  size: 32G
 
 - name: stacks
   size: 64G

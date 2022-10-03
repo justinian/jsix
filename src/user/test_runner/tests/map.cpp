@@ -1,5 +1,6 @@
 #include <vector>
 #include <util/map.h>
+#include <util/node_map.h>
 
 #include "test_case.h"
 #include "test_rng.h"
@@ -9,9 +10,59 @@ struct map_tests :
 {
 };
 
+struct map_item
+{
+    uint64_t key;
+    uint64_t value;
+};
+
+uint64_t & get_map_key(map_item &mi) { return mi.key; }
+
+TEST_CASE( map_tests, node_map )
+{
+    util::node_map<uint64_t, map_item> map;
+    map.insert({12, 14});
+    map.insert({13, 15});
+    map.insert({14, 16});
+    map.insert({15, 17});
+    map.insert({16, 18});
+    map.insert({20, 22});
+    map.insert({24, 26});
+
+    CHECK( map.count() == 7, "Map returned incorred count()" );
+
+    auto *item = map.find(12);
+    CHECK( item, "Did not find inserted item" );
+    CHECK( item && item->key == 12 && item->value == 14,
+            "Found incorrect item" );
+
+    item = map.find(40);
+    CHECK( !item, "Found non-inserted item" );
+
+    bool found = map.erase(12);
+    CHECK( found, "Failed to delete inserted item" );
+
+    item = map.find(12);
+    CHECK( !item, "Found item after delete" );
+
+    // Force the map to grow
+    map.insert({35, 38});
+    map.insert({36, 39});
+    map.insert({37, 40});
+
+    CHECK( map.count() == 9, "Map returned incorred count()" );
+
+    item = map.find(13);
+    CHECK( item, "Did not find inserted item after grow()" );
+    CHECK( item && item->key == 13 && item->value == 15,
+            "Found incorrect item after grow()" );
+}
+
 TEST_CASE( map_tests, insert )
 {
     test::rng rng {12345};
+    double foo = 1.02345;
+    foo *= 4.6e4;
 
     std::vector<int> ints;
     for (int i = 0; i < 1000; ++i)

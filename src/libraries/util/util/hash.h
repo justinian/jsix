@@ -59,13 +59,30 @@ constexpr inline typename types::sized_uint<N>::type hash_fold(typename types::s
     return (value2 >> types::sized_uint<N>::bits) ^ (value2 & types::sized_uint<N>::mask);
 }
 
+inline uint64_t splitmix64(uint64_t v) {
+    // From splitmix64, http://xorshift.di.unimi.it/splitmix64.c
+    v = (v ^ (v >> 30)) * 0xbf58476d1ce4e5b9ull;
+    v = (v ^ (v >> 27)) * 0x94d049bb133111ebull;
+    v = v ^ (v >> 31);
+    return v;
+}
+
+inline uint32_t inthash32(uint32_t v) {
+    // From the H2 database's integer hash
+    // https://github.com/h2database/h2database
+    v = ((v >> 16) ^ v) * 0x45d9f3b;
+    v = ((v >> 16) ^ v) * 0x45d9f3b;
+    v = (v >> 16) ^ v;
+    return v;
+}
+
 template <typename T>
 inline uint64_t hash(const T &v) { return fnv1a::hash64(reinterpret_cast<const void*>(&v), sizeof(T)); } 
 
-template <> inline uint64_t hash<uint8_t> (const uint8_t &i)  { return i; }
-template <> inline uint64_t hash<uint16_t>(const uint16_t &i) { return i; }
-template <> inline uint64_t hash<uint32_t>(const uint32_t &i) { return i; }
-template <> inline uint64_t hash<uint64_t>(const uint64_t &i) { return i; }
+template <> inline uint64_t hash<uint8_t> (const uint8_t &i)  { return splitmix64(i); }
+template <> inline uint64_t hash<uint16_t>(const uint16_t &i) { return splitmix64(i); }
+template <> inline uint64_t hash<uint32_t>(const uint32_t &i) { return splitmix64(i); }
+template <> inline uint64_t hash<uint64_t>(const uint64_t &i) { return splitmix64(i); }
 template <> inline uint64_t hash<const char *>(const char * const &s) { return fnv1a::hash64_string(s); }
 
 } // namespace util

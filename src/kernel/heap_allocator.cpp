@@ -9,69 +9,43 @@
 #include "heap_allocator.h"
 #include "memory.h"
 
-struct heap_allocator::mem_header
+uint32_t & get_map_key(heap_allocator::block_info &info) { return info.offset; }
+
+struct heap_allocator::free_header
 {
-    mem_header(mem_header *prev, mem_header *next, uint8_t order) :
-        m_prev(prev), m_next(next)
-    {
-        set_order(order);
-    }
-
-    inline void set_order(uint8_t order) {
-        m_prev = reinterpret_cast<mem_header *>(
-            reinterpret_cast<uintptr_t>(prev()) | (order & 0x3f));
-    }
-
-    inline void set_used(bool used) {
-        m_next = reinterpret_cast<mem_header *>(
-            reinterpret_cast<uintptr_t>(next()) | (used ? 1 : 0));
-    }
-
-    inline void set_next(mem_header *next) {
-        bool u = used();
-        m_next = next;
-        set_used(u);
-    }
-
-    inline void set_prev(mem_header *prev) {
-        uint8_t s = order();
-        m_prev = prev;
-        set_order(s);
+    void clear(unsigned new_order) {
+        prev = next = nullptr;
+        order = new_order;
     }
 
     void remove() {
-        if (next()) next()->set_prev(prev());
-        if (prev()) prev()->set_next(next());
-        set_prev(nullptr);
-        set_next(nullptr);
+        if (next) next->prev = prev;
+        if (prev) prev->next = next;
+        prev = next = nullptr;
     }
 
-    inline mem_header * next() { return util::mask_pointer(m_next, 0x3f); }
-    inline mem_header * prev() { return util::mask_pointer(m_prev, 0x3f); }
-
-    inline mem_header * buddy() const {
-        return reinterpret_cast<mem_header *>(
-            reinterpret_cast<uintptr_t>(this) ^ (1 << order()));
+    inline free_header * buddy() const {
+        return reinterpret_cast<free_header *>(
+            reinterpret_cast<uintptr_t>(this) ^ (1 << order));
     }
 
     inline bool eldest() const { return this < buddy(); }
 
-    inline uint8_t order() const { return reinterpret_cast<uintptr_t>(m_prev) & 0x3f; }
-    inline bool used() const { return reinterpret_cast<uintptr_t>(m_next) & 0x1; }
-
-private:
-    mem_header *m_prev;
-    mem_header *m_next;
+    free_header *prev;
+    free_header *next;
+    unsigned order;
 };
 
 
 heap_allocator::heap_allocator() : m_start {0}, m_end {0} {}
 
-heap_allocator::heap_allocator(uintptr_t start, size_t size) :
+heap_allocator::heap_allocator(uintptr_t start, size_t size, uintptr_t heapmap) :
     m_start {start},
-    m_end {start+size},
-    m_blocks {0},
-    m_allocated_size {0}
+    m_end {start},
+    m_maxsize {size},
+    m_allocated_size {0},
+    m_map (reinterpret_cast<block_info*>(heapmap), 512)
+
 {
     memset(m_free, 0, sizeof(m_free));
 }
@@ -79,12 +53,10 @@ heap_allocator::heap_allocator(uintptr_t start, size_t size) :
 void *
 heap_allocator::allocate(size_t length)
 {
-    size_t total = length + sizeof(mem_header);
-
     if (length == 0)
         return nullptr;
 
-    unsigned order = util::log2(total);
+    unsigned order = util::log2(length);
     if (order < min_order)
         order = min_order;
 
@@ -94,10 +66,16 @@ heap_allocator::allocate(size_t length)
 
     util::scoped_lock lock {m_lock};
 
-    mem_header *header = pop_free(order);
-    header->set_used(true);
     m_allocated_size += (1 << order);
-    return header + 1;
+
+    free_header *block = pop_free(order);
+    if (!block && !split_off(order, block)) {
+        return new_block(order);
+    }
+
+    m_map[map_key(block)].free = false;
+
+    return block;
 }
 
 void
@@ -111,70 +89,107 @@ heap_allocator::free(void *p)
 
     util::scoped_lock lock {m_lock};
 
-    mem_header *header = reinterpret_cast<mem_header *>(p);
-    header -= 1; // p points after the header
-    header->set_used(false);
-    m_allocated_size -= (1 << header->order());
+    free_header *block = reinterpret_cast<free_header *>(p);
+    block_info *info = m_map.find(map_key(block));
+    kassert(info, "Attempt to free pointer not known to the heap");
+    if (!info) return;
 
-    while (header->order() != max_order) {
-        auto order = header->order();
+    m_allocated_size -= (1 << info->order);
 
-        mem_header *buddy = header->buddy();
-        if (buddy->used() || buddy->order() != order)
-            break;
-
-        if (get_free(order) == buddy)
-            get_free(order) = buddy->next();
-
-        buddy->remove();
-
-        header = header->eldest() ? header : buddy;
-        header->set_order(order + 1);
-    }
-
-    uint8_t order = header->order();
-    header->set_next(get_free(order));
-    get_free(order) = header;
-    if (header->next())
-        header->next()->set_prev(header);
+    block->clear(info->order);
+    block = merge_block(block);
+    register_free_block(block, block->order);
 }
 
-void
-heap_allocator::ensure_block(unsigned order)
-{
-    if (get_free(order) != nullptr)
-        return;
-
-    if (order == max_order) {
-        size_t bytes = (1 << max_order);
-        uintptr_t next = m_start + m_blocks * bytes;
-        if (next + bytes <= m_end) {
-            mem_header *nextp = reinterpret_cast<mem_header *>(next);
-            new (nextp) mem_header(nullptr, nullptr, order);
-            get_free(order) = nextp;
-            ++m_blocks;
-        }
-    } else {
-        mem_header *orig = pop_free(order + 1);
-        if (orig) {
-            mem_header *next = util::offset_pointer(orig, 1 << order);
-            new (next) mem_header(orig, nullptr, order);
-
-            orig->set_next(next);
-            orig->set_order(order);
-            get_free(order) = orig;
-        }
-    }
-}
-
-heap_allocator::mem_header *
+heap_allocator::free_header *
 heap_allocator::pop_free(unsigned order)
 {
-    ensure_block(order);
-    mem_header *block = get_free(order);
+    free_header *block = get_free(order);
     if (block) {
-        get_free(order) = block->next();
+        get_free(order) = block->next;
         block->remove();
     }
     return block;
+}
+
+heap_allocator::free_header *
+heap_allocator::merge_block(free_header *block)
+{
+    // The lock needs to be held while calling merge_block
+
+    unsigned order = block->order;
+    while (order < max_order) {
+        block_info *info = m_map.find(map_key(block->buddy()));
+        if (!info || !info->free || info->order != order)
+            break;
+
+        free_header *buddy = block->buddy();
+        if (get_free(order) == buddy)
+            get_free(order) = buddy->next;
+        buddy->remove();
+
+        block = block->eldest() ? block : buddy;
+
+        m_map.erase(map_key(block->buddy()));
+        block->order = m_map[map_key(block)].order = ++order;
+    }
+
+    return block;
+}
+
+void *
+heap_allocator::new_block(unsigned order)
+{
+    // The lock needs to be held while calling new_block
+
+    // Add the largest blocks possible until m_end is
+    // aligned to be a block of the requested order
+    unsigned current = address_order(m_end);
+    while (current < order) {
+        register_free_block(reinterpret_cast<free_header*>(m_end), current);
+        m_end += 1 << current;
+        current = address_order(m_end);
+    }
+
+    void *block = reinterpret_cast<void*>(m_end);
+    m_end += 1 << order;
+    m_map[map_key(block)].order = order;
+    return block;
+}
+
+void
+heap_allocator::register_free_block(free_header *block, unsigned order)
+{
+    // The lock needs to be held while calling register_free_block
+
+    block_info &info = m_map[map_key(block)];
+    info.free = true;
+    info.order = order;
+
+    block->clear(order);
+    block->next = get_free(order);
+    get_free(order) = block;
+
+}
+
+bool
+heap_allocator::split_off(unsigned order, free_header *&block)
+{
+    // The lock needs to be held while calling split_off
+
+    const unsigned next = order + 1;
+    if (next > max_order) {
+        block = nullptr;
+        return false;
+    }
+
+    block = pop_free(next);
+    if (!block && !split_off(next, block))
+        return false;
+
+    block->order = order;
+    free_header *buddy = block->buddy();
+    register_free_block(block->buddy(), order);
+    m_map[map_key(block)].order = order;
+    return true;
 }
