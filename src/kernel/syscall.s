@@ -116,6 +116,7 @@ syscall_enable:
 
 	mov rcx, MSR_FMASK
 	mov rax, FMASK_VAL
+	mov rdx, 0
 	wrmsr
 
 	pop rbp
