@@ -126,6 +126,11 @@ class DefTransformer(Transformer):
         from .types import ObjectRef
         return ObjectRef(n, self.filename)
 
+    @v_args(inline=True)
+    def struct_name(self, n):
+        from .types import Struct
+        return Struct(n)
+
     def PRIMITIVE(self, s):
         from .types import get_primitive
         return get_primitive(s)

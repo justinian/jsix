@@ -24,3 +24,4 @@ from .function import Function, Method, Param
 from .type import Type
 from .primitive import get_primitive
 from .objref import ObjectRef
+from .struct import Struct

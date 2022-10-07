@@ -24,9 +24,11 @@ method: description? "method" name options? ("{" param* "}")?
 
 param: "param" name type options? description?
 
-?type: PRIMITIVE | object_name
+?type: PRIMITIVE | object_name | struct_name
 
 object_name: "ref" name
+
+struct_name: "struct" name
 
 id: NUMBER
 name: IDENTIFIER
