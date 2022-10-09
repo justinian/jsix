@@ -1,4 +1,8 @@
 import gdb
+import gdb.printing
+
+from collections import namedtuple
+Capability = namedtuple("Capability", ["id", "parent", "refcount", "caps", "type", "koid"])
 
 class PrintStackCommand(gdb.Command):
     def __init__(self):
@@ -277,6 +281,134 @@ class PrintProfilesCommand(gdb.Command):
 
         for name, avg in results.items():
             print(f"{name:>{max_len}}: {avg:15.3f}")
+
+
+class CapTablePrinter:
+    def __init__(self, val):
+        node_map = val["m_caps"]
+        self.nodes = node_map["m_nodes"]
+        self.count = int(node_map["m_count"])
+        self.capacity = int(node_map["m_capacity"])
+
+    class _iterator:
+        def __init__(self, nodes, capacity):
+            self.nodes = []
+
+            for i in range(capacity):
+                node = nodes[i]
+
+                node_id = int(node["id"])
+                if node_id == 0:
+                    continue
+
+                self.nodes.append(Capability(
+                    id = node_id,
+                    parent = int(node["parent"]),
+                    refcount = int(node["holders"]),
+                    caps = int(node["caps"]),
+                    type = str(node["type"])[14:],
+                    koid = node['object']['m_koid']))
+
+            self.nodes.sort(key=lambda n: n.id, reverse=True)
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            if not self.nodes:
+                raise StopIteration
+
+            node = self.nodes.pop()
+
+            desc = f'p:{node.parent:016x}  refs:{node.refcount:2}  caps:{node.caps:04x}  {node.type:14} {node.koid}'
+            return (f"{node.id:016x}", desc)
+
+    def to_string(self):
+        return f"Cap table with {self.count}/{self.capacity} nodes.\n"
+
+    def children(self):
+        return self._iterator(self.nodes, self.capacity)
+
+
+class VectorPrinter:
+    def __init__(self, vector):
+        self.name = vector.type.tag
+        self.count = vector["m_size"]
+        self.array = vector["m_elements"]
+
+    class _iterator:
+        def __init__(self, array, count, deref):
+            self.array = array
+            self.count = count
+            self.deref = deref
+            self.index = 0
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            if self.index >= self.count:
+                raise StopIteration
+
+            item = self.array[self.index]
+            if self.deref:
+                item = item.dereference()
+
+            result = (f"{self.index:3}", item)
+            self.index += 1
+            return result
+
+    def to_string(self):
+        return f"{self.name} [{self.count}]"
+
+    def children(self):
+        deref = self.count > 0 and self.array[0].type.code == gdb.TYPE_CODE_PTR
+        return self._iterator(self.array, int(self.count), deref)
+
+
+class HandleSetPrinter:
+    def __init__(self, nodeset):
+        self.node_map = nodeset['m_map']
+        self.count = self.node_map['m_count']
+        self.capacity = self.node_map['m_capacity']
+
+    class _iterator:
+        def __init__(self, nodes, capacity):
+            self.items = []
+            self.index = 0
+            for i in range(capacity):
+                item = nodes[i]
+                if int(item) != 0:
+                    self.items.append(int(item))
+            self.items.sort()
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            if self.index >= len(self.items):
+                raise StopIteration
+            result = (f"{self.index}", f"{self.items[self.index]:016x}")
+            self.index += 1
+            return result
+
+    def to_string(self):
+        return f"node_set[{self.count} / {self.capacity}]:"
+
+    def children(self):
+        return self._iterator(self.node_map['m_nodes'], self.capacity)
+
+
+def build_pretty_printers():
+    pp = gdb.printing.RegexpCollectionPrettyPrinter("jsix")
+    pp.add_printer("cap table", '^cap_table$', CapTablePrinter)
+    pp.add_printer("handle set", '^util::node_set<unsigned long, 0, heap_allocated>$', HandleSetPrinter)
+    pp.add_printer("vector", '^util::vector<.*>$', VectorPrinter)
+    return pp
+
+gdb.printing.register_pretty_printer(
+    gdb.current_objfile(),
+    build_pretty_printers())
 
 PrintStackCommand()
 PrintBacktraceCommand()
