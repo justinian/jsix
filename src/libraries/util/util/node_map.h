@@ -15,26 +15,21 @@
 #include <stdint.h>
 #include <string.h>
 #include <utility>
+
+#include <util/allocator.h>
 #include <util/hash.h>
+#include <util/util.h>
 
 namespace util {
 
-using growth_func = void*(*)(void*, size_t, size_t);
-
-inline void * default_realloc(void *p, size_t oldsize, size_t newsize) {
-    char *newp = new char[newsize];
-    memcpy(newp, p, oldsize);
-    delete [] reinterpret_cast<char*>(p);
-    return newp;
-}
-
-inline void * null_realloc(void *p, size_t oldsize, size_t newsize) { return p; }
+inline uint32_t & get_map_key(uint32_t &item) { return item; }
+inline uint64_t & get_map_key(uint64_t &item) { return item; }
 
 /// Hash map where the values are the hash nodes themselves. (ie, the
 /// hash key is a part of the value.) Growth is done with realloc, so
 /// the map tries to grow in-place if it can.
 template<typename K, typename V, K invalid_id = 0,
-    growth_func realloc = default_realloc>
+    typename alloc = default_allocator>
 class node_map
 {
 public:
@@ -57,7 +52,7 @@ public:
         if (capacity) {
             m_capacity = 1 << log2(capacity);
             m_nodes = reinterpret_cast<node_type*>(
-                    realloc(nullptr, 0, m_capacity * sizeof(node_type)));
+                    alloc::allocate(m_capacity * sizeof(node_type)));
             for (size_t i = 0; i < m_capacity; ++i)
                 get_map_key(m_nodes[i]) = invalid_id;
         }
@@ -78,6 +73,42 @@ public:
         for (size_t i = 0; i < m_capacity; ++i)
             m_nodes[i].~node_type();
         delete [] reinterpret_cast<uint8_t*>(m_nodes);
+    }
+
+    class iterator
+    {
+    public:
+        inline node_type & operator*() { return *node; }
+        inline const node_type & operator*() const { return *node; }
+        inline node_type * operator->() { return node; }
+        inline const node_type * operator->() const { return node; }
+        inline iterator & operator++() { incr(); return *this; }
+        inline iterator operator++(int) { node_type *old = node; incr(); return iterator(old); }
+        inline bool operator!=(const iterator &o) { return node != o.node; }
+    private:
+        friend class node_map;
+        iterator(node_type *n) : node(n), end(n) {}
+        iterator(node_type *n, node_type *end) : node(n), end(end) {}
+        void incr() { while (node < end) if (get_map_key(*++node) != invalid_id) break; }
+        node_type *node;
+        node_type *end;
+    };
+
+    iterator begin() {
+        if (!m_count) return iterator {0};
+        iterator it {m_nodes - 1, m_nodes + m_capacity};
+        return ++it;
+    }
+
+    const iterator begin() const {
+        if (!m_count) return iterator {0};
+        iterator it {m_nodes - 1, m_nodes + m_capacity};
+        return ++it;
+    }
+
+    const iterator end() const {
+        if (!m_count) return iterator {0};
+        return iterator(m_nodes + m_capacity);
     }
 
     node_type & operator[](const key_type &key) {
@@ -242,7 +273,49 @@ private:
     node_type *m_nodes;
 };
 
+
+/// A set container based on node_map
+template <typename T, T invalid_id = 0, typename alloc = default_allocator>
+class node_set
+{
+public:
+    using item_type = T;
+    using map_type = node_map<item_type, item_type, invalid_id, alloc>;
+
+    /// Default constructor. Creates an empty set with the given capacity.
+    node_set(size_t capacity = 0) : m_map(capacity) {}
+
+    /// Existing buffer constructor. Uses the given buffer as initial
+    /// capacity.
+    node_set(item_type *buffer, size_t capacity) : m_map(buffer, capacity) {}
+
+    /// Returns true if the given item is in the set.
+    bool contains(const item_type &item) const { return m_map.find(item); }
+
+    /// Add the given item to the set.
+    /// \returns  True if the item was added, false if the item already existed
+    bool add(item_type item) {
+        if (contains(item))
+            return false;
+        m_map.insert(std::move(item));
+        return true;
+    }
+
+    /// Remove the given item from the set.
+    /// \returns  True if the item existed in the set
+    bool remove(const item_type &item) { return m_map.erase(item); }
+
+    const size_t count() const { return m_map.count(); }
+
+    typename map_type::iterator begin() { return m_map.begin(); }
+    const typename map_type::iterator begin() const { return m_map.begin(); }
+    const typename map_type::iterator end() const { return m_map.end(); }
+
+private:
+    map_type m_map;
+};
+
 template <typename K, typename V, K invalid_id = 0>
-using inplace_map = node_map<K, V, invalid_id, null_realloc>;
+using inplace_map = node_map<K, V, invalid_id, null_allocator>;
 
 } // namespace util
