@@ -42,7 +42,7 @@ public:
     using node_type = V;
 
     static constexpr size_t max_load = 90;
-    static constexpr size_t min_capacity = 8;
+    static constexpr size_t min_capacity = 16;
 
     inline size_t count() const { return m_count; }
     inline size_t capacity() const { return m_capacity; }
@@ -100,7 +100,7 @@ public:
     const node_type * find(const key_type &key) const {
         size_t slot;
         if (!lookup(key, slot))
-            return false;
+            return nullptr;
         return &m_nodes[slot];
     }
 
@@ -111,17 +111,26 @@ public:
         size_t slot = mod(hash(key));
         size_t dist = 0;
 
+        bool found = false;
+        size_t inserted_at;
+
         while (true) {
             node_type &node_at_slot = m_nodes[slot];
             key_type &key_at_slot = get_map_key(node_at_slot);
 
             if (open(key_at_slot)) {
                 node_at_slot = node;
-                return node_at_slot;
+                if (!found)
+                    inserted_at = slot;
+                return m_nodes[inserted_at];
             }
 
             size_t psl_at_slot = psl(key_at_slot, slot);
             if (dist > psl_at_slot) {
+                if (!found) {
+                    found = true;
+                    inserted_at = slot;
+                }
                 std::swap(node, node_at_slot);
                 dist = psl_at_slot;
             }
@@ -141,7 +150,7 @@ public:
         get_map_key(node) = invalid_id;
         --m_count;
 
-        while (fixup(slot++));
+        fixup(slot);
         return true;
     }
 
@@ -153,31 +162,33 @@ protected:
         return mod(slot + m_capacity - mod(hash(key)));
     }
 
-    bool fixup(size_t slot) {
-        size_t next_slot = mod(slot+1);
-        node_type &next = m_nodes[next_slot];
-        key_type &next_key = get_map_key(next);
+    void fixup(size_t slot) {
+        while (true) {
+            size_t next_slot = mod(slot+1);
+            node_type &next = m_nodes[next_slot];
+            key_type &next_key = get_map_key(next);
 
-        if (open(next_key) || psl(next_key, next_slot) == 0)
-            return false;
+            if (open(next_key) || psl(next_key, next_slot) == 0)
+                return;
 
-        m_nodes[slot] = std::move(next);
-        next.~node_type();
-        next_key = invalid_id;
-        return true;
+            m_nodes[slot] = std::move(next);
+            next.~node_type();
+            next_key = invalid_id;
+            ++slot;
+        }
     }
 
     void grow() {
-        node_type *old_nodes = m_nodes;
         size_t old_capacity = m_capacity;
         size_t new_capacity = m_capacity * 2;
 
         if (new_capacity < min_capacity)
             new_capacity = min_capacity;
 
-        m_nodes = reinterpret_cast<node_type*>(
-                realloc(m_nodes, old_capacity * sizeof(node_type),
-                    new_capacity * sizeof(node_type)));
+        void *grown = alloc::realloc(m_nodes,
+                old_capacity * sizeof(node_type),
+                new_capacity * sizeof(node_type));
+        m_nodes = reinterpret_cast<node_type*>(grown);
 
         for (size_t i = old_capacity; i < new_capacity; ++i)
             get_map_key(m_nodes[i]) = invalid_id;
@@ -187,19 +198,21 @@ protected:
         for (size_t slot = 0; slot < old_capacity; ++slot) {
             node_type &node = m_nodes[slot];
             key_type &key = get_map_key(node);
+
             size_t target = mod(hash(key));
 
-            if (open(key) || target < old_capacity)
+            if (open(key) || target <= slot)
                 continue;
 
             --m_count;
             insert(std::move(node));
             node.~node_type();
             key = invalid_id;
-            
-            size_t fixer = slot;
-            while (fixup(fixer++) && fixer < old_capacity);
         }
+
+        for (size_t slot = old_capacity - 1; slot < old_capacity; --slot)
+            if (open(get_map_key(m_nodes[slot])))
+                fixup(slot);
     }
 
     const bool lookup(const key_type &key, size_t &slot) const {
