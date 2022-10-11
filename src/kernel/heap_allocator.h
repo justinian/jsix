@@ -88,9 +88,9 @@ protected:
     /// Helper to get a block of the given order by splitting existing
     /// larger blocks. Returns false if there were no larger blocks.
     /// \arg order  Order (2^N) of the block we want
-    /// \arg block  [out] Receives a pointer to the requested block
+    /// \arg split  [out] Receives a pointer to the requested block
     /// \returns    True if a split was done
-    bool split_off(unsigned order, free_header *&block);
+    bool split_off(unsigned order, free_header *&split);
 
     uintptr_t m_start, m_end;
     size_t m_maxsize;

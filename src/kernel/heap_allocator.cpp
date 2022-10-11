@@ -13,8 +13,9 @@ uint32_t & get_map_key(heap_allocator::block_info &info) { return info.offset; }
 
 struct heap_allocator::free_header
 {
-    void clear(unsigned new_order) {
-        prev = next = nullptr;
+    void clear(unsigned new_order, free_header *new_next = nullptr) {
+        prev = nullptr;
+        next = new_next;
         order = new_order;
     }
 
@@ -104,9 +105,11 @@ heap_allocator::free(void *p)
 heap_allocator::free_header *
 heap_allocator::pop_free(unsigned order)
 {
-    free_header *block = get_free(order);
+    free_header *& head = get_free(order);
+    free_header *block = head;
     if (block) {
-        get_free(order) = block->next;
+        kassert(block->prev == nullptr, "freelist head had non-null prev");
+        head = block->next;
         block->remove();
     }
     return block;
@@ -119,14 +122,17 @@ heap_allocator::merge_block(free_header *block)
 
     unsigned order = block->order;
     while (order < max_order) {
-        block_info *info = m_map.find(map_key(block->buddy()));
+        free_header *buddy = block->buddy();
+
+        block_info *info = m_map.find(map_key(buddy));
         if (!info || !info->free || info->order != order)
             break;
 
-        free_header *buddy = block->buddy();
-        if (get_free(order) == buddy)
-            get_free(order) = buddy->next;
-        buddy->remove();
+        free_header *&head = get_free(order);
+        if (head == buddy)
+            pop_free(order);
+        else
+            buddy->remove();
 
         block = block->eldest() ? block : buddy;
 
@@ -166,30 +172,31 @@ heap_allocator::register_free_block(free_header *block, unsigned order)
     info.free = true;
     info.order = order;
 
-    block->clear(order);
-    block->next = get_free(order);
-    get_free(order) = block;
+    free_header *& head = get_free(order);
+    if (head)
+        head->prev = block;
 
+    block->clear(order, head);
+    head = block;
 }
 
 bool
-heap_allocator::split_off(unsigned order, free_header *&block)
+heap_allocator::split_off(unsigned order, free_header *&split)
 {
     // The lock needs to be held while calling split_off
 
     const unsigned next = order + 1;
-    if (next > max_order) {
-        block = nullptr;
+    if (next > max_order)
         return false;
-    }
 
-    block = pop_free(next);
+    free_header *block = pop_free(next);
     if (!block && !split_off(next, block))
         return false;
 
     block->order = order;
-    free_header *buddy = block->buddy();
     register_free_block(block->buddy(), order);
     m_map[map_key(block)].order = order;
+
+    split = block;
     return true;
 }
