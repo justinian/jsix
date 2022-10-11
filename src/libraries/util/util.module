@@ -8,6 +8,7 @@ module("util",
         "spinlock.cpp",
     ],
     public_headers = [
+        "util/allocator.h",
         "util/basic_types.h",
         "util/bip_buffer.h",
         "util/bitset.h",

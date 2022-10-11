@@ -102,6 +102,30 @@ heap_allocator::free(void *p)
     register_free_block(block, block->order);
 }
 
+void *
+heap_allocator::reallocate(void *p, size_t old_length, size_t new_length)
+{
+    if (!p) {
+        kassert(old_length == 0,
+            "Attempt to reallocate from null with non-zero old_length");
+        return allocate(new_length);
+    }
+
+    block_info *info = m_map.find(map_key(p));
+    kassert(info, "Attempt to reallocate unknown block");
+    if (!info)
+        return nullptr;
+
+    if (new_length <= (1 << info->order))
+        return p;
+
+    void *new_block = allocate(new_length);
+    memcpy(new_block, p, old_length);
+    free(p);
+
+    return new_block;
+}
+
 heap_allocator::free_header *
 heap_allocator::pop_free(unsigned order)
 {

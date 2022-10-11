@@ -30,6 +30,10 @@ public:
     /// \arg p  A pointer previously retuned by allocate()
     void free(void *p);
 
+    /// Grow the given allocation if possible, or return a new
+    /// allocation with the contents copied over.
+    void * reallocate(void *p, size_t old_length, size_t new_length);
+
     /// Minimum block size is (2^min_order). Must be at least 6.
     static const unsigned min_order = 6;  // 2^6  == 64 B
 
@@ -101,4 +105,16 @@ protected:
     block_map m_map;
 
     heap_allocator(const heap_allocator &) = delete;
+};
+
+extern heap_allocator &g_kernel_heap;
+
+/// A class implementing util's allocator interface using the kernel heap
+struct heap_allocated
+{
+    inline static void * allocate(size_t size) { return g_kernel_heap.allocate(size); }
+    inline static void free(void *p) { g_kernel_heap.free(p); }
+    inline static void * realloc(void *p, size_t oldsize, size_t newsize) {
+        return g_kernel_heap.reallocate(p, oldsize, newsize);
+    }
 };
