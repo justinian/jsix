@@ -12,26 +12,26 @@
 j6_handle_t __handle_self;
 
 namespace {
-    constexpr size_t static_arr_size = 8;
-    j6_handle_t handle_array[static_arr_size];
+    constexpr size_t static_arr_count = 8;
+    j6_handle_descriptor handle_array[static_arr_count];
 } // namespace
 
 j6_handle_t
 j6_find_first_handle(j6_object_type obj_type)
 {
-    size_t count = static_arr_size;
-    j6_handle_t *handles = handle_array;
+    size_t count = static_arr_count;
+    j6_handle_descriptor *handles = handle_array;
     j6_status_t s = j6_handle_list(handles, &count);
 
     if (s != j6_err_insufficient && s != j6_status_ok)
         return j6_handle_invalid;
 
-    if (count > static_arr_size)
-        count = static_arr_size;
+    if (count > static_arr_count)
+        count = static_arr_count;
 
     for (size_t i = 0; i < count; ++i) {
-        uint8_t type = (handles[i] >> 56);
-        if (type == obj_type) return handles[i];
+        j6_handle_descriptor &desc = handle_array[i];
+        if (desc.type == obj_type) return desc.handle;
     }
 
     return j6_handle_invalid;

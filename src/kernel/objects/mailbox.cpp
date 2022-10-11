@@ -1,6 +1,5 @@
 #include <util/counted.h>
 
-#include "objects/handle.h"
 #include "objects/mailbox.h"
 #include "objects/thread.h"
 

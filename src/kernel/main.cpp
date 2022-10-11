@@ -6,6 +6,7 @@
 #include <util/vector.h>
 
 #include "assert.h"
+#include "capabilities.h"
 #include "cpu.h"
 #include "device_manager.h"
 #include "interrupts.h"
@@ -86,7 +87,10 @@ load_init_server(bootproto::program &program, uintptr_t modules_address)
     using obj::vm_flags;
 
     obj::process *p = new obj::process;
-    p->add_handle(&obj::system::get(), obj::system::init_caps);
+
+    j6_handle_t sys_handle =
+        g_cap_table.create(&obj::system::get(), obj::system::init_caps);
+    p->add_handle(sys_handle);
 
     vm_space &space = p->space();
     for (const auto &sect : program.sections) {

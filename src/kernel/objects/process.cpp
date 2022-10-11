@@ -1,6 +1,7 @@
 #include <util/no_construct.h>
 
 #include "assert.h"
+#include "capabilities.h"
 #include "cpu.h"
 #include "objects/process.h"
 #include "objects/thread.h"
@@ -19,17 +20,16 @@ namespace obj {
 
 process::process() :
     kobject {kobject::type::process},
-    m_next_handle {1},
     m_state {state::running}
 {
-    m_self_handle = add_handle(this, process::self_caps);
+    m_self_handle = g_cap_table.create(this, process::self_caps);
+    add_handle(m_self_handle);
 }
 
 // The "kernel process"-only constructor
 process::process(page_table *kpml4) :
     kobject {kobject::type::process},
     m_space {kpml4},
-    m_next_handle {self_handle()+1},
     m_state {state::running}
 {
 }
@@ -121,51 +121,40 @@ process::thread_exited(thread *th)
     return false;
 }
 
-j6_handle_t
-process::add_handle(kobject *obj, j6_cap_t caps)
+void
+process::add_handle(j6_handle_t handle)
 {
-    if (!obj)
-        return j6_handle_invalid;
-
-    handle h {m_next_handle++, obj, caps};
-    j6_handle_t id = h.id;
-
-    m_handles.insert(id, h);
-    return id;
-}
-
-j6_handle_t
-process::add_handle(const handle &hnd)
-{
-    if (!hnd.object || hnd.id == j6_handle_invalid)
-        return j6_handle_invalid;
-
-    handle h {m_next_handle++, hnd.object, hnd.caps()};
-    j6_handle_t id = h.id;
-
-    m_handles.insert(id, h);
-    return id;
+    m_handles.add(handle);
 }
 
 bool
 process::remove_handle(j6_handle_t id)
 {
-    return m_handles.erase(id);
+    return m_handles.remove(id);
 }
 
-handle *
-process::lookup_handle(j6_handle_t id)
+bool
+process::has_handle(j6_handle_t id)
 {
-    return m_handles.find(id);
+    return m_handles.contains(id);
 }
 
 size_t
-process::list_handles(j6_handle_t *handles, size_t len)
+process::list_handles(j6_handle_descriptor *handles, size_t len)
 {
-    for (const auto &i : m_handles) {
-        if (len-- == 0)
-            break;
-        *handles++ = i.key;
+    size_t count = 0;
+    for (j6_handle_t handle : m_handles) {
+
+        capability *cap = g_cap_table.find(handle);
+        kassert(cap, "Found process handle that wasn't in the cap table");
+        if (!cap) continue;
+
+        j6_handle_descriptor &desc = handles[count];
+        desc.handle = handle;
+        desc.caps = cap->caps;
+        desc.type = static_cast<j6_object_type>(cap->type);
+
+        if (++count == len) break;
     }
 
     return m_handles.count();

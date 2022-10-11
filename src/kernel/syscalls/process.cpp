@@ -41,12 +41,9 @@ process_exit(int32_t status)
 }
 
 j6_status_t
-process_give_handle(process *self, handle *target, j6_handle_t *received)
+process_give_handle(process *self, j6_handle_t target)
 {
-    j6_handle_t out = self->add_handle(target->object, target->caps());
-    if (received)
-        *received = out;
-
+    self->add_handle(target);
     return j6_status_ok;
 }
 

@@ -4,9 +4,10 @@
 
 #include <j6/cap_flags.h>
 #include <util/map.h>
+#include <util/node_map.h>
 #include <util/vector.h>
 
-#include "objects/handle.h"
+#include "heap_allocator.h"
 #include "objects/kobject.h"
 #include "page_table.h"
 #include "vm_space.h"
@@ -59,32 +60,25 @@ public:
     /// \returns        The newly created thread object
     thread * create_thread(uintptr_t rsp3 = 0, uint8_t priorty = default_priority);
 
-    /// Start tracking an object with a handle.
-    /// \args obj  The object this handle refers to
-    /// \args caps The capabilities on this handle
-    /// \returns   The new handle id for this object
-    j6_handle_t add_handle(kobject *obj, j6_cap_t caps);
+    /// Give this process access to an object capability handle
+    /// \args handle  A handle to give this process access to
+    void add_handle(j6_handle_t handle);
 
-    /// Start tracking an object with a handle.
-    /// \args hnd  An existing handle to copy into this process
-    /// \returns   The new handle id for this object
-    j6_handle_t add_handle(const handle &hnd);
-
-    /// Stop tracking an object with a handle.
+    /// Remove access to an object capability from this process
     /// \args handle The handle that refers to the object
     /// \returns     True if the handle was removed
     bool remove_handle(j6_handle_t handle);
 
-    /// Lookup an object for a handle
-    /// \args handle The handle to the object
-    /// \returns     Pointer to the handle struct, or null if not found
-    handle * lookup_handle(j6_handle_t handle);
+    /// Return whether this process has access to the given object capability
+    /// \args handle The handle to the capability
+    /// \returns     True if the process has been given access to that capability
+    bool has_handle(j6_handle_t handle);
 
     /// Get the list of handle ids this process owns
-    /// \arg handles  Pointer to an array of handles to copy into
+    /// \arg handles  Pointer to an array of handles descriptors to copy into
     /// \arg len      Size of the array
     /// \returns      Total number of handles (may be more than number copied)
-    size_t list_handles(j6_handle_t *handles, size_t len);
+    size_t list_handles(j6_handle_descriptor *handles, size_t len);
 
     /// Inform the process of an exited thread
     /// \args th  The thread which has exited
@@ -119,8 +113,7 @@ private:
 
     util::vector<thread*> m_threads;
 
-    j6_handle_t m_next_handle;
-    util::map<j6_handle_t, handle> m_handles;
+    util::node_set<j6_handle_t, j6_handle_invalid, heap_allocated> m_handles;
 
     enum class state : uint8_t { running, exited };
     state m_state;

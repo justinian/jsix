@@ -14,9 +14,9 @@ object mailbox : object {
     method close [destructor cap:close]
 
     # Asynchronously send a message to the reciever
-    method send [cap:send handle] {
+    method send [cap:send] {
         param tag uint64
-        param data buffer [zero_ok]
+        param subtag uint64
         param handles ref object [list]
     }
 
@@ -24,19 +24,18 @@ object mailbox : object {
     # arrive if block is true.
     method receive [cap:receive] {
         param tag uint64 [out]
-        param data buffer [out zero_ok]
+        param subtag uint64 [out]
         param handles ref object [out list zero_ok]
         param reply_tag uint16 [out optional]
-        param badge uint64 [out optional]
         param flags uint64
     }
 
     # Send a message to the reciever, and block until a
     # response is sent. Note that getting this response
     # does not require the receive capability.
-    method call [cap:send handle] {
+    method call [cap:send] {
         param tag uint64 [inout]
-        param data buffer [inout zero_ok]
+        param subtag uint64 [inout]
         param handles ref object [inout list zero_ok]
     }
 
@@ -44,7 +43,7 @@ object mailbox : object {
     # requires the receive capability and not the send capability.
     method respond [cap:receive] {
         param tag uint64
-        param data buffer [zero_ok]
+        param subtag uint64
         param handles ref object [list zero_ok]
         param reply_tag uint16
     }
@@ -54,12 +53,10 @@ object mailbox : object {
     # capability.
     method respond_receive [cap:receive] {
         param tag uint64 [inout]
-        param data buffer [inout zero_ok]
-        param data_in size
+        param subtag uint64 [inout]
         param handles ref object [inout list zero_ok]
         param handles_in size
         param reply_tag uint16 [inout]
-        param badge uint64 [out optional]
         param flags uint64
     }
 }

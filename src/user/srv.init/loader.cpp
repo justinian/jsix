@@ -57,13 +57,13 @@ load_program(
         return false;
     }
 
-    res = j6_process_give_handle(proc, sys, nullptr);
+    res = j6_process_give_handle(proc, sys);
     if (res != j6_status_ok) {
         sprintf(err_msg, "  ** error loading program '%s': giving system handle: %lx", prog.filename, res);
         return false;
     }
 
-    res = j6_process_give_handle(proc, slp, nullptr);
+    res = j6_process_give_handle(proc, slp);
     if (res != j6_status_ok) {
         sprintf(err_msg, "  ** error loading program '%s': giving SLP handle: %lx", prog.filename, res);
         return false;

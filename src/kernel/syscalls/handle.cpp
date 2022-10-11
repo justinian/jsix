@@ -9,7 +9,7 @@ using namespace obj;
 namespace syscalls {
 
 j6_status_t
-handle_list(j6_handle_t *handles, size_t *handles_len)
+handle_list(j6_handle_descriptor *handles, size_t *handles_len)
 {
     process &p = process::current();
     size_t requested = *handles_len;
@@ -23,12 +23,11 @@ handle_list(j6_handle_t *handles, size_t *handles_len)
 }
 
 j6_status_t
-handle_clone(handle *orig, j6_handle_t *clone, uint32_t mask)
+handle_clone(j6_handle_t orig, j6_handle_t *clone, uint32_t mask)
 {
+    *clone = g_cap_table.derive(orig, mask);
     process &p = process::current();
-    *clone = p.add_handle(
-            orig->object,
-            orig->caps() & mask);
+    p.add_handle(*clone);
 
     return j6_status_ok;
 }

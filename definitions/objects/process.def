@@ -26,6 +26,5 @@ object process : object {
     # object as the specified handle.
     method give_handle {
         param target ref object [handle]          # A handle in the caller process to send
-        param received ref object [out optional]  # The handle as the recipient will see it
     }
 }

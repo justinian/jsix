@@ -111,7 +111,6 @@ main(int argc, const char **argv)
 {
     j6_log("logging server starting");
 
-    j6_status_t result = j6_status_ok;
 
     g_handle_sys = j6_find_first_handle(j6_object_type_system);
     if (g_handle_sys == j6_handle_invalid)
@@ -123,22 +122,20 @@ main(int argc, const char **argv)
 
     j6_handle_t cout = j6_handle_invalid;
 
-    for (unsigned i = 0; i < 5; ++i) {
+    for (unsigned i = 0; i < 100; ++i) {
         uint64_t tag = j6_proto_sl_find;
         uint64_t proto_id = "jsix.protocol.stream.ouput"_id;
-        size_t data_len = sizeof(proto_id);
         size_t handle_count = 0;
 
-        result = j6_mailbox_call(slp, &tag,
-                &proto_id, &data_len, 
-                &cout, &handle_count);
-        if (result == j6_status_ok &&
+        j6_status_t s = j6_mailbox_call(slp, &tag,
+                &proto_id, &cout, &handle_count);
+        if (s == j6_status_ok &&
             tag == j6_proto_sl_result &&
             handle_count == 1)
             break;
 
         cout = j6_handle_invalid;
-        j6_thread_sleep(1000); // 1ms
+        j6_thread_sleep(10000); // 10ms
     }
 
     if (cout == j6_handle_invalid)

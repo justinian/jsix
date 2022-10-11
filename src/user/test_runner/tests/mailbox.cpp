@@ -24,19 +24,16 @@ TEST_CASE( mailbox_tests, would_block )
     CHECK( s == j6_status_ok, "Could not create a mailbox" );
 
     uint64_t tag = 12345;
-    uint8_t buffer[128];
-    size_t buffer_size = 128;
+    uint64_t subtag = 67890;
     j6_handle_t handles[10];
     size_t handle_count = 10;
     uint16_t reply_tag = 0;
-    uint64_t badge = 0;
     uint64_t flags = 0;
 
-    s = j6_mailbox_receive( mb, &tag,
-            buffer, &buffer_size,
+    s = j6_mailbox_receive( mb,
+            &tag, &subtag,
             handles, &handle_count,
-            &reply_tag, &badge,
-            flags );
+            &reply_tag, flags );
     CHECK( s == j6_status_would_block, "Should have gotten would block error" );
 
     j6_mailbox_close(mb);
@@ -51,37 +48,29 @@ TEST_CASE( mailbox_tests, send_receive )
     CHECK( s == j6_status_ok, "Could not create a mailbox" );
 
     uint64_t out_tag = 12345;
-    uint8_t out_buffer[128] = {2, 4, 6, 8, 10, 12, 14};
-    size_t out_buffer_size = 7;
+    uint64_t out_subtag = 67890;
     j6_handle_t out_handles[10];
     size_t out_handle_count = 0;
 
-    s = j6_mailbox_send( mb, out_tag,
-            out_buffer, out_buffer_size,
+    s = j6_mailbox_send( mb, out_tag, out_subtag,
             out_handles, out_handle_count );
     CHECK( s == j6_status_ok, "Did not send successfully" );
 
     uint64_t in_tag = 0;
-    uint8_t in_buffer[128];
-    size_t in_buffer_size = 128;
+    uint64_t in_subtag = 0;
     j6_handle_t in_handles[10];
     size_t in_handle_count = 10;
     uint16_t in_reply_tag = 0;
-    uint64_t in_badge = 0;
     uint64_t in_flags = 0;
 
-    s = j6_mailbox_receive( mb, &in_tag,
-            in_buffer, &in_buffer_size,
+    s = j6_mailbox_receive( mb, &in_tag, &in_subtag,
             in_handles, &in_handle_count,
-            &in_reply_tag, &in_badge,
-            in_flags );
+            &in_reply_tag, in_flags );
     CHECK( s == j6_status_ok, "Did not receive successfully" );
 
     CHECK_BARE( in_tag == out_tag );
-    CHECK_BARE( in_buffer_size == out_buffer_size );
+    CHECK_BARE( in_subtag == out_subtag );
     CHECK_BARE( in_handle_count == out_handle_count );
-
-    CHECK_BARE( memcmp(out_buffer, in_buffer, in_buffer_size) == 0 );
 
     j6_mailbox_close(mb);
 }

@@ -7,7 +7,6 @@
 #include <util/map.h>
 #include <util/spinlock.h>
 
-#include "objects/handle.h"
 #include "objects/kobject.h"
 #include "slab_allocated.h"
 #include "wait_queue.h"
@@ -26,11 +25,8 @@ public:
 
     static constexpr kobject::type type = kobject::type::mailbox;
 
-    /// Max message data length
-    constexpr static size_t max_data_length = 88;
-
     /// Max message handle count
-    constexpr static size_t max_handle_count = 6;
+    constexpr static size_t max_handle_count = 5;
 
     struct message;
 
@@ -91,18 +87,12 @@ struct mailbox::message :
     public slab_allocated<message, 1>
 {
     uint64_t tag;
-    uint64_t badge;
+    uint64_t subtag;
 
     uint16_t reply_tag;
-
-    uint16_t reserved0;
-    uint16_t reserved1;
-
     uint8_t handle_count;
-    uint8_t data_len;
 
-    handle handles[mailbox::max_handle_count];
-    uint8_t data[mailbox::max_data_length];
+    j6_handle_t handles[mailbox::max_handle_count];
 };
 
 class mailbox::replyer

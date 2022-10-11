@@ -5,6 +5,7 @@
 #include <util/no_construct.h>
 
 #include "assert.h"
+#include "capabilities.h"
 #include "device_manager.h"
 #include "frame_allocator.h"
 #include "heap_allocator.h"
@@ -31,6 +32,9 @@ uintptr_t g_slabs_bump_pointer;
 static util::no_construct<heap_allocator> __g_kernel_heap_storage;
 heap_allocator &g_kernel_heap = __g_kernel_heap_storage.value;
 
+static util::no_construct<cap_table> __g_cap_table_storage;
+cap_table &g_cap_table = __g_cap_table_storage.value;
+
 static util::no_construct<frame_allocator> __g_frame_allocator_storage;
 frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
 
@@ -39,6 +43,9 @@ obj::vm_area_untracked &g_kernel_heap_area = __g_kernel_heap_area_storage.value;
 
 static util::no_construct<obj::vm_area_untracked> __g_kernel_heapmap_area_storage;
 obj::vm_area_untracked &g_kernel_heapmap_area = __g_kernel_heapmap_area_storage.value;
+
+static util::no_construct<obj::vm_area_untracked> __g_cap_table_area_storage;
+obj::vm_area_untracked &g_cap_table_area = __g_cap_table_area_storage.value;
 
 static util::no_construct<obj::vm_area_guarded> __g_kernel_stacks_storage;
 obj::vm_area_guarded &g_kernel_stacks = __g_kernel_stacks_storage.value;
@@ -103,6 +110,13 @@ memory_initialize_pre_ctors(bootproto::args &kargs)
     vm.add(mem::heapmap_offset, heap_map);
 
     new (&g_kernel_heap) heap_allocator {mem::heap_offset, mem::heap_size, mem::heapmap_offset};
+
+    obj::vm_area *caps = new (&g_cap_table_area)
+        obj::vm_area_untracked(mem::caps_size, vm_flags::write);
+
+    vm.add(mem::caps_offset, caps);
+
+    new (&g_cap_table) cap_table {mem::caps_offset};
 
     obj::vm_area *stacks = new (&g_kernel_stacks) obj::vm_area_guarded {
         mem::stacks_offset,

@@ -13,6 +13,12 @@
 - name: heap
   size: 32G
 
+- name: capsmap
+  size: 32G
+
+- name: caps
+  size: 32G
+
 - name: stacks
   size: 64G
 

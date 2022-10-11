@@ -60,16 +60,15 @@ channel_pump_loop()
         return 3;
 
     uint64_t tag = j6_proto_sl_register;
-    uint64_t data = "jsix.protocol.stream.ouput"_id;
-    size_t data_len = sizeof(data);
+    uint64_t proto_id = "jsix.protocol.stream.ouput"_id;
     size_t handle_count = 1;
-    result = j6_mailbox_call(slp, &tag,
-            &data, &data_len, 
+    result = j6_mailbox_call(slp,
+            &tag, &proto_id,
             &cout_write, &handle_count);
     if (result != j6_status_ok)
         return 4;
 
-    if (tag != j6_proto_base_status || data != j6_status_ok)
+    if (tag != j6_proto_base_status)
         return 5;
 
     result = j6_system_request_iopl(g_handle_sys, 3);
