@@ -23,22 +23,26 @@ service_locator_start(j6_handle_t mb)
     // TODO: This should be a multimap
     util::node_map<uint64_t, handle_entry> services;
 
-    uint64_t tag;
-    uint64_t subtag;
-    uint16_t reply_tag;
+    uint64_t tag = 0;
+    uint64_t subtag = 0;
+    uint16_t reply_tag = 0;
 
-    j6_handle_t handles[10];
-    size_t handles_count = sizeof(handles)/sizeof(j6_handle_t);
-
-    j6_status_t s = j6_mailbox_receive(mb,
-            &tag, &subtag,
-            handles, &handles_count,
-            &reply_tag,
-            j6_mailbox_block);
+    j6_handle_t handles[10] = {0};
+    const size_t handles_capacity = sizeof(handles)/sizeof(j6_handle_t);
+    size_t handles_count = 0;
 
     uint64_t proto_id;
 
     while (true) {
+        size_t handles_in = handles_count;
+        handles_count = handles_capacity;
+
+        j6_status_t s = j6_mailbox_respond(mb,
+                &tag, &subtag,
+                handles, &handles_count,
+                handles_in, &reply_tag,
+                j6_mailbox_block);
+
         handle_entry *found = nullptr;
 
         switch (tag) {
@@ -82,14 +86,5 @@ service_locator_start(j6_handle_t mb)
             handles_count = 0;
             break;
         }
-
-        size_t handles_in = handles_count;
-        handles_count = sizeof(handles)/sizeof(j6_handle_t);
-
-        s = j6_mailbox_respond_receive(mb,
-                &tag, &subtag,
-                handles, &handles_count, handles_in,
-                &reply_tag,
-                j6_mailbox_block);
     }
 }

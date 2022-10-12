@@ -45,18 +45,6 @@ mailbox::close()
     m_queue.clear();
 }
 
-void
-mailbox::send(message *msg)
-{
-    util::scoped_lock lock {m_message_lock};
-    m_messages.push_back(msg);
-
-    thread *t = m_queue.pop_next();
-
-    lock.release();
-    if (t) t->wake(has_message);
-}
-
 bool
 mailbox::call(message *msg)
 {

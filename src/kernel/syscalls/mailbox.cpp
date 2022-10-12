@@ -70,63 +70,6 @@ prep_receive(
 }
 
 j6_status_t
-mailbox_send(
-        mailbox *self,
-        uint64_t tag,
-        uint64_t subtag,
-        j6_handle_t * handles,
-        size_t handle_count)
-{
-    mailbox::message *msg = new mailbox::message;
-
-    j6_status_t s = prep_send(msg,
-            tag, subtag,
-            handles, handle_count);
-
-    if (s != j6_status_ok) {
-        delete msg;
-        return s;
-    }
-
-    self->send(msg);
-    return j6_status_ok;
-}
-
-
-j6_status_t
-mailbox_receive(
-        mailbox *self,
-        uint64_t *tag,
-        uint64_t *subtag,
-        j6_handle_t *handles,
-        size_t *handle_count,
-        uint16_t *reply_tag,
-        uint64_t flags)
-{
-    if (*handle_count < mailbox::max_handle_count)
-        return j6_err_insufficient;
-
-    mailbox::message *msg = nullptr;
-
-    bool block = flags & j6_mailbox_block;
-    if (!self->receive(msg, block)) {
-        // No message received
-        return self->closed() ? j6_status_closed :
-               !block ? j6_status_would_block :
-               j6_err_unexpected;
-    }
-
-    prep_receive(msg,
-            tag, subtag, reply_tag,
-            handles, handle_count);
-
-    if (*reply_tag == 0)
-        delete msg;
-    return j6_status_ok;
-}
-
-
-j6_status_t
 mailbox_call(
         mailbox *self,
         uint64_t *tag,
@@ -159,34 +102,8 @@ mailbox_call(
     return j6_status_ok;
 }
 
-
 j6_status_t
 mailbox_respond(
-        mailbox *self,
-        uint64_t tag,
-        uint64_t subtag,
-        j6_handle_t * handles,
-        size_t handle_count,
-        uint16_t reply_tag)
-{
-    mailbox::replyer reply = self->reply(reply_tag);
-    if (!reply.valid())
-        return j6_err_invalid_arg;
-
-    j6_status_t s = prep_send(reply.msg, tag, subtag,
-            handles, handle_count);
-
-    if (s != j6_status_ok) {
-        reply.error(s);
-        return s;
-    }
-
-    return j6_status_ok;
-}
-
-
-j6_status_t
-mailbox_respond_receive(
         mailbox *self,
         uint64_t *tag,
         uint64_t *subtag,
@@ -196,17 +113,43 @@ mailbox_respond_receive(
         uint16_t *reply_tag,
         uint64_t flags)
 {
-    j6_status_t s = mailbox_respond(self, *tag, *subtag, handles, handles_in, *reply_tag);
-    if (s != j6_status_ok)
-        return s;
+    if (*reply_tag) {
+        mailbox::replyer reply = self->reply(*reply_tag);
+        if (!reply.valid())
+            return j6_err_invalid_arg;
 
-    s = mailbox_receive(self, tag, subtag, handles, handle_count, reply_tag, flags);
-    if (s != j6_status_ok)
-        return s;
+        j6_status_t s = prep_send(reply.msg, *tag, *subtag,
+                handles, handles_in);
+
+        if (s != j6_status_ok) {
+            reply.error(s);
+            return s;
+        }
+    }
+
+
+    if (*handle_count < mailbox::max_handle_count)
+        return j6_err_insufficient;
+
+    mailbox::message *msg = nullptr;
+
+    bool block = flags & j6_mailbox_block;
+    if (!self->receive(msg, block)) {
+        // No message received
+        return self->closed() ? j6_status_closed :
+               !block ? j6_status_would_block :
+               j6_err_unexpected;
+    }
+
+    prep_receive(msg,
+            tag, subtag, reply_tag,
+            handles, handle_count);
+
+    if (*reply_tag == 0)
+        delete msg;
 
     return j6_status_ok;
 }
-
 
 
 } // namespace syscalls

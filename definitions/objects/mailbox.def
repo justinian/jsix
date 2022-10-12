@@ -1,5 +1,5 @@
-# Mailboxes are objects that enable synchronous or asynchronous
-# IPC via short message-passing of bytes and handles.
+# Mailboxes are objects that enable synchronous IPC via short message-passing
+# of tagged handles.
 
 object mailbox : object {
     uid 99934ad04ece1e07
@@ -13,23 +13,6 @@ object mailbox : object {
     method create [constructor]
     method close [destructor cap:close]
 
-    # Asynchronously send a message to the reciever
-    method send [cap:send] {
-        param tag uint64
-        param subtag uint64
-        param handles ref object [list]
-    }
-
-    # Receive a pending message, or block waiting for a message to
-    # arrive if block is true.
-    method receive [cap:receive] {
-        param tag uint64 [out]
-        param subtag uint64 [out]
-        param handles ref object [out list zero_ok]
-        param reply_tag uint16 [out optional]
-        param flags uint64
-    }
-
     # Send a message to the reciever, and block until a
     # response is sent. Note that getting this response
     # does not require the receive capability.
@@ -39,19 +22,11 @@ object mailbox : object {
         param handles ref object [inout list zero_ok]
     }
 
-    # Respond to a message sent using call. Note that this
-    # requires the receive capability and not the send capability.
-    method respond [cap:receive] {
-        param tag uint64
-        param subtag uint64
-        param handles ref object [list zero_ok]
-        param reply_tag uint16
-    }
-
     # Respond to a message sent using call, and wait for another
     # message to arrive. Note that this does not require the send
-    # capability.
-    method respond_receive [cap:receive] {
+    # capability. A reply tag of 0 skips the reply and goes directly
+    # to waiting for a new message.
+    method respond [cap:receive] {
         param tag uint64 [inout]
         param subtag uint64 [inout]
         param handles ref object [inout list zero_ok]

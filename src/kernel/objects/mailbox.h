@@ -39,11 +39,6 @@ public:
     /// Check if the mailbox has been closed
     inline bool closed() const { return m_closed; }
 
-    /// Send a message to a thread waiting to receive on this mailbox. If no threads
-    /// are currently trying to receive, block the current thread.
-    /// \arg msg      The mailbox::message data structure to send
-    void send(message *msg);
-
     /// Send a message to a thread waiting to receive on this mailbox, and block the
     /// current thread awaiting a response. The response will be placed in the message
     /// object provided.
