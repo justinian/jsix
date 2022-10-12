@@ -8,14 +8,11 @@
 
 #include "memory.h"
 
-extern uintptr_t g_slabs_bump_pointer;
-
-template <typename T, unsigned N = 1>
+template <typename T, size_t N>
 class slab_allocated
 {
 public:
-    constexpr static unsigned slab_pages = N;
-    constexpr static unsigned slab_size = N * mem::frame_size;
+    static constexpr size_t slab_size = N;
 
     void * operator new(size_t size)
     {
@@ -37,9 +34,7 @@ private:
     {
         s_free.ensure_capacity(per_block);
 
-        uintptr_t start = __atomic_fetch_add(
-                &g_slabs_bump_pointer, slab_size,
-                __ATOMIC_SEQ_CST);
+        uint8_t *start = new uint8_t [slab_size];
 
         T *current = reinterpret_cast<T*>(start);
         T *end = util::offset_pointer(current, slab_size);
@@ -50,8 +45,8 @@ private:
     static util::vector<T*> s_free;
 };
 
-template <typename T, unsigned N>
+template <typename T, size_t N>
 util::vector<T*> slab_allocated<T,N>::s_free;
 
 #define DEFINE_SLAB_ALLOCATOR(type) \
-    template<> util::vector<typename type*> slab_allocated<typename type, type::slab_pages>::s_free {};
+    template<> util::vector<typename type*> slab_allocated<typename type, type::slab_size>::s_free {};

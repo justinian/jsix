@@ -7,6 +7,7 @@
 #include <util/map.h>
 #include <util/spinlock.h>
 
+#include "memory.h"
 #include "objects/kobject.h"
 #include "slab_allocated.h"
 #include "wait_queue.h"
@@ -79,7 +80,7 @@ private:
 
 
 struct mailbox::message :
-    public slab_allocated<message, 1>
+    public slab_allocated<message, mem::frame_size>
 {
     uint64_t tag;
     uint64_t subtag;
