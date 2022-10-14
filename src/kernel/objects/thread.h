@@ -114,6 +114,14 @@ public:
     /// \returns  The clock time at which to wake. 0 for no timeout.
     inline uint64_t wake_timeout() const { return m_wake_timeout; }
 
+    struct message_data
+    {
+        uint64_t tag, subtag;
+        j6_handle_t handle;
+    };
+
+    message_data & get_message_data() { return m_message_data; }
+
     inline bool has_state(state s) const {
         return static_cast<uint8_t>(m_state) & static_cast<uint8_t>(s);
     }
@@ -186,6 +194,7 @@ private:
 
     uint64_t m_wake_value;
     uint64_t m_wake_timeout;
+    message_data m_message_data;
 
     j6_handle_t m_self_handle;
 };

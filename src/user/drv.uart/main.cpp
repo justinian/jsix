@@ -61,10 +61,7 @@ channel_pump_loop()
 
     uint64_t tag = j6_proto_sl_register;
     uint64_t proto_id = "jsix.protocol.stream.ouput"_id;
-    size_t handle_count = 1;
-    result = j6_mailbox_call(slp,
-            &tag, &proto_id,
-            &cout_write, &handle_count);
+    result = j6_mailbox_call(slp, &tag, &proto_id, &cout_write);
     if (result != j6_status_ok)
         return 4;
 

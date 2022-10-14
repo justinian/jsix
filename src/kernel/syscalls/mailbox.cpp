@@ -28,77 +28,28 @@ mailbox_close(mailbox *self)
 }
 
 j6_status_t
-prep_send(
-        mailbox::message *msg,
-        uint64_t tag,
-        uint64_t subtag,
-        const j6_handle_t *handles,
-        size_t handle_count)
-{
-    if (!msg ||
-        handle_count > mailbox::max_handle_count)
-        return j6_err_invalid_arg;
-
-    msg->tag = tag;
-    msg->subtag = subtag;
-
-    msg->handle_count = handle_count;
-    memcpy(msg->handles, handles, sizeof(j6_handle_t) * handle_count);
-
-    return j6_status_ok;
-}
-
-void
-prep_receive(
-        mailbox::message *msg,
-        uint64_t *tag,
-        uint64_t *subtag,
-        uint16_t *reply_tag,
-        j6_handle_t *handles,
-        size_t *handle_count)
-{
-    if (tag) *tag = msg->tag;
-    if (subtag) *subtag = msg->subtag;
-    if (reply_tag) *reply_tag = msg->reply_tag;
-
-    *handle_count = msg->handle_count;
-    process &proc = process::current();
-    for (size_t i = 0; i < msg->handle_count; ++i) {
-        proc.add_handle(msg->handles[i]);
-        handles[i] = msg->handles[i];
-    }
-}
-
-j6_status_t
 mailbox_call(
         mailbox *self,
         uint64_t *tag,
         uint64_t *subtag,
-        j6_handle_t *handles,
-        size_t *handle_count)
+        j6_handle_t *handle)
 {
-    mailbox::message *msg = new mailbox::message;
+    thread::message_data &data =
+        thread::current().get_message_data();
 
-    j6_status_t s = prep_send(msg,
-            *tag, *subtag,
-            handles, *handle_count);
+    data.tag = *tag;
+    data.subtag = *subtag;
+    data.handle = *handle;
 
-    if (s != j6_status_ok) {
-        delete msg;
+    j6_status_t s = self->call();
+    if (s != j6_status_ok)
         return s;
-    }
 
-    if (!self->call(msg)) {
-        delete msg;
-        return self->closed() ? j6_status_closed :
-               j6_err_unexpected;
-    }
+    *tag = data.tag;
+    *subtag = data.subtag;
+    *handle = data.handle;
+    process::current().add_handle(*handle);
 
-    prep_receive(msg,
-            tag, subtag, 0,
-            handles, handle_count);
-
-    delete msg;
     return j6_status_ok;
 }
 
@@ -107,46 +58,27 @@ mailbox_respond(
         mailbox *self,
         uint64_t *tag,
         uint64_t *subtag,
-        j6_handle_t *handles,
-        size_t *handle_count,
-        size_t handles_in,
-        uint16_t *reply_tag,
+        j6_handle_t *handle,
+        uint64_t *reply_tag,
         uint64_t flags)
 {
+    thread::message_data data { *tag, *subtag, *handle };
+
     if (*reply_tag) {
-        mailbox::replyer reply = self->reply(*reply_tag);
-        if (!reply.valid())
-            return j6_err_invalid_arg;
-
-        j6_status_t s = prep_send(reply.msg, *tag, *subtag,
-                handles, handles_in);
-
-        if (s != j6_status_ok) {
-            reply.error(s);
+        j6_status_t s = self->reply(*reply_tag, data);
+        if (s != j6_status_ok)
             return s;
-        }
     }
-
-
-    if (*handle_count < mailbox::max_handle_count)
-        return j6_err_insufficient;
-
-    mailbox::message *msg = nullptr;
 
     bool block = flags & j6_mailbox_block;
-    if (!self->receive(msg, block)) {
-        // No message received
-        return self->closed() ? j6_status_closed :
-               !block ? j6_status_would_block :
-               j6_err_unexpected;
-    }
+    j6_status_t s = self->receive(data, *reply_tag, block);
+    if (s != j6_status_ok)
+        return s;
 
-    prep_receive(msg,
-            tag, subtag, reply_tag,
-            handles, handle_count);
-
-    if (*reply_tag == 0)
-        delete msg;
+    *tag = data.tag;
+    *subtag = data.subtag;
+    *handle = data.handle;
+    process::current().add_handle(*handle);
 
     return j6_status_ok;
 }

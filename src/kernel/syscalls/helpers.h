@@ -37,6 +37,12 @@ j6_status_t get_handle(j6_handle_t id, j6_cap_t caps, T *&object)
     return j6_status_ok;
 }
 
+template <typename T>
+inline j6_status_t get_handle(j6_handle_t *id, j6_cap_t caps, T *&object)
+{
+    return get_handle<T>(*id, caps, object);
+}
+
 template <>
 inline j6_status_t get_handle<obj::kobject>(j6_handle_t id, j6_cap_t caps, obj::kobject *&object)
 {

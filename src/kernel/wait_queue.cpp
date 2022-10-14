@@ -43,11 +43,11 @@ wait_queue::pop_next_unlocked()
 }
 
 void
-wait_queue::clear()
+wait_queue::clear(uint64_t value)
 {
     util::scoped_lock lock {m_lock};
     for (auto *t : m_threads) {
-        if (!t->exited()) t->wake();
+        if (!t->exited()) t->wake(value);
         t->handle_release();
     }
 }

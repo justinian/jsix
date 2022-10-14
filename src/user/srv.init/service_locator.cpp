@@ -25,23 +25,17 @@ service_locator_start(j6_handle_t mb)
 
     uint64_t tag = 0;
     uint64_t subtag = 0;
-    uint16_t reply_tag = 0;
+    uint64_t reply_tag = 0;
 
-    j6_handle_t handles[10] = {0};
-    const size_t handles_capacity = sizeof(handles)/sizeof(j6_handle_t);
-    size_t handles_count = 0;
-
+    j6_handle_t give_handle = j6_handle_invalid;
     uint64_t proto_id;
 
     while (true) {
-        size_t handles_in = handles_count;
-        handles_count = handles_capacity;
+        j6_status_t s = j6_mailbox_respond(mb, &tag, &subtag, &give_handle,
+                &reply_tag, j6_mailbox_block);
 
-        j6_status_t s = j6_mailbox_respond(mb,
-                &tag, &subtag,
-                handles, &handles_count,
-                handles_in, &reply_tag,
-                j6_mailbox_block);
+        if (s != j6_status_ok)
+            while (1);
 
         handle_entry *found = nullptr;
 
@@ -49,22 +43,21 @@ service_locator_start(j6_handle_t mb)
         case j6_proto_base_get_proto_id:
             tag = j6_proto_base_proto_id;
             subtag = j6_proto_sl_id;
-            handles_count = 0;
+            give_handle = j6_handle_invalid;
             break;
 
         case j6_proto_sl_register:
             proto_id = subtag;
-            if (handles_count != 1) {
+            if (give_handle == j6_handle_invalid) {
                 tag = j6_proto_base_status;
                 subtag = j6_err_invalid_arg;
-                handles_count = 0;
                 break;
             }
 
-            services.insert( {proto_id, handles[0]} );
+            services.insert( {proto_id, give_handle} );
             tag = j6_proto_base_status;
             subtag = j6_status_ok;
-            handles_count = 0;
+            give_handle = j6_handle_invalid;
             break;
 
         case j6_proto_sl_find:
@@ -72,18 +65,16 @@ service_locator_start(j6_handle_t mb)
             tag = j6_proto_sl_result;
 
             found = services.find(proto_id);
-            if (found) {
-                handles_count = 1;
-                handles[0] = found->handle;
-            } else {
-                handles_count = 0;
-            }
+            if (found)
+                give_handle = found->handle;
+            else
+                give_handle = j6_handle_invalid;
             break;
 
         default:
             tag = j6_proto_base_status;
             subtag = j6_err_invalid_arg;
-            handles_count = 0;
+            give_handle = j6_handle_invalid;
             break;
         }
     }

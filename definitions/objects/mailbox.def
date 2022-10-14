@@ -19,7 +19,7 @@ object mailbox : object {
     method call [cap:send] {
         param tag uint64 [inout]
         param subtag uint64 [inout]
-        param handles ref object [inout list zero_ok]
+        param give_handle ref object [inout handle]
     }
 
     # Respond to a message sent using call, and wait for another
@@ -29,9 +29,8 @@ object mailbox : object {
     method respond [cap:receive] {
         param tag uint64 [inout]
         param subtag uint64 [inout]
-        param handles ref object [inout list zero_ok]
-        param handles_in size
-        param reply_tag uint16 [inout]
+        param give_handle ref object [inout handle]
+        param reply_tag uint64 [inout]
         param flags uint64
     }
 }

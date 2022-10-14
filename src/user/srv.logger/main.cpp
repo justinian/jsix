@@ -125,13 +125,11 @@ main(int argc, const char **argv)
     for (unsigned i = 0; i < 100; ++i) {
         uint64_t tag = j6_proto_sl_find;
         uint64_t proto_id = "jsix.protocol.stream.ouput"_id;
-        size_t handle_count = 0;
 
-        j6_status_t s = j6_mailbox_call(slp, &tag,
-                &proto_id, &cout, &handle_count);
+        j6_status_t s = j6_mailbox_call(slp, &tag, &proto_id, &cout);
         if (s == j6_status_ok &&
             tag == j6_proto_sl_result &&
-            handle_count == 1)
+            cout != j6_handle_invalid)
             break;
 
         cout = j6_handle_invalid;

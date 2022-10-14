@@ -11,11 +11,11 @@ namespace util {
 template <typename T, unsigned N = 16>
 class deque
 {
+public:
     struct node { T items[N]; };
     using list_type = linked_list<node>;
     using node_type = typename list_type::item_type;
 
-public:
     class iterator
     {
     public:

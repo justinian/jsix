@@ -38,7 +38,8 @@ public:
     util::spinlock & get_lock() { return m_lock; }
 
     /// Wake and clear out all threads.
-    void clear();
+    /// \arg value  The value passed to thread::wake
+    void clear(uint64_t value = 0);
 
 private:
     /// Get rid of any exited threads that are next
@@ -46,6 +47,6 @@ private:
     void pop_exited();
 
     util::spinlock m_lock;
-    util::deque<obj::thread*, 8> m_threads;
+    util::deque<obj::thread*, 6> m_threads;
 };
 
