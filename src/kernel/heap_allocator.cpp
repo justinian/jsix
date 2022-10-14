@@ -111,6 +111,8 @@ heap_allocator::reallocate(void *p, size_t old_length, size_t new_length)
         return allocate(new_length);
     }
 
+    util::scoped_lock lock {m_lock};
+
     block_info *info = m_map.find(map_key(p));
     kassert(info, "Attempt to reallocate unknown block");
     if (!info)
@@ -119,6 +121,7 @@ heap_allocator::reallocate(void *p, size_t old_length, size_t new_length)
     if (new_length <= (1 << info->order))
         return p;
 
+    lock.release();
     void *new_block = allocate(new_length);
     memcpy(new_block, p, old_length);
     free(p);
