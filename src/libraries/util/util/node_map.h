@@ -72,7 +72,7 @@ public:
     virtual ~node_map() {
         for (size_t i = 0; i < m_capacity; ++i)
             m_nodes[i].~node_type();
-        delete [] reinterpret_cast<uint8_t*>(m_nodes);
+        alloc::free(m_nodes);
     }
 
     class iterator

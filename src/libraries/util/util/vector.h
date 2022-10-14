@@ -2,24 +2,24 @@
 /// \file vector.h
 /// Definition of a simple dynamic vector collection for use in kernel space
 
-#include <new>
 #include <assert.h>
 #include <string.h>
 #include <utility>
 
+#include <util/allocator.h>
 #include <util/util.h>
 
 namespace util {
 
 /// A dynamic array.
-template <typename T, typename S = uint32_t>
+template <typename T, typename S = uint32_t, typename alloc = default_allocator>
 class vector
 {
+public:
     using count_t = S;
     static constexpr count_t min_capacity = 4;
     static constexpr count_t cap_mask = static_cast<S>(-1) >> 1;
 
-public:
     /// Default constructor. Creates an empty vector with no capacity.
     vector() :
         m_size(0),
@@ -75,7 +75,7 @@ public:
 
         bool was_static = m_capacity & ~cap_mask;
         if (!was_static)
-            delete [] m_elements;
+            alloc::free(m_elements);
     }
 
     /// Get the size of the array.
@@ -272,20 +272,19 @@ public:
     /// \arg capacity  Number of elements to allocate
     void set_capacity(count_t capacity)
     {
+        while (capacity < m_size) remove();
+
         bool was_static = m_capacity & ~cap_mask;
-        T *new_array = reinterpret_cast<T*>(new uint8_t [capacity * sizeof(T)]);
-        count_t size = capacity > m_size ? m_size : capacity;
+        if (was_static) {
+            T *new_array = reinterpret_cast<T*>(alloc::allocate(capacity * sizeof(T)));
+            memcpy(new_array, m_elements, m_size * sizeof(T));
+            m_elements = new_array;
+        } else {
+            m_elements = reinterpret_cast<T*>(
+                    alloc::realloc(m_elements, m_capacity * sizeof(T), capacity * sizeof(T)));
+        }
 
-        memcpy(new_array, m_elements, size * sizeof(T));
-
-        while (size < m_size) remove();
-        m_size = size;
         m_capacity = capacity;
-
-        if (!was_static)
-            delete [] m_elements;
-
-        m_elements = new_array;
     }
 
 private:
