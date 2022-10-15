@@ -25,6 +25,11 @@ T * construct_handle(j6_handle_t *id, Args... args)
 template <typename T>
 j6_status_t get_handle(j6_handle_t id, j6_cap_t caps, T *&object)
 {
+    if (id == j6_handle_invalid) {
+        object = nullptr;
+        return j6_status_ok;
+    }
+
     capability *capdata = g_cap_table.find(id);
     if (!capdata || capdata->type != T::type)
         return j6_err_invalid_arg;
@@ -46,6 +51,11 @@ inline j6_status_t get_handle(j6_handle_t *id, j6_cap_t caps, T *&object)
 template <>
 inline j6_status_t get_handle<obj::kobject>(j6_handle_t id, j6_cap_t caps, obj::kobject *&object)
 {
+    if (id == j6_handle_invalid) {
+        object = nullptr;
+        return j6_status_ok;
+    }
+
     capability *capdata = g_cap_table.find(id);
     if (!capdata)
         return j6_err_invalid_arg;
