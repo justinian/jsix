@@ -101,19 +101,21 @@ load_program(
 
         bootproto::program_section &section = sections[next_section++];
 
-        size_t page_count = memory::bytes_to_pages(seg.mem_size);
+        uintptr_t virt_addr = seg.vaddr;
+        size_t mem_size = seg.mem_size;
 
-        if (seg.mem_size > seg.file_size) {
-            void *pages = g_alloc.allocate_pages(page_count, alloc_type::program, true);
-            void *source = util::offset_pointer(data.pointer, seg.offset);
-            g_alloc.copy(pages, source, seg.file_size);
-            section.phys_addr = reinterpret_cast<uintptr_t>(pages);
-        } else {
-            section.phys_addr = program.base() + seg.offset;
-        }
+        // Page-align the section, which may require increasing the size
+        size_t prelude = virt_addr & 0xfff;
+        mem_size += prelude;
+        virt_addr &= ~0xfffull;
 
-        section.virt_addr = seg.vaddr;
-        section.size = seg.mem_size;
+        size_t page_count = memory::bytes_to_pages(mem_size);
+        void *pages = g_alloc.allocate_pages(page_count, alloc_type::program, true);
+        void *source = util::offset_pointer(data.pointer, seg.offset);
+        g_alloc.copy(util::offset_pointer(pages, prelude), source, seg.file_size);
+        section.phys_addr = reinterpret_cast<uintptr_t>(pages);
+        section.virt_addr = virt_addr;
+        section.size = mem_size;
         section.type = static_cast<bootproto::section_flags>(seg.flags);
     }
 
