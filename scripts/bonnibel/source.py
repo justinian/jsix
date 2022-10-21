@@ -49,7 +49,7 @@ class ParseSource(Source):
     @property
     def gather(self):
         _, suffix = splitext(self.output)
-        return suffix in (".h", ".inc")
+        return suffix in (".h", ".hh", ".inc")
 
     @property
     def next(self):
@@ -113,7 +113,7 @@ def make_source(root, path):
         return CompileSource(path, root)
     elif suffix in (".cog",):
         return ParseSource(path, root)
-    elif suffix in (".h", ".inc"):
+    elif suffix in (".h", ".hh", ".inc"):
         return HeaderSource(path, root)
     else:
         raise RuntimeError(f"{path} has no Source type")

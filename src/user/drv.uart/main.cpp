@@ -10,6 +10,7 @@
 #include <j6/protocols/service_locator.h>
 #include <j6/syscalls.h>
 #include <j6/sysconf.h>
+#include <j6/thread.hh>
 #include <j6/types.h>
 #include <util/hash.h>
 
@@ -34,7 +35,6 @@ uint8_t com2_out[out_buf_size];
 serial_port *g_com1;
 serial_port *g_com2;
 
-constexpr size_t stack_size = 0x10000;
 constexpr uintptr_t stack_top = 0xf80000000;
 
 int
@@ -119,16 +119,8 @@ main(int argc, const char **argv)
     g_com1 = &com1;
     g_com2 = &com2;
 
-    j6_handle_t child_stack_vma = j6_handle_invalid;
-    result = j6_vma_create_map(&child_stack_vma, stack_size, stack_top-stack_size, j6_vm_flag_write);
-    if (result != j6_status_ok)
-        return result;
-
-    uint64_t *sp = reinterpret_cast<uint64_t*>(stack_top - 0x10);
-    sp[0] = sp[1] = 0;
-
-    j6_handle_t child = j6_handle_invalid;
-    result = j6_thread_create(&child, __handle_self, stack_top - 0x10, reinterpret_cast<uintptr_t>(&pump_proc));
+    j6::thread pump_thread {pump_proc, stack_top};
+    result = pump_thread.start();
     if (result != j6_status_ok)
         return result;
 
