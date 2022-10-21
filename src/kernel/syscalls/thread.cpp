@@ -37,6 +37,12 @@ thread_kill(thread *self)
 }
 
 j6_status_t
+thread_join(thread *self)
+{
+    return self->join();
+}
+
+j6_status_t
 thread_exit()
 {
     thread &th = thread::current();

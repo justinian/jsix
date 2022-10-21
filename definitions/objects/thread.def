@@ -3,6 +3,7 @@ object thread : object {
 
     capabilities [
         kill
+        join
     ]
 
     method create [constructor] {
@@ -12,6 +13,8 @@ object thread : object {
     }
 
     method kill [destructor cap:kill]
+
+    method join [cap:join]
 
     method exit [static]
 

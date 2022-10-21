@@ -8,6 +8,7 @@
 #include <util/spinlock.h>
 
 #include "objects/kobject.h"
+#include "wait_queue.h"
 
 struct cpu_data;
 struct page_table;
@@ -98,6 +99,9 @@ public:
     /// \returns  The value passed to wake()
     uint64_t block();
 
+    /// Block the calling thread until this thread exits
+    j6_status_t join();
+
     /// Wake this thread, giving it a value
     /// \arg value  The value that block() should return
     void wake(uint64_t value = 0);
@@ -123,15 +127,16 @@ public:
     message_data & get_message_data() { return m_message_data; }
 
     inline bool has_state(state s) const {
-        return static_cast<uint8_t>(m_state) & static_cast<uint8_t>(s);
+        return __atomic_load_n(reinterpret_cast<const uint8_t*>(&m_state), __ATOMIC_ACQUIRE) &
+                static_cast<uint8_t>(s);
     }
 
     inline void set_state(state s) {
-        m_state = static_cast<state>(static_cast<uint8_t>(m_state) | static_cast<uint8_t>(s));
+        __atomic_or_fetch(reinterpret_cast<uint8_t*>(&m_state), static_cast<uint8_t>(s), __ATOMIC_ACQ_REL);
     }
 
     inline void clear_state(state s) {
-        m_state = static_cast<state>(static_cast<uint8_t>(m_state) & ~static_cast<uint8_t>(s));
+        __atomic_and_fetch(reinterpret_cast<uint8_t*>(&m_state), ~static_cast<uint8_t>(s), __ATOMIC_ACQ_REL);
     }
 
     inline tcb_node * tcb() { return &m_tcb; }
@@ -191,6 +196,7 @@ private:
     uint64_t m_wake_timeout;
     message_data m_message_data;
 
+    wait_queue m_join_queue;
     j6_handle_t m_self_handle;
 };
 

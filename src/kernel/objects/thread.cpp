@@ -52,6 +52,20 @@ thread::block()
     return m_wake_value;
 }
 
+j6_status_t
+thread::join()
+{
+    if (has_state(state::exited))
+        return j6_status_ok;
+
+    thread &caller = current();
+    if (&caller == this)
+        return j6_err_invalid_arg;
+
+    m_join_queue.add_thread(&caller);
+    return caller.block();
+}
+
 void
 thread::wake(uint64_t value)
 {
