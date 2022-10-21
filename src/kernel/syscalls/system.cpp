@@ -24,7 +24,7 @@ j6_status_t
 log(const char *message)
 {
     thread &th = thread::current();
-    log::info(logs::syscall, "Message[%llx]: %s", th.koid(), message);
+    log::info(logs::syscall, "Message <%02lx:%02lx>: %s", th.parent().obj_id(), th.obj_id(), message);
     return j6_status_ok;
 }
 
@@ -32,7 +32,7 @@ j6_status_t
 noop()
 {
     thread &th = thread::current();
-    log::verbose(logs::syscall, "Thread %llx called noop syscall.", th.koid());
+    log::verbose(logs::syscall, "Thread <%02lx:%02lx> called noop syscall.", th.parent().obj_id(), th.koid());
     return j6_status_ok;
 }
 

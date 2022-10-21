@@ -22,8 +22,8 @@ thread_create(j6_handle_t *self, process *proc, uintptr_t stack_top, uintptr_t e
     *self = child->self_handle();
     child->set_state(thread::state::ready);
 
-    log::verbose(logs::task, "Thread %llx:%llx spawned new thread %llx:%llx",
-        parent_pr.koid(), parent_th.koid(), proc->koid(), child->koid());
+    log::verbose(logs::task, "Thread <%02lx:%02lx> spawned new thread <%02lx:%02lx>",
+        parent_pr.obj_id(), parent_th.obj_id(), proc->obj_id(), child->obj_id());
 
     return j6_status_ok;
 }
@@ -31,7 +31,7 @@ thread_create(j6_handle_t *self, process *proc, uintptr_t stack_top, uintptr_t e
 j6_status_t
 thread_kill(thread *self)
 {
-    log::verbose(logs::task, "Killing thread %llx", self->koid());
+    log::verbose(logs::task, "Killing thread <%02lx:%02lx>", self->parent().obj_id(), self->obj_id());
     self->exit();
     return j6_status_ok;
 }
@@ -46,7 +46,7 @@ j6_status_t
 thread_exit()
 {
     thread &th = thread::current();
-    log::verbose(logs::task, "Thread %llx exiting", th.koid());
+    log::verbose(logs::task, "Thread <%02lx:%02lx> exiting", th.parent().obj_id(), th.obj_id());
     th.exit();
 
     log::error(logs::task, "returned to exit syscall");
@@ -60,7 +60,7 @@ thread_sleep(uint64_t duration)
 
     uint64_t til = clock::get().value() + duration;
 
-    log::verbose(logs::task, "Thread %llx sleeping until %llu", th.koid(), til);
+    log::verbose(logs::task, "Thread <%02lx:%02lx> sleeping until %llu", th.parent().obj_id(), th.obj_id(), til);
     th.set_wake_timeout(til);
     th.block();
     return j6_status_ok;

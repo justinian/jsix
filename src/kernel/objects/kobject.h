@@ -23,24 +23,31 @@ public:
         max
     };
 
+    /// The koid's most significant bits represent the object's type
+    static constexpr unsigned koid_type_bits = 4;
+    static constexpr unsigned koid_type_mask = (1 << koid_type_bits) - 1;
+    static constexpr unsigned koid_type_shift = (8 * sizeof(j6_koid_t)) - koid_type_bits;
+
     kobject(type t);
     virtual ~kobject();
-
-    /// Generate a new koid for a given type
-    /// \arg t    The object type
-    /// \returns  A new unique koid
-    static j6_koid_t koid_generate(type t);
 
     /// Get the kobject type from a given koid
     /// \arg koid  An existing koid
     /// \returns   The object type for the koid
-    static type koid_type(j6_koid_t koid);
+    inline static type koid_type(j6_koid_t koid) {
+        return static_cast<type>((koid >> koid_type_shift) & koid_type_mask);
+    }
 
     /// Get this object's type
-    inline type get_type() const { return koid_type(m_koid); }
+    inline type get_type() const { return m_type; }
 
     /// Get this object's koid
-    inline j6_koid_t koid() const { return m_koid; }
+    inline j6_koid_t koid() const {
+        return (static_cast<j6_koid_t>(m_type) << koid_type_shift) | m_obj_id;
+    }
+
+    /// Get this object's type-relative object id
+    inline uint32_t obj_id() const { return m_obj_id; }
 
     /// Increment the handle refcount
     inline void handle_retain() { ++m_handle_count; }
@@ -63,8 +70,9 @@ private:
     kobject(const kobject &other) = delete;
     kobject(const kobject &&other) = delete;
 
-    j6_koid_t m_koid;
     uint16_t m_handle_count;
+    type m_type;
+    uint32_t m_obj_id;
 };
 
 } // namespace obj
