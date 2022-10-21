@@ -83,7 +83,7 @@ channel_pump_loop()
 void
 pump_proc()
 {
-    j6_thread_exit(channel_pump_loop());
+    j6_process_exit(channel_pump_loop());
 }
 
 int

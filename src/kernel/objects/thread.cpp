@@ -71,11 +71,11 @@ thread::wake_only()
 }
 
 void
-thread::exit(int32_t code)
+thread::exit()
 {
-    m_return_code = code;
     m_wake_timeout = 0;
     set_state(state::exited);
+    m_join_queue.clear();
     block();
 }
 

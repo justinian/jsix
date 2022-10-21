@@ -13,9 +13,7 @@ object thread : object {
 
     method kill [destructor cap:kill]
 
-    method exit [static] {
-        param status int32
-    }
+    method exit [static]
 
     method sleep [static] {
         param duration uint64

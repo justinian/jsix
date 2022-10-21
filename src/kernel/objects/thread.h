@@ -138,8 +138,7 @@ public:
     inline process & parent() { return m_parent; }
 
     /// Terminate this thread.
-    /// \arg code   The return code to exit with.
-    void exit(int32_t code);
+    void exit();
 
     /// Add a stack header that returns to the given address in kernel space.
     /// \arg rip  The address to return to, must be kernel space
@@ -187,10 +186,6 @@ private:
     thread *m_creator;
 
     state m_state;
-
-    // There should be 3 bytes of padding here
-
-    int32_t m_return_code;
 
     uint64_t m_wake_value;
     uint64_t m_wake_timeout;

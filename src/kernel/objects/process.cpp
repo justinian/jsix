@@ -55,7 +55,7 @@ process::exit(int32_t code)
     m_return_code = code;
 
     for (auto *thread : m_threads) {
-        thread->exit(code);
+        thread->exit();
     }
 
     if (this == current_cpu().process)
@@ -68,21 +68,17 @@ process::update()
     kassert(m_threads.count() > 0, "process::update with zero threads!");
 
     size_t i = 0;
-    uint32_t status = 0;
     while (i < m_threads.count()) {
         thread *th = m_threads[i];
         if (th->has_state(thread::state::exited)) {
-            status = th->m_return_code;
             m_threads.remove_swap_at(i);
             continue;
         }
         i++;
     }
 
-    if (m_threads.count() == 0) {
-        // TODO: What really is the return code in this case?
-        exit(status);
-    }
+    if (m_threads.count() == 0)
+        exit(-1);
 }
 
 thread *
@@ -106,7 +102,6 @@ bool
 process::thread_exited(thread *th)
 {
     kassert(&th->m_parent == this, "Process got thread_exited for non-child!");
-    uint32_t status = th->m_return_code;
     m_threads.remove_swap(th);
     remove_handle(th->self_handle());
     delete th;
@@ -114,7 +109,7 @@ process::thread_exited(thread *th)
     // TODO: delete the thread's stack VMA
 
     if (m_threads.count() == 0) {
-        exit(status);
+        exit(-1);
         return true;
     }
 

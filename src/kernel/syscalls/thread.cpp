@@ -29,22 +29,22 @@ thread_create(j6_handle_t *self, process *proc, uintptr_t stack_top, uintptr_t e
 }
 
 j6_status_t
-thread_exit(int32_t status)
-{
-    thread &th = thread::current();
-    log::verbose(logs::task, "Thread %llx exiting with code %d", th.koid(), status);
-    th.exit(status);
-
-    log::error(logs::task, "returned to exit syscall");
-    return j6_err_unexpected;
-}
-
-j6_status_t
 thread_kill(thread *self)
 {
     log::verbose(logs::task, "Killing thread %llx", self->koid());
-    self->exit(-1);
+    self->exit();
     return j6_status_ok;
+}
+
+j6_status_t
+thread_exit()
+{
+    thread &th = thread::current();
+    log::verbose(logs::task, "Thread %llx exiting", th.koid());
+    th.exit();
+
+    log::error(logs::task, "returned to exit syscall");
+    return j6_err_unexpected;
 }
 
 j6_status_t
