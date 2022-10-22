@@ -12,8 +12,7 @@ class system :
 {
 public:
     /// Capabilities on system given to init
-    constexpr static j6_cap_t init_caps = j6_cap_system_all;
-
+    static constexpr j6_cap_t init_caps = j6_cap_system_all;
     static constexpr kobject::type type = kobject::type::system;
 
     inline static system & get() { return s_instance; }

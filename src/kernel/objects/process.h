@@ -19,27 +19,27 @@ class process :
 {
 public:
     /// Capabilities on a newly constructed process handle
-    constexpr static j6_cap_t creation_caps = j6_cap_process_all;
+    static constexpr j6_cap_t creation_caps = j6_cap_process_all;
 
     /// Capabilities on a process to itself
-    constexpr static j6_cap_t self_caps = j6_cap_process_all;
+    static constexpr j6_cap_t self_caps = j6_cap_process_all;
 
     /// Top of memory area where thread stacks are allocated
-    constexpr static uintptr_t stacks_top = 0x0000800000000000;
+    static constexpr uintptr_t stacks_top = 0x0000800000000000;
 
     /// Size of userspace thread stacks
-    constexpr static size_t stack_size = 0x4000000; // 64MiB
+    static constexpr size_t stack_size = 0x4000000; // 64MiB
 
     /// Value that represents default priority
-    constexpr static uint8_t default_priority = 0xff;
+    static constexpr uint8_t default_priority = 0xff;
+
+    static constexpr kobject::type type = kobject::type::process;
 
     /// Constructor.
     process();
 
     /// Destructor.
     virtual ~process();
-
-    static constexpr kobject::type type = kobject::type::process;
 
     /// Get the currently executing process.
     static process & current();

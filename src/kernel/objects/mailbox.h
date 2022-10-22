@@ -26,8 +26,7 @@ public:
     using reply_tag_t = uint64_t;
 
     /// Capabilities on a newly constructed mailbox handle
-    constexpr static j6_cap_t creation_caps = j6_cap_mailbox_all;
-
+    static constexpr j6_cap_t creation_caps = j6_cap_mailbox_all;
     static constexpr kobject::type type = kobject::type::mailbox;
 
     /// Max message handle count

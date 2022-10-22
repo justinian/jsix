@@ -10,14 +10,12 @@
 
 namespace obj {
 
-class thread;
-
 class event :
     public kobject
 {
 public:
     /// Capabilities on a newly constructed event handle
-    constexpr static j6_cap_t creation_caps = j6_cap_event_all;
+    static constexpr j6_cap_t creation_caps = j6_cap_event_all;
     static constexpr kobject::type type = kobject::type::event;
 
     event();

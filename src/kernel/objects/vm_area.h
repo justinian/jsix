@@ -35,8 +35,7 @@ class vm_area :
 {
 public:
     /// Capabilities on a newly constructed vma handle
-    constexpr static j6_cap_t creation_caps = j6_cap_vma_all;
-
+    static constexpr j6_cap_t creation_caps = j6_cap_vma_all;
     static constexpr kobject::type type = kobject::type::vma;
 
     /// Constructor.

@@ -55,10 +55,12 @@ class thread :
 {
 public:
     /// Capabilities on a newly constructed thread handle
-    constexpr static j6_cap_t creation_caps = j6_cap_thread_all;
+    static constexpr j6_cap_t creation_caps = j6_cap_thread_all;
 
     /// Capabilities the parent process gets on new thread handles
-    constexpr static j6_cap_t parent_caps = j6_cap_thread_all;
+    static constexpr j6_cap_t parent_caps = j6_cap_thread_all;
+
+    static constexpr kobject::type type = kobject::type::thread;
 
     enum class state : uint8_t {
         none     = 0x00,
@@ -70,8 +72,6 @@ public:
 
     /// Destructor
     virtual ~thread();
-
-    static constexpr kobject::type type = kobject::type::thread;
 
     /// Get the currently executing thread.
     static thread & current();

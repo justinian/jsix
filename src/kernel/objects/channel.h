@@ -18,12 +18,11 @@ class channel :
 {
 public:
     /// Capabilities on a newly constructed channel handle
-    constexpr static j6_cap_t creation_caps = j6_cap_channel_all;
+    static constexpr j6_cap_t creation_caps = j6_cap_channel_all;
+    static constexpr kobject::type type = kobject::type::channel;
 
     channel();
     virtual ~channel();
-
-    static constexpr kobject::type type = kobject::type::channel;
 
     /// Put a message into the channel
     /// \arg data Buffer of data to write
