@@ -4,7 +4,7 @@
 /*[[[cog code generation
 
 builtins_single = [
-    "acos", "asin", "atan", "ceil", "cos", "cosh", "exp", "fabs",
+    "acos", "asin", "atan", "cos", "cosh", "exp", "fabs",
     "floor", "log10", "log", "sin", "sinh", "sqrt", "tan", "tanh",
     ]
 
@@ -28,10 +28,6 @@ for fname in builtins_double:
 
 ]]]*/
 /// [[[end]]]
-
-double frexp(double value, int *exp)                    { return __builtin_frexp(value, exp); }
-float frexpf(float value, int *exp)                     { return __builtin_frexpf(value, exp); }
-long double frexpl(long double value, int *exp)         { return __builtin_frexpl(value, exp); }
 
 double ldexp(double x, int exp)                         { return __builtin_ldexp(x, exp); }
 float ldexpf(float x, int exp)                          { return __builtin_ldexpf(x, exp); }
