@@ -184,10 +184,22 @@ for id, scope, method in syscalls.methods:
         cog.outl()
 
     if "noreturn" in method.options:
+        if handles:
+            cog.outl(f"""   static_assert(false, "Cannot define a `noreturn` syscall that holds handles.");""")
         cog.outl(f"""    {name}({", ".join(args)});""")
+
     else:
-        cog.outl(f"""    profiler<syscall_profiles, {id}> profile {{"{name}"}};""")
-        cog.outl(f"""    return {name}({", ".join(args)});""")
+        cog.outl("    j6_status_t _retval;")
+        cog.outl("    {")
+        cog.outl(f"""        profiler<syscall_profiles, {id}> profile {{"{name}"}};""")
+        cog.outl(f"""        _retval = {name}({", ".join(args)});""")
+        cog.outl("    }\n")
+
+        for type, arg, caps in handles:
+            cog.outl(f"    release_handle({arg});")
+
+        cog.outl(f"""    return _retval;""")
+
     cog.outl("}")
     cog.outl("\n")
 ]]]*/

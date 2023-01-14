@@ -33,8 +33,16 @@ public:
     /// Create a new capability from an existing one.
     j6_handle_t derive(j6_handle_t id, j6_cap_t caps);
 
-    /// Get the capability referenced by a handle
-    capability * find(j6_handle_t id);
+    /// Get the capability referenced by a handle.
+    capability * retain(j6_handle_t id);
+
+    /// Release a retained capability when it is no longer being used.
+    void release(j6_handle_t id);
+
+    /// Get the capability referenced by a handle, without increasing
+    /// its refcount. WARNING: You probably want retain(), using a capability
+    /// (or the object it points to) without retaining it is dangerous.
+    capability * find_without_retain(j6_handle_t id);
 
 private:
     using map_type = util::inplace_map<j6_handle_t, capability, j6_handle_invalid>;

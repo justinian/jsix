@@ -20,6 +20,8 @@ cap_table::create(obj::kobject *target, j6_cap_t caps)
 {
     j6_handle_t new_handle = make_handle(m_count);
 
+    util::scoped_lock lock {m_lock};
+
     m_caps.insert({
         new_handle,
         j6_handle_invalid,
@@ -29,12 +31,17 @@ cap_table::create(obj::kobject *target, j6_cap_t caps)
         target,
         });
 
+    if (target)
+        target->handle_retain();
+
     return new_handle;
 }
 
 j6_handle_t
 cap_table::derive(j6_handle_t base, j6_cap_t caps)
 {
+    util::scoped_lock lock {m_lock};
+
     capability *existing = m_caps.find(base);
     if (!existing)
         return j6_handle_invalid;
@@ -52,11 +59,43 @@ cap_table::derive(j6_handle_t base, j6_cap_t caps)
         existing->object,
         });
 
+    if (existing->object)
+        existing->object->handle_retain();
+
     return new_handle;
 }
 
 capability *
-cap_table::find(j6_handle_t id)
+cap_table::find_without_retain(j6_handle_t id)
 {
     return m_caps.find(id);
+}
+
+capability *
+cap_table::retain(j6_handle_t id)
+{
+    util::scoped_lock lock {m_lock};
+
+    capability *cap = m_caps.find(id);
+    if (!cap)
+        return nullptr;
+
+    ++cap->holders;
+    return cap;
+}
+
+void
+cap_table::release(j6_handle_t id)
+{
+    util::scoped_lock lock {m_lock};
+
+    capability *cap = m_caps.find(id);
+    if (!cap)
+        return;
+
+    if (--cap->holders == 0) {
+        if (cap->object)
+            cap->object->handle_release();
+        m_caps.erase(id);
+    }
 }

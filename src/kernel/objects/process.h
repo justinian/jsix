@@ -3,7 +3,6 @@
 /// Definition of process kobject types
 
 #include <j6/cap_flags.h>
-#include <util/map.h>
 #include <util/node_map.h>
 #include <util/vector.h>
 
@@ -114,6 +113,7 @@ private:
     util::vector<thread*> m_threads;
 
     util::node_set<j6_handle_t, j6_handle_invalid, heap_allocated> m_handles;
+    util::spinlock m_handles_lock;
 
     enum class state : uint8_t { running, exited };
     state m_state;

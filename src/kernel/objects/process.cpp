@@ -1,3 +1,5 @@
+#include <new>
+
 #include <util/no_construct.h>
 
 #include "assert.h"
@@ -119,28 +121,44 @@ process::thread_exited(thread *th)
 void
 process::add_handle(j6_handle_t handle)
 {
-    m_handles.add(handle);
+    capability *c = g_cap_table.retain(handle);
+    kassert(c, "Trying to add a non-existant handle to a process!");
+
+    if (c) {
+        util::scoped_lock lock {m_handles_lock};
+        m_handles.add(handle);
+    }
 }
 
 bool
-process::remove_handle(j6_handle_t id)
+process::remove_handle(j6_handle_t handle)
 {
-    return m_handles.remove(id);
+    util::scoped_lock lock {m_handles_lock};
+    bool removed = m_handles.remove(handle);
+    lock.release();
+
+    if (removed)
+        g_cap_table.release(handle);
+
+    return removed;
 }
 
 bool
-process::has_handle(j6_handle_t id)
+process::has_handle(j6_handle_t handle)
 {
-    return m_handles.contains(id);
+    util::scoped_lock lock {m_handles_lock};
+    return m_handles.contains(handle);
 }
 
 size_t
 process::list_handles(j6_handle_descriptor *handles, size_t len)
 {
+    util::scoped_lock lock {m_handles_lock};
+
     size_t count = 0;
     for (j6_handle_t handle : m_handles) {
 
-        capability *cap = g_cap_table.find(handle);
+        capability *cap = g_cap_table.find_without_retain(handle);
         kassert(cap, "Found process handle that wasn't in the cap table");
         if (!cap) continue;
 

@@ -30,7 +30,7 @@ j6_status_t get_handle(j6_handle_t id, j6_cap_t caps, T *&object)
         return j6_status_ok;
     }
 
-    capability *capdata = g_cap_table.find(id);
+    capability *capdata = g_cap_table.retain(id);
     if (!capdata || capdata->type != T::type)
         return j6_err_invalid_arg;
 
@@ -56,7 +56,7 @@ inline j6_status_t get_handle<obj::kobject>(j6_handle_t id, j6_cap_t caps, obj::
         return j6_status_ok;
     }
 
-    capability *capdata = g_cap_table.find(id);
+    capability *capdata = g_cap_table.retain(id);
     if (!capdata)
         return j6_err_invalid_arg;
 
@@ -67,5 +67,8 @@ inline j6_status_t get_handle<obj::kobject>(j6_handle_t id, j6_cap_t caps, obj::
     object = capdata->object;
     return j6_status_ok;
 }
+
+inline void release_handle(j6_handle_t id) { g_cap_table.release(id); }
+inline void release_handle(j6_handle_t *id) { g_cap_table.release(*id); }
 
 } // namespace syscalls
