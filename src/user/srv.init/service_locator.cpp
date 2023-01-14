@@ -21,7 +21,7 @@ void
 service_locator_start(j6_handle_t mb)
 {
     // TODO: This should be a multimap
-    util::node_map<uint64_t, handle_entry> services;
+    std::unordered_map<uint64_t, j6_handle_t> services;
 
     uint64_t tag = 0;
     uint64_t subtag = 0;
@@ -64,11 +64,13 @@ service_locator_start(j6_handle_t mb)
             proto_id = subtag;
             tag = j6_proto_sl_result;
 
-            found = services.find(proto_id);
-            if (found)
-                give_handle = found->handle;
-            else
-                give_handle = j6_handle_invalid;
+            {
+                auto found = services.find(proto_id);
+                if (found != services.end())
+                    give_handle = found->second;
+                else
+                    give_handle = j6_handle_invalid;
+            }
             break;
 
         default:
