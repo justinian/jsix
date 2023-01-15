@@ -3,6 +3,7 @@
 /// Definition of a simple dynamic vector collection for use in kernel space
 
 #include <assert.h>
+#include <new>
 #include <string.h>
 #include <utility>
 

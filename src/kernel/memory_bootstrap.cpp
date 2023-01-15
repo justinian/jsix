@@ -1,3 +1,4 @@
+#include <new>
 #include <utility>
 
 #include <arch/memory.h>
