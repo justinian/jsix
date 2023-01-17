@@ -1,0 +1,33 @@
+# vim: ft=python
+
+zstd = module("zstd",
+    root = "${source_root}/external/zstd",
+    kind = "lib",
+    deps = [ "libc" ],
+    output = "libzstd.a",
+    sources = [
+        "decompress/zstd_decompress.c",
+        "decompress/zstd_ddict.c",
+        "decompress/huf_decompress.c",
+        "decompress/zstd_decompress_block.c",
+        "common/threading.c",
+        "common/fse_decompress.c",
+        "common/debug.c",
+        "common/xxhash.c",
+        "common/pool.c",
+        "common/error_private.c",
+        "common/entropy_common.c",
+        "common/zstd_common.c",
+    ],
+    public_headers = [
+        "zdict.h",
+        "zstd.h",
+        "zstd_errors.h",
+    ])
+
+zstd.variables['ccflags'] = [
+    "${ccflags}", 
+    "-DXXH_NAMESPACE=ZSTD_",
+    "-DDEBUGLEVEL=0",
+    "-DZSTD_DISABLE_ASM",
+]

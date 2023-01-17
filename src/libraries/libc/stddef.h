@@ -22,6 +22,6 @@ typedef long double max_align_t;
 typedef long long max_align_t;
 #endif
 
-#define offsetof(x, y) __builtin_offsetof((x), (y))
+#define offsetof(x, y) __builtin_offsetof(x, y)
 
 #define NULL ((void*)0)

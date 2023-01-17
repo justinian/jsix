@@ -21,7 +21,9 @@ def generate(output, config, manifest):
                 fullpath = path / f
                 
                 def module_init(name, **kwargs):
-                    m = Module(name, fullpath, path, **kwargs)
+                    if not "root" in kwargs:
+                        kwargs["root"] = path
+                    m = Module(name, fullpath, **kwargs)
                     modules[m.name] = m
                     return m
 
