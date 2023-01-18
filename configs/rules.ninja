@@ -66,6 +66,10 @@ rule makefat
         cp $in $out; $
         mcopy -s -D o -i $out@@1M ${build_root}/fatroot/* ::/
 
+rule mkinitrd
+    description = Creating initrd
+    command = ${source_root}/scripts/mkinitrd.py $out $in
+
 rule strip
     description = Stripping $name
     command = $

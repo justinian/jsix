@@ -43,6 +43,11 @@ struct counted
         count -= i;
         return *this;
     }
+
+    /// Get a constant buffer from a const pointer
+    static const counted<T> from_const(const T *p, size_t count) {
+        return { const_cast<T*>(p), count };
+    }
 };
 
 /// Specialize for `void` which cannot be indexed or iterated
@@ -59,12 +64,20 @@ struct counted<void>
         count -= i;
         return *this;
     }
+
+    /// Get a constant buffer from a const pointer
+    static const counted<void> from_const(const void *p, size_t count) {
+        return { const_cast<void*>(p), count };
+    }
 };
 
 using buffer = counted<void>;
 
 template <typename T>
 const T * read(buffer &b) {
+    if (b.count < sizeof(T))
+        return nullptr;
+
     const T *p = reinterpret_cast<const T*>(b.pointer);
     b.pointer = offset_pointer(b.pointer, sizeof(T));
     b.count -= sizeof(T);

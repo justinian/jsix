@@ -2,14 +2,13 @@
 
 init = module("srv.init",
     targets = [ "user" ],
-    deps = [ "libc", "elf", "bootproto" ],
+    deps = [ "libc", "elf", "bootproto", "zstd" ],
     description = "Init server",
     sources = [
         "loader.cpp",
         "main.cpp",
         "modules.cpp",
+        "ramdisk.cpp",
         "service_locator.cpp",
         "start.s",
     ])
-
-init.variables['ldflags'] = ["${ldflags}", "-section-start=.rodata=0x800000"]
