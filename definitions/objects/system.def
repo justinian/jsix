@@ -28,7 +28,7 @@ object system : object {
     method map_phys [cap:map_phys] {
         param area ref vma [out] # Receives a handle to the VMA created
         param phys address       # The physical address of the area
-        param size size          # Size of the area, in pages
+        param size size          # Size of the area, in bytes
         param flags uint32       # Flags to apply to the created VMA
     }
 
