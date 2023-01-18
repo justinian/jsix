@@ -20,28 +20,24 @@ const module *
 module_iterator::operator++()
 {
     do {
-        m_mod = util::offset_pointer(m_mod, m_mod->mod_length);
-
-        if (m_mod->mod_type == type::none) {
+        if (++m_idx >= modules_page::per_page) {
             // We've reached the end of a page, see if there's another
-            const modules_page *page = get_page(m_mod);
-            if (!page->next) {
-                m_mod = nullptr;
+            if (!m_page->next) {
+                m_page = nullptr;
                 break;
             }
-
-            m_mod = page->modules;
+            m_idx = 0;
+            m_page = reinterpret_cast<modules_page*>(m_page->next);
         }
     }
-    while (m_type != type::none && m_type != m_mod->mod_type);
-
-    return m_mod;
+    while (m_type != type::none && m_type != deref()->type);
+    return deref();
 }
 
 const module *
 module_iterator::operator++(int)
 {
-    const module *tmp = m_mod;
+    const module *tmp = deref();
     operator++();
     return tmp;
 }
@@ -64,7 +60,7 @@ load_page(uintptr_t address, j6_handle_t system, j6_handle_t self)
 modules
 modules::load_modules(uintptr_t address, j6_handle_t system, j6_handle_t self)
 {
-    const module *first = nullptr;
+    const modules_page *first = nullptr;
     while (address) {
         const modules_page *page = load_page(address, system, self);
 
@@ -73,7 +69,7 @@ modules::load_modules(uintptr_t address, j6_handle_t system, j6_handle_t self)
         j6_log(message);
 
         if (!first)
-            first = page->modules;
+            first = page;
         address = page->next;
     }
 

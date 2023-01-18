@@ -4,16 +4,13 @@
 
 #include <stdint.h>
 #include <uefi/types.h>
+#include "video.h"
 
 namespace uefi {
     struct boot_services;
 }
 
 namespace boot {
-
-namespace video {
-    struct screen;
-}
 
 // Abstract base class for status reporters.
 class status

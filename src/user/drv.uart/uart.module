@@ -4,6 +4,7 @@ module("drv.uart",
     targets = [ "user" ],
     deps = [ "libc", "util" ],
     description = "UART driver",
+    drivers = [ "pc.uart" ],
     sources = [
         "io.cpp",
         "main.cpp",

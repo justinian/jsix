@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#include <bootproto/init.h>
+#include <bootproto/devices/framebuffer.h>
 #include <util/counted.h>
 
 namespace uefi {
@@ -15,13 +15,8 @@ namespace uefi {
 namespace boot {
 namespace video {
 
-using bootproto::video_mode;
-using layout = bootproto::fb_layout;
-
-struct screen {
-    util::buffer framebuffer;
-    video_mode mode;
-};
+using layout = bootproto::devices::fb_layout;
+using screen = bootproto::devices::uefi_fb;
 
 /// Pick the best video mode and set up the screen
 screen * pick_mode(uefi::boot_services *bs);

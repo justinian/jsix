@@ -1,8 +1,12 @@
 ---
+location: jsix
 init: srv.init
-programs:
-  - name: panic.serial
-    target: kernel
-    flags: panic
-  - name: srv.logger
-  - name: drv.uart
+initrd:
+  name: initrd.dat
+  format: zstd
+panic:
+  - panic.serial
+services:
+  - srv.logger
+drivers:
+  - drv.uart

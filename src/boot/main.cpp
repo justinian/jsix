@@ -75,9 +75,12 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
     fs::file bc_data = disk.open(L"jsix_boot.dat");
     bootconfig bc {bc_data.load(), bs};
 
-    args->kernel = loader::load_program(disk, bc.kernel(), true);
-    args->init = loader::load_program(disk, bc.init());
+    args->kernel = loader::load_program(disk, L"kernel", bc.kernel());
+    args->init = loader::load_program(disk, L"init server", bc.init());
     args->flags = static_cast<bootproto::boot_flags>(bc.flags());
+
+    loader::load_module(disk, L"initrd", bc.initrd(),
+            bootproto::module_type::initrd, bc.initrd_format());
 
     namespace bits = util::bits;
     using bootproto::desc_flags;
@@ -85,38 +88,23 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
     if (screen) {
         video::make_module(screen);
 
-        // Go through the screen-specific descriptors first to
-        // give them priority
-        for (const descriptor &d : bc.programs()) {
-            if (!bits::has(d.flags, desc_flags::graphical))
-                continue;
-
-            if (bits::has(d.flags, desc_flags::panic))
-                args->panic = loader::load_program(disk, d);
-            else
-                loader::load_module(disk, d);
+        // Find the screen-specific panic handler first to
+        // give it priority
+        for (const descriptor &d : bc.panics()) {
+            if (bits::has(d.flags, desc_flags::graphical)) {
+                args->panic = loader::load_program(disk, L"panic handler", d);
+                break;
+            }
         }
     }
 
-    // Load the non-graphical descriptors
-    for (const descriptor &d : bc.programs()) {
-        if (bits::has(d.flags, desc_flags::graphical))
-            continue;
-
-        if (bits::has(d.flags, desc_flags::panic) && !args->panic)
-            args->panic = loader::load_program(disk, d);
-        else
-            loader::load_module(disk, d);
-    }
-
-    // For now the only data we load is the symbol table
-    for (const descriptor &d : bc.data()) {
-        if (!bits::has(d.flags, desc_flags::symbols))
-            continue;
-
-        util::buffer symbol_table = loader::load_file(disk, d);
-        args->symbol_table = symbol_table.pointer;
-        break;
+    if (!args->panic) {
+        for (const descriptor &d : bc.panics()) {
+            if (!bits::has(d.flags, desc_flags::graphical)) {
+                args->panic = loader::load_program(disk, L"panic handler", d);
+                break;
+            }
+        }
     }
 
     loader::verify_kernel_header(*args->kernel);

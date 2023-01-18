@@ -1,9 +1,13 @@
 ---
+location: jsix
 init: srv.init
+initrd:
+  name: initrd.dat
+  format: zstd
 flags: ["test"]
-programs:
-  - name: panic.serial
-    target: kernel
-    flags: panic
-  - name: drv.uart
-  - name: test_runner
+panic:
+  - panic.serial
+services:
+  - test_runner
+drivers:
+  - drv.uart

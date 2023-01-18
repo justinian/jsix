@@ -73,7 +73,6 @@ allocator::add_modules()
     if (m_modules)
         m_modules->next = reinterpret_cast<uintptr_t>(mods);
 
-    mods->modules = reinterpret_cast<module*>(mods + 1);
     m_modules = mods;
     m_next_mod = mods->modules;
     return;
@@ -110,11 +109,13 @@ allocator::allocate_pages(size_t count, alloc_type type, bool zero)
 }
 
 module *
-allocator::allocate_module_untyped(size_t size)
+allocator::allocate_module()
 {
+    static constexpr size_t size = sizeof(module);
+
     size_t remaining =
         reinterpret_cast<uintptr_t>(m_modules) + page_size
-        - reinterpret_cast<uintptr_t>(m_next_mod);
+        - reinterpret_cast<uintptr_t>(m_next_mod) - sizeof(module);
 
     if (size > remaining)
         add_modules();
@@ -122,8 +123,6 @@ allocator::allocate_module_untyped(size_t size)
     ++m_modules->count;
     module *m = m_next_mod;
     m_next_mod = util::offset_pointer(m_next_mod, size);
-
-    m->mod_length = size;
     return m;
 }
 

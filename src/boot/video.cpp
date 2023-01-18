@@ -2,6 +2,8 @@
 #include <uefi/graphics.h>
 #include <uefi/protos/graphics_output.h>
 
+#include <bootproto/init.h>
+
 #include "allocator.h"
 #include "console.h"
 #include "error.h"
@@ -10,10 +12,7 @@
 namespace boot {
 namespace video {
 
-using bootproto::fb_layout;
-using bootproto::fb_type;
-using bootproto::module_flags;
-using bootproto::module_framebuffer;
+using bootproto::devices::fb_layout;
 using bootproto::module_type;
 
 static uefi::protos::graphics_output *
@@ -70,7 +69,7 @@ pick_mode(uefi::boot_services *bs)
         .vertical = gop->mode->info->vertical_resolution,
         .horizontal = gop->mode->info->horizontal_resolution,
         .scanline =  gop->mode->info->pixels_per_scanline,
-        .layout = layout::unknown,
+        .layout = fb_layout::unknown,
     };
 
     s->framebuffer = {
@@ -82,12 +81,12 @@ pick_mode(uefi::boot_services *bs)
     switch (info->pixel_format) {
         case uefi::pixel_format::rgb8:
             type = L"rgb8";
-            s->mode.layout = layout::rgb8;
+            s->mode.layout = fb_layout::rgb8;
             break;
 
         case uefi::pixel_format::bgr8:
             type = L"bgr8";
-            s->mode.layout = layout::bgr8;
+            s->mode.layout = fb_layout::bgr8;
             break;
 
         default:
@@ -108,13 +107,22 @@ pick_mode(uefi::boot_services *bs)
 void
 make_module(screen *s)
 {
-    using bootproto::module_framebuffer;
-    module_framebuffer *modfb = g_alloc.allocate_module<module_framebuffer>();
-    modfb->mod_type = module_type::framebuffer;
-    modfb->type = fb_type::uefi; 
+    using bootproto::module;
+    using bootproto::module_type;
+    using bootproto::device_type;
+    using bootproto::devices::uefi_fb;
 
-    modfb->framebuffer = s->framebuffer;
-    modfb->mode = s->mode;
+    uefi_fb *fb = new uefi_fb;
+    fb->framebuffer = s->framebuffer;
+    fb->mode = s->mode;
+
+    module *mod = g_alloc.allocate_module();
+    mod->type = module_type::device;
+    mod->subtype = static_cast<uint16_t>(device_type::uefi_fb);
+    mod->data = {
+        .pointer = fb,
+        .count = sizeof(uefi_fb),
+    };
 }
 
 } // namespace video

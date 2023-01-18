@@ -10,61 +10,30 @@
 
 namespace bootproto {
 
-enum class module_type : uint8_t {
-    none,
-    program,
-    framebuffer,
-};
-
-enum class module_flags : uint8_t {
-    none      = 0x00,
-
-    /// This module was already handled by the bootloader,
-    /// no action is needed. The module is included for
-    /// informational purposes only.
-    no_load   = 0x01,
-};
-is_bitfield(module_flags);
+enum class module_type : uint8_t { none, initrd, device, };
+enum class initrd_format : uint8_t { none, zstd, };
+enum class device_type : uint16_t { none, uefi_fb, };
 
 struct module
 {
-    module_type mod_type;
-    module_flags mod_flags;
-    uint32_t mod_length;
+    module_type type;
+    // 1 byte padding
+    uint16_t subtype;
+    // 4 bytes padding
+    util::buffer data;
 };
 
-struct module_program :
-    public module
-{
-    uintptr_t base_address;
-    size_t size;
-    char filename[];
-};
-
-enum class fb_layout : uint8_t { rgb8, bgr8, unknown = 0xff };
-enum class fb_type : uint8_t { uefi };
-
-struct video_mode
-{
-    uint32_t vertical;
-    uint32_t horizontal;
-    uint32_t scanline;
-    fb_layout layout;
-};
-
-struct module_framebuffer :
-    public module
-{
-    util::buffer framebuffer;
-    video_mode mode;
-    fb_type type;
-};
-
-struct modules_page
+struct module_page_header
 {
     uint8_t count;
-    module *modules;
     uintptr_t next;
+};
+
+struct modules_page :
+    public module_page_header
+{
+    static constexpr unsigned per_page = (0x1000 - sizeof(module_page_header)) / sizeof(module);
+    module modules[per_page];
 };
 
 } // namespace bootproto

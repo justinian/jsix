@@ -23,9 +23,9 @@ class Module:
         "public_headers":  (set, ()),
         "includes": (tuple, ()),
         "sources": (tuple, ()),
+        "drivers": (tuple, ()),
         "variables": (dict, ()),
         "default": (bool, False),
-        "location": (str, "jsix"),
         "description": (str, None),
         "no_libc": (bool, False),
     }

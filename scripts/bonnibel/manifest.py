@@ -2,12 +2,16 @@ from . import BonnibelError
 
 class Manifest:
     from collections import namedtuple
-    Entry = namedtuple("Entry", ("module", "target", "output", "location", "description", "flags"))
+    Entry = namedtuple("Entry", ("module", "target", "output", "flags"))
+
+    formats = {
+        "none":      0x00,
+        "zstd":      0x01,
+    }
 
     flags = {
         "graphical": 0x01,
-        "panic":     0x02,
-        "symbols":   0x04,
+        "symbols":   0x80,
     }
 
     boot_flags = {
@@ -20,6 +24,8 @@ class Manifest:
 
         config = load_config(path)
 
+        self.location = config.get("location", "jsix")
+
         self.kernel = self.__build_entry(modules,
                 config.get("kernel", dict()),
                 name="kernel", target="kernel")
@@ -27,10 +33,23 @@ class Manifest:
         self.init = self.__build_entry(modules,
                 config.get("init", None))
 
-        self.programs = [self.__build_entry(modules, i)
-                for i in config.get("programs", tuple())]
+        self.panics = [self.__build_entry(modules, i, target="kernel")
+                for i in config.get("panic", tuple())]
+
+        self.services = [self.__build_entry(modules, i)
+                for i in config.get("services", tuple())]
+
+        self.drivers = [self.__build_entry(modules, i)
+                for i in config.get("drivers", tuple())]
 
         self.flags = config.get("flags", tuple())
+
+        initrd = config.get("initrd", dict())
+        self.initrd = initrd.get("name", "initrd.dat")
+        self.initrd_format = initrd.get("format", "none")
+
+        if not self.initrd_format in Manifest.formats:
+            raise BonnibelError(f"Manifest specifies unknown initrd format '{self.initrd_format}'")
 
         self.data = []
         for d in config.get("data", tuple()):
@@ -56,10 +75,10 @@ class Manifest:
             if not f in Manifest.flags:
                 raise BonnibelError(f"Manifest specifies unknown flag '{f}'")
 
-        return Manifest.Entry(name, target, mod.output, mod.location, mod.description, flags)
+        return Manifest.Entry(name, target, mod.output, flags)
 
-    def add_data(self, output, location, desc, flags=tuple()):
-        e = Manifest.Entry(None, None, output, location, desc, flags)
+    def add_data(self, output, desc, flags=tuple()):
+        e = Manifest.Entry(None, None, output, flags)
         self.data.append(e)
         return e
 
@@ -69,20 +88,25 @@ class Manifest:
 
         with open(path, 'wb') as outfile:
             magic = "jsixboot".encode("utf-8") # magic string
-            version = 0
+            version = 1
             reserved = 0
 
+            initrd_format = Manifest.formats.get(self.initrd_format, 0)
             bootflags = sum([Manifest.boot_flags.get(s, 0) for s in self.flags])
 
-            outfile.write(struct.pack("<8sBBHHH",
-                magic, version, reserved,
-                len(self.programs), len(self.data),
-                bootflags))
+            outfile.write(struct.pack("<8s BBH HH",
+                magic,
+                version, reserved, len(self.panics),
+                initrd_format, bootflags))
 
             def write_str(s):
-                outfile.write(struct.pack("<H", (len(s)+1)*2))
-                outfile.write(s.encode("utf-16le"))
+                data = s.encode("utf-16le")
+                outfile.write(struct.pack("<H", len(data)+2))
+                outfile.write(data)
                 outfile.write(b"\0\0")
+
+            def write_path(name):
+                write_str(join(self.location, name).replace('/','\\'))
 
             def write_ent(ent):
                 flags = 0
@@ -90,14 +114,57 @@ class Manifest:
                     flags |= Manifest.flags[f]
 
                 outfile.write(struct.pack("<H", flags))
-                write_str(join(ent.location, ent.output).replace('/','\\'))
-                write_str(ent.description)
+                write_path(ent.output)
 
             write_ent(self.kernel)
             write_ent(self.init)
+            write_path(self.initrd)
 
-            for p in self.programs:
+            for p in self.panics:
                 write_ent(p)
 
-            for d in self.data:
-                write_ent(d)
+    def write_init_config(self, path, modules):
+        from os.path import join
+        import struct
+
+        with open(path, 'wb') as outfile:
+            magic = "jsixinit".encode("utf-8") # magic string
+            version = 1
+            reserved = 0
+
+            string_data = bytearray()
+
+            outfile.write(struct.pack("<8s BBH HH",
+                magic,
+                version, reserved, len(self.services),
+                len(self.data), len(self.drivers)))
+
+            offset_ptr = outfile.tell()
+            outfile.write(struct.pack("<H", 0)) # filled in later
+
+            def write_str(s):
+                pos = len(string_data)
+                string_data.extend(s.encode("utf-8") + b"\0")
+                outfile.write(struct.pack("<H", pos))
+
+            def write_driver(ent):
+                write_str(ent.output)
+
+                drivers = modules[ent.module].drivers
+                outfile.write(struct.pack("<H", len(drivers)))
+                for driver in drivers:
+                    write_str(driver)
+
+            for p in self.services:
+                write_str(p.output)
+
+            for p in self.data:
+                write_str(p.output)
+
+            for p in self.drivers:
+                write_driver(p)
+
+            offset = outfile.tell()
+            outfile.write(string_data)
+            outfile.seek(offset_ptr)
+            outfile.write(struct.pack("<H", offset))

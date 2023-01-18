@@ -32,10 +32,7 @@ public:
 
     void * allocate_pages(size_t count, alloc_type type, bool zero = false);
 
-    template <typename M>
-    M * allocate_module(size_t extra = 0) {
-        return static_cast<M*>(allocate_module_untyped(sizeof(M) + extra));
-    }
+    module * allocate_module();
 
     void memset(void *start, size_t size, uint8_t value);
     void copy(void *to, void *from, size_t size);
@@ -54,7 +51,6 @@ public:
 private:
     void add_register();
     void add_modules();
-    module * allocate_module_untyped(size_t size);
 
     uefi::boot_services &m_bs;
 

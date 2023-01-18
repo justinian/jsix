@@ -24,52 +24,26 @@ using memory::alloc_type;
 util::buffer
 load_file(
     fs::file &disk,
-    const descriptor &desc)
+    const wchar_t *path)
 {
-    status_line status(L"Loading file", desc.path);
+    status_line status(L"Loading file", path);
 
-    fs::file file = disk.open(desc.path);
+    fs::file file = disk.open(path);
     util::buffer b = file.load();
 
     //console::print(L"    Loaded at: 0x%lx, %d bytes\r\n", b.data, b.size);
     return b;
 }
 
-
-static void
-create_module(util::buffer data, const descriptor &desc, bool loaded)
-{
-    size_t path_len = wstrlen(desc.path);
-    bootproto::module_program *mod = g_alloc.allocate_module<bootproto::module_program>(path_len);
-    mod->mod_type = bootproto::module_type::program;
-    mod->base_address = reinterpret_cast<uintptr_t>(data.pointer);
-    mod->size = data.count;
-    if (loaded)
-        mod->mod_flags = static_cast<bootproto::module_flags>(
-            static_cast<uint8_t>(mod->mod_flags) |
-            static_cast<uint8_t>(bootproto::module_flags::no_load));
-
-    // TODO: support non-ascii path characters and do real utf-16 to utf-8
-    // conversion
-    for (int i = 0; i < path_len; ++i) {
-        char c = desc.path[i];
-        mod->filename[i] = c == '\\' ? '/' : c;
-    }
-    mod->filename[path_len] = 0;
-}
-
 bootproto::program *
 load_program(
     fs::file &disk,
-    const descriptor &desc,
-    bool add_module)
+    const wchar_t *name,
+    const descriptor &desc)
 {
-    status_line status(L"Loading program", desc.desc);
+    status_line status(L"Loading program", name);
 
-    util::buffer data = load_file(disk, desc);
-
-    if (add_module)
-        create_module(data, desc, true);
+    util::buffer data = load_file(disk, desc.path);
 
     elf::file program(data.pointer, data.count);
     if (!program.valid()) {
@@ -129,12 +103,17 @@ load_program(
 void
 load_module(
     fs::file &disk,
-    const descriptor &desc)
+    const wchar_t *name,
+    const wchar_t *path,
+    bootproto::module_type type,
+    uint16_t subtype)
 {
-    status_line status(L"Loading module", desc.desc);
+    status_line status(L"Loading module", name);
 
-    util::buffer data = load_file(disk, desc);
-    create_module(data, desc, false);
+    bootproto::module *mod = g_alloc.allocate_module();
+    mod->type = type;
+    mod->subtype = subtype;
+    mod->data = load_file(disk, path);
 }
 
 void

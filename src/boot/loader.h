@@ -2,11 +2,11 @@
 /// Definitions for loading the kernel into memory
 #pragma once
 
+#include <bootproto/init.h>
 #include <util/counted.h>
 
 namespace bootproto {
     struct program;
-    struct module;
 }
 
 namespace boot {
@@ -21,29 +21,35 @@ namespace loader {
 
 /// Load a file from disk into memory.
 /// \arg disk  The opened UEFI filesystem to load from
-/// \arg desc  The program descriptor identifying the file
+/// \arg path  The path of the file to load
 util::buffer
 load_file(
     fs::file &disk,
-    const descriptor &desc);
+    const wchar_t *path);
 
 /// Parse and load an ELF file in memory into a loaded image.
 /// \arg disk       The opened UEFI filesystem to load from
 /// \arg desc       The descriptor identifying the program
-/// \arg add_module Also create a module for this loaded program
+/// \arg name       The human-readable name of the program to load
 bootproto::program *
 load_program(
     fs::file &disk,
-    const descriptor &desc,
-    bool add_module = false);
+    const wchar_t *name,
+    const descriptor &desc);
 
 /// Load a file from disk into memory, creating an init args module
-/// \arg disk  The opened UEFI filesystem to load from
-/// \arg desc  The program descriptor identifying the file
+/// \arg disk    The opened UEFI filesystem to load from
+/// \arg name    The human-readable name of the module
+/// \arg path    The path of the file to load the module from
+/// \arg type    The major type to set on the module
+/// \arg subtype The subtype to set on the module
 void
 load_module(
     fs::file &disk,
-    const descriptor &desc);
+    const wchar_t *name,
+    const wchar_t *path,
+    bootproto::module_type type,
+    uint16_t subtype);
 
 /// Verify that a loaded ELF has the j6 kernel header
 /// \arg program  The program to check for a header

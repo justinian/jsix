@@ -4,6 +4,7 @@ bp = module("bootproto",
     kind = "lib",
     public_headers = [
         "bootproto/bootconfig.h",
+        "bootproto/devices/framebuffer.h",
         "bootproto/init.h",
         "bootproto/kernel.h",
         "bootproto/memory.h.cog",

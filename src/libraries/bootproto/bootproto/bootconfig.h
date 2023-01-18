@@ -8,9 +8,9 @@
 namespace bootproto {
 
 enum class desc_flags : uint16_t {
-    graphical = 0x01,
-    panic     = 0x02,
-    symbols   = 0x04,
+    graphical = 0x0001,
+    panic     = 0x0002,
+    symbols   = 0x0004,
 };
 is_bitfield(desc_flags);
 

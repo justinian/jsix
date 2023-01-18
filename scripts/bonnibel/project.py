@@ -71,9 +71,13 @@ class Project:
             fatroot.mkdir(exist_ok=True)
 
             fatroot_content = []
+            initrd_content = []
+
+            from .manifest import Manifest
+            manifest = Manifest(manifest_file, modules)
 
             def add_fatroot(source, entry):
-                output = join(entry.location, entry.output)
+                output = join(manifest.location, entry.output)
                 fatroot_output = f"${{build_root}}/fatroot/{output}"
 
                 build.build(
@@ -103,16 +107,30 @@ class Project:
 
                 add_fatroot(intermediary, entry)
 
-            from .manifest import Manifest
-            manifest = Manifest(manifest_file, modules)
+            def add_initrd_exe(entry):
+                input_path = f"${{build_root}}/{entry.target}/{entry.output}"
+                intermediary = f"${{build_root}}/{entry.output}"
+
+                build.build(
+                    rule = "strip",
+                    outputs = [intermediary],
+                    inputs = [input_path],
+                    implicit = [f"{input_path}.dump"],
+                    variables = {
+                        "name": f"Stripping {entry.module}",
+                        "debug": f"${{build_root}}/.debug/{entry.output}.debug",
+                    })
+
+                initrd_content.append(intermediary)
 
             add_fatroot_exe(manifest.kernel)
             add_fatroot_exe(manifest.init)
-            for program in manifest.programs:
-                add_fatroot_exe(program)
+            for program in manifest.panics: add_fatroot_exe(program)
+            for program in manifest.services: add_initrd_exe(program)
+            for program in manifest.drivers: add_initrd_exe(program)
 
             syms = manifest.add_data("symbol_table.dat",
-                    manifest.kernel.location, "Symbol table", ("symbols",))
+                    "Symbol table", ("symbols",))
 
             sym_out = f"${{build_root}}/symbol_table.dat"
             build.build(
@@ -120,7 +138,7 @@ class Project:
                 outputs = [sym_out],
                 inputs = [f"${{build_root}}/{modules['kernel'].output}"],
                 )
-            add_fatroot(sym_out, syms)
+            initrd_content.append(sym_out)
 
             bootloader = "${build_root}/fatroot/efi/boot/bootx64.efi"
             build.build(
@@ -132,8 +150,20 @@ class Project:
                 })
             build.newline()
 
-            boot_config = join(fatroot, "jsix_boot.dat")
+            boot_config = str(fatroot / "jsix_boot.dat")
+            init_config = str(output / "init.manifest")
             manifest.write_boot_config(boot_config)
+            manifest.write_init_config(init_config, modules)
+            initrd_content.append(init_config)
+
+            initrd = join(fatroot, manifest.location, "initrd.dat")
+            build.build(
+                rule = "mkinitrd",
+                outputs = [initrd],
+                inputs = initrd_content,
+                )
+            build.newline()
+            fatroot_content.append(initrd)
 
             build.build(
                 rule = "makefat",
