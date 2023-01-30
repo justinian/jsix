@@ -36,17 +36,61 @@ struct counted
     /// Return an iterator to the end of the array
     inline const_iterator end() const { return offset_pointer<const T>(pointer, sizeof(T)*count); }
 
+    /// Return a counted<T> advanced by N items
+    inline counted<T> operator+(size_t i) {
+        counted<T> other = *this;
+        other += i;
+        return other;
+    }
+
+    /// Return a const counted<T> advanced by N items
+    inline const counted<T> operator+(size_t i) const {
+        counted<T> other = *this;
+        other += i;
+        return other;
+    }
+
     /// Advance the pointer by N items
-    inline counted<T> & operator+=(unsigned i) {
+    inline counted<T> & operator+=(size_t i) {
         if (i > count) i = count;
         pointer += i;
         count -= i;
         return *this;
     }
+};
 
-    /// Get a constant buffer from a const pointer
-    static const counted<T> from_const(const T *p, size_t count) {
-        return { const_cast<T*>(p), count };
+/// Specialize for `const void` which cannot be indexed or iterated
+template <>
+struct counted<const void>
+{
+    const void *pointer;
+    size_t count;
+
+    template <typename T>
+    static inline counted<const void> from(T *p, size_t c) {
+        return {reinterpret_cast<const void*>(p), c};
+    }
+
+    /// Return a counted<T> advanced by N items
+    inline counted<const void> operator+(size_t i) {
+        counted<const void> other = *this;
+        other += i;
+        return other;
+    }
+
+    /// Return a const counted<T> advanced by N items
+    inline const counted<const void> operator+(size_t i) const {
+        counted<const void> other = *this;
+        other += i;
+        return other;
+    }
+
+    /// Advance the pointer by N bytes
+    inline counted<const void> & operator+=(unsigned i) {
+        if (i > count) i = count;
+        pointer = offset_pointer(pointer, i);
+        count -= i;
+        return *this;
     }
 };
 
@@ -57,6 +101,27 @@ struct counted<void>
     void *pointer;
     size_t count;
 
+    template <typename T>
+    static inline counted<void> from(T *p, size_t c) {
+        return {reinterpret_cast<void*>(p), c};
+    }
+
+    operator counted<const void>() const { return {pointer, count}; }
+
+    /// Return a counted<T> advanced by N items
+    inline counted<void> operator+(size_t i) {
+        counted<void> other = *this;
+        other += i;
+        return other;
+    }
+
+    /// Return a const counted<T> advanced by N items
+    inline const counted<void> operator+(size_t i) const {
+        counted<void> other = *this;
+        other += i;
+        return other;
+    }
+
     /// Advance the pointer by N bytes
     inline counted<void> & operator+=(unsigned i) {
         if (i > count) i = count;
@@ -64,23 +129,22 @@ struct counted<void>
         count -= i;
         return *this;
     }
-
-    /// Get a constant buffer from a const pointer
-    static const counted<void> from_const(const void *p, size_t count) {
-        return { const_cast<void*>(p), count };
-    }
 };
 
 using buffer = counted<void>;
+using const_buffer = counted<const void>;
 
 template <typename T>
-const T * read(buffer &b) {
-    if (b.count < sizeof(T))
-        return nullptr;
+T * read(buffer &b) {
+    T *p = reinterpret_cast<T*>(b.pointer);
+    b += sizeof(T);
+    return p;
+}
 
+template <typename T>
+const T * read(const_buffer &b) {
     const T *p = reinterpret_cast<const T*>(b.pointer);
-    b.pointer = offset_pointer(b.pointer, sizeof(T));
-    b.count -= sizeof(T);
+    b += sizeof(T);
     return p;
 }
 
