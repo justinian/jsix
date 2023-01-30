@@ -72,7 +72,7 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
     status_line status {L"Loading programs"};
 
     fs::file disk = fs::get_boot_volume(image, bs);
-    fs::file bc_data = disk.open(L"jsix_boot.dat");
+    fs::file bc_data = disk.open(L"jsix\\boot.conf");
     bootconfig bc {bc_data.load(), bs};
 
     args->kernel = loader::load_program(disk, L"kernel", bc.kernel());
@@ -80,7 +80,7 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
     args->flags = static_cast<bootproto::boot_flags>(bc.flags());
 
     loader::load_module(disk, L"initrd", bc.initrd(),
-            bootproto::module_type::initrd, bc.initrd_format());
+            bootproto::module_type::initrd, 0);
 
     namespace bits = util::bits;
     using bootproto::desc_flags;

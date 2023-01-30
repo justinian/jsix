@@ -31,12 +31,10 @@ public:
     inline const descriptor & kernel() const { return m_kernel; }
     inline const descriptor & init() const { return m_init; }
     inline const wchar_t * initrd() const { return m_initrd; }
-    inline uint16_t initrd_format() const { return m_initrd_format; }
     inline const descriptors & panics() { return m_panics; }
 
 private:
     uint16_t m_flags;
-    uint16_t m_initrd_format;
     descriptor m_kernel;
     descriptor m_init;
     descriptors m_panics;

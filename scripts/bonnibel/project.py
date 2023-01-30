@@ -64,20 +64,25 @@ class Project:
                 outputs = ["all-headers"],
                 inputs = ["${build_root}/.all_headers"])
 
+            from .manifest import Manifest
+            manifest = Manifest(manifest_file, modules)
+
             debugroot = output / ".debug"
             debugroot.mkdir(exist_ok=True)
 
             fatroot = output / "fatroot"
             fatroot.mkdir(exist_ok=True)
 
+            (fatroot / manifest.location).mkdir(exist_ok=True)
+
+            initrdroot = output / "initrd_root"
+            initrdroot.mkdir(exist_ok=True)
+
             fatroot_content = []
             initrd_content = []
 
-            from .manifest import Manifest
-            manifest = Manifest(manifest_file, modules)
-
-            def add_fatroot(source, entry):
-                output = join(manifest.location, entry.output)
+            def add_fatroot(source, name):
+                output = join(manifest.location, name)
                 fatroot_output = f"${{build_root}}/fatroot/{output}"
 
                 build.build(
@@ -85,7 +90,7 @@ class Project:
                     outputs = [fatroot_output],
                     inputs = [source],
                     variables = {
-                        "name": f"Installing {output}",
+                        "description": f"Installing {output}",
                     })
 
                 fatroot_content.append(fatroot_output)
@@ -105,9 +110,24 @@ class Project:
                         "debug": f"${{build_root}}/.debug/{entry.output}.debug",
                     })
 
-                add_fatroot(intermediary, entry)
+                add_fatroot(intermediary, entry.output)
 
-            def add_initrd_exe(entry):
+            def add_initrd_content(root, name):
+                output = join(root, name)
+                initrd_output = f"${{build_root}}/initrd_root/{output}"
+
+                build.build(
+                    rule = "cp",
+                    outputs = [initrd_output],
+                    inputs = [f"${{build_root}}/{name}"],
+                    variables = {
+                        "description": f"Installing {name}",
+                    })
+
+                initrd_content.append(initrd_output)
+                build.newline()
+
+            def add_initrd_stripped(root, entry):
                 input_path = f"${{build_root}}/{entry.target}/{entry.output}"
                 intermediary = f"${{build_root}}/{entry.output}"
 
@@ -121,13 +141,18 @@ class Project:
                         "debug": f"${{build_root}}/.debug/{entry.output}.debug",
                     })
 
-                initrd_content.append(intermediary)
+                add_initrd_content(root, entry.output)
 
             add_fatroot_exe(manifest.kernel)
             add_fatroot_exe(manifest.init)
-            for program in manifest.panics: add_fatroot_exe(program)
-            for program in manifest.services: add_initrd_exe(program)
-            for program in manifest.drivers: add_initrd_exe(program)
+            for program in manifest.panics:
+                add_fatroot_exe(program)
+
+            for program in manifest.services:
+                add_initrd_stripped("jsix/services", program)
+
+            for program in manifest.drivers:
+                add_initrd_stripped("jsix/drivers", program)
 
             syms = manifest.add_data("symbol_table.dat",
                     "Symbol table", ("symbols",))
@@ -136,9 +161,9 @@ class Project:
             build.build(
                 rule = "makest",
                 outputs = [sym_out],
-                inputs = [f"${{build_root}}/{modules['kernel'].output}"],
+                inputs = [f"${{build_root}}/kernel/{modules['kernel'].output}"],
                 )
-            initrd_content.append(sym_out)
+            add_initrd_content("jsix/data", "symbol_table.dat")
 
             bootloader = "${build_root}/fatroot/efi/boot/bootx64.efi"
             build.build(
@@ -146,23 +171,23 @@ class Project:
                 outputs = [bootloader],
                 inputs = ["${build_root}/boot/boot.efi"],
                 variables = {
-                    "name": "Installing bootloader",
+                    "description": "Installing bootloader",
                 })
             build.newline()
 
-            boot_config = str(fatroot / "jsix_boot.dat")
-            init_config = str(output / "init.manifest")
+            boot_config = join(fatroot, "jsix", "boot.conf")
             manifest.write_boot_config(boot_config)
-            manifest.write_init_config(init_config, modules)
-            initrd_content.append(init_config)
 
-            initrd = join(fatroot, manifest.location, "initrd.dat")
+            initrd = str(fatroot / manifest.location / manifest.initrd["name"])
             build.build(
-                rule = "mkinitrd",
+                rule = "makeinitrd",
                 outputs = [initrd],
-                inputs = initrd_content,
-                )
+                inputs = [str(initrdroot)],
+                implicit = initrd_content + ["${source_root}/scripts/mkj6romfs.py"],
+                variables = {"format": manifest.initrd["format"]},
+            )
             build.newline()
+
             fatroot_content.append(initrd)
 
             build.build(

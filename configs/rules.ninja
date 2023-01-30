@@ -60,15 +60,15 @@ rule makest
     description = Making symbol table
     command = nm -n -S --demangle $in | ${source_root}/scripts/build_symbol_table.py $out
 
+rule makeinitrd
+    description = Creating $name
+    command = ${source_root}/scripts/mkj6romfs.py -c $format $in $out
+
 rule makefat
     description = Creating $name
     command = $
         cp $in $out; $
         mcopy -s -D o -i $out@@1M ${build_root}/fatroot/* ::/
-
-rule mkinitrd
-    description = Creating initrd
-    command = ${source_root}/scripts/mkinitrd.py $out $in
 
 rule strip
     description = Stripping $name

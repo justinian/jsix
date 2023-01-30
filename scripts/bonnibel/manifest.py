@@ -4,11 +4,6 @@ class Manifest:
     from collections import namedtuple
     Entry = namedtuple("Entry", ("module", "target", "output", "flags"))
 
-    formats = {
-        "none":      0x00,
-        "zstd":      0x01,
-    }
-
     flags = {
         "graphical": 0x01,
         "symbols":   0x80,
@@ -45,11 +40,10 @@ class Manifest:
         self.flags = config.get("flags", tuple())
 
         initrd = config.get("initrd", dict())
-        self.initrd = initrd.get("name", "initrd.dat")
-        self.initrd_format = initrd.get("format", "none")
-
-        if not self.initrd_format in Manifest.formats:
-            raise BonnibelError(f"Manifest specifies unknown initrd format '{self.initrd_format}'")
+        self.initrd = {
+            "name": initrd.get("name", "initrd.dat"),
+            "format": initrd.get("format", "zstd"),
+        }
 
         self.data = []
         for d in config.get("data", tuple()):
@@ -89,15 +83,12 @@ class Manifest:
         with open(path, 'wb') as outfile:
             magic = "jsixboot".encode("utf-8") # magic string
             version = 1
-            reserved = 0
 
-            initrd_format = Manifest.formats.get(self.initrd_format, 0)
             bootflags = sum([Manifest.boot_flags.get(s, 0) for s in self.flags])
 
-            outfile.write(struct.pack("<8s BBH HH",
+            outfile.write(struct.pack("<8s BBH",
                 magic,
-                version, reserved, len(self.panics),
-                initrd_format, bootflags))
+                version, len(self.panics), bootflags))
 
             def write_str(s):
                 data = s.encode("utf-16le")
@@ -118,7 +109,7 @@ class Manifest:
 
             write_ent(self.kernel)
             write_ent(self.init)
-            write_path(self.initrd)
+            write_path(self.initrd["name"])
 
             for p in self.panics:
                 write_ent(p)

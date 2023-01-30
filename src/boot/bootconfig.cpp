@@ -37,9 +37,7 @@ bootconfig::bootconfig(util::buffer data, uefi::boot_services *bs)
     if (version != 1)
         error::raise(uefi::status::incompatible_version, L"Bad version in jsix_boot.dat");
 
-    data += 1; // reserved byte
-    uint16_t num_panics = *util::read<uint16_t>(data);
-    m_initrd_format = *util::read<uint16_t>(data);
+    uint8_t num_panics = *util::read<uint8_t>(data);
     m_flags = *util::read<uint16_t>(data);
 
     read_descriptor(m_kernel, data);
