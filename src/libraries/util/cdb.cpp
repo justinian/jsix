@@ -57,21 +57,21 @@ inline uint32_t strlen(const char *s) {
 
 } // anon namespace
 
-cdb::cdb(buffer data) :
+cdb::cdb(const_buffer data) :
     m_data(data)
 {
     if (data.count < min_length)
         m_data = {0, 0};
 }
 
-const buffer
+const_buffer
 cdb::retrieve(const char *key) const
 {
     uint32_t len = strlen(key);
     return retrieve(reinterpret_cast<const uint8_t *>(key), len);
 }
 
-const buffer
+const_buffer
 cdb::retrieve(const uint8_t *key, uint32_t len) const
 {
     if (!m_data.pointer || !m_data.count)
@@ -95,7 +95,7 @@ cdb::retrieve(const uint8_t *key, uint32_t len) const
         if (s->hash == h) {
             record const *r = at<record>(s->position);
             if (equal(key, len, &r->data[0], r->keylen))
-                return buffer::from_const( &r->data[r->keylen], r->vallen );
+                return const_buffer::from( &r->data[r->keylen], r->vallen );
         }
 
         i = (i + 1) % p->length;
