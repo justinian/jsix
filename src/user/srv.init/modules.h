@@ -35,7 +35,14 @@ public:
     module_iterator end() const { return {nullptr, 0}; }
 
 private:
-    inline const module * deref() const { return m_page ? &m_page->modules[m_idx] : nullptr; }
+    inline const module * deref() const {
+        if (m_page) {
+            const module &m = m_page->modules[m_idx];
+            if (m.type != type::none)
+                return &m;
+        }
+        return nullptr;
+    }
 
     unsigned m_idx;
     bootproto::modules_page const *m_page;

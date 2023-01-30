@@ -40,19 +40,13 @@ map_phys(j6_handle_t sys, uintptr_t phys, size_t len, uintptr_t addr)
 bool
 load_program(
         const char *name,
-        uintptr_t base_address,
-        size_t size,
+        util::const_buffer data,
         j6_handle_t sys, j6_handle_t slp,
         char *err_msg)
 {
-    j6_handle_t elf_vma = map_phys(sys, base_address, size);
-    if (elf_vma == j6_handle_invalid) {
-        sprintf(err_msg, "  ** error loading program '%s': creating physical vma", name);
-        return false;
-    }
+    uintptr_t base_address = reinterpret_cast<uintptr_t>(data.pointer);
 
-    const void *addr = reinterpret_cast<const void *>(base_address);
-    elf::file progelf {addr, size};
+    elf::file progelf {data.pointer, data.count};
 
     if (!progelf.valid()) {
         sprintf(err_msg, "  ** error loading program '%s': ELF is invalid", name);
@@ -89,7 +83,7 @@ load_program(
             flags |= j6_vm_flag_exec;
 
         uintptr_t start = base_address + seg.offset;
-        size_t prologue = start & 0xfff;
+        size_t prologue = seg.vaddr & 0xfff;
         size_t epilogue = seg.mem_size - (prologue+seg.file_size);
 
         j6_handle_t sub_vma = j6_handle_invalid;
@@ -147,12 +141,7 @@ load_program(
         return false;
     }
 
-    res = j6_vma_unmap(elf_vma, __handle_self);
-    if (res != j6_status_ok) {
-        sprintf(err_msg, "  ** error loading program '%s': unmapping elf vma: %lx", name, res);
-        return false;
-    }
-
+    delete [] reinterpret_cast<const uint8_t*>(data.pointer);
     return true;
 }
 

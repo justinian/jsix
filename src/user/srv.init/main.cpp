@@ -9,9 +9,9 @@
 #include <j6/types.h>
 #include <bootproto/init.h>
 
+#include "j6romfs.h"
 #include "loader.h"
 #include "modules.h"
-#include "ramdisk.h"
 #include "service_locator.h"
 
 using bootproto::module;
@@ -24,6 +24,24 @@ extern "C" {
 uintptr_t _arg_modules_phys;   // This gets filled in in _start
 
 extern j6_handle_t __handle_self;
+
+util::const_buffer
+load_driver_for(const char *name, const j6romfs::fs &initrd)
+{
+    char driver[256];
+    snprintf(driver, sizeof(driver), "/jsix/drivers/drv.%s.elf", name);
+
+    return initrd.load_simple(driver);
+}
+
+util::const_buffer
+load_service(const char *name, const j6romfs::fs &initrd)
+{
+    char service[256];
+    snprintf(service, sizeof(service), "/jsix/services/srv.%s.elf", name);
+
+    return initrd.load_simple(service);
+}
 
 int
 main(int argc, const char **argv)
@@ -91,8 +109,27 @@ main(int argc, const char **argv)
         return 1;
     }
 
-    ramdisk initrd {initrd_module->data};
-    util::buffer manifest = initrd.load_file("init.manifest");
+    // TODO: encapsulate this all in a driver_manager, or maybe
+    // have driver_source objects..
+    j6romfs::fs initrd {initrd_module->data};
+
+    char err_msg [128];
+
+    util::const_buffer uart_elf = load_driver_for("uart", initrd);
+    if (uart_elf.pointer) {
+        if (!load_program("UART driver", uart_elf, sys_child, slp_mb_child, err_msg)) {
+            j6_log(err_msg);
+            return 1;
+        }
+    }
+
+    util::const_buffer logger_elf = load_service("logger", initrd);
+    if (uart_elf.pointer) {
+        if (!load_program("logger service", logger_elf, sys_child, slp_mb_child, err_msg)) {
+            j6_log(err_msg);
+            return 1;
+        }
+    }
 
     service_locator_start(slp_mb);
     return 0;
