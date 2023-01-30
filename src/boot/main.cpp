@@ -75,7 +75,7 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
     fs::file bc_data = disk.open(L"jsix\\boot.conf");
     bootconfig bc {bc_data.load(), bs};
 
-    args->kernel = loader::load_program(disk, L"kernel", bc.kernel());
+    args->kernel = loader::load_program(disk, L"kernel", bc.kernel(), true);
     args->init = loader::load_program(disk, L"init server", bc.init());
     args->flags = static_cast<bootproto::boot_flags>(bc.flags());
 
@@ -106,8 +106,6 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
             }
         }
     }
-
-    loader::verify_kernel_header(*args->kernel);
 }
 
 memory::efi_mem_map

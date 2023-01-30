@@ -3,7 +3,7 @@
 section .text
 
 extern isr_handler
-global isr_handler_prelude:function (isr_handler_prelude.end - isr_handler_prelude)
+global isr_handler_prelude: function hidden (isr_handler_prelude.end - isr_handler_prelude)
 isr_handler_prelude:
 	push rbp     ; Never executed, fake function prelude
 	mov rbp, rsp ; to calm down gdb
@@ -19,7 +19,7 @@ isr_handler_prelude:
 .end:
 
 extern irq_handler
-global irq_handler_prelude:function (irq_handler_prelude.end - irq_handler_prelude)
+global irq_handler_prelude: function hidden (irq_handler_prelude.end - irq_handler_prelude)
 irq_handler_prelude:
 	push rbp     ; Never executed, fake function prelude
 	mov rbp, rsp ; to calm down gdb
@@ -35,7 +35,7 @@ irq_handler_prelude:
 	; fall through to isr_handler_return
 .end:
 
-global isr_handler_return:function (isr_handler_return.end - isr_handler_return)
+global isr_handler_return: function hidden (isr_handler_return.end - isr_handler_return)
 isr_handler_return:
 	check_swap_gs
 	pop_all
@@ -45,7 +45,7 @@ isr_handler_return:
 .end:
 
 %macro EMIT_ISR 2
-	global %1:function (%1.end - %1)
+	global %1:function hidden (%1.end - %1)
 	%1:
 		push 0
 		push %2
@@ -54,7 +54,7 @@ isr_handler_return:
 %endmacro
 
 %macro EMIT_EISR 2
-	global %1:function (%1.end - %1)
+	global %1:function hidden (%1.end - %1)
 	%1:
 		push %2
 		jmp isr_handler_prelude.real
@@ -62,7 +62,7 @@ isr_handler_return:
 %endmacro
 
 %macro EMIT_IRQ 2
-	global %1:function (%1.end - %1)
+	global %1:function hidden (%1.end - %1)
 	%1:
 		push 0
 		push %2

@@ -1,6 +1,6 @@
 %include "tasking.inc"
 
-global task_switch
+global task_switch: function hidden
 task_switch:
 	push rbp
 	mov rbp, rsp
@@ -61,7 +61,7 @@ task_switch:
 	pop rbp
 	ret
 
-global _current_gsbase
+global _current_gsbase: function hidden
 _current_gsbase:
 	mov rax, [gs:CPU_DATA.self]
 	ret

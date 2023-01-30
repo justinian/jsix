@@ -1,53 +1,59 @@
+PHDRS
+{
+    rodata PT_LOAD PHDRS FILEHDR FLAGS (4) /* read-only */;
+    text PT_LOAD ;
+    rwdata PT_LOAD ;
+    bss PT_LOAD ;
+}
+
+MEMORY
+{
+    kernel (rwxa) : ORIGIN = 0xFFFF800000000000, LENGTH = 256M
+}
+
 ENTRY(_kernel_start.real)
+
 SECTIONS
 {
-	. = 0xFFFF800000000000;
-
-	.header : {
-		__header_start = .;
+	.header ORIGIN(kernel) + SIZEOF_HEADERS : {
+		HIDDEN(__header_start = .);
 		KEEP(*(.header))
-		__header_end = .;
-	}
+		HIDDEN(__header_end = .);
+	} :rodata
 
-	.text ALIGN(4096) : {
-		*(.text*)
-		KEEP(*(.isrs))
-	}
-
-	.data ALIGN(4096) : {
-		 *(.data*)
+    .rodata : {
 		 *(.rodata*)
-	}
+    } :rodata
 
-	.ctors : ALIGN(8) {
-		 __ctors = .;
+    .ap_startup : {
+		 *(.ap_startup*)
+    } :rodata
+
+	.ctors ALIGN(8) : {
+		 HIDDEN(__ctors = .);
 		 KEEP(*(.ctors))
 		 KEEP(*(.init_array))
-		 __ctors_end = .;
-	 }
+		 HIDDEN(__ctors_end = .);
+	 } :rodata
 
-	.bss ALIGN(4096) : {
-		__bss_start = .;
+	.text ALIGN(4K) : {
+		*(.text*)
+		KEEP(*(.isrs))
+	} :text
+
+	.data ALIGN(4K) : {
+		 *(.data*)
+	} :rwdata
+
+    .syscall_registry : {
+        *(.syscall_registry*)
+    } :rwdata
+
+	.bss ALIGN(4K) : {
+		HIDDEN(__bss_start = .);
 		*(.bss*)
-		__bss_end = .;
-	}
+		HIDDEN(__bss_end = .);
+	} :bss
 
-	.note : {
-		*(.note.*)
-	}
-
-	.eh_frame : {
-		__eh_frame_start = .;
-		KEEP(*(.eh_frame))
-		__eh_frame_end = .;
-	}
-
-	.eh_frame_hdr : {
-		KEEP(*(.eh_frame_hdr))
-	}
-
-	__eh_frame_hdr_start = SIZEOF(.eh_frame_hdr) > 0 ? ADDR(.eh_frame_hdr) : 0;
-	__eh_frame_hdr_end = SIZEOF(.eh_frame_hdr) > 0 ? . : 0;
-
-	kernel_end = ALIGN(4096);
+	HIDDEN(__kernel_end = ALIGN(4096));
 }

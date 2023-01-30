@@ -15,11 +15,14 @@ variables:
     "-ffreestanding",
     "-nodefaultlibs",
     "-fno-builtin",
+    "-fno-plt",
 
     "-mno-sse",
     "-fno-omit-frame-pointer",
     "-mno-red-zone",
     "-mcmodel=kernel",
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
 
     "-g3",
     "-ggdb",

@@ -35,7 +35,7 @@ public:
     module * allocate_module();
 
     void memset(void *start, size_t size, uint8_t value);
-    void copy(void *to, void *from, size_t size);
+    void copy(void *to, const void *from, size_t size);
 
     inline void zero(void *start, size_t size) { memset(start, size, 0); }
 

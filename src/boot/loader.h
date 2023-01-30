@@ -28,14 +28,16 @@ load_file(
     const wchar_t *path);
 
 /// Parse and load an ELF file in memory into a loaded image.
-/// \arg disk       The opened UEFI filesystem to load from
-/// \arg desc       The descriptor identifying the program
-/// \arg name       The human-readable name of the program to load
+/// \arg disk   The opened UEFI filesystem to load from
+/// \arg desc   The descriptor identifying the program
+/// \arg name   The human-readable name of the program to load
+/// \arg verify If this is the kernel and should have its header verified
 bootproto::program *
 load_program(
     fs::file &disk,
     const wchar_t *name,
-    const descriptor &desc);
+    const descriptor &desc,
+    bool verify = false);
 
 /// Load a file from disk into memory, creating an init args module
 /// \arg disk    The opened UEFI filesystem to load from
@@ -50,11 +52,6 @@ load_module(
     const wchar_t *path,
     bootproto::module_type type,
     uint16_t subtype);
-
-/// Verify that a loaded ELF has the j6 kernel header
-/// \arg program  The program to check for a header
-void
-verify_kernel_header(bootproto::program &program);
 
 } // namespace loader
 } // namespace boot

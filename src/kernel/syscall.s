@@ -22,7 +22,7 @@ extern syscall_registry
 extern syscall_invalid
 
 
-global syscall_handler_prelude:function (syscall_handler_prelude.end - syscall_handler_prelude)
+global syscall_handler_prelude: function hidden (syscall_handler_prelude.end - syscall_handler_prelude)
 syscall_handler_prelude:
 	push rbp     ; Never executed, fake function prelude
 	mov rbp, rsp ; to calm down gdb
@@ -77,7 +77,7 @@ syscall_handler_prelude:
 	call syscall_invalid
 .end:
 
-global kernel_to_user_trampoline:function (kernel_to_user_trampoline.end - kernel_to_user_trampoline)
+global kernel_to_user_trampoline: function hidden (kernel_to_user_trampoline.end - kernel_to_user_trampoline)
 kernel_to_user_trampoline:
 	pop r15
 	pop r14
@@ -98,7 +98,7 @@ kernel_to_user_trampoline:
 	o64 sysret
 .end:
 
-global syscall_enable:function (syscall_enable.end - syscall_enable)
+global syscall_enable: function hidden (syscall_enable.end - syscall_enable)
 syscall_enable:
 	push rbp
 	mov rbp, rsp

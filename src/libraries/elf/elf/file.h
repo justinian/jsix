@@ -22,7 +22,7 @@ public:
     inline size_t size() const { return m_size; }
     inline unsigned count() const { return m_count; }
 
-    inline const T & operator [] (int i) const { return *util::offset_pointer<T>(m_start, m_size*i); }
+    inline const T & operator [] (int i) const { return *util::offset_pointer<const T>(m_start, m_size*i); }
     inline const iterator begin() const { return iterator(m_start, m_size); }
     inline const iterator end() const { return util::offset_pointer(m_start, m_size*m_count); }
 

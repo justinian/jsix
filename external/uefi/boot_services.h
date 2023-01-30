@@ -22,7 +22,7 @@ namespace bs_impl {
 	using create_event = status (*)(evt, tpl, event_notify, void*, event*);
 	using exit_boot_services = status (*)(handle, size_t);
 	using locate_protocol = status (*)(const guid*, void*, void**);
-	using copy_mem = void (*)(void*, void*, size_t);
+	using copy_mem = void (*)(void*, const void*, size_t);
 	using set_mem = void (*)(void*, uint64_t, uint8_t);
 }
 

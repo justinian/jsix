@@ -75,7 +75,7 @@ rule strip
     command = $
         cp $in $out; $
         objcopy --only-keep-debug $out $debug; $
-        strip -g $out; $
+        strip --discard-all -g $out; $
         objcopy --add-gnu-debuglink=$debug $out
 
 rule touch

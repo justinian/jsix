@@ -35,15 +35,42 @@ load_file(
     return b;
 }
 
+void
+verify_kernel_header(elf::file &kernel, util::const_buffer data)
+{
+    status_line status {L"Verifying kernel header"};
+
+    // The header should be the first non-null section
+    const elf::section_header &sect = kernel.sections()[1];
+
+    const bootproto::header *header =
+        reinterpret_cast<const bootproto::header *>(
+            util::offset_pointer(data.pointer, sect.offset));
+
+    if (header->magic != bootproto::header_magic)
+        error::raise(uefi::status::load_error, L"Bad kernel magic number");
+
+    if (header->length < sizeof(bootproto::header))
+        error::raise(uefi::status::load_error, L"Bad kernel header length");
+
+    if (header->version < bootproto::min_header_version)
+        error::raise(uefi::status::unsupported, L"Kernel header version not supported");
+
+    console::print(L"    Loaded kernel vserion: %d.%d.%d %x\r\n",
+            header->version_major, header->version_minor, header->version_patch,
+            header->version_gitsha);
+}
+
 bootproto::program *
 load_program(
     fs::file &disk,
     const wchar_t *name,
-    const descriptor &desc)
+    const descriptor &desc,
+    bool verify)
 {
     status_line status(L"Loading program", name);
 
-    util::buffer data = load_file(disk, desc.path);
+    util::const_buffer data = load_file(disk, desc.path);
 
     elf::file program(data.pointer, data.count);
     if (!program.valid()) {
@@ -59,6 +86,9 @@ load_program(
 
         error::raise(uefi::status::load_error, L"ELF file not valid");
     }
+
+    if (verify)
+        verify_kernel_header(program, data);
 
     size_t num_sections = 0;
     for (auto &seg : program.programs()) {
@@ -85,7 +115,7 @@ load_program(
 
         size_t page_count = memory::bytes_to_pages(mem_size);
         void *pages = g_alloc.allocate_pages(page_count, alloc_type::program, true);
-        void *source = util::offset_pointer(data.pointer, seg.offset);
+        const void *source = util::offset_pointer(data.pointer, seg.offset);
         g_alloc.copy(util::offset_pointer(pages, prelude), source, seg.file_size);
         section.phys_addr = reinterpret_cast<uintptr_t>(pages);
         section.virt_addr = virt_addr;
@@ -114,34 +144,6 @@ load_module(
     mod->type = type;
     mod->subtype = subtype;
     mod->data = load_file(disk, path);
-}
-
-void
-verify_kernel_header(bootproto::program &program)
-{
-    status_line status(L"Verifying kernel header");
-
-    const bootproto::header *header =
-        reinterpret_cast<const bootproto::header *>(program.sections[0].phys_addr);
-
-    if (header->magic != bootproto::header_magic)
-        error::raise(uefi::status::load_error, L"Bad kernel magic number");
-
-    if (header->length < sizeof(bootproto::header))
-        error::raise(uefi::status::load_error, L"Bad kernel header length");
-
-    if (header->version < bootproto::min_header_version)
-        error::raise(uefi::status::unsupported, L"Kernel header version not supported");
-
-    console::print(L"    Loaded kernel vserion: %d.%d.%d %x\r\n",
-            header->version_major, header->version_minor, header->version_patch,
-            header->version_gitsha);
-
-    /*
-    for (auto &section : program.sections)
-        console::print(L"    Section: p:0x%lx v:0x%lx fs:0x%x ms:0x%x\r\n",
-            section.phys_addr, section.virt_addr, section.file_size, section.mem_size);
-    */
 }
 
 } // namespace loader

@@ -155,7 +155,7 @@ allocator::memset(void *start, size_t size, uint8_t value)
 }
 
 void
-allocator::copy(void *to, void *from, size_t size)
+allocator::copy(void *to, const void *from, size_t size)
 {
     m_bs.copy_mem(to, from, size);
 }

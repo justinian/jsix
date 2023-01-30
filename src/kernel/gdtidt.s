@@ -1,15 +1,15 @@
 
-global idt_write
+global idt_write: function hidden
 idt_write:
 	lidt [rdi] ; first arg is the IDT pointer location
 	ret
 
-global idt_load
+global idt_load: function hidden
 idt_load:
 	sidt [rdi] ; first arg is where to write the idtr value
 	ret
 
-global gdt_write
+global gdt_write: function hidden
 gdt_write:
 	lgdt [rdi] ; first arg is the GDT pointer location
 
@@ -28,7 +28,7 @@ gdt_write:
 	ltr cx ; fourth arg is the TSS
 	ret
 
-global gdt_load
+global gdt_load: function hidden
 gdt_load:
 	sgdt [rdi] ; first arg is where to write the gdtr value
 	ret
