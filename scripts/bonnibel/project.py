@@ -30,7 +30,7 @@ class Project:
             build.variable("source_root", root)
             build.newline()
 
-            build.include(root / "configs" / "rules.ninja")
+            build.include(root / "assets/build/rules.ninja")
             build.newline()
 
             build.variable("version_major", self.version.major)

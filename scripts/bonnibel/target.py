@@ -8,7 +8,7 @@ class Target(dict):
         if (name, config) in cls.__targets:
             return cls.__targets[(name, config)]
 
-        configs = root / "configs"
+        configs = root / "assets/build"
 
         dicts = []
         depfiles = []
