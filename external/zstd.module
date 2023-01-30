@@ -3,7 +3,7 @@
 zstd = module("zstd",
     root = "${source_root}/external/zstd",
     kind = "lib",
-    deps = [ "libc" ],
+    deps = [ ],
     output = "libzstd.a",
     sources = [
         "decompress/zstd_decompress.c",
@@ -26,7 +26,7 @@ zstd = module("zstd",
     ])
 
 zstd.variables['ccflags'] = [
-    "${ccflags}", 
+    "${ccflags}",
     "-DXXH_NAMESPACE=ZSTD_",
     "-DDEBUGLEVEL=0",
     "-DZSTD_DISABLE_ASM",

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 def generate(output, config, manifest):
-    from os import makedirs, walk
+    from os import makedirs
+    from glob import iglob
     from pathlib import Path
     from bonnibel.module import Module
     from bonnibel.project import Project
@@ -10,33 +11,35 @@ def generate(output, config, manifest):
     project = Project(root)
 
     output = root / output
-    sources = root / "src"
     manifest = root / manifest
 
+    sources = [
+        str(root / "src/**/*.module"),
+        str(root / "external/*.module"),
+    ]
+
     modules = {}
-    for base, dirs, files in walk(sources):
-        path = Path(base) 
-        for f in files:
-            if f.endswith(".module"):
-                fullpath = path / f
-                
-                def module_init(name, **kwargs):
-                    if not "root" in kwargs:
-                        kwargs["root"] = path
-                    m = Module(name, fullpath, **kwargs)
-                    modules[m.name] = m
-                    return m
+    for source in sources:
+        for modfile in iglob(source, recursive=True):
+            path = Path(modfile).parent
 
-                glo = {
-                    "module": module_init,
-                    "source_root": root,
-                    "built_root": output,
-                    "module_root": path,
-                }
-                code = compile(open(fullpath, 'r').read(), fullpath, "exec")
+            def module_init(name, **kwargs):
+                if not "root" in kwargs:
+                    kwargs["root"] = path
+                m = Module(name, modfile, **kwargs)
+                modules[m.name] = m
+                return m
 
-                loc = {}
-                exec(code, glo, loc)
+            glo = {
+                "module": module_init,
+                "source_root": root,
+                "build_root": output,
+                "module_root": path,
+            }
+            code = compile(open(modfile, 'r').read(), modfile, "exec")
+
+            loc = {}
+            exec(code, glo, loc)
 
     Module.update(modules)
 
