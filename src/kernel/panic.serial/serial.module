@@ -6,6 +6,7 @@ panic = module("panic.serial",
     deps = [ "util", "elf", "kernel" ],
     includes = [ ".." ],
     description = "Serial panic handler",
+    ld_script = "panic.serial.ld",
     sources = [
         "display.cpp",
         "entry.s",
@@ -14,5 +15,3 @@ panic = module("panic.serial",
         "symbol_table.cpp",
         "../printf/printf.c",
     ])
-
-panic.variables['ldflags'] = ["${ldflags}", "-T", "${source_root}/src/kernel/panic.serial/panic.serial.ld"]

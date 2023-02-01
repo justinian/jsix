@@ -7,6 +7,7 @@ kernel = module("kernel",
     targets = [ "kernel" ],
     description = "jsix kernel",
     deps = [ "util", "cpu", "bootproto", "j6" ],
+    ld_script = "kernel.ld",
     sources = [
         "apic.cpp",
         "assert.cpp",
@@ -83,5 +84,3 @@ kernel.add_depends([
         "syscalls.inc.cog",
         "syscall_verify.cpp.cog",
     ], definitions)
-
-kernel.variables['ldflags'] = ["${ldflags}", "-T", "${source_root}/src/kernel/kernel.ld"]

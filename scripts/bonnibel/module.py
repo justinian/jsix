@@ -7,10 +7,18 @@ def resolve(path):
     return str(Path(path).resolve())
 
 class BuildOptions:
-    def __init__(self, includes=tuple(), libs=tuple(), order_only=tuple()):
+    def __init__(self, includes=tuple(), libs=tuple(), order_only=tuple(), ld_script=None):
         self.includes = list(includes)
         self.libs = list(libs)
         self.order_only = list(order_only)
+        self.ld_script = ld_script and str(ld_script)
+
+    @property
+    def implicit(self):
+        if self.ld_script is not None:
+            return self.libs + [self.ld_script]
+        else:
+            return self.libs
 
 
 class Module:
@@ -28,6 +36,7 @@ class Module:
         "default": (bool, False),
         "description": (str, None),
         "no_libc": (bool, False),
+        "ld_script": (str, None),
     }
 
     def __init__(self, name, modfile, root, **kwargs):
@@ -176,6 +185,7 @@ class Module:
 
             modopts = BuildOptions(
                 includes = [self.root, "${module_dir}"],
+                ld_script = self.ld_script and self.root / self.ld_script,
                 )
             if self.public_headers:
                 modopts.includes += [f"${{build_root}}/include/{self.name}"]
@@ -214,6 +224,9 @@ class Module:
             if modopts.libs:
                 build.variable("libs", ["${libs}"] + modopts.libs)
 
+            if modopts.ld_script:
+                build.variable("ldflags", ["${ldflags}"] + ["-T", modopts.ld_script])
+
             header_deps = []
 
             inputs = []
@@ -237,16 +250,16 @@ class Module:
             gather_phony(build, header_deps, target_rel, add_headers=True)
 
             output = target_rel(self.output)
-            dump = output + ".dump"
             build.newline()
             build.build(
                 rule = self.kind,
                 outputs = output,
                 inputs = inputs,
-                implicit = modopts.libs,
+                implicit = modopts.implicit,
                 order_only = modopts.order_only,
             )
 
+            dump = output + ".dump"
             build.newline()
             build.build(
                 rule = "dump",
