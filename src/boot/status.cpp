@@ -11,17 +11,19 @@ constexpr int num_boxes = 30;
 
 namespace boot {
 
-static constexpr int level_ok = 0;
-static constexpr int level_warn = 1;
-static constexpr int level_fail = 2;
+static constexpr int level_ok = 1;
+static constexpr int level_warn = 2;
+static constexpr int level_fail = 3;
 
 static const wchar_t *level_tags[] = {
+    L"      ",
     L"  ok  ",
     L" warn ",
     L"failed"
 };
 
 static const uefi::attribute level_colors[] = {
+    uefi::attribute::green,
     uefi::attribute::green,
     uefi::attribute::brown,
     uefi::attribute::light_red
@@ -33,7 +35,7 @@ unsigned status_bar::s_count = 0;
 
 status_line::status_line(const wchar_t *message, const wchar_t *context, bool fails_clean) :
     status(fails_clean),
-    m_level(level_ok),
+    m_level(0),
     m_depth(0),
     m_outer(nullptr)
 {
@@ -70,6 +72,12 @@ status_line::~status_line()
         m_outer->m_level = m_level;
         m_outer->print_status_tag();
     }
+
+    if (m_level < level_ok) {
+        m_level = level_ok;
+        print_status_tag();
+    }
+
     s_current = m_outer;
 }
 
