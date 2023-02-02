@@ -3,6 +3,7 @@
 
 #include <uefi/protos/simple_text_output.h>
 #include <uefi/types.h>
+#include <util/format.h>
 
 #include "console.h"
 #include "error.h"
@@ -59,129 +60,12 @@ console::announce()
 }
 
 size_t
-console::print_hex(uint32_t n) const
-{
-    wchar_t buffer[9];
-    wchar_t *p = buffer;
-    for (int i = 7; i >= 0; --i) {
-        uint8_t nibble = (n >> (i*4)) & 0xf;
-        *p++ = digits[nibble];
-    }
-    *p = 0;
-    m_out->output_string(buffer);
-    return 8;
-}
-
-size_t
-console::print_long_hex(uint64_t n) const
-{
-    wchar_t buffer[17];
-    wchar_t *p = buffer;
-    for (int i = 15; i >= 0; --i) {
-        uint8_t nibble = (n >> (i*4)) & 0xf;
-        *p++ = digits[nibble];
-    }
-    *p = 0;
-    m_out->output_string(buffer);
-    return 16;
-}
-
-size_t
-console::print_dec(uint32_t n) const
-{
-    wchar_t buffer[11];
-    wchar_t *p = buffer + 10;
-    *p-- = 0;
-    do {
-        *p-- = digits[n % 10];
-        n /= 10;
-    } while (n != 0);
-
-    m_out->output_string(++p);
-    return 10 - (p - buffer);
-}
-
-size_t
-console::print_long_dec(uint64_t n) const
-{
-    wchar_t buffer[21];
-    wchar_t *p = buffer + 20;
-    *p-- = 0;
-    do {
-        *p-- = digits[n % 10];
-        n /= 10;
-    } while (n != 0);
-
-    m_out->output_string(++p);
-    return 20 - (p - buffer);
-}
-
-size_t
 console::vprintf(const wchar_t *fmt, va_list args) const
 {
     wchar_t buffer[256];
-    const wchar_t *r = fmt;
-    wchar_t *w = buffer;
-    size_t count = 0;
+    util::counted<wchar_t> output {buffer, sizeof(buffer)/sizeof(wchar_t)};
+    size_t count = util::vformat(output, fmt, args);
 
-    while (r && *r) {
-        if (*r != L'%') {
-            count++;
-            *w++ = *r++;
-            continue;
-        }
-
-        *w = 0;
-        m_out->output_string(buffer);
-        w = buffer;
-
-        r++; // chomp the %
-
-        switch (*r++) {
-            case L'%':
-                m_out->output_string(const_cast<wchar_t*>(L"%"));
-                count++;
-                break;
-
-            case L'x':
-                count += print_hex(va_arg(args, uint32_t));
-                break;
-
-            case L'd':
-            case L'u':
-                count += print_dec(va_arg(args, uint32_t));
-                break;
-
-            case L's':
-                {
-                    wchar_t *s = va_arg(args, wchar_t*);
-                    count += wstrlen(s);
-                    m_out->output_string(s);
-                }
-                break;
-
-            case L'l':
-                switch (*r++) {
-                    case L'x':
-                        count += print_long_hex(va_arg(args, uint64_t));
-                        break;
-
-                    case L'd':
-                    case L'u':
-                        count += print_long_dec(va_arg(args, uint64_t));
-                        break;
-
-                    default:
-                        break;
-                }
-                break;
-
-            default:
-                break;
-        }
-    }
-
-    *w = 0;
     m_out->output_string(buffer);
     return count;
 }

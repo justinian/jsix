@@ -8,9 +8,10 @@
 
 namespace util {
 
-using stringbuf = counted<char>;
+template <typename char_t>
+size_t format(counted<char_t> output, const char_t *format, ...);
 
-size_t format(stringbuf output, const char *format, ...);
-size_t vformat(stringbuf output, const char *format, va_list va);
+template <typename char_t>
+size_t vformat(counted<char_t> output, const char_t *format, va_list va);
 
 }

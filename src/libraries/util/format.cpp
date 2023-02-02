@@ -5,22 +5,60 @@ namespace util {
 
 namespace {
 
-const char digits[] = "0123456789abcdef";
+template <typename char_t> struct char_traits;
 
-template <typename I, unsigned N> void
-append_int(char *&out, size_t &count, size_t max, I value, unsigned min_width, char pad)
+template <>
+struct char_traits<char>
 {
-    static constexpr size_t bufsize = sizeof(I)*3;
+    static constexpr const char digits[] = "0123456789abcdef";
+
+    static constexpr char d0 = '0';
+    static constexpr char d9 = '9';
+
+    static constexpr char per = '%';
+    static constexpr char space = ' ';
+
+    static constexpr char d = 'd';
+    static constexpr char l = 'l';
+    static constexpr char s = 's';
+    static constexpr char u = 'u';
+    static constexpr char x = 'x';
+};
+
+template <>
+struct char_traits<wchar_t>
+{
+    static constexpr const wchar_t digits[] = L"0123456789abcdef";
+
+    static constexpr wchar_t d0 = L'0';
+    static constexpr wchar_t d9 = L'9';
+
+    static constexpr wchar_t per = L'%';
+    static constexpr wchar_t space = L' ';
+
+    static constexpr wchar_t d = L'd';
+    static constexpr wchar_t l = L'l';
+    static constexpr wchar_t s = L's';
+    static constexpr wchar_t u = L'u';
+    static constexpr wchar_t x = L'x';
+};
+
+
+template <typename char_t, typename I, unsigned N> void
+append_int(char_t *&out, size_t &count, size_t max, I value, unsigned min_width, char_t pad)
+{
+    using chars = char_traits<char_t>;
+    static constexpr size_t bufsize = sizeof(I)*4;
 
     unsigned num_digits = 0;
-    char buffer[bufsize];
-    char *p = buffer + (bufsize - 1);
+    char_t buffer[bufsize];
+    char_t *p = buffer + (bufsize - 1);
     do {
         if (value) {
-            *p-- = digits[value % N];
+            *p-- = chars::digits[value % N];
             value /= N;
         } else {
-            *p-- = num_digits ? pad : '0';
+            *p-- = num_digits ? pad : chars::d0;
         }
         num_digits++;
     } while (value || num_digits < min_width);
@@ -33,81 +71,91 @@ append_int(char *&out, size_t &count, size_t max, I value, unsigned min_width, c
     }
 }
 
-void
-append_string(char *&out, size_t &count, size_t max, char const *value)
+template <typename char_t> void
+append_string(char_t *&out, size_t &count, size_t max, unsigned width, char_t const *value)
 {
+    using chars = char_traits<char_t>;
+
     while (value && *value && count < max) {
-        count++;
+        ++count;
+        if (width) --width;
         *out++ = *value++;
+    }
+
+    while (width-- && count < max) {
+        ++count;
+        *out++ = chars::space;
     }
 }
 
 } // namespace
 
-size_t
-vformat(stringbuf output, char const *format, va_list va)
+template <typename char_t> size_t
+vformat(counted<char_t> output, char_t const *format, va_list va)
 {
-    char * out = output.pointer;
+    using chars = char_traits<char_t>;
+
+    char_t * out = output.pointer;
     const size_t max = output.count - 1;
 
     size_t count = 0;
     while (format && *format && count < max) {
-        if (*format != '%') {
+        if (*format != chars::per) {
             count++;
             *out++ = *format++;
             continue;
         }
 
         format++; // chomp the % character
-        char spec = *format++;
+        char_t spec = *format++;
 
         bool long_type = false;
-        if (spec == '%') {
+        if (spec == chars::per) {
             count++;
-            *out++ = '%';
+            *out++ = chars::per;
             continue;
         }
 
         unsigned width = 0;
-        char pad = ' ';
+        char_t pad = chars::space;
 
         while (spec) {
             bool done = false;
 
-            if (spec >= '0' && spec <= '9') {
-                if (spec == '0' && width == 0)
-                    pad = '0';
+            if (spec >= chars::d0 && spec <= chars::d9) {
+                if (spec == chars::d0 && width == 0)
+                    pad = chars::d0;
                 else
-                    width = width * 10 + (spec - '0');
+                    width = width * 10 + (spec - chars::d0);
 
                 spec = *format++;
                 continue;
             }
 
             switch (spec) {
-                case 'l':
+                case chars::l:
                     long_type = true;
                     break;
 
-                case 'x':
+                case chars::x:
                     if (long_type)
-                        append_int<uint64_t, 16>(out, count, max, va_arg(va, uint64_t), width, pad);
+                        append_int<char_t, uint64_t, 16>(out, count, max, va_arg(va, uint64_t), width, pad);
                     else
-                        append_int<uint32_t, 16>(out, count, max, va_arg(va, uint32_t), width, pad);
+                        append_int<char_t, uint32_t, 16>(out, count, max, va_arg(va, uint32_t), width, pad);
                     done = true;
                     break;
 
-                case 'd':
-                case 'u':
+                case chars::d:
+                case chars::u:
                     if (long_type)
-                        append_int<uint64_t, 10>(out, count, max, va_arg(va, uint64_t), width, pad);
+                        append_int<char_t, uint64_t, 10>(out, count, max, va_arg(va, uint64_t), width, pad);
                     else
-                        append_int<uint32_t, 10>(out, count, max, va_arg(va, uint32_t), width, pad);
+                        append_int<char_t, uint32_t, 10>(out, count, max, va_arg(va, uint32_t), width, pad);
                     done = true;
                     break;
 
-                case 's':
-                    append_string(out, count, max, va_arg(va, const char *));
+                case chars::s:
+                    append_string(out, count, max, width, va_arg(va, const char_t *));
                     done = true;
                     break;
             }
@@ -117,17 +165,24 @@ vformat(stringbuf output, char const *format, va_list va)
         }
     }
 
+    *out = 0;
     return count;
 }
 
-size_t
-format(stringbuf output, const char *format, ...)
+template <typename char_t> size_t
+format(counted<char_t> output, const char_t *format, ...)
 {
     va_list va;
     va_start(va, format);
-    size_t result = vformat(output, format, va);
+    size_t result = vformat<char_t>(output, format, va);
     va_end(va);
     return result;
 }
+
+template size_t format<char>(counted<char> output, const char *format, ...);
+template size_t vformat<char>(counted<char> output, const char *format, va_list va);
+
+template size_t format<wchar_t>(counted<wchar_t> output, const wchar_t *format, ...);
+template size_t vformat<wchar_t>(counted<wchar_t> output, const wchar_t *format, va_list va);
 
 } //namespace util

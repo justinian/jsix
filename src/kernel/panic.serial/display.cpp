@@ -1,4 +1,4 @@
-#include "printf/printf.h"
+#include <util/format.h>
 
 #include "cpu.h"
 #include "display.h"
@@ -29,7 +29,7 @@ print_header(
     out.write(":");
 
     char linestr[6];
-    snprintf(linestr, sizeof(linestr), "%ld", line);
+    util::format({linestr, sizeof(linestr)}, "%ld", line);
     out.write(linestr);
 }
 
@@ -38,7 +38,7 @@ print_cpu(serial_port &out, cpu_data &cpu)
 {
     out.write("\n \e[0;31m==[ CPU: ");
     char cpuid[7];
-    snprintf(cpuid, sizeof(cpuid), "%4x", cpu.id);
+    util::format({cpuid, sizeof(cpuid)}, "%4x", cpu.id);
     out.write(cpuid);
     out.write(" ]====================================================================\n");
 }
@@ -54,7 +54,7 @@ print_callstack(serial_port &out, symbol_table &syms, frame const *fp)
         if (!name)
             name = "<unknown>";
 
-        snprintf(message, sizeof(message),
+        util::format({message, sizeof(message)},
             " \e[0;33mframe %2d: <0x%016lx> \e[1;33m%s\n",
             count++, fp->return_addr, name);
 
@@ -68,7 +68,7 @@ print_reg(serial_port &out, const char *name, uint64_t val, const char *color)
 {
     char message[512];
 
-    snprintf(message, sizeof(message), " \e[0;%sm%-3s %016lx\e[0m", color, name, val);
+    util::format({message, sizeof(message)}, " \e[0;%sm%3s %016lx\e[0m", color, name, val);
     out.write(message);
 }
 
@@ -124,11 +124,11 @@ print_rip(serial_port &out, uintptr_t addr)
 
     out.write("\n");
     for (unsigned i = 0; i < per_line*3; i += per_line) {
-        snprintf(bit, sizeof(bit), "\e[0;33m%20lx: \e[0m", addr + i);
+        util::format({bit, sizeof(bit)}, "\e[0;33m%20lx: \e[0m", addr + i);
         out.write(bit);
 
         for (unsigned j = 0; j < per_line; ++j) {
-            snprintf(bit, sizeof(bit), "%02x ", data[i+j]);
+            util::format({bit, sizeof(bit)}, "%02x ", data[i+j]);
             out.write(bit);
         }
         out.write("\n");
@@ -155,6 +155,3 @@ print_user_state(serial_port &out, const cpu_state &regs)
 }
 
 } // namespace panicking
-
-// For printf.c
-extern "C" void putchar_(char c) {}

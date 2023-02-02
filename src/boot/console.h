@@ -21,10 +21,6 @@ public:
 
     void announce();
 
-    size_t print_hex(uint32_t n) const;
-    size_t print_dec(uint32_t n) const;
-    size_t print_long_hex(uint64_t n) const;
-    size_t print_long_dec(uint64_t n) const;
     size_t printf(const wchar_t *fmt, ...) const;
 
     static console & get() { return *s_console; }

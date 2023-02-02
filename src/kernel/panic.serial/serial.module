@@ -13,5 +13,4 @@ panic = module("panic.serial",
         "main.cpp",
         "serial.cpp",
         "symbol_table.cpp",
-        "../printf/printf.c",
     ])
