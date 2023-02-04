@@ -72,7 +72,7 @@ load_program(
 
     util::const_buffer data = load_file(disk, desc.path);
 
-    elf::file program(data.pointer, data.count);
+    elf::file program {data};
     if (!program.valid()) {
         auto *header = program.header();
         console::print(L"        progam size: %d\r\n", data.count);
@@ -91,7 +91,7 @@ load_program(
         verify_kernel_header(program, data);
 
     size_t num_sections = 0;
-    for (auto &seg : program.programs()) {
+    for (auto &seg : program.segments()) {
         if (seg.type == elf::segment_type::load)
             ++num_sections;
     }
@@ -99,7 +99,7 @@ load_program(
     bootproto::program_section *sections = new bootproto::program_section [num_sections];
 
     size_t next_section = 0;
-    for (auto &seg : program.programs()) {
+    for (auto &seg : program.segments()) {
         if (seg.type != elf::segment_type::load)
             continue;
 

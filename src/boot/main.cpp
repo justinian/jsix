@@ -72,8 +72,8 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
     status_line status {L"Loading programs"};
 
     fs::file disk = fs::get_boot_volume(image, bs);
-    fs::file bc_data = disk.open(L"jsix\\boot.conf");
-    bootconfig bc {bc_data.load(), bs};
+    util::buffer bc_data = loader::load_file(disk, L"jsix\\boot.conf");
+    bootconfig bc {bc_data, bs};
 
     args->kernel = loader::load_program(disk, L"kernel", bc.kernel(), true);
     args->init = loader::load_program(disk, L"init server", bc.init());
@@ -85,6 +85,8 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
     namespace bits = util::bits;
     using bootproto::desc_flags;
 
+    bool has_panic = false;
+
     if (screen) {
         video::make_module(screen);
 
@@ -93,19 +95,25 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
         for (const descriptor &d : bc.panics()) {
             if (bits::has(d.flags, desc_flags::graphical)) {
                 args->panic = loader::load_program(disk, L"panic handler", d);
+                has_panic = true;
                 break;
             }
         }
     }
 
-    if (!args->panic) {
+    if (!has_panic) {
         for (const descriptor &d : bc.panics()) {
             if (!bits::has(d.flags, desc_flags::graphical)) {
                 args->panic = loader::load_program(disk, L"panic handler", d);
+                has_panic = true;
                 break;
             }
         }
     }
+
+    const wchar_t *symbol_file = bc.symbols();
+    if (has_panic && symbol_file && *symbol_file)
+        args->symbol_table = loader::load_file(disk, symbol_file).pointer;
 }
 
 memory::efi_mem_map

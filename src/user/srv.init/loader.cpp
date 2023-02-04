@@ -46,7 +46,7 @@ load_program(
 {
     uintptr_t base_address = reinterpret_cast<uintptr_t>(data.pointer);
 
-    elf::file progelf {data.pointer, data.count};
+    elf::file progelf {data};
 
     if (!progelf.valid()) {
         sprintf(err_msg, "  ** error loading program '%s': ELF is invalid", name);
@@ -72,7 +72,7 @@ load_program(
         return false;
     }
 
-    for (auto &seg : progelf.programs()) {
+    for (auto &seg : progelf.segments()) {
         if (seg.type != elf::segment_type::load)
             continue;
 

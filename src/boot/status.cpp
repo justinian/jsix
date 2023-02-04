@@ -158,6 +158,8 @@ status_line::do_fail(const wchar_t *message, uefi::status status)
 void
 status_line::do_blank()
 {
+    m_level = level_ok; // Keep print_status_tag from happening in dtor
+
     auto out = console::get().m_out;
     int row = out->mode->cursor_row;
 

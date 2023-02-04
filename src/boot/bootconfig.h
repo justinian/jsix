@@ -31,6 +31,7 @@ public:
     inline const descriptor & kernel() const { return m_kernel; }
     inline const descriptor & init() const { return m_init; }
     inline const wchar_t * initrd() const { return m_initrd; }
+    inline const wchar_t * symbols() const { return m_symbols; }
     inline const descriptors & panics() { return m_panics; }
 
 private:
@@ -39,6 +40,7 @@ private:
     descriptor m_init;
     descriptors m_panics;
     wchar_t const *m_initrd;
+    wchar_t const *m_symbols;
 };
 
 } // namespace boot

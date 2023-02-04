@@ -5,25 +5,24 @@ static const uint32_t expected_magic = 0x464c457f;  // "\x7f" "ELF"
 
 namespace elf {
 
-inline const file_header * fh(const void *data) { return reinterpret_cast<const file_header*>(data); }
+inline const file_header * fh(util::const_buffer data) { return reinterpret_cast<const file_header*>(data.pointer); }
 
 template <typename T>
-const T *convert(const void *data, size_t offset) {
-    return reinterpret_cast<const T*>(util::offset_pointer(data, offset));
+const T *convert(util::const_buffer data, size_t offset) {
+    return reinterpret_cast<const T*>(util::offset_pointer(data.pointer, offset));
 }
 
-file::file(const void *data, size_t size) :
-    m_programs(convert<program_header>(data, fh(data)->ph_offset), fh(data)->ph_entsize, fh(data)->ph_num),
+file::file(util::const_buffer data) :
+    m_segments(convert<segment_header>(data, fh(data)->ph_offset), fh(data)->ph_entsize, fh(data)->ph_num),
     m_sections(convert<section_header>(data, fh(data)->sh_offset), fh(data)->sh_entsize, fh(data)->sh_num),
-    m_data(data),
-    m_size(size)
+    m_data(data)
 {
 }
 
 bool
 file::valid() const
 {
-    if (m_size < sizeof(file_header))
+    if (m_data.count < sizeof(file_header))
         return false;
 
     const file_header *fheader = header();

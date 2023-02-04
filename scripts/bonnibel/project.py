@@ -157,13 +157,16 @@ class Project:
             syms = manifest.add_data("symbol_table.dat",
                     "Symbol table", ("symbols",))
 
-            sym_out = f"${{build_root}}/symbol_table.dat"
+            syms_file = "jsix.symbols"
+            syms_path = join(manifest.location, syms_file );
+            syms_out = join(fatroot, syms_path)
             build.build(
                 rule = "makest",
-                outputs = [sym_out],
+                outputs = [syms_out],
                 inputs = [f"${{build_root}}/kernel/{modules['kernel'].output}"],
                 )
-            add_initrd_content("jsix/data", "symbol_table.dat")
+            fatroot_content.append(syms_out)
+            manifest.symbols = syms_file
 
             bootloader = "${build_root}/fatroot/efi/boot/bootx64.efi"
             build.build(

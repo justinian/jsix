@@ -63,7 +63,7 @@ enum class segment_flags : uint32_t
 };
 is_bitfield(segment_flags);
 
-struct program_header
+struct segment_header
 {
     segment_type type;
     segment_flags flags;

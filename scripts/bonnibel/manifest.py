@@ -39,6 +39,8 @@ class Manifest:
 
         self.flags = config.get("flags", tuple())
 
+        self.symbols = ""
+
         initrd = config.get("initrd", dict())
         self.initrd = {
             "name": initrd.get("name", "initrd.dat"),
@@ -110,52 +112,7 @@ class Manifest:
             write_ent(self.kernel)
             write_ent(self.init)
             write_path(self.initrd["name"])
+            write_path(self.symbols)
 
             for p in self.panics:
                 write_ent(p)
-
-    def write_init_config(self, path, modules):
-        from os.path import join
-        import struct
-
-        with open(path, 'wb') as outfile:
-            magic = "jsixinit".encode("utf-8") # magic string
-            version = 1
-            reserved = 0
-
-            string_data = bytearray()
-
-            outfile.write(struct.pack("<8s BBH HH",
-                magic,
-                version, reserved, len(self.services),
-                len(self.data), len(self.drivers)))
-
-            offset_ptr = outfile.tell()
-            outfile.write(struct.pack("<H", 0)) # filled in later
-
-            def write_str(s):
-                pos = len(string_data)
-                string_data.extend(s.encode("utf-8") + b"\0")
-                outfile.write(struct.pack("<H", pos))
-
-            def write_driver(ent):
-                write_str(ent.output)
-
-                drivers = modules[ent.module].drivers
-                outfile.write(struct.pack("<H", len(drivers)))
-                for driver in drivers:
-                    write_str(driver)
-
-            for p in self.services:
-                write_str(p.output)
-
-            for p in self.data:
-                write_str(p.output)
-
-            for p in self.drivers:
-                write_driver(p)
-
-            offset = outfile.tell()
-            outfile.write(string_data)
-            outfile.seek(offset_ptr)
-            outfile.write(struct.pack("<H", offset))

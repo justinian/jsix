@@ -2,12 +2,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <util/counted.h>
 #include <util/pointers.h>
 
 namespace elf {
 
 struct file_header;
-struct program_header;
+struct segment_header;
 struct section_header;
 
 template <typename T>
@@ -37,9 +38,8 @@ class file
 {
 public:
     /// Constructor: Create an elf object out of ELF data in memory
-    /// \arg data  The ELF data to read
-    /// \arg size  Size of the ELF data, in bytes
-    file(const void *data, size_t size);
+    /// \arg data  A const_buffer pointing at the ELF data
+    file(util::const_buffer data);
 
     /// Check the validity of the ELF data
     /// \returns  true for valid ELF data
@@ -51,25 +51,24 @@ public:
 
     /// Get the base address of the program in memory
     inline uintptr_t base() const {
-        return reinterpret_cast<uintptr_t>(m_data);
+        return reinterpret_cast<uintptr_t>(m_data.pointer);
     }
 
-    /// Get the ELF program headers
-    inline const subheaders<program_header> & programs() const { return m_programs; }
+    /// Get the ELF segment headers
+    inline const subheaders<segment_header> & segments() const { return m_segments; }
 
     /// Get the ELF section headers
     inline const subheaders<section_header> & sections() const { return m_sections; }
 
     inline const file_header * header() const {
-        return reinterpret_cast<const file_header *>(m_data);
+        return reinterpret_cast<const file_header *>(m_data.pointer);
     }
 
 private:
-    subheaders<program_header> m_programs;
+    subheaders<segment_header> m_segments;
     subheaders<section_header> m_sections;
 
-    const void *m_data;
-    size_t m_size;
+    util::const_buffer m_data;
 };
 
 }

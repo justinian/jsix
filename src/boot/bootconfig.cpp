@@ -31,11 +31,11 @@ bootconfig::bootconfig(util::buffer data, uefi::boot_services *bs)
     status_line status {L"Loading boot config"};
 
     if (*util::read<uint64_t>(data) != jsixboot)
-        error::raise(uefi::status::load_error, L"Bad header in jsix_boot.dat");
+        error::raise(uefi::status::load_error, L"Bad header in boot config");
 
     const uint8_t version = *util::read<uint8_t>(data);
     if (version != 1)
-        error::raise(uefi::status::incompatible_version, L"Bad version in jsix_boot.dat");
+        error::raise(uefi::status::incompatible_version, L"Bad version in boot config");
 
     uint8_t num_panics = *util::read<uint8_t>(data);
     m_flags = *util::read<uint16_t>(data);
@@ -43,6 +43,7 @@ bootconfig::bootconfig(util::buffer data, uefi::boot_services *bs)
     read_descriptor(m_kernel, data);
     read_descriptor(m_init, data);
     m_initrd = read_string(data);
+    m_symbols = read_string(data);
 
     m_panics.count = num_panics;
     m_panics.pointer = new descriptor [num_panics];
