@@ -4,7 +4,6 @@
 #include <util/pointers.h>
 
 #include "allocator.h"
-#include "console.h"
 #include "error.h"
 #include "loader.h"
 #include "memory.h"
@@ -20,7 +19,7 @@ using memory::page_size;
 // Flags: 0 0 0 1  0 0 0 0  0 0 0 1 = 0x0101
 //         IGN  |  | | | |  | | | +- Present
 //              |  | | | |  | | +--- Writeable
-//              |  | | | |  | +----- Usermode access (supervisor only)
+//              |  | | | |  | +----- Usermode access (Supervisor only)
 //              |  | | | |  +------- PWT (determining memory type for page)
 //              |  | | | +---------- PCD (determining memory type for page)
 //              |  | | +------------ Accessed flag (not accessed yet)
@@ -33,7 +32,7 @@ constexpr uint64_t page_flags = 0x101;
 // Flags: 0  0 0 0 1  1 0 0 0  1 0 1 1 = 0x018b
 //        |   IGN  |  | | | |  | | | +- Present
 //        |        |  | | | |  | | +--- Writeable
-//        |        |  | | | |  | +----- Supervisor only
+//        |        |  | | | |  | +----- Usermode access (Supervisor only)
 //        |        |  | | | |  +------- PWT (determining memory type for page)
 //        |        |  | | | +---------- PCD (determining memory type for page)
 //        |        |  | | +------------ Accessed flag (not accessed yet)
@@ -57,17 +56,22 @@ constexpr uint64_t huge_page_flags = 0x18b;
 constexpr uint64_t table_flags = 0x003;
 
 
-inline void *
-pop_pages(util::counted<void> &pages, size_t count)
+/// Struct to allow easy accessing of a memory page being used as a page table.
+struct page_table
 {
-    if (count > pages.count)
-        error::raise(uefi::status::out_of_resources, L"Page table cache empty", 0x7ab1e5);
+    uint64_t entries[512];
 
-    void *next = pages.pointer;
-    pages.pointer = util::offset_pointer(pages.pointer, count*page_size);
-    pages.count -= count;
-    return next;
-}
+    inline page_table * get(int i, uint16_t *flags = nullptr) const {
+        uint64_t entry = entries[i];
+        if ((entry & 1) == 0) return nullptr;
+        if (flags) *flags = entry & 0xfff;
+        return reinterpret_cast<page_table *>(entry & ~0xfffull);
+    }
+
+    inline void set(int i, void *p, uint16_t flags) {
+        entries[i] = reinterpret_cast<uint64_t>(p) | (flags & 0xfff);
+    }
+};
 
 /// Iterator over page table entries.
 template <unsigned D = 4>
@@ -75,25 +79,23 @@ class page_entry_iterator
 {
 public:
     /// Constructor.
-    /// \arg virt    Virtual address this iterator is starting at
-    /// \arg pml4    Root of the page tables to iterate
-    /// \arg pages   Cache of usable table pages
+    /// \arg virt      Virtual address this iterator is starting at
+    /// \arg pgr       The pager, used for its page table cache
     page_entry_iterator(
             uintptr_t virt,
-            page_table *pml4,
-            util::counted<void> &pages) :
-        m_pages(pages)
+            pager &pgr) :
+        m_pager(pgr)
     {
-        m_table[0] = pml4;
+        m_table[0] = pgr.m_pml4;
         for (unsigned i = 0; i < D; ++i) {
             m_index[i] = static_cast<uint16_t>((virt >> (12 + 9*(3-i))) & 0x1ff);
             ensure_table(i);
         }
     }
 
-    uintptr_t vaddress() const {
+    uintptr_t vaddress(unsigned level = D) const {
         uintptr_t address = 0;
-        for (unsigned i = 0; i < D; ++i)
+        for (unsigned i = 0; i < level; ++i)
             address |= static_cast<uintptr_t>(m_index[i]) << (12 + 9*(3-i));
         if (address & (1ull<<47)) // canonicalize the address
             address |= (0xffffull<<48);
@@ -114,6 +116,7 @@ public:
     }
 
     uint64_t & operator*() { return entry(D-1); }
+    uint64_t operator[](int i) { return i < D ? m_index[i] : 0; }
 
 private:
     inline uint64_t & entry(unsigned level) { return m_table[level]->entries[m_index[level]]; }
@@ -129,7 +132,7 @@ private:
         uint64_t & parent_ent = entry(level - 1);
 
         if (!(parent_ent & 1)) {
-            page_table *table = reinterpret_cast<page_table*>(pop_pages(m_pages, 1));
+            page_table *table = reinterpret_cast<page_table*>(m_pager.pop_pages(1));
             parent_ent = (reinterpret_cast<uintptr_t>(table) & ~0xfffull) | table_flags;
             m_table[level] = table;
         } else {
@@ -137,44 +140,62 @@ private:
         }
     }
 
-    util::counted<void> &m_pages;
+    pager &m_pager;
     page_table *m_table[D];
     uint16_t m_index[D];
 };
 
-
-static void
-add_offset_mappings(page_table *pml4, util::counted<void> &pages)
+pager::pager(uefi::boot_services *bs) :
+    m_bs {bs}
 {
-    uintptr_t phys = 0;
-    uintptr_t virt = bootproto::mem::linear_offset; // Start of offset-mapped area
-    size_t page_count = 64 * 1024; // 64 TiB of 1 GiB pages
-    constexpr size_t GiB = 0x40000000ull;
+    status_line status(L"Allocating initial page tables");
 
-    page_entry_iterator<2> iterator{virt, pml4, pages};
+    // include 1 extra for kernel PML4
+    static constexpr size_t tables_needed = pd_tables + extra_tables + 1;
 
-    while (true) {
-        *iterator = phys | huge_page_flags;
-        if (--page_count == 0)
-            break;
+    void *addr = g_alloc.allocate_pages(tables_needed, alloc_type::page_table, true);
+    m_bs->set_mem(addr, tables_needed * page_size, 0);
+    m_table_pages = { .pointer = addr, .count = tables_needed };
 
-        iterator.increment();
-        phys += GiB;
-    }
-}
-
-static void
-add_kernel_pds(page_table *pml4, util::counted<void> &pages)
-{
-    constexpr unsigned start = arch::kernel_root_index; 
-    constexpr unsigned end = arch::table_entries; 
-
-    for (unsigned i = start; i < end; ++i)
-        pml4->set(i, pop_pages(pages, 1), table_flags);
+    create_kernel_tables();
 }
 
 void
-add_current_mappings(page_table *new_pml4)
+pager::map_pages(
+    uintptr_t phys, uintptr_t virt, size_t count,
+    bool write_flag, bool exe_flag)
+{
+    if (!count)
+        return;
+
+    page_entry_iterator<4> iterator {virt, *this};
+
+    uint64_t flags = page_flags;
+    if (!exe_flag)  flags |= (1ull << 63); // set NX bit
+    if (write_flag) flags |= 2;
+
+    while (true) {
+        uint64_t entry = phys | flags;
+        *iterator = entry;
+
+        if (--count == 0)
+            break;
+
+        iterator.increment();
+        phys += page_size;
+    }
+}
+
+void
+pager::update_kernel_args(bootproto::args *args)
+{
+    status_line status {L"Updating kernel args"};
+    args->pml4 = reinterpret_cast<void*>(m_pml4);
+    args->page_tables = m_table_pages;
+}
+
+void
+pager::add_current_mappings()
 {
     // Get the pointer to the current PML4
     page_table *old_pml4 = 0;
@@ -185,97 +206,48 @@ add_current_mappings(page_table *new_pml4)
     for (int i = 0; i < halfway; ++i) {
         uint64_t entry = old_pml4->entries[i];
         if (entry & 1)
-            new_pml4->entries[i] = entry;
+            m_pml4->entries[i] = entry;
     }
 }
 
-void
-allocate_tables(bootproto::args *args)
+page_table *
+pager::pop_pages(size_t count)
 {
-    status_line status(L"Allocating initial page tables");
+    if (count > m_table_pages.count)
+        error::raise(uefi::status::out_of_resources, L"Page table cache empty", 0x7ab1e5);
 
-    static constexpr size_t pd_tables = 256;   // number of pages for kernelspace PDs
-    static constexpr size_t extra_tables = 64; // number of extra pages
-
-    // number of pages for kernelspace PDs + PML4
-    static constexpr size_t kernel_tables = pd_tables + 1;
-
-    static constexpr size_t tables_needed = kernel_tables + extra_tables;
-
-    void *addr = g_alloc.allocate_pages(tables_needed, alloc_type::page_table, true);
-    page_table *pml4 = reinterpret_cast<page_table*>(addr);
-
-    args->pml4 = pml4;
-    args->page_tables = { .pointer = pml4 + 1, .count = tables_needed - 1 };
-
-    console::print(L"    First page (pml4) at: 0x%lx\r\n", pml4);
-
-    add_kernel_pds(pml4, args->page_tables);
-    add_offset_mappings(pml4, args->page_tables);
-
-    //console::print(L"    Set up initial mappings, %d spare tables.\r\n", args->table_count);
-}
-
-template <typename E>
-constexpr bool has_flag(E set, E flag) {
-    return
-        (static_cast<uint64_t>(set) & static_cast<uint64_t>(flag)) ==
-         static_cast<uint64_t>(flag);
+    page_table *next = reinterpret_cast<page_table*>(m_table_pages.pointer);
+    m_table_pages.pointer = util::offset_pointer(m_table_pages.pointer, count*page_size);
+    m_table_pages.count -= count;
+    return next;
 }
 
 void
-map_pages(
-    bootproto::args *args,
-    uintptr_t phys, uintptr_t virt,
-    size_t count, bool write_flag, bool exe_flag)
+pager::create_kernel_tables()
 {
-    if (!count)
-        return;
+    m_pml4 = pop_pages(1);
+    page_table *pds = pop_pages(pd_tables);
 
-    paging::page_table *pml4 =
-        reinterpret_cast<paging::page_table*>(args->pml4);
+    // Add PDs for all of high memory into the PML4
+    constexpr unsigned start = arch::kernel_root_index; 
+    constexpr unsigned end = arch::table_entries; 
+    for (unsigned i = start; i < end; ++i)
+        m_pml4->set(i, &pds[i - start], table_flags);
 
-    page_entry_iterator<4> iterator{virt, pml4, args->page_tables};
+    // Add the linear offset-mapped area
+    uintptr_t phys = 0;
+    uintptr_t virt_base = bootproto::mem::linear_offset;
+    size_t page_count = 64 * 1024; // 64 TiB of 1 GiB pages
+    constexpr size_t GiB = 0x40000000ull;
 
-    uint64_t flags = page_flags;
-    if (!exe_flag)
-        flags |= (1ull << 63); // set NX bit
-    if (write_flag)
-        flags |= 2;
-
+    page_entry_iterator<2> iterator {virt_base, *this};
     while (true) {
-        *iterator = phys | flags;
-        if (--count == 0)
+        *iterator = phys | huge_page_flags;
+        if (--page_count == 0)
             break;
-
         iterator.increment();
-        phys += page_size;
+        phys += GiB;
     }
-}
-
-void
-map_section(
-    bootproto::args *args,
-    const bootproto::program_section &section)
-{
-    using bootproto::section_flags;
-
-    map_pages(
-        args,
-        section.phys_addr,
-        section.virt_addr,
-        memory::bytes_to_pages(section.size),
-        has_flag(section.type, section_flags::write),
-        has_flag(section.type, section_flags::execute));
-}
-
-void
-map_program(
-    bootproto::args *args,
-    bootproto::program &program)
-{
-    for (auto &section : program.sections)
-        paging::map_section(args, section);
 }
 
 } // namespace paging

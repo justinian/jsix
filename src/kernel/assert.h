@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stdint.h>
+
+#include <util/counted.h>
 #include "cpu.h"
 
 namespace panic {
@@ -47,8 +49,8 @@ inline void panic(
 
 /// Install a panic handler.
 /// \arg entrypoint   Virtual address of the panic handler's entrypoint
-/// \arg symbol_data  Pointer to the symbol table data
-void install(uintptr_t entrypoint, const void *symbol_data);
+/// \arg symbol_data  Symbol table data
+void install(uintptr_t entrypoint, util::const_buffer symbol_data);
 
 } // namespace panic
 

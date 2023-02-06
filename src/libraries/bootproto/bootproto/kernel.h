@@ -129,13 +129,13 @@ struct args
     util::counted<void> page_tables;
     util::counted<mem_entry> mem_map;
     util::counted<frame_block> frame_blocks;
-
-    program *kernel;
-    program *init;
-    program *panic;
     allocation_register *allocations;
-    uintptr_t modules;
-    void const *symbol_table;
+
+    uintptr_t panic_handler;
+    util::buffer symbol_table;
+
+    program init;
+    uintptr_t init_modules;
 
     void *runtime_services;
     void *acpi_table;

@@ -6,16 +6,11 @@ PHDRS
     bss PT_LOAD ;
 }
 
-MEMORY
-{
-    panic (rwxa) : ORIGIN = 0xFFFF800080000000, LENGTH = 256M
-}
-
-ENTRY(_panic_entry)
-
 SECTIONS
 {
-    .rodata ORIGIN(panic) + SIZEOF_HEADERS : {
+    . = 0x20000000 + SIZEOF_HEADERS ;
+
+    .rodata : {
 		 *(.rodata*)
     } :rodata
 
@@ -25,12 +20,24 @@ SECTIONS
 
 	.data ALIGN(4K) : {
 		 *(.data*)
-		 *(.init_array*)
 	} :rwdata
+
+    .init_array : {
+		 *(.init_array*)
+    } :rwdata
+
+    .got : {
+		 *(.got*)
+    } :rwdata
 
 	.bss ALIGN(4K) : {
 		__bss_start = .;
 		*(.bss*)
 		__bss_end = .;
 	} :bss
+
+    /DISCARD/ : {
+        *(.gcc_except_table*)
+        *(.eh_frame*)
+    }
 }

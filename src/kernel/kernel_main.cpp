@@ -32,9 +32,8 @@ void load_init_server(bootproto::program &program, uintptr_t modules_address);
 void
 kernel_main(bootproto::args *args)
 {
-    if (args->panic) {
-        const void *syms = util::offset_pointer(args->symbol_table, mem::linear_offset);
-        panic::install(args->panic->entrypoint, syms);
+    if (args->panic_handler) {
+        panic::install(args->panic_handler, args->symbol_table);
     }
 
     logger_init();
@@ -75,7 +74,7 @@ kernel_main(bootproto::args *args)
     smp::ready();
 
     // Load the init server
-    load_init_server(*args->init, args->modules);
+    load_init_server(args->init, args->init_modules);
 
     sched->start();
 }

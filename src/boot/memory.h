@@ -10,6 +10,11 @@ namespace uefi {
 }
 
 namespace boot {
+
+namespace paging {
+    class pager;
+}
+
 namespace memory {
 
 class efi_mem_map;
@@ -42,7 +47,7 @@ void mark_pointer_fixup(void **p);
 /// \arg pml4  The root page table for the new mappings
 /// \arg map   The UEFI memory map, used to update runtime services
 void virtualize(
-    void *pml4,
+    paging::pager &pager,
     efi_mem_map &map,
     uefi::runtime_services *rs);
 

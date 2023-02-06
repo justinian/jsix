@@ -17,6 +17,11 @@ namespace bootproto {
 }
 
 namespace boot {
+
+namespace paging {
+    class pager;
+}
+
 namespace memory {
 
 /// Struct that represents UEFI's memory map. Contains a pointer to the map data
@@ -56,7 +61,7 @@ util::counted<bootproto::mem_entry> build_kernel_map(efi_mem_map &map);
 util::counted<bootproto::frame_block> build_frame_blocks(const util::counted<bootproto::mem_entry> &kmap);
 
 /// Map the frame allocation maps to the right spot and fix up pointers
-void fix_frame_blocks(bootproto::args *args);
+void fix_frame_blocks(bootproto::args *args, paging::pager &pager);
 
 } // namespace boot
 } // namespace memory

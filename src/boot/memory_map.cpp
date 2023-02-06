@@ -278,7 +278,7 @@ build_frame_blocks(const util::counted<bootproto::mem_entry> &kmap)
 }
 
 void
-fix_frame_blocks(bootproto::args *args)
+fix_frame_blocks(bootproto::args *args, paging::pager &pager)
 {
     util::counted<frame_block> &blocks = args->frame_blocks;
 
@@ -290,8 +290,7 @@ fix_frame_blocks(bootproto::args *args)
     uintptr_t addr = reinterpret_cast<uintptr_t>(blocks.pointer);
 
     // Map the frame blocks to the appropriate address
-    paging::map_pages(args, addr,
-        bootproto::mem::bitmap_offset, pages, true, false);
+    pager.map_pages(addr, bootproto::mem::bitmap_offset, pages, true, false);
 
     uintptr_t offset = bootproto::mem::bitmap_offset - addr;
 

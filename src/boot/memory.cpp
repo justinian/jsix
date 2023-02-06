@@ -57,16 +57,14 @@ mark_pointer_fixup(void **p)
 }
 
 void
-virtualize(void *pml4, efi_mem_map &map, uefi::runtime_services *rs)
+virtualize(paging::pager &pager, efi_mem_map &map, uefi::runtime_services *rs)
 {
-    paging::add_current_mappings(reinterpret_cast<paging::page_table*>(pml4));
+    pager.add_current_mappings();
 
     for (auto &desc : map)
         desc.virtual_start = desc.physical_start + bootproto::mem::linear_offset;
 
-    // Write our new PML4 pointer to CR3
-    asm volatile ( "mov %0, %%cr3" :: "r" (pml4) );
-    __sync_synchronize();
+    pager.install();
 
     try_or_raise(
         rs->set_virtual_address_map(

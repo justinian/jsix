@@ -4,6 +4,7 @@ init = module("srv.init",
     targets = [ "user" ],
     deps = [ "libc", "elf", "bootproto", "zstd" ],
     description = "Init server",
+    ld_script = "init.ld",
     sources = [
         "j6romfs.cpp",
         "loader.cpp",

@@ -60,14 +60,17 @@ uefi_preboot(uefi::handle image, uefi::system_table *st)
     args->acpi_table = hw::find_acpi_table(st);
     memory::mark_pointer_fixup(&args->runtime_services);
 
-    paging::allocate_tables(args);
-
     return args;
 }
 
 /// Load the kernel and other programs from disk
-void
-load_resources(bootproto::args *args, video::screen *screen, uefi::handle image, uefi::boot_services *bs)
+bootproto::entrypoint
+load_resources(
+        bootproto::args *args,
+        video::screen *screen,
+        uefi::handle image,
+        paging::pager &pager,
+        uefi::boot_services *bs)
 {
     status_line status {L"Loading programs"};
 
@@ -75,17 +78,16 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
     util::buffer bc_data = loader::load_file(disk, L"jsix\\boot.conf");
     bootconfig bc {bc_data, bs};
 
-    args->kernel = loader::load_program(disk, L"kernel", bc.kernel(), true);
-    args->init = loader::load_program(disk, L"init server", bc.init());
-    args->flags = static_cast<bootproto::boot_flags>(bc.flags());
+    util::buffer kernel = loader::load_file(disk, bc.kernel().path);
+    uintptr_t kentry = loader::load_program(kernel, L"jsix kernel", pager, true);
 
-    loader::load_module(disk, L"initrd", bc.initrd(),
-            bootproto::module_type::initrd, 0);
+    args->flags = static_cast<bootproto::boot_flags>(bc.flags());
 
     namespace bits = util::bits;
     using bootproto::desc_flags;
 
     bool has_panic = false;
+    util::buffer panic;
 
     if (screen) {
         video::make_module(screen);
@@ -94,7 +96,7 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
         // give it priority
         for (const descriptor &d : bc.panics()) {
             if (bits::has(d.flags, desc_flags::graphical)) {
-                args->panic = loader::load_program(disk, L"panic handler", d);
+                panic = loader::load_file(disk, d.path);
                 has_panic = true;
                 break;
             }
@@ -104,16 +106,28 @@ load_resources(bootproto::args *args, video::screen *screen, uefi::handle image,
     if (!has_panic) {
         for (const descriptor &d : bc.panics()) {
             if (!bits::has(d.flags, desc_flags::graphical)) {
-                args->panic = loader::load_program(disk, L"panic handler", d);
+                panic = loader::load_file(disk, d.path);
                 has_panic = true;
                 break;
             }
         }
     }
 
-    const wchar_t *symbol_file = bc.symbols();
-    if (has_panic && symbol_file && *symbol_file)
-        args->symbol_table = loader::load_file(disk, symbol_file).pointer;
+    if (has_panic) {
+        args->panic_handler = loader::load_program(panic, L"panic handler", pager);
+
+        const wchar_t *symbol_file = bc.symbols();
+        if (symbol_file && *symbol_file)
+            args->symbol_table = loader::load_file(disk, symbol_file);
+    }
+
+    util::buffer init = loader::load_file(disk, bc.init().path);
+    loader::parse_program(L"init server", init, args->init);
+
+    loader::load_module(disk, L"initrd", bc.initrd(),
+            bootproto::module_type::initrd, 0);
+
+    return reinterpret_cast<bootproto::entrypoint>(kentry);
 }
 
 memory::efi_mem_map
@@ -156,35 +170,31 @@ efi_main(uefi::handle image, uefi::system_table *st)
     con.announce();
 
     bootproto::args *args = uefi_preboot(image, st);
-    load_resources(args, screen, image, bs);
+
+    paging::pager pager {bs};
+
+    bootproto::entrypoint kentry =
+        load_resources(args, screen, image, pager, bs);
+
+    pager.update_kernel_args(args);
     memory::efi_mem_map map = uefi_exit(args, image, st->boot_services);
 
     args->allocations = allocs;
-    args->modules = reinterpret_cast<uintptr_t>(modules);
+    args->init_modules = reinterpret_cast<uintptr_t>(modules);
 
     status_bar status {screen}; // Switch to fb status display
 
-    // Map the kernel and panic handler to the appropriate addresses
-    paging::map_program(args, *args->kernel);
-    paging::map_program(args, *args->panic);
+    memory::fix_frame_blocks(args, pager);
 
-    memory::fix_frame_blocks(args);
-
-    bootproto::entrypoint kentry =
-        reinterpret_cast<bootproto::entrypoint>(args->kernel->entrypoint);
     //status.next();
 
     hw::setup_control_regs();
-    memory::virtualize(args->pml4, map, st->runtime_services);
+    memory::virtualize(pager, map, st->runtime_services);
     //status.next();
 
     change_pointer(args);
     change_pointer(args->pml4);
-
-    change_pointer(args->kernel);
-    change_pointer(args->kernel->sections.pointer);
-    change_pointer(args->init);
-    change_pointer(args->init->sections.pointer);
+    change_pointer(args->init.sections.pointer);
 
     //status.next();
 
