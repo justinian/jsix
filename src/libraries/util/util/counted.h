@@ -12,14 +12,17 @@ namespace util {
 template <typename T>
 struct counted
 {
-    T *pointer;
-    size_t count;
+    T *pointer = nullptr;
+    size_t count = 0;
 
     /// Index this object as an array of type T
     inline T & operator [] (int i) { return pointer[i]; }
 
     /// Index this object as a const array of type T
     inline const T & operator [] (int i) const { return pointer[i]; }
+
+    operator bool() const { return pointer != nullptr; }
+    bool operator!() const { return pointer == nullptr; }
 
     using iterator = offset_iterator<T>;
     using const_iterator = const_offset_iterator<T>;
@@ -63,13 +66,16 @@ struct counted
 template <>
 struct counted<const void>
 {
-    const void *pointer;
-    size_t count;
+    const void *pointer = nullptr;
+    size_t count = 0;
 
     template <typename T>
     static inline counted<const void> from(T *p, size_t c) {
         return {reinterpret_cast<const void*>(p), c};
     }
+
+    operator bool() const { return pointer != nullptr; }
+    bool operator!() const { return pointer == nullptr; }
 
     /// Return a counted<T> advanced by N items
     inline counted<const void> operator+(size_t i) {
@@ -98,8 +104,8 @@ struct counted<const void>
 template <>
 struct counted<void>
 {
-    void *pointer;
-    size_t count;
+    void *pointer = nullptr;
+    size_t count = 0;
 
     template <typename T>
     static inline counted<void> from(T *p, size_t c) {
@@ -107,6 +113,9 @@ struct counted<void>
     }
 
     operator counted<const void>() const { return {pointer, count}; }
+
+    operator bool() const { return pointer != nullptr; }
+    bool operator!() const { return pointer == nullptr; }
 
     /// Return a counted<T> advanced by N items
     inline counted<void> operator+(size_t i) {
