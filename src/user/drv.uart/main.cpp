@@ -41,7 +41,7 @@ int
 channel_pump_loop()
 {
     j6_status_t result;
-    constexpr size_t buffer_size = 512;
+    static constexpr size_t buffer_size = 512;
     char buffer[buffer_size];
 
     j6_handle_t slp = j6_find_first_handle(j6_object_type_mailbox);

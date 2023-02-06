@@ -23,11 +23,11 @@ T * construct_handle(j6_handle_t *id, Args... args)
 }
 
 template <typename T>
-j6_status_t get_handle(j6_handle_t id, j6_cap_t caps, T *&object)
+j6_status_t get_handle(j6_handle_t id, j6_cap_t caps, T *&object, bool optional = false)
 {
     if (id == j6_handle_invalid) {
         object = nullptr;
-        return j6_status_ok;
+        return optional ? j6_status_ok : j6_err_invalid_arg;
     }
 
     capability *capdata = g_cap_table.retain(id);
@@ -43,17 +43,17 @@ j6_status_t get_handle(j6_handle_t id, j6_cap_t caps, T *&object)
 }
 
 template <typename T>
-inline j6_status_t get_handle(j6_handle_t *id, j6_cap_t caps, T *&object)
+inline j6_status_t get_handle(j6_handle_t *id, j6_cap_t caps, T *&object, bool optional = false)
 {
-    return get_handle<T>(*id, caps, object);
+    return get_handle<T>(*id, caps, object, optional);
 }
 
 template <>
-inline j6_status_t get_handle<obj::kobject>(j6_handle_t id, j6_cap_t caps, obj::kobject *&object)
+inline j6_status_t get_handle<obj::kobject>(j6_handle_t id, j6_cap_t caps, obj::kobject *&object, bool optional)
 {
     if (id == j6_handle_invalid) {
         object = nullptr;
-        return j6_status_ok;
+        return optional ? j6_status_ok : j6_err_invalid_arg;
     }
 
     capability *capdata = g_cap_table.retain(id);

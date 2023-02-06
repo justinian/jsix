@@ -90,7 +90,7 @@ for id, scope, method in syscalls.methods:
     args = []        # The function call args to call the impl
     argdefs = []     # The user-facing syscall args signature
     cxxargdefs = []  # The kernel syscall impl args signature
-    refparams = []   # The list of params which are kobjects
+    refparams = []   # The list of params which are pointers
 
     handles = []
     objparams = []
@@ -111,7 +111,11 @@ for id, scope, method in syscalls.methods:
             cxxargdefs.append(f"obj::{scope.cname} *self")
             objparams.append((f"obj::{scope.cname} *", "self"))
 
-        handles.append((scope.cname, "self", get_caps(method.options, scope)))
+        handles.append((
+            scope.cname,
+            "self",
+            get_caps(method.options, scope),
+            False))
 
     for param in method.params:
         needs_obj = param.type.needs_object(param.options)
@@ -125,7 +129,12 @@ for id, scope, method in syscalls.methods:
             arg = f"{param.name}{suffix}"
 
             if needs_handle:
-                handles.append((param.type.object.cname, arg, get_caps(param.options, param.type.object)))
+                handles.append((
+                    param.type.object.cname,
+                    arg,
+                    get_caps(param.options, param.type.object),
+                    param.optional))
+
                 if needs_obj:
                     objparams.append((type, arg))
                     args.append(f"{arg}_obj")
@@ -138,7 +147,9 @@ for id, scope, method in syscalls.methods:
         if not needs_handle and param.caps:
             handles.append((
                 f"obj::{param.type.object.cname}",
-                arg, get_caps(param.options, param.type.object)))
+                arg,
+                get_caps(param.options, param.type.object,
+                param.optional)))
 
         if param.refparam:
             subs = param.type.c_names(param.options)
@@ -173,13 +184,15 @@ for id, scope, method in syscalls.methods:
     if handles:
         cog.outl(f"    j6_status_t res;")
 
-    for type, arg, caps in handles:
+    for type, arg, caps, optional in handles:
         capsval = "0"
         if caps:
             capsval = " | ".join(caps)
 
+        optstr = (optional and "true") or "false"
+
         cog.outl(f"    obj::{type} *{arg}_obj = nullptr;")
-        cog.outl(f"    res = get_handle<typename obj::{type}>({arg}, {capsval}, {arg}_obj);")
+        cog.outl(f"    res = get_handle<typename obj::{type}>({arg}, {capsval}, {arg}_obj, {optstr});")
         cog.outl(f"    if (res != j6_status_ok) return res;")
         cog.outl()
 
@@ -195,7 +208,7 @@ for id, scope, method in syscalls.methods:
         cog.outl(f"""        _retval = {name}({", ".join(args)});""")
         cog.outl("    }\n")
 
-        for type, arg, caps in handles:
+        for type, arg, caps, optional in handles:
             cog.outl(f"    release_handle({arg});")
 
         cog.outl(f"""    return _retval;""")
