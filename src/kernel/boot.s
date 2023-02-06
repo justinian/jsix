@@ -42,15 +42,17 @@ bsp_idle:
 	jmp bsp_idle
 .end:
 
-global interrupts_enable: function hidden
+global interrupts_enable: function hidden (interrupts_enable.end - interrupts_enable)
 interrupts_enable:
 	sti
 	ret
+.end:
 
-global interrupts_disable: function hidden
+global interrupts_disable: function hidden (interrupts_disable.end - interrupts_disable)
 interrupts_disable:
 	cli
 	ret
+.end:
 
 section .bss
 align 0x100

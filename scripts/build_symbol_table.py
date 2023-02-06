@@ -17,7 +17,7 @@
 
 import re
 
-sym_re = re.compile(r'([0-9a-fA-F]{16}) ([0-9a-fA-F]{16}) [tTvVwW] (.*)')
+sym_re = re.compile(r'([0-9a-fA-F]{16}) ([0-9a-fA-F]{16} )?[tTvVwW] (.*)')
 
 def parse_syms(infile):
     """Take the output of the `nm` command, and parse it into a tuple
@@ -30,8 +30,14 @@ def parse_syms(infile):
         if not match: continue
 
         addr = int(match.group(1), base=16)
-        size = int(match.group(2), base=16)
+        size = int(match.group(2) or "0", base=16)
         name = match.group(3)
+
+        if size == 0:
+            if not "." in name:
+                print(f"SYMBOL WARNING: zero size for symbol {name}")
+            continue
+
         syms.append([addr, size, name, 0])
 
     return syms
@@ -61,6 +67,8 @@ def write_table(syms, outfile):
         pos = s[3]
         outfile.write(struct.pack("@QQQ", addr, size, pos))
 
+    return len(syms)
+
 
 if __name__ == "__main__":
     import sys
@@ -68,5 +76,11 @@ if __name__ == "__main__":
         print(f"Usage: nm -n -S --demangle | {sys.argv[0]} <output>")
         sys.exit(1)
 
-    outfile = open(sys.argv[1], "wb")
-    write_table(parse_syms(sys.stdin), outfile)
+    syms = 0
+    size = 0
+    with open(sys.argv[1], "wb") as outfile:
+        syms = write_table(parse_syms(sys.stdin), outfile)
+        outfile.seek(0, 2)
+        size = outfile.tell()
+
+    print(f"Wrote {syms} symbols ({size/1024:.1f} KiB) to {sys.argv[1]}.")

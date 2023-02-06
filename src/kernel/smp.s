@@ -26,7 +26,7 @@ bits 16
 default rel
 align 8
 
-global ap_startup: function hidden
+global ap_startup: function hidden (ap_startup.end - ap_startup)
 ap_startup:
 	jmp .start_real
 
@@ -102,15 +102,16 @@ align 8
 
 	mov rax, [BASE + (.ret - ap_startup)]
 	jmp rax
+.end:
 
 
-global ap_startup_code_size: function hidden
+global ap_startup_code_size: data hidden
 ap_startup_code_size:
 	dq ($ - ap_startup)
 
 
 section .text
-global init_ap_trampoline: function hidden
+global init_ap_trampoline: function hidden (init_ap_trampoline.end - init_ap_trampoline)
 init_ap_trampoline:
 	push rbp
 	mov rbp, rsp
@@ -129,6 +130,7 @@ init_ap_trampoline:
 
 	pop rbp
 	ret
+.end:
 
 extern long_ap_startup
 global ap_idle:function hidden (ap_idle.end - ap_idle)
