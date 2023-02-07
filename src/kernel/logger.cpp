@@ -10,7 +10,10 @@
 #include "objects/system.h"
 #include "objects/thread.h"
 
-static uint8_t log_buffer[128 * 1024];
+static constexpr bool j6_debugcon_enable = false;
+static constexpr uint16_t j6_debugcon_port = 0x6600;
+
+static uint8_t log_buffer[log::logger::log_pages * arch::frame_size];
 
 // The logger is initialized _before_ global constructors are called,
 // so that we can start log output immediately. Keep its constructor
@@ -29,6 +32,19 @@ const char *logger::s_area_names[] = {
 #undef LOG
     nullptr
 };
+
+inline void
+debug_out(const char *msg, size_t size)
+{
+    asm ( "rep outsb;" :: "c"(size), "d"(j6_debugcon_port), "S"(msg) );
+}
+
+inline void
+debug_newline()
+{
+    static const char *newline = "\r\n";
+    asm ( "rep outsb;" :: "c"(2), "d"(j6_debugcon_port), "S"(newline) );
+}
 
 logger::logger() :
     m_buffer(nullptr, 0)
@@ -52,7 +68,15 @@ logger::logger(uint8_t *buffer, size_t size) :
 void
 logger::output(level severity, logs area, const char *fmt, va_list args)
 {
-    uint8_t buffer[256];
+    char buffer[256];
+
+    if constexpr (j6_debugcon_enable) {
+        size_t dlen = util::format({buffer, sizeof(buffer)}, "%7s %7s| ",
+                s_area_names[static_cast<uint8_t>(area)],
+                s_level_names[static_cast<uint8_t>(severity)]);
+        debug_out(buffer, dlen);
+    }
+
     entry *header = reinterpret_cast<entry *>(buffer);
     header->bytes = sizeof(entry);
     header->area = area;
@@ -61,6 +85,11 @@ logger::output(level severity, logs area, const char *fmt, va_list args)
     size_t mlen = util::vformat({header->message, sizeof(buffer) - sizeof(entry) - 1}, fmt, args);
     header->message[mlen] = 0;
     header->bytes += mlen + 1;
+
+    if constexpr (j6_debugcon_enable) {
+        debug_out(header->message, mlen);
+        debug_newline();
+    }
 
     util::scoped_lock lock {m_lock};
 

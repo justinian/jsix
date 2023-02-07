@@ -29,6 +29,9 @@ constexpr unsigned areas_count =
 class logger
 {
 public:
+    /// Size of the log ring buffer
+    static constexpr unsigned log_pages = 16;
+
     /// Default constructor. Creates a logger without a backing store.
     logger();
 
