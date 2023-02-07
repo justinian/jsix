@@ -50,9 +50,36 @@ public:
     fs(util::const_buffer data);
 
     util::const_buffer load_simple(char const *path) const;
+    size_t load_inode_data(const inode *in, util::buffer dest) const;
+
+    template <typename callback>
+    size_t for_each(const char *root, callback &&cb) const
+    {
+        const inode *in = lookup_inode(root);
+        if (!in || in->type != inode_type::directory)
+            return 0;
+
+        uint8_t *dir_data = new uint8_t [in->size];
+        load_inode_data(in, util::buffer::from(dir_data, in->size));
+        const dirent *entries = reinterpret_cast<const dirent*>(dir_data);
+
+        size_t i = 0, max = in->size / sizeof(dirent);
+        for (; i < max; ++i) {
+            const dirent &e = entries[i];
+            const char *name = reinterpret_cast<const char*>(dir_data + e.name_offset);
+
+            cb(&m_inodes[e.inode], name);
+
+            size_t new_max = e.name_offset / sizeof(dirent);
+            if (new_max < max) max = new_max;
+        }
+
+        delete [] dir_data;
+        return i;
+    }
 
 private:
-    size_t load_inode_data(const inode *in, util::buffer dest) const;
+    const inode * lookup_inode(const char *path) const;
     const inode * lookup_inode_in_dir(const inode *in, const char *name) const;
 
     util::const_buffer m_data;

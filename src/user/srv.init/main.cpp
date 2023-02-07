@@ -25,24 +25,6 @@ uintptr_t _arg_modules_phys;   // This gets filled in in _start
 
 extern j6_handle_t __handle_self;
 
-util::const_buffer
-load_driver_for(const char *name, const j6romfs::fs &initrd)
-{
-    char driver[256];
-    snprintf(driver, sizeof(driver), "/jsix/drivers/drv.%s.elf", name);
-
-    return initrd.load_simple(driver);
-}
-
-util::const_buffer
-load_service(const char *name, const j6romfs::fs &initrd)
-{
-    char service[256];
-    snprintf(service, sizeof(service), "/jsix/services/srv.%s.elf", name);
-
-    return initrd.load_simple(service);
-}
-
 int
 main(int argc, const char **argv)
 {
@@ -113,23 +95,45 @@ main(int argc, const char **argv)
     // have driver_source objects..
     j6romfs::fs initrd {initrd_module->data};
 
-    char err_msg [128];
+    char message[256];
 
-    util::const_buffer uart_elf = load_driver_for("uart", initrd);
-    if (uart_elf.pointer) {
-        if (!load_program("UART driver", uart_elf, sys_child, slp_mb_child, err_msg)) {
-            j6_log(err_msg);
-            return 1;
-        }
-    }
+    initrd.for_each("/jsix/drivers",
+            [=, &message](const j6romfs::inode *in, const char *name) {
+        if (in->type != j6romfs::inode_type::file)
+            return;
 
-    util::const_buffer logger_elf = load_service("logger", initrd);
-    if (uart_elf.pointer) {
-        if (!load_program("logger service", logger_elf, sys_child, slp_mb_child, err_msg)) {
-            j6_log(err_msg);
-            return 1;
+        sprintf(message, "Loading driver: %s", name);
+        j6_log(message);
+
+        uint8_t *data = new uint8_t [in->size];
+        util::buffer program {data, in->size};
+
+        initrd.load_inode_data(in, program);
+        if (!load_program(name, program, sys_child, slp_mb_child, message)) {
+            j6_log(message);
         }
-    }
+
+        delete [] data;
+    });
+
+    initrd.for_each("/jsix/services",
+            [=, &message](const j6romfs::inode *in, const char *name) {
+        if (in->type != j6romfs::inode_type::file)
+            return;
+
+        sprintf(message, "Loading service: %s", name);
+        j6_log(message);
+
+        uint8_t *data = new uint8_t [in->size];
+        util::buffer program {data, in->size};
+
+        initrd.load_inode_data(in, program);
+        if (!load_program(name, program, sys_child, slp_mb_child, message)) {
+            j6_log(message);
+        }
+
+        delete [] data;
+    });
 
     service_locator_start(slp_mb);
     return 0;

@@ -1,7 +1,9 @@
 #include <assert.h>
 #include <string.h>
 #include <util/hash.h>
+
 #include <zstd.h>
+#include <zstd_errors.h>
 
 #include "j6romfs.h"
 
@@ -37,31 +39,13 @@ fs::fs(util::const_buffer data) :
 util::const_buffer
 fs::load_simple(char const *path) const
 {
-    if (!path)
+    const inode *in = lookup_inode(path);
+    if (!in || in->type != inode_type::file)
         return {0, 0};
 
-    char element [buf_size];
-    inode const *in = m_root;
-
-    while (*path) {
-        path = copy_path_element(path, element);
-        in = lookup_inode_in_dir(in, element);
-
-        if (!in) {
-            // entry was not found
-            break;
-        } else if (*path && in->type == inode_type::file) {
-            // a directory was expected
-            break;
-        } else if (in->type == inode_type::file) {
-            // load the file
-            uint8_t *data = new uint8_t [in->size];
-            size_t total = load_inode_data(in, util::buffer::from(data, in->size));
-            return util::buffer::from(data, total);
-        }
-    }
-
-    return {0, 0};
+    uint8_t *data = new uint8_t [in->size];
+    size_t total = load_inode_data(in, util::buffer::from(data, in->size));
+    return util::buffer::from(data, total);
 }
 
 size_t
@@ -80,8 +64,41 @@ fs::load_inode_data(const inode *in, util::buffer dest) const
 
     size_t decom = ZSTD_decompress(dest.pointer, dest.count,
             src.pointer, in->compressed);
-    assert(!ZSTD_isError(decom) && "Error decompressing");
+    if (ZSTD_isError(decom)) {
+        ZSTD_ErrorCode err = ZSTD_getErrorCode(decom);
+        const char *name = ZSTD_getErrorString(err);
+        assert(!name);
+    }
+
     return decom;
+}
+
+const inode *
+fs::lookup_inode(const char *path) const
+{
+    if (!path)
+        return nullptr;
+
+    char element [buf_size];
+    inode const *in = m_root;
+
+    while (*path) {
+        path = copy_path_element(path, element);
+        in = lookup_inode_in_dir(in, element);
+
+        if (!in) {
+            // entry was not found
+            break;
+        } else if (!*path) {
+            // found it
+            return in;
+        } else if (*path && in->type == inode_type::file) {
+            // a directory was expected
+            break;
+        }
+    }
+
+    return nullptr;
 }
 
 const inode *
