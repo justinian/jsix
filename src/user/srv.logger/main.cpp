@@ -22,9 +22,10 @@ j6_handle_t g_handle_sys = j6_handle_invalid;
 
 struct entry
 {
-    uint8_t bytes;
-    uint8_t area;
-    uint8_t severity;
+    uint64_t id      : 42;
+    uint16_t bytes   : 11;
+    uint8_t severity :  4;
+    uint8_t area     :  7;
     char message[0];
 };
 
@@ -79,9 +80,11 @@ log_pump_proc(j6_handle_t cout)
     if (result != j6_status_ok)
         return;
 
+    uint64_t seen = 0;
+
     while (true) {
         size_t size = buffer_size;
-        j6_status_t s = j6_system_get_log(g_handle_sys, message_buffer, &size);
+        j6_status_t s = j6_system_get_log(g_handle_sys, seen, message_buffer, &size);
 
         if (s == j6_err_insufficient) {
             free(message_buffer);
@@ -95,6 +98,7 @@ log_pump_proc(j6_handle_t cout)
 
         const entry *e = reinterpret_cast<entry*>(message_buffer);
 
+        seen = e->id;
         const char *area_name = area_names[e->area];
         const char *level_name = level_names[e->severity];
         uint8_t level_color = level_colors[e->severity];

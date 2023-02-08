@@ -10,9 +10,10 @@ object system : object {
         change_iopl
     ]
 
-    # Get a log line from the kernel log
+    # Get the next log line from the kernel log
     method get_log [cap:get_log] {
-        param buffer buffer [out zero_ok]   # Buffer for the log message data structure
+        param seen uint64                 # Last seen log id
+        param buffer buffer [out zero_ok] # Buffer for the log message data structure
     }
 
     # Ask the kernel to send this process messages whenever

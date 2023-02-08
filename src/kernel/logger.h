@@ -5,7 +5,6 @@
 #include <stdarg.h>
 #include <stdint.h>
 
-#include <util/bip_buffer.h>
 #include <util/counted.h>
 #include <util/spinlock.h>
 
@@ -20,7 +19,7 @@ enum class logs : uint8_t {
 
 namespace log {
 
-/// Size of the log ring buffer
+/// Size of the log ring buffer. Must be a power of two.
 inline constexpr unsigned log_pages = 16;
 
 enum class level : uint8_t {
@@ -60,21 +59,25 @@ public:
 
     struct entry
     {
-        uint8_t bytes;
-        logs area;
-        level severity;
+        uint64_t id    : 42;
+        uint16_t bytes : 11;
+        level severity :  4;
+        logs area      :  7;
         char message[0];
     };
 
-    /// Get the next log entry from the buffer
+    /// Get the next log entry from the buffer. Blocks the current thread until
+    /// a log arrives if there are no entries newer than `seen`.
+    /// \arg seen    The id of the last-seen log entry, or 0 for none
     /// \arg buffer  The buffer to copy the log message into
     /// \arg size    Size of the passed-in buffer, in bytes
     /// \returns     The size of the log entry (if larger than the
     ///              buffer, then no data was copied)
-    size_t get_entry(void *buffer, size_t size);
+    size_t get_entry(uint64_t seen, void *buffer, size_t size);
 
-    /// Get whether there is currently data in the log buffer
-    inline bool has_log() const { return m_buffer.size(); }
+    /// Check whether or not there's a new log entry to get
+    /// \arg seen  The id of the last-seen log entry, or 0 for none
+    inline bool has_entry(uint64_t seen) { return seen < m_count; }
 
 private:
     friend void spam   (logs area, const char *fmt, ...);
@@ -94,11 +97,19 @@ private:
         return m_levels[static_cast<unsigned>(area)];
     }
 
-    wait_queue m_waiting;
+    inline size_t offset(size_t i) const { return i & (m_buffer.count - 1); }
+
+    inline size_t start() const { return offset(m_start); }
+    inline size_t   end() const { return offset(m_end); }
+    inline size_t  free() const { return m_buffer.count - (m_end - m_start); }
 
     level m_levels[areas_count];
 
-    util::bip_buffer m_buffer;
+    util::buffer m_buffer;
+    size_t m_start, m_end;
+    uint64_t m_count;
+
+    wait_queue m_waiting;
     util::spinlock m_lock;
 
     static logger *s_log;

@@ -18,18 +18,31 @@ log::logger &g_logger = __g_logger_storage.value;
 
 namespace log {
 
+namespace {
+
+} // anon namespace
+
 logger *logger::s_log = nullptr;
 
 logger::logger() :
-    m_buffer {nullptr, 0}
+    m_buffer {nullptr, 0},
+    m_start {0},
+    m_end {0},
+    m_count {0}
 {
     memset(&m_levels, 0, sizeof(m_levels));
     s_log = this;
 }
 
 logger::logger(util::buffer data) :
-    m_buffer {data.pointer, data.count}
+    m_buffer {data},
+    m_start {0},
+    m_end {0},
+    m_count {0}
 {
+    kassert((data.count & (data.count - 1)) == 0,
+        "log buffer size must be a power of two");
+
     memset(&m_levels, 0, sizeof(m_levels));
     s_log = this;
 
@@ -42,58 +55,55 @@ logger::logger(util::buffer data) :
 void
 logger::output(level severity, logs area, const char *fmt, va_list args)
 {
-    char buffer[256];
+    static constexpr size_t buffer_len = 256;
+    static constexpr size_t message_len = buffer_len - sizeof(entry);
 
+    char buffer[buffer_len];
     entry *header = reinterpret_cast<entry *>(buffer);
-    header->bytes = sizeof(entry);
-    header->area = area;
-    header->severity = severity;
 
-    size_t mlen = util::vformat({header->message, sizeof(buffer) - sizeof(entry) - 1}, fmt, args);
-    header->message[mlen] = 0;
-    header->bytes += mlen + 1;
+    size_t size = sizeof(buffer);
+    size += util::vformat({header->message, message_len}, fmt, args);
 
     util::scoped_lock lock {m_lock};
 
-    uint8_t *out;
-    size_t n = m_buffer.reserve(header->bytes, reinterpret_cast<void**>(&out));
-    if (n < header->bytes) {
-        m_buffer.commit(0); // Cannot write the message, give up
-        return;
+    while (free() < size) {
+        // Remove old entries until there's enough space
+        const entry *first = util::at<const entry>(m_buffer, start());
+        m_start += first->bytes;
     }
 
-    memcpy(out, buffer, n);
-    m_buffer.commit(n);
+    header->id = ++m_count;
+    header->bytes = size;
+    header->severity = severity;
+    header->area = area;
+
+    memcpy(util::at<void>(m_buffer, end()), buffer, size);
+    m_end += size;
 
     m_waiting.clear();
 }
 
 size_t
-logger::get_entry(void *buffer, size_t size)
+logger::get_entry(uint64_t seen, void *buffer, size_t size)
 {
     util::scoped_lock lock {m_lock};
 
-    void *out;
-    size_t out_size = m_buffer.get_block(&out);
-    if (out_size == 0 || out == 0) {
+    while (seen == m_count) {
         lock.release();
         m_waiting.wait();
         lock.reacquire();
-        out_size = m_buffer.get_block(&out);
-
-        if (out_size == 0 || out == 0)
-            return 0;
     }
 
-    kassert(out_size >= sizeof(entry), "Couldn't read a full entry");
-    if (out_size < sizeof(entry))
-        return 0;
-
-    entry *ent = reinterpret_cast<entry *>(out);
-    if (size >= ent->bytes) {
-        memcpy(buffer, out, ent->bytes);
-        m_buffer.consume(ent->bytes);
+    size_t off = m_start;
+    entry *ent = util::at<entry>(m_buffer, off);
+    while (seen >= ent->id) {
+        off += ent->bytes;
+        kassert(off < m_end, "Got to the end while looking for new log entry");
+        ent = util::at<entry>(m_buffer, off);
     }
+
+    if (size >= ent->bytes)
+        memcpy(buffer, ent, ent->bytes);
 
     return ent->bytes;
 }

@@ -45,10 +45,10 @@ test_finish(uint32_t exit_code)
 }
 
 j6_status_t
-system_get_log(system *self, void *buffer, size_t *buffer_len)
+system_get_log(system *self, uint64_t seen, void *buffer, size_t *buffer_len)
 {
     size_t orig_size = *buffer_len;
-    *buffer_len = g_logger.get_entry(buffer, *buffer_len);
+    *buffer_len = g_logger.get_entry(seen, buffer, *buffer_len);
     return (*buffer_len > orig_size) ? j6_err_insufficient : j6_status_ok;
 }
 
