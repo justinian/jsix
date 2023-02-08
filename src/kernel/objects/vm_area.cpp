@@ -141,6 +141,11 @@ vm_area_open::get_page(uintptr_t offset, uintptr_t &phys)
     return page_tree::find_or_add(m_mapped, offset, phys);
 }
 
+void
+vm_area_open::add_existing(uintptr_t offset, uintptr_t phys)
+{
+}
+
 
 vm_area_guarded::vm_area_guarded(uintptr_t start, size_t buf_pages, size_t size, vm_flags flags) :
     m_pages {buf_pages + 1}, // Sections are N+1 pages for the leading guard page
@@ -176,6 +181,22 @@ vm_area_guarded::get_page(uintptr_t offset, uintptr_t &phys)
     if ((offset >> 12) % m_pages == 0)
         return false;
 
+    return vm_area_open::get_page(offset, phys);
+}
+
+vm_area_ring::vm_area_ring(size_t size, vm_flags flags) :
+    vm_area_open {size * 2, flags},
+    m_bufsize {size}
+{
+}
+
+vm_area_ring::~vm_area_ring() {}
+
+bool
+vm_area_ring::get_page(uintptr_t offset, uintptr_t &phys)
+{
+    if (offset > m_bufsize)
+        offset -= m_bufsize;
     return vm_area_open::get_page(offset, phys);
 }
 

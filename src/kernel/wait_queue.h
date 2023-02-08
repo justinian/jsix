@@ -19,6 +19,9 @@ public:
     /// queue lock.
     void add_thread(obj::thread *t);
 
+    /// Block the current thread on the queue.
+    void wait();
+
     /// Pops the next waiting thread off the queue.
     /// Locks the queue lock.
     inline obj::thread * pop_next() {

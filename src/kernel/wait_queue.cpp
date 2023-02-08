@@ -12,6 +12,14 @@ wait_queue::add_thread(obj::thread *t)
 }
 
 void
+wait_queue::wait()
+{
+    obj::thread &current = obj::thread::current();
+    add_thread(&current);
+    current.block();
+}
+
+void
 wait_queue::pop_exited()
 {
     while (!m_threads.empty()) {

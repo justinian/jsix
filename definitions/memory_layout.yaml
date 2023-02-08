@@ -24,3 +24,6 @@
 
 - name: buffers
   size: 64G
+
+- name: logs
+  size: 2G

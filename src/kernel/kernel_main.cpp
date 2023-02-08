@@ -36,9 +36,8 @@ kernel_main(bootproto::args *args)
         panic::install(args->panic_handler, args->symbol_table);
     }
 
-    logger_init();
-
     cpu_data *cpu = bsp_early_init();
+    mem::initialize(*args);
 
     kassert(args->magic == bootproto::args_magic,
             "Bad kernel args magic number");
@@ -51,7 +50,6 @@ kernel_main(bootproto::args *args)
 
     disable_legacy_pic();
 
-    mem::initialize(*args);
 
     bsp_late_init();
 

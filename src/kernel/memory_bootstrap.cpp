@@ -40,6 +40,9 @@ frame_allocator &g_frame_allocator = __g_frame_allocator_storage.value;
 static util::no_construct<obj::vm_area_untracked> __g_kernel_heap_area_storage;
 obj::vm_area_untracked &g_kernel_heap_area = __g_kernel_heap_area_storage.value;
 
+static util::no_construct<obj::vm_area_ring> __g_kernel_log_area_storage;
+obj::vm_area_ring &g_kernel_log_area = __g_kernel_log_area_storage.value;
+
 static util::no_construct<obj::vm_area_untracked> __g_kernel_heapmap_area_storage;
 obj::vm_area_untracked &g_kernel_heapmap_area = __g_kernel_heapmap_area_storage.value;
 
@@ -78,7 +81,7 @@ memory_initialize_pre_ctors(bootproto::args &kargs)
 
     page_table *kpml4 = static_cast<page_table*>(kargs.pml4);
 
-
+    // Initialize the frame allocator
     frame_block *blocks = reinterpret_cast<frame_block*>(mem::bitmap_offset);
     new (&g_frame_allocator) frame_allocator {blocks, kargs.frame_blocks.count};
 
@@ -91,10 +94,11 @@ memory_initialize_pre_ctors(bootproto::args &kargs)
         reg = reg->next;
     }
 
-
+    // Initialize the kernel "process" and vm_space
     obj::process *kp = obj::process::create_kernel_process(kpml4);
     vm_space &vm = kp->space();
 
+    // Create the heap space and heap allocator
     obj::vm_area *heap = new (&g_kernel_heap_area)
         obj::vm_area_untracked(mem::heap_size, vm_flags::write);
 
@@ -106,6 +110,16 @@ memory_initialize_pre_ctors(bootproto::args &kargs)
 
     new (&g_kernel_heap) heap_allocator {mem::heap_offset, mem::heap_size, mem::heapmap_offset};
 
+    // Set up the log area and logger
+    size_t log_buffer_size = log::log_pages * arch::frame_size;
+    obj::vm_area *logs = new (&g_kernel_log_area)
+        obj::vm_area_ring(log_buffer_size, vm_flags::write);
+    vm.add(mem::logs_offset, logs);
+
+    new (&g_logger) log::logger(
+            util::buffer::from(mem::logs_offset, log_buffer_size));
+
+    // Set up the capability tables
     obj::vm_area *caps = new (&g_cap_table_area)
         obj::vm_area_untracked(mem::caps_size, vm_flags::write);
 

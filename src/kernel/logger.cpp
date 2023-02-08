@@ -6,14 +6,8 @@
 
 #include "assert.h"
 #include "logger.h"
-#include "memory.h"
 #include "objects/system.h"
 #include "objects/thread.h"
-
-static constexpr bool j6_debugcon_enable = false;
-static constexpr uint16_t j6_debugcon_port = 0x6600;
-
-static uint8_t log_buffer[log::logger::log_pages * arch::frame_size];
 
 // The logger is initialized _before_ global constructors are called,
 // so that we can start log output immediately. Keep its constructor
@@ -25,36 +19,16 @@ log::logger &g_logger = __g_logger_storage.value;
 namespace log {
 
 logger *logger::s_log = nullptr;
-const char *logger::s_level_names[] = {"", "fatal", "error", "warn", "info", "verbose", "spam"};
-const char *logger::s_area_names[] = {
-#define LOG(name, lvl) #name ,
-#include <j6/tables/log_areas.inc>
-#undef LOG
-    nullptr
-};
-
-inline void
-debug_out(const char *msg, size_t size)
-{
-    asm ( "rep outsb;" :: "c"(size), "d"(j6_debugcon_port), "S"(msg) );
-}
-
-inline void
-debug_newline()
-{
-    static const char *newline = "\r\n";
-    asm ( "rep outsb;" :: "c"(2), "d"(j6_debugcon_port), "S"(newline) );
-}
 
 logger::logger() :
-    m_buffer(nullptr, 0)
+    m_buffer {nullptr, 0}
 {
     memset(&m_levels, 0, sizeof(m_levels));
     s_log = this;
 }
 
-logger::logger(uint8_t *buffer, size_t size) :
-    m_buffer(buffer, size)
+logger::logger(util::buffer data) :
+    m_buffer {data.pointer, data.count}
 {
     memset(&m_levels, 0, sizeof(m_levels));
     s_log = this;
@@ -70,13 +44,6 @@ logger::output(level severity, logs area, const char *fmt, va_list args)
 {
     char buffer[256];
 
-    if constexpr (j6_debugcon_enable) {
-        size_t dlen = util::format({buffer, sizeof(buffer)}, "%7s %7s| ",
-                s_area_names[static_cast<uint8_t>(area)],
-                s_level_names[static_cast<uint8_t>(severity)]);
-        debug_out(buffer, dlen);
-    }
-
     entry *header = reinterpret_cast<entry *>(buffer);
     header->bytes = sizeof(entry);
     header->area = area;
@@ -85,11 +52,6 @@ logger::output(level severity, logs area, const char *fmt, va_list args)
     size_t mlen = util::vformat({header->message, sizeof(buffer) - sizeof(entry) - 1}, fmt, args);
     header->message[mlen] = 0;
     header->bytes += mlen + 1;
-
-    if constexpr (j6_debugcon_enable) {
-        debug_out(header->message, mlen);
-        debug_newline();
-    }
 
     util::scoped_lock lock {m_lock};
 
@@ -103,7 +65,7 @@ logger::output(level severity, logs area, const char *fmt, va_list args)
     memcpy(out, buffer, n);
     m_buffer.commit(n);
 
-    m_event.signal(1);
+    m_waiting.clear();
 }
 
 size_t
@@ -115,7 +77,7 @@ logger::get_entry(void *buffer, size_t size)
     size_t out_size = m_buffer.get_block(&out);
     if (out_size == 0 || out == 0) {
         lock.release();
-        m_event.wait();
+        m_waiting.wait();
         lock.reacquire();
         out_size = m_buffer.get_block(&out);
 
@@ -168,9 +130,3 @@ void fatal(logs area, const char *fmt, ...)
 }
 
 } // namespace log
-
-
-void logger_init()
-{
-    new (&g_logger) log::logger(log_buffer, sizeof(log_buffer));
-}

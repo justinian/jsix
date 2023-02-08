@@ -126,6 +126,10 @@ public:
 
     virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
 
+    /// Tell this VMA about an existing mapping that did not originate
+    /// from get_page.
+    void add_existing(uintptr_t offset, uintptr_t phys);
+
 private:
     page_tree *m_mapped;
 };
@@ -176,6 +180,27 @@ public:
 private:
     size_t m_pages;
     block_allocator m_stacks;
+};
+
+
+/// Area that maps its pages twice for use in ring buffers.
+/// Cannot be resized.
+class vm_area_ring :
+    public vm_area_open
+{
+public:
+    /// Constructor.
+    /// \arg size  Virtual size of the ring buffer. Note that
+    ///            the VMA size will be double this value.
+    /// \arg flags Flags for this memory area
+    vm_area_ring(size_t size, vm_flags flags);
+    virtual ~vm_area_ring();
+
+    virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
+
+private:
+    size_t m_bufsize;
+    page_tree *m_mapped;
 };
 
 } // namespace obj

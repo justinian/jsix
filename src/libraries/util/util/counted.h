@@ -70,7 +70,7 @@ struct counted<const void>
     size_t count = 0;
 
     template <typename T>
-    static inline counted<const void> from(T *p, size_t c) {
+    static inline counted<const void> from(T p, size_t c) {
         return {reinterpret_cast<const void*>(p), c};
     }
 
@@ -108,7 +108,7 @@ struct counted<void>
     size_t count = 0;
 
     template <typename T>
-    static inline counted<void> from(T *p, size_t c) {
+    static inline counted<void> from(T p, size_t c) {
         return {reinterpret_cast<void*>(p), c};
     }
 

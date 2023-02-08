@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include <util/bip_buffer.h>
+#include <util/counted.h>
 #include <util/spinlock.h>
 
 #include "objects/event.h"
@@ -19,6 +20,9 @@ enum class logs : uint8_t {
 
 namespace log {
 
+/// Size of the log ring buffer
+inline constexpr unsigned log_pages = 16;
+
 enum class level : uint8_t {
     silent, fatal, error, warn, info, verbose, spam, max
 };
@@ -29,25 +33,15 @@ constexpr unsigned areas_count =
 class logger
 {
 public:
-    /// Size of the log ring buffer
-    static constexpr unsigned log_pages = 16;
-
     /// Default constructor. Creates a logger without a backing store.
     logger();
 
     /// Constructor. Logs are written to the given buffer.
     /// \arg buffer  Buffer to which logs are written
-    /// \arg size    Size of `buffer`, in bytes
-    logger(uint8_t *buffer, size_t size);
+    logger(util::buffer buffer);
 
     /// Get the default logger.
     inline logger & get() { return *s_log; }
-
-    /// Get the registered name for a given area
-    inline const char * area_name(logs area) const { return s_area_names[static_cast<unsigned>(area)]; }
-
-    /// Get the name of a level
-    inline const char * level_name(level l) const { return s_level_names[static_cast<unsigned>(l)]; }
 
     /// Write to the log
     /// \arg severity  The severity of the message
@@ -100,7 +94,7 @@ private:
         return m_levels[static_cast<unsigned>(area)];
     }
 
-    obj::event m_event;
+    wait_queue m_waiting;
 
     level m_levels[areas_count];
 
@@ -108,8 +102,6 @@ private:
     util::spinlock m_lock;
 
     static logger *s_log;
-    static const char *s_area_names[areas_count+1];
-    static const char *s_level_names[static_cast<unsigned>(level::max)];
 };
 
 void spam   (logs area, const char *fmt, ...);
@@ -119,8 +111,6 @@ void warn   (logs area, const char *fmt, ...);
 void error  (logs area, const char *fmt, ...);
 void fatal  (logs area, const char *fmt, ...);
 
-extern log::logger &g_logger;
-
 } // namespace log
 
-void logger_init();
+extern log::logger &g_logger;
