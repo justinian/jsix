@@ -23,6 +23,12 @@ public:
     /// \returns     True if a page was found
     static bool find_or_add(page_tree * &root, uint64_t offset, uintptr_t &page);
 
+    /// Add an existing mapping not allocated via find_or_add.
+    /// \arg root    [inout] The root node of the tree. This pointer may be updated.
+    /// \arg offset  Offset into the VMA, in bytes
+    /// \arg page    The mapped page physical address
+    static void add_existing(page_tree * &root, uint64_t offset, uintptr_t page);
+
     ~page_tree();
 
 private:
@@ -33,6 +39,9 @@ private:
     /// \arg index   [out] If found, what entry index should contain addr
     /// \returns     True if the address is contained
     bool contains(uintptr_t offset, uint8_t &index) const;
+
+    /// Get a (writable) reference to a page in the tree
+    static uintptr_t & get_entry(page_tree * &root, uint64_t offset);
 
     /// Stores the page offset of the start of this node's pages virtual addresses
     uint64_t m_base;

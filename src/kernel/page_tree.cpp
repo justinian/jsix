@@ -58,30 +58,8 @@ page_tree::contains(uint64_t offset, uint8_t &index) const
     return (offset & level_mask(m_level)) == m_base;
 }
 
-bool
-page_tree::find(const page_tree *root, uint64_t offset, uintptr_t &page)
-{
-    page_tree const *node = root;
-    while (node) {
-        uint8_t level = node->m_level;
-        uint8_t index = 0;
-        if (!node->contains(offset, index))
-            return false;
-
-        if (!level) {
-            uintptr_t entry = node->m_entries[index].entry;
-            page = entry & ~0xfffull;
-            return (entry & 1); // bit 0 marks 'present'
-        }
-
-        node = node->m_entries[index].child;
-    }
-
-    return false;
-}
-
-bool
-page_tree::find_or_add(page_tree * &root, uint64_t offset, uintptr_t &page)
+uintptr_t &
+page_tree::get_entry(page_tree * &root, uint64_t offset)
 {
     page_tree *level0 = nullptr;
 
@@ -125,7 +103,7 @@ page_tree::find_or_add(page_tree * &root, uint64_t offset, uintptr_t &page)
             node = *parent;
         }
 
-        kassert( node || parent, "Both node and parent were null in find_or_add");
+        kassert( node || parent, "Both node and parent were null in page_tree::get_entry");
 
         if (!node) {
             // We found a parent with an empty spot where this node should
@@ -135,9 +113,39 @@ page_tree::find_or_add(page_tree * &root, uint64_t offset, uintptr_t &page)
         }
     }
 
-    kassert(level0, "Got through find_or_add without a level0");
+    kassert(level0, "Got through page_tree::get_entry without a level0");
+
     uint8_t index = index_for(offset, 0);
-    uint64_t &ent = level0->m_entries[index].entry;
+    return level0->m_entries[index].entry;
+}
+
+bool
+page_tree::find(const page_tree *root, uint64_t offset, uintptr_t &page)
+{
+    page_tree const *node = root;
+    while (node) {
+        uint8_t level = node->m_level;
+        uint8_t index = 0;
+        if (!node->contains(offset, index))
+            return false;
+
+        if (!level) {
+            uintptr_t entry = node->m_entries[index].entry;
+            page = entry & ~0xfffull;
+            return (entry & 1); // bit 0 marks 'present'
+        }
+
+        node = node->m_entries[index].child;
+    }
+
+    return false;
+}
+
+bool
+page_tree::find_or_add(page_tree * &root, uint64_t offset, uintptr_t &page)
+{
+    uint64_t &ent = get_entry(root, offset);
+
     if (!(ent & 1)) {
         // No entry for this page exists, so make one
         if (!frame_allocator::get().allocate(1, &ent))
@@ -147,4 +155,13 @@ page_tree::find_or_add(page_tree * &root, uint64_t offset, uintptr_t &page)
 
     page = ent & ~0xfffull;
     return true;
+}
+
+void
+page_tree::add_existing(page_tree * &root, uint64_t offset, uintptr_t page)
+{
+    uint64_t &ent = get_entry(root, offset);
+    kassert(!(ent & 1), "Replacing existing mapping in page_tree::add_existing");
+
+    ent = page | 1;
 }
