@@ -45,6 +45,12 @@ thread::start()
     return m_status;
 }
 
+void
+thread::join()
+{
+    j6_thread_join(m_thread);
+}
+
 }
 
 #endif // __j6kernel

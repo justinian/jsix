@@ -5,7 +5,5 @@ module("testapp",
     deps = [ "libc" ],
     description = "Testbed app",
     sources = [
-        "io.cpp",
         "main.cpp",
-        "serial.cpp",
     ])

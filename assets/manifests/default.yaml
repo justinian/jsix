@@ -8,5 +8,6 @@ panic:
   - panic.serial
 services:
   - srv.logger
+  - testapp
 drivers:
   - drv.uart
