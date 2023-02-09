@@ -69,6 +69,9 @@ kernel = module("kernel",
         "wait_queue.cpp",
     ])
 
+if config == "debug":
+    kernel.add_input("debugcon.cpp")
+
 from glob import glob
 from os.path import join
 

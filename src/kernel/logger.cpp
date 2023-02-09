@@ -61,7 +61,7 @@ logger::output(level severity, logs area, const char *fmt, va_list args)
     char buffer[buffer_len];
     entry *header = reinterpret_cast<entry *>(buffer);
 
-    size_t size = sizeof(buffer);
+    size_t size = sizeof(entry);
     size += util::vformat({header->message, message_len}, fmt, args);
 
     util::scoped_lock lock {m_lock};

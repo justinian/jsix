@@ -28,6 +28,7 @@ class Project:
             build.variable("ninja_required_version", "1.3")
             build.variable("build_root", output)
             build.variable("source_root", root)
+            build.variable("build_config", config)
             build.newline()
 
             build.include(root / "assets/build/rules.ninja")

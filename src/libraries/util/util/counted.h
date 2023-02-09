@@ -157,4 +157,14 @@ const T * read(const_buffer &b) {
     return p;
 }
 
+template <typename T>
+T * at(buffer &b, size_t i) {
+    return reinterpret_cast<T*>(util::offset_pointer(b.pointer, i));
+}
+
+template <typename T>
+const T * at(const_buffer &b, size_t i) {
+    return reinterpret_cast<const T*>(util::offset_pointer(b.pointer, i));
+}
+
 } // namespace util

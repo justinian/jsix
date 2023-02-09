@@ -35,6 +35,7 @@ def generate(output, config, manifest):
                 "source_root": root,
                 "build_root": output,
                 "module_root": path,
+                "config": config,
             }
             code = compile(open(modfile, 'r').read(), modfile, "exec")
 

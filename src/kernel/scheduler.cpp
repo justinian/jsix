@@ -67,7 +67,8 @@ inline T * push(uintptr_t &rsp, size_t size = sizeof(T)) {
 void
 scheduler::create_kernel_task(void (*task)(), uint8_t priority, bool constant)
 {
-    thread *th = process::kernel_process().create_thread(0, priority);
+    process &kp = process::kernel_process();
+    thread *th = kp.create_thread(0, priority);
     auto *tcb = th->tcb();
 
     th->add_thunk_kernel(reinterpret_cast<uintptr_t>(task));
@@ -78,10 +79,7 @@ scheduler::create_kernel_task(void (*task)(), uint8_t priority, bool constant)
 
     th->set_state(thread::state::ready);
 
-    log::verbose(logs::task, "Creating kernel task: thread %llx  pri %d", th->koid(), tcb->priority);
-    log::verbose(logs::task, "    RSP0 %016lx", tcb->rsp0);
-    log::verbose(logs::task, "     RSP %016lx", tcb->rsp);
-    log::verbose(logs::task, "    PML4 %016lx", tcb->pml4);
+    log::verbose(logs::task, "Spawned new kernel task <%02lx:%02lx>", kp.obj_id(), th->obj_id());
 }
 
 uint32_t

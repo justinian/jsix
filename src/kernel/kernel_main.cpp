@@ -8,6 +8,7 @@
 #include "assert.h"
 #include "capabilities.h"
 #include "cpu.h"
+#include "debugcon.h"
 #include "device_manager.h"
 #include "interrupts.h"
 #include "logger.h"
@@ -50,7 +51,6 @@ kernel_main(bootproto::args *args)
 
     disable_legacy_pic();
 
-
     bsp_late_init();
 
     using bootproto::boot_flags;
@@ -70,6 +70,10 @@ kernel_main(bootproto::args *args)
 
     scheduler *sched = new scheduler {g_num_cpus};
     smp::ready();
+
+    // Initialize the debug console logger (does nothing if not built
+    // in debug mode)
+    debugcon::init_logger();
 
     // Load the init server
     load_init_server(args->init, args->init_modules);

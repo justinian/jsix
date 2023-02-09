@@ -274,8 +274,8 @@ class Module:
                 build.default(dump)
 
     def add_input(self, path, **kwargs):
-        from .source import Source
-        s = Source(self.root, path, **kwargs)
+        from .source import make_source
+        s = make_source(self.root, path, **kwargs)
         self.sources.append(s)
         return s.outputs
 
