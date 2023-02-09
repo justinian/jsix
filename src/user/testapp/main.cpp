@@ -21,7 +21,7 @@ constexpr uintptr_t stack_top = 0xf80000000;
 uint32_t flipflop = 0;
 
 void
-thread_proc()
+thread_proc(void*)
 {
     j6_log("sub thread starting");
 

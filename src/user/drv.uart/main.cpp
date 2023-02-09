@@ -81,7 +81,7 @@ channel_pump_loop()
 }
 
 void
-pump_proc()
+pump_proc(void *)
 {
     j6_process_exit(channel_pump_loop());
 }
