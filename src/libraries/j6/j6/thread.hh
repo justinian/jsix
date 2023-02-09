@@ -1,5 +1,5 @@
 #pragma once
-/// \file thread.h
+/// \file thread.hh
 /// High level threading interface
 
 // The kernel depends on libj6 for some shared code,
@@ -15,7 +15,7 @@ namespace j6 {
 class thread
 {
 public:
-    using proc = void (*)();
+    using proc = void (*)(void *);
 
     /// Constructor. Create a thread and its stack space, but
     /// do not start executing the thread.
@@ -24,8 +24,9 @@ public:
     thread(proc p, uintptr_t stack_top);
 
     /// Start executing the thread.
-    /// \returns  j6_status_ok if the thread was successfully started.
-    j6_status_t start();
+    /// \arg user  Optional pointer to user data to pass to the thread proc
+    /// \returns   j6_status_ok if the thread was successfully started.
+    j6_status_t start(void *user = nullptr);
 
     /// Wait for the thread to stop executing.
     void join();
@@ -34,6 +35,8 @@ public:
     thread(const thread&) = delete;
 
 private:
+    static void init_proc(thread *t, void *user);
+
     j6_status_t m_status;
     j6_handle_t m_stack;
     j6_handle_t m_thread;

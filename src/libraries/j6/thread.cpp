@@ -31,7 +31,7 @@ thread::thread(thread::proc p, uintptr_t stack_top) :
 }
 
 j6_status_t
-thread::start()
+thread::start(void *user)
 {
     if (m_status != j6_status_ok)
         return m_status;
@@ -39,8 +39,12 @@ thread::start()
     if (m_thread != j6_handle_invalid)
         return j6_err_invalid_arg;
 
+    uint64_t arg0 = reinterpret_cast<uint64_t>(this);
+    uint64_t arg1 = reinterpret_cast<uint64_t>(user);
+
     m_status = j6_thread_create(&m_thread, __handle_self,
-        m_stack_top, reinterpret_cast<uintptr_t>(m_proc));
+        m_stack_top, reinterpret_cast<uintptr_t>(init_proc),
+        arg0, arg1);
 
     return m_status;
 }
@@ -51,6 +55,13 @@ thread::join()
     j6_thread_join(m_thread);
 }
 
+void
+thread::init_proc(thread *t, void *user)
+{
+    t->m_proc(user);
+    j6_thread_exit();
 }
+
+} // namespace j6
 
 #endif // __j6kernel

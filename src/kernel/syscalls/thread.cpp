@@ -12,13 +12,13 @@ using namespace obj;
 namespace syscalls {
 
 j6_status_t
-thread_create(j6_handle_t *self, process *proc, uintptr_t stack_top, uintptr_t entrypoint)
+thread_create(j6_handle_t *self, process *proc, uintptr_t stack_top, uintptr_t entrypoint, uint64_t arg0, uint64_t arg1)
 {
     thread &parent_th = thread::current();
     process &parent_pr = parent_th.parent();
 
     thread *child = proc->create_thread(stack_top);
-    child->add_thunk_user(entrypoint);
+    child->add_thunk_user(entrypoint, arg0, arg1);
     *self = child->self_handle();
     child->set_state(thread::state::ready);
 

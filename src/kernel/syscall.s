@@ -77,6 +77,21 @@ syscall_handler_prelude:
 	call syscall_invalid
 .end:
 
+global initialize_user_cpu: function hidden (initialize_user_cpu.end - initialize_user_cpu)
+initialize_user_cpu:
+    mov rax, 0xaaaaaaaa
+    mov rdx, 0xdddddddd
+    mov r8,  0x08080808
+    mov r9,  0x09090909
+    mov r10, 0x10101010
+    mov r11, 0x11111111
+
+    pop rdi
+    pop rsi
+
+    ; fall through to kernel_to_user_trampoline
+.end:
+
 global kernel_to_user_trampoline: function hidden (kernel_to_user_trampoline.end - kernel_to_user_trampoline)
 kernel_to_user_trampoline:
 	pop r15

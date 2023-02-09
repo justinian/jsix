@@ -9,7 +9,7 @@
 #include "objects/vm_area.h"
 #include "scheduler.h"
 
-extern "C" void kernel_to_user_trampoline();
+extern "C" void initialize_user_cpu();
 extern obj::vm_area_guarded &g_kernel_stacks;
 
 
@@ -113,7 +113,7 @@ thread::add_thunk_kernel(uintptr_t rip)
 }
 
 void
-thread::add_thunk_user(uintptr_t rip3, uintptr_t rip0, uint64_t flags)
+thread::add_thunk_user(uintptr_t rip3, uint64_t arg0, uint64_t arg1, uintptr_t rip0, uint64_t flags)
 {
     // This sets up the stack to:
     // a) come out of task_switch and return to rip0 (default is the
@@ -126,19 +126,22 @@ thread::add_thunk_user(uintptr_t rip3, uintptr_t rip0, uint64_t flags)
     flags |= 0x200;
     m_tcb.rflags3 = flags;
 
-    m_tcb.rsp -= sizeof(uintptr_t) * 7;
+    m_tcb.rsp -= sizeof(uintptr_t) * 9;
     uintptr_t *stack = reinterpret_cast<uintptr_t*>(m_tcb.rsp);
 
-    stack[6] = rip3;       // return rip in rcx
-    stack[5] = m_tcb.rsp3; // rbp
-    stack[4] = 0xbbbbbbbb; // rbx
-    stack[3] = 0x12121212; // r12
-    stack[2] = 0x13131313; // r13
-    stack[1] = 0x14141414; // r14
-    stack[0] = 0x15151515; // r15
+    stack[8] = rip3;       // return rip in rcx
+    stack[7] = m_tcb.rsp3; // rbp
+    stack[6] = 0xbbbbbbbb; // rbx
+    stack[5] = 0x12121212; // r12
+    stack[4] = 0x13131313; // r13
+    stack[3] = 0x14141414; // r14
+    stack[2] = 0x15151515; // r15
+
+    stack[1] = arg1;       // rsi
+    stack[0] = arg0;       // rdi
 
     static const uintptr_t trampoline =
-        reinterpret_cast<uintptr_t>(kernel_to_user_trampoline);
+        reinterpret_cast<uintptr_t>(initialize_user_cpu);
     add_thunk_kernel(rip0 ? rip0 : trampoline);
 }
 
@@ -149,8 +152,8 @@ thread::setup_kernel_stack()
     using mem::kernel_stack_pages;
     static constexpr size_t stack_bytes = kernel_stack_pages * frame_size;
 
-    constexpr unsigned null_frame_entries = 2;
-    constexpr size_t null_frame_size = null_frame_entries * sizeof(uint64_t);
+    static constexpr unsigned null_frame_entries = 2;
+    static constexpr size_t null_frame_size = null_frame_entries * sizeof(uint64_t);
 
     uintptr_t stack_addr = g_kernel_stacks.get_section();
     uintptr_t stack_end = stack_addr + stack_bytes;

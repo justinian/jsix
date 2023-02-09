@@ -106,12 +106,6 @@ load_init_server(bootproto::program &program, uintptr_t modules_address)
     uint64_t iopl = (3ull << 12);
 
     obj::thread *main = p->create_thread();
-    main->add_thunk_user(program.entrypoint, 0, iopl);
+    main->add_thunk_user(program.entrypoint, modules_address, 0, 0, iopl);
     main->set_state(obj::thread::state::ready);
-
-    // Hacky: No process exists to have created a stack for init; it needs to create
-    // its own stack. We take advantage of that to use rsp to pass it the init modules
-    // address.
-    auto *tcb = main->tcb();
-    tcb->rsp3 = modules_address;
 }

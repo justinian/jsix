@@ -10,6 +10,8 @@ object thread : object {
         param process ref process [cap:create_thread]
         param stack_top address
         param entrypoint address
+        param arg0 uint64
+        param arg1 uint64
     }
 
     method kill [destructor cap:kill]

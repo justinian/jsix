@@ -135,7 +135,7 @@ load_program(
     }
 
     j6_handle_t thread = j6_handle_invalid;
-    res = j6_thread_create(&thread, proc, stack_top - 6*sizeof(uint64_t), progelf.entrypoint());
+    res = j6_thread_create(&thread, proc, stack_top - 6*sizeof(uint64_t), progelf.entrypoint(), 0, 0);
     if (res != j6_status_ok) {
         sprintf(err_msg, "  ** error loading program '%s': creating thread: %lx", name, res);
         return false;
