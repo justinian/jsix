@@ -9,5 +9,3 @@ panic:
   - panic.serial
 services:
   - test_runner
-drivers:
-  - drv.uart

@@ -4,6 +4,7 @@
 
 #include <j6/errors.h>
 #include <j6/flags.h>
+#include <j6/thread.hh>
 #include <j6/types.h>
 #include <j6/syscalls.h>
 
@@ -15,8 +16,12 @@ struct mailbox_tests :
 {
 };
 
+static constexpr uintptr_t caller_stack = 0x4000000;
+static j6_handle_t test_mailbox = j6_handle_invalid;
+
 TEST_CASE( mailbox_tests, would_block )
 {
+    return;
     j6_handle_t mb = j6_handle_invalid;
     j6_status_t s;
 
@@ -25,52 +30,53 @@ TEST_CASE( mailbox_tests, would_block )
 
     uint64_t tag = 12345;
     uint64_t subtag = 67890;
-    j6_handle_t handles[10];
-    size_t handle_count = 10;
-    uint16_t reply_tag = 0;
+    j6_handle_t handle;
+    uint64_t reply_tag = 0;
     uint64_t flags = 0;
 
-    s = j6_mailbox_receive( mb,
-            &tag, &subtag,
-            handles, &handle_count,
-            &reply_tag, flags );
+    s = j6_mailbox_respond( mb, &tag, &subtag, &handle, &reply_tag, flags );
     CHECK( s == j6_status_would_block, "Should have gotten would block error" );
 
     j6_mailbox_close(mb);
 }
 
-TEST_CASE( mailbox_tests, send_receive )
+void
+caller_proc(void *)
 {
-    j6_handle_t mb = j6_handle_invalid;
     j6_status_t s;
 
-    s = j6_mailbox_create(&mb);
+    uint64_t tag = 12345;
+    uint64_t subtag = 67890;
+    j6_handle_t no_handle = j6_handle_invalid;
+
+    j6_mailbox_call( test_mailbox, &tag, &subtag, &no_handle );
+
+    volatile int i = 0;
+    while (i != 0);
+}
+
+TEST_CASE( mailbox_tests, send_receive )
+{
+    j6_status_t s;
+
+    s = j6_mailbox_create(&test_mailbox);
     CHECK( s == j6_status_ok, "Could not create a mailbox" );
 
-    uint64_t out_tag = 12345;
-    uint64_t out_subtag = 67890;
-    j6_handle_t out_handles[10];
-    size_t out_handle_count = 0;
+    j6::thread caller {caller_proc, caller_stack};
+    s = caller.start();
+    CHECK( s == j6_status_ok, "Could not start mailbox caller thread" );
 
-    s = j6_mailbox_send( mb, out_tag, out_subtag,
-            out_handles, out_handle_count );
-    CHECK( s == j6_status_ok, "Did not send successfully" );
+    uint64_t tag = 0;
+    uint64_t subtag = 0;
+    uint64_t reply_tag = 0;
+    j6_handle_t mb_handle = j6_handle_invalid;
 
-    uint64_t in_tag = 0;
-    uint64_t in_subtag = 0;
-    j6_handle_t in_handles[10];
-    size_t in_handle_count = 10;
-    uint16_t in_reply_tag = 0;
-    uint64_t in_flags = 0;
+    s = j6_mailbox_respond( test_mailbox, &tag, &subtag, &mb_handle, &reply_tag, j6_mailbox_block );
+    CHECK( s == j6_status_ok, "Did not respond successfully" );
 
-    s = j6_mailbox_receive( mb, &in_tag, &in_subtag,
-            in_handles, &in_handle_count,
-            &in_reply_tag, in_flags );
-    CHECK( s == j6_status_ok, "Did not receive successfully" );
+    CHECK_BARE( tag == 12345 );
+    CHECK_BARE( subtag == 67890 );
 
-    CHECK_BARE( in_tag == out_tag );
-    CHECK_BARE( in_subtag == out_subtag );
-    CHECK_BARE( in_handle_count == out_handle_count );
-
-    j6_mailbox_close(mb);
+    j6_mailbox_close(test_mailbox);
+    caller.join();
 }

@@ -26,6 +26,10 @@ mailbox::close()
 
     m_callers.clear(j6_status_closed);
     m_responders.clear(j6_status_closed);
+
+    util::scoped_lock lock {m_reply_lock};
+    for (auto &waiting : m_reply_map)
+        waiting.thread->wake(j6_status_closed);
 }
 
 j6_status_t
