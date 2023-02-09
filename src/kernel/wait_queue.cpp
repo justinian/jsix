@@ -58,4 +58,5 @@ wait_queue::clear(uint64_t value)
         if (!t->exited()) t->wake(value);
         t->handle_release();
     }
+    m_threads.clear();
 }

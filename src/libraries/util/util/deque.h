@@ -19,7 +19,9 @@ public:
     class iterator
     {
     public:
-        iterator(node_type *n, size_t i) : node(n), index(i) {}
+        iterator(node_type *n, size_t i) : node(n), index(i) {
+            if (node && index >= N) { node = node->next(); index = 0; }
+        }
         iterator(const iterator &o) : node(o.node), index(o.index) {}
         inline T& operator*() { assert(node); return node->items[index]; }
         inline iterator & operator++() { incr(); return *this; }
@@ -36,10 +38,7 @@ public:
     };
 
     deque() : m_first(0), m_next(N) {}
-    ~deque() {
-        while (!m_list.empty())
-            delete m_list.pop_front();
-    }
+    ~deque() { clear(); }
 
     inline void push_front(const T& item) {
         if (!m_first) { // need a new block at the start
@@ -108,6 +107,13 @@ public:
     inline const T& last() const {
         assert(!empty() && "Calling last() on an empty deque");
         return m_list.back()->items[m_next-1];
+    }
+
+    inline void clear() {
+        while (!m_list.empty())
+            delete m_list.pop_front();
+        m_first = 0;
+        m_next = N;
     }
 
     iterator begin() { return iterator {m_list.front(), m_first}; }
