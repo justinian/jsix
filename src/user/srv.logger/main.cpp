@@ -20,15 +20,6 @@ extern "C" {
 extern j6_handle_t __handle_self;
 j6_handle_t g_handle_sys = j6_handle_invalid;
 
-struct entry
-{
-    uint64_t id      : 42;
-    uint16_t bytes   : 11;
-    uint8_t severity :  4;
-    uint8_t area     :  7;
-    char message[0];
-};
-
 static const uint8_t level_colors[] = {0x00, 0x09, 0x01, 0x0b, 0x0f, 0x07, 0x08};
 char const * const level_names[] = {"", "fatal", "error", "warn", "info", "verbose", "spam"};
 char const * const area_names[] = {
@@ -96,17 +87,19 @@ log_pump_proc(j6_handle_t cout)
             continue;
         }
 
-        const entry *e = reinterpret_cast<entry*>(message_buffer);
+        const j6_log_entry *e = reinterpret_cast<j6_log_entry*>(message_buffer);
 
         seen = e->id;
         const char *area_name = area_names[e->area];
         const char *level_name = level_names[e->severity];
         uint8_t level_color = level_colors[e->severity];
 
+        int message_len = static_cast<int>(e->bytes - sizeof(j6_log_entry));
         size_t len = snprintf(stringbuf, sizeof(stringbuf),
-                "\e[38;5;%dm%7s %7s: %s\e[38;5;0m\r\n",
-                level_color, area_name, level_name, e->message);
-        send_all(cout, stringbuf, len);
+                "\e[38;5;%dm%7s %7s: %.*s\e[38;5;0m\r\n",
+                level_color, area_name, level_name,
+                message_len, e->message);
+        send_all(cout, stringbuf, len + 1);
     }
 }
 

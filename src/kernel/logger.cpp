@@ -56,26 +56,26 @@ void
 logger::output(level severity, logs area, const char *fmt, va_list args)
 {
     static constexpr size_t buffer_len = 256;
-    static constexpr size_t message_len = buffer_len - sizeof(entry);
+    static constexpr size_t message_len = buffer_len - sizeof(j6_log_entry);
 
     char buffer[buffer_len];
-    entry *header = reinterpret_cast<entry *>(buffer);
+    j6_log_entry *header = reinterpret_cast<j6_log_entry *>(buffer);
 
-    size_t size = sizeof(entry);
+    size_t size = sizeof(j6_log_entry);
     size += util::vformat({header->message, message_len}, fmt, args);
 
     util::scoped_lock lock {m_lock};
 
     while (free() < size) {
         // Remove old entries until there's enough space
-        const entry *first = util::at<const entry>(m_buffer, start());
+        const j6_log_entry *first = util::at<const j6_log_entry>(m_buffer, start());
         m_start += first->bytes;
     }
 
     header->id = ++m_count;
     header->bytes = size;
-    header->severity = severity;
-    header->area = area;
+    header->severity = static_cast<uint8_t>(severity);
+    header->area = static_cast<uint8_t>(area);
 
     memcpy(util::at<void>(m_buffer, end()), buffer, size);
     m_end += size;
@@ -95,11 +95,11 @@ logger::get_entry(uint64_t seen, void *buffer, size_t size)
     }
 
     size_t off = m_start;
-    entry *ent = util::at<entry>(m_buffer, off);
+    j6_log_entry *ent = util::at<j6_log_entry>(m_buffer, off);
     while (seen >= ent->id) {
         off += ent->bytes;
         kassert(off < m_end, "Got to the end while looking for new log entry");
-        ent = util::at<entry>(m_buffer, off);
+        ent = util::at<j6_log_entry>(m_buffer, off);
     }
 
     if (size >= ent->bytes)

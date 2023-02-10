@@ -50,3 +50,12 @@ struct j6_handle_descriptor
     j6_object_type type;
 };
 
+/// Log entries as returned by j6_system_get_log
+struct j6_log_entry
+{
+    uint64_t id       : 42;
+    uint64_t bytes    : 11;
+    uint64_t severity :  4;
+    uint64_t area     :  7;
+    char message[0];
+};

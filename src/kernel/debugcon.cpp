@@ -26,22 +26,21 @@ namespace {
 } // anon namespace
 
 void
-output(logs area, log::level level, const char *message, size_t mlen)
+output(j6_log_entry *entry)
 {
     char buffer [256];
     size_t dlen = util::format({buffer, sizeof(buffer)}, "%7s %7s| ",
-            area_names[static_cast<uint8_t>(area)],
-            level_names[static_cast<uint8_t>(level)]);
+            area_names[entry->area], level_names[entry->severity]);
     debug_out(buffer, dlen);
 
-    debug_out(message, mlen);
+    debug_out(entry->message, entry->bytes - sizeof(j6_log_entry));
     debug_newline();
 }
 
 void
 logger_task()
 {
-    using entry = log::logger::entry;
+    using entry = j6_log_entry;
 
     uint64_t seen = 0;
     size_t buf_size = 128;
@@ -58,7 +57,7 @@ logger_task()
             continue;
         }
 
-        output(header->area, header->severity, header->message, size - sizeof(entry));
+        output(header);
         seen = header->id;
     }
 }

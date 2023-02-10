@@ -57,15 +57,6 @@ public:
         va_end(args);
     }
 
-    struct entry
-    {
-        uint64_t id    : 42;
-        uint16_t bytes : 11;
-        level severity :  4;
-        logs area      :  7;
-        char message[0];
-    };
-
     /// Get the next log entry from the buffer. Blocks the current thread until
     /// a log arrives if there are no entries newer than `seen`.
     /// \arg seen    The id of the last-seen log entry, or 0 for none
