@@ -78,10 +78,10 @@ public:
         return i;
     }
 
-private:
     const inode * lookup_inode(const char *path) const;
     const inode * lookup_inode_in_dir(const inode *in, const char *name) const;
 
+private:
     util::const_buffer m_data;
     inode const *m_inodes;
     inode const *m_root;

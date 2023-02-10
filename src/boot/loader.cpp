@@ -167,15 +167,15 @@ load_module(
     fs::file &disk,
     const wchar_t *name,
     const wchar_t *path,
-    bootproto::module_type type,
-    uint16_t subtype)
+    bootproto::module_type type)
 {
     status_line status(L"Loading module", name);
 
-    bootproto::module *mod = g_alloc.allocate_module();
+    bootproto::module *mod = g_alloc.allocate_module(sizeof(util::buffer));
     mod->type = type;
-    mod->subtype = subtype;
-    mod->data = load_file(disk, path);
+
+    util::buffer *data = mod->data<util::buffer>();
+    *data = load_file(disk, path);
 }
 
 } // namespace loader

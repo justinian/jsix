@@ -3,16 +3,18 @@
 /// Routines for loading and starting other programs
 
 #include <j6/types.h>
+#include <util/counted.h>
 
 namespace bootproto {
-    struct module_program;
+    struct module;
 }
 
 bool load_program(
         const char *name,
         util::const_buffer data,
         j6_handle_t sys, j6_handle_t slp,
-        char *err_msg);
+        char *err_msg,
+        bootproto::module *arg = nullptr);
 
 j6_handle_t map_phys(j6_handle_t sys, uintptr_t phys, size_t len, uintptr_t addr = 0);
 

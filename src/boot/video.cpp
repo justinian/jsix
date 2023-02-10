@@ -109,20 +109,15 @@ make_module(screen *s)
 {
     using bootproto::module;
     using bootproto::module_type;
-    using bootproto::device_type;
-    using bootproto::devices::uefi_fb;
+    namespace devices = bootproto::devices;
 
-    uefi_fb *fb = new uefi_fb;
+    module *mod = g_alloc.allocate_module(sizeof(devices::uefi_fb));
+    mod->type = module_type::device;
+    mod->type_id = devices::type_id_uefi_fb;
+
+    devices::uefi_fb *fb = mod->data<devices::uefi_fb>();
     fb->framebuffer = s->framebuffer;
     fb->mode = s->mode;
-
-    module *mod = g_alloc.allocate_module();
-    mod->type = module_type::device;
-    mod->subtype = static_cast<uint16_t>(device_type::uefi_fb);
-    mod->data = {
-        .pointer = fb,
-        .count = sizeof(uefi_fb),
-    };
 }
 
 } // namespace video

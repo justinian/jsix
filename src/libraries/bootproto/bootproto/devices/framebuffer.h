@@ -3,9 +3,12 @@
 /// Data structures describing bootloader-passed framebuffer
 
 #include <util/counted.h>
+#include <util/hash.h>
 
 namespace bootproto {
 namespace devices {
+
+inline constexpr uint64_t type_id_uefi_fb = "uefi.fb"_id;
 
 enum class fb_layout : uint8_t { rgb8, bgr8, unknown = 0xff };
 

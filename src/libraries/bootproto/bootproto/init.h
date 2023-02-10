@@ -11,29 +11,21 @@
 namespace bootproto {
 
 enum class module_type : uint8_t { none, initrd, device, };
-enum class initrd_format : uint8_t { none, zstd, };
-enum class device_type : uint16_t { none, uefi_fb, };
 
 struct module
 {
-    module_type type;
-    // 1 byte padding
-    uint16_t subtype;
-    // 4 bytes padding
-    util::buffer data;
+    uint16_t bytes;     //< Size of this module in bytes, including this header
+    module_type type;   //< Type of module
+    // 5 bytes padding
+    uint64_t type_id;   //< Optional subtype or id
+
+    template <typename T> T * data() { return reinterpret_cast<T*>(this+1); }
+    template <typename T> const T * data() const { return reinterpret_cast<const T*>(this+1); }
 };
 
-struct module_page_header
+struct modules_page
 {
-    uint8_t count;
-    uintptr_t next;
-};
-
-struct modules_page :
-    public module_page_header
-{
-    static constexpr unsigned per_page = (0x1000 - sizeof(module_page_header)) / sizeof(module);
-    module modules[per_page];
+    modules_page *next;
 };
 
 } // namespace bootproto

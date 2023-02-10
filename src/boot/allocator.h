@@ -32,7 +32,7 @@ public:
 
     void * allocate_pages(size_t count, alloc_type type, bool zero = false);
 
-    module * allocate_module();
+    module * allocate_module(size_t extra = 0);
 
     void memset(void *start, size_t size, uint8_t value);
     void copy(void *to, const void *from, size_t size);

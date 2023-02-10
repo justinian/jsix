@@ -125,7 +125,7 @@ load_resources(
     loader::parse_program(L"init server", init, args->init);
 
     loader::load_module(disk, L"initrd", bc.initrd(),
-            bootproto::module_type::initrd, 0);
+            bootproto::module_type::initrd);
 
     return reinterpret_cast<bootproto::entrypoint>(kentry);
 }
@@ -194,6 +194,7 @@ efi_main(uefi::handle image, uefi::system_table *st)
 
     change_pointer(args);
     change_pointer(args->pml4);
+    change_pointer(args->symbol_table.pointer);
     change_pointer(args->init.sections.pointer);
 
     //status.next();

@@ -25,6 +25,35 @@ uintptr_t _arg_modules_phys;   // This gets filled in in _start
 
 extern j6_handle_t __handle_self;
 
+void
+load_driver(
+    j6romfs::fs &initrd,
+    const j6romfs::inode *dir,
+    const char *name,
+    j6_handle_t sys,
+    j6_handle_t slp,
+    module *arg = nullptr)
+{
+    const j6romfs::inode *in = initrd.lookup_inode_in_dir(dir, name);
+
+    if (in->type != j6romfs::inode_type::file)
+        return;
+
+    char message [128];
+    sprintf(message, "Loading driver: %s", name);
+    j6_log(message);
+
+    uint8_t *data = new uint8_t [in->size];
+    util::buffer program {data, in->size};
+
+    initrd.load_inode_data(in, program);
+    if (!load_program(name, program, sys, slp, message, arg)) {
+        j6_log(message);
+    }
+
+    delete [] data;
+}
+
 int
 main(int argc, const char **argv)
 {
@@ -60,19 +89,20 @@ main(int argc, const char **argv)
     if (s != j6_status_ok)
         return s;
 
-    modules mods = modules::load_modules(_arg_modules_phys, sys, __handle_self);
+    std::vector<const module*> mods;
+    load_modules(_arg_modules_phys, sys, __handle_self, mods);
 
     module const *initrd_module;
     std::vector<module const*> devices;
 
-    for (auto &mod : mods) {
-        switch (mod.type) {
+    for (auto mod : mods) {
+        switch (mod->type) {
         case module_type::initrd:
-            initrd_module = &mod;
+            initrd_module = mod;
             break;
 
         case module_type::device:
-            devices.push_back(&mod);
+            devices.push_back(mod);
             break;
 
         default:
@@ -84,8 +114,10 @@ main(int argc, const char **argv)
     if (!initrd_module)
         return 1;
 
+    util::const_buffer initrd_buf = *initrd_module->data<util::const_buffer>();
+
     j6_handle_t initrd_vma =
-        map_phys(sys, initrd_module->data.pointer, initrd_module->data.count);
+        map_phys(sys, initrd_buf.pointer, initrd_buf.count);
     if (initrd_vma == j6_handle_invalid) {
         j6_log("  ** error loading ramdisk: mapping physical vma");
         return 1;
@@ -93,28 +125,17 @@ main(int argc, const char **argv)
 
     // TODO: encapsulate this all in a driver_manager, or maybe
     // have driver_source objects..
-    j6romfs::fs initrd {initrd_module->data};
+    j6romfs::fs initrd {initrd_buf};
 
     char message[256];
 
-    initrd.for_each("/jsix/drivers",
-            [=, &message](const j6romfs::inode *in, const char *name) {
-        if (in->type != j6romfs::inode_type::file)
-            return;
+    const j6romfs::inode *driver_dir = initrd.lookup_inode("/jsix/drivers");
+    if (!driver_dir) {
+        j6_log("Could not load drivers directory");
+        return 1;
+    }
 
-        sprintf(message, "Loading driver: %s", name);
-        j6_log(message);
-
-        uint8_t *data = new uint8_t [in->size];
-        util::buffer program {data, in->size};
-
-        initrd.load_inode_data(in, program);
-        if (!load_program(name, program, sys_child, slp_mb_child, message)) {
-            j6_log(message);
-        }
-
-        delete [] data;
-    });
+    load_driver(initrd, driver_dir, "drv.uart.elf", sys_child, slp_mb_child);
 
     initrd.for_each("/jsix/services",
             [=, &message](const j6romfs::inode *in, const char *name) {
@@ -138,3 +159,4 @@ main(int argc, const char **argv)
     service_locator_start(slp_mb);
     return 0;
 }
+

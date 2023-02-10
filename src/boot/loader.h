@@ -60,14 +60,12 @@ load_program(
 /// \arg name    The human-readable name of the module
 /// \arg path    The path of the file to load the module from
 /// \arg type    The major type to set on the module
-/// \arg subtype The subtype to set on the module
 void
 load_module(
     fs::file &disk,
     const wchar_t *name,
     const wchar_t *path,
-    bootproto::module_type type,
-    uint16_t subtype);
+    bootproto::module_type type);
 
 } // namespace loader
 } // namespace boot

@@ -42,7 +42,8 @@ load_program(
         const char *name,
         util::const_buffer data,
         j6_handle_t sys, j6_handle_t slp,
-        char *err_msg)
+        char *err_msg,
+        module *arg)
 {
     uintptr_t base_address = reinterpret_cast<uintptr_t>(data.pointer);
 
@@ -119,8 +120,22 @@ load_program(
         return false;
     }
 
+    uint64_t arg0 = 0;
+
     uint64_t *stack = reinterpret_cast<uint64_t*>(load_addr + stack_size);
     memset(stack - 512, 0, 512 * sizeof(uint64_t)); // Zero top page
+
+    stack -= 2; // add null frame
+    size_t stack_consumed = 2 * sizeof(uint64_t);
+
+    if (arg) {
+        size_t arg_size = arg->bytes - sizeof(module);
+        uint8_t *arg_data = arg->data<uint8_t>();
+        uint8_t *arg_dest = reinterpret_cast<uint8_t*>(stack) - arg_size;
+        memcpy(arg_dest, arg_data, arg_size);
+        stack_consumed += arg_size;
+        arg0 = stack_top - stack_consumed;
+    }
 
     res = j6_vma_map(stack_vma, proc, stack_top-stack_size);
     if (res != j6_status_ok) {
@@ -135,7 +150,7 @@ load_program(
     }
 
     j6_handle_t thread = j6_handle_invalid;
-    res = j6_thread_create(&thread, proc, stack_top - 6*sizeof(uint64_t), progelf.entrypoint(), 0, 0);
+    res = j6_thread_create(&thread, proc, stack_top - stack_consumed, progelf.entrypoint(), arg0, 0);
     if (res != j6_status_ok) {
         sprintf(err_msg, "  ** error loading program '%s': creating thread: %lx", name, res);
         return false;
