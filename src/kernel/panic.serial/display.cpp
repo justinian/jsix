@@ -38,7 +38,7 @@ print_cpu(serial_port &out, cpu_data &cpu)
 {
     out.write("\n \e[0;31m==[ CPU: ");
     char cpuid[7];
-    util::format({cpuid, sizeof(cpuid)}, "%4x", cpu.id);
+    util::format({cpuid, sizeof(cpuid)}, "%4d", cpu.id + 1); // gdb uses 1-based CPU indices
     out.write(cpuid);
     out.write(" ]====================================================================\n");
 }

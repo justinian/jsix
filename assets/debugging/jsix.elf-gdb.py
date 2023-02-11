@@ -168,12 +168,12 @@ class GetThreadsCommand(gdb.Command):
         rsp = int(gdb.parse_and_eval(f"{tcb}->rsp"))
         pri = int(gdb.parse_and_eval(f"{tcb}->priority"))
         flags = int(gdb.parse_and_eval(f"{thread}->m_state"))
-        koid = int(gdb.parse_and_eval(f"{thread}->m_koid"))
-        proc = int(gdb.parse_and_eval(f"{thread}->m_parent.m_koid"))
+        koid = int(gdb.parse_and_eval(f"{thread}->m_obj_id"))
+        proc = int(gdb.parse_and_eval(f"{thread}->m_parent.m_obj_id"))
 
         creator = int(gdb.parse_and_eval(f"{thread}->m_creator"))
         if creator != 0:
-            creator_koid = int(gdb.parse_and_eval(f"{thread}->m_creator->m_koid"))
+            creator_koid = int(gdb.parse_and_eval(f"{thread}->m_creator->m_obj_id"))
             creator = f"{creator_koid:x}"
         else:
             creator = "<no thread>"
@@ -236,7 +236,7 @@ class GetThreadsCommand(gdb.Command):
             if previous != 0:
                 tcb = f"((TCB*){previous:#x})"
                 thread = f"({tcb}->thread)"
-                koid = int(gdb.parse_and_eval(f"{thread}->m_koid"))
+                koid = int(gdb.parse_and_eval(f"{thread}->m_obj_id"))
                 print(f"            prev: {koid:x}")
             print()
 
@@ -307,7 +307,7 @@ class CapTablePrinter:
                     refcount = int(node["holders"]),
                     caps = int(node["caps"]),
                     type = str(node["type"])[14:],
-                    koid = node['object']['m_koid']))
+                    koid = node['object']['m_obj_id']))
 
             self.nodes.sort(key=lambda n: n.id, reverse=True)
 
