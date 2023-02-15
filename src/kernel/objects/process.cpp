@@ -52,7 +52,11 @@ process::create_kernel_process(page_table *pml4)
 void
 process::exit(int32_t code)
 {
-    // TODO: make this thread-safe
+    util::scoped_lock lock {m_threads_lock};
+
+    if (m_state == state::exited)
+        return;
+
     m_state = state::exited;
     m_return_code = code;
 
@@ -67,6 +71,9 @@ process::exit(int32_t code)
 void
 process::update()
 {
+    util::scoped_lock lock {m_threads_lock};
+
+    kassert(false, "process::update used!");
     kassert(m_threads.count() > 0, "process::update with zero threads!");
 
     size_t i = 0;
@@ -86,6 +93,11 @@ process::update()
 thread *
 process::create_thread(uintptr_t rsp3, uint8_t priority)
 {
+    util::scoped_lock lock {m_threads_lock};
+
+    if (m_state == state::exited)
+        return nullptr;
+
     if (priority == default_priority)
         priority = scheduler::default_priority;
 
@@ -103,6 +115,8 @@ process::create_thread(uintptr_t rsp3, uint8_t priority)
 bool
 process::thread_exited(thread *th)
 {
+    util::scoped_lock lock {m_threads_lock};
+
     kassert(&th->m_parent == this, "Process got thread_exited for non-child!");
     m_threads.remove_swap(th);
     remove_handle(th->self_handle());

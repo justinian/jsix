@@ -111,6 +111,7 @@ private:
     vm_space m_space;
 
     util::vector<thread*> m_threads;
+    util::spinlock m_threads_lock;
 
     util::node_set<j6_handle_t, j6_handle_invalid, heap_allocated> m_handles;
     util::spinlock m_handles_lock;
