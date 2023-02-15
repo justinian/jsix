@@ -7,6 +7,7 @@
 namespace debugcon {
 
 namespace {
+    static const uint8_t level_colors[] = {0x00, 0x09, 0x01, 0x0b, 0x0f, 0x07, 0x08};
     const char *level_names[] = {"", "fatal", "error", "warn", "info", "verbose", "spam"};
     const char *area_names[] = {
 #define LOG(name, lvl) #name ,
@@ -19,9 +20,9 @@ namespace {
         asm ( "rep outsb;" :: "c"(size), "d"(port), "S"(msg) );
     }
 
-    inline void debug_newline() {
-        static const char *newline = "\r\n";
-        asm ( "rep outsb;" :: "c"(2), "d"(port), "S"(newline) );
+    inline void debug_endline() {
+        static const char *newline = "\e[38;5;0m\r\n";
+        asm ( "rep outsb;" :: "c"(11), "d"(port), "S"(newline) );
     }
 } // anon namespace
 
@@ -29,12 +30,16 @@ void
 output(j6_log_entry *entry)
 {
     char buffer [256];
-    size_t dlen = util::format({buffer, sizeof(buffer)}, "%7s %7s| ",
-            area_names[entry->area], level_names[entry->severity]);
+    size_t dlen = util::format({buffer, sizeof(buffer)}, "\e[38;5;%dm%7s %7s\e[38;5;14m|\e[38;5;%dm ",
+            level_colors[entry->severity],
+            area_names[entry->area],
+            level_names[entry->severity],
+            level_colors[entry->severity]);
+
     debug_out(buffer, dlen);
 
     debug_out(entry->message, entry->bytes - sizeof(j6_log_entry));
-    debug_newline();
+    debug_endline();
 }
 
 void

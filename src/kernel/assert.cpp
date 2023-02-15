@@ -13,9 +13,6 @@ install(uintptr_t entrypoint, util::const_buffer symbol_data)
     symbol_table = symbol_data.pointer;
 }
 
-extern uint32_t *apic_icr;
-extern void const *symbol_table;
-
 [[ noreturn ]]
 void panic(
         const char *message,

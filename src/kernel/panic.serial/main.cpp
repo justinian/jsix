@@ -19,7 +19,7 @@ panicking::serial_port &com1 = __com1_storage.value;
 util::no_construct<panicking::symbol_table> __syms_storage;
 panicking::symbol_table &syms = __syms_storage.value;
 
-constexpr int order = __ATOMIC_ACQ_REL;
+static constexpr int order = __ATOMIC_ACQ_REL;
 
 extern "C"
 void panic_handler(const cpu_state *regs)
@@ -41,7 +41,7 @@ void panic_handler(const cpu_state *regs)
         asm ("pause");
 
     panicking::frame const *fp = nullptr;
-    asm ( "mov %%rbp, %0" : "=r" (fp) );
+    asm ( "movq (%%rbp), %0" : "=r" (fp) );
 
     if (panic)
         print_header(com1, panic->message, panic->function,

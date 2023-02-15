@@ -2,6 +2,8 @@
 
 #include "cpu.h"
 #include "display.h"
+#include "objects/process.h"
+#include "objects/thread.h"
 #include "serial.h"
 #include "symbol_table.h"
 
@@ -36,11 +38,25 @@ print_header(
 void
 print_cpu(serial_port &out, cpu_data &cpu)
 {
+    uint32_t process = cpu.process ? cpu.process->obj_id() : 0;
+    uint32_t thread = cpu.thread ? cpu.thread->obj_id() : 0;
+
     out.write("\n \e[0;31m==[ CPU: ");
-    char cpuid[7];
-    util::format({cpuid, sizeof(cpuid)}, "%4d", cpu.id + 1); // gdb uses 1-based CPU indices
-    out.write(cpuid);
-    out.write(" ]====================================================================\n");
+
+    char buffer[64];
+    util::format({buffer, sizeof(buffer)}, "%4d <%02lx:%02lx>",
+            cpu.id + 1, process, thread);
+    out.write(buffer);
+
+    out.write(" ]=============================================================\n");
+}
+
+template <typename T> inline bool
+canonical(T p)
+{
+    static constexpr uintptr_t mask = 0xffff800000000000;
+    uintptr_t addr = reinterpret_cast<uintptr_t>(p);
+    return (addr & mask) == mask || (addr & mask) == 0;
 }
 
 void
@@ -49,10 +65,10 @@ print_callstack(serial_port &out, symbol_table &syms, frame const *fp)
     char message[512];
     unsigned count = 0;
 
-    while (fp && fp->return_addr) {
+    while (canonical(fp) && fp && fp->return_addr) {
         char const *name = syms.find_symbol(fp->return_addr);
         if (!name)
-            name = "<unknown>";
+            name = canonical(fp->return_addr) ? "<unknown>" : "<corrupt>";
 
         util::format({message, sizeof(message)},
             " \e[0;33mframe %2d: <0x%016lx> \e[1;33m%s\n",
