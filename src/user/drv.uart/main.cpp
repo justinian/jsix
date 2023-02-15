@@ -32,13 +32,10 @@ uint8_t com2_in[in_buf_size];
 uint8_t com1_out[out_buf_size];
 uint8_t com2_out[out_buf_size];
 
-serial_port *g_com1;
-serial_port *g_com2;
-
 constexpr uintptr_t stack_top = 0xf80000000;
 
 int
-channel_pump_loop()
+channel_pump_loop(serial_port *com1)
 {
     j6_status_t result;
     static constexpr size_t buffer_size = 512;
@@ -76,14 +73,15 @@ channel_pump_loop()
         size_t size = buffer_size;
         j6_status_t s = j6_channel_receive(cout, buffer, &size, j6_channel_block);
         if (s == j6_status_ok)
-            g_com1->write(buffer, size);
+            com1->write(buffer, size);
     }
 }
 
 void
-pump_proc(void *)
+pump_proc(void *com_ptr)
 {
-    j6_process_exit(channel_pump_loop());
+    serial_port *com1 = reinterpret_cast<serial_port*>(com_ptr);
+    j6_process_exit(channel_pump_loop(com1));
 }
 
 int
@@ -116,11 +114,9 @@ main(int argc, const char **argv)
 
     serial_port com1 {COM1, in_buf_size, com1_in, out_buf_size, com1_out};
     serial_port com2 {COM2, in_buf_size, com2_in, out_buf_size, com2_out};
-    g_com1 = &com1;
-    g_com2 = &com2;
 
     j6::thread pump_thread {pump_proc, stack_top};
-    result = pump_thread.start();
+    result = pump_thread.start(&com1);
     if (result != j6_status_ok)
         return result;
 
