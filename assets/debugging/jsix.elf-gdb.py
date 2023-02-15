@@ -1,8 +1,12 @@
 import gdb
 import gdb.printing
 
+import sys
+sys.path.append('./scripts')
+
 from collections import namedtuple
 Capability = namedtuple("Capability", ["id", "parent", "refcount", "caps", "type", "koid"])
+LogEntry = namedtuple("LogHeader", ["id", "bytes", "severity", "area", "message"])
 
 class PrintStackCommand(gdb.Command):
     def __init__(self):
@@ -283,6 +287,57 @@ class PrintProfilesCommand(gdb.Command):
             print(f"{name:>{max_len}}: {avg:15.3f}")
 
 
+class DumpLogCommand(gdb.Command):
+    level_names = ["", "fatal", "error", "warn", "info", "verbose", "spam"]
+
+    def __init__(self):
+        super().__init__("j6log", gdb.COMMAND_DATA)
+
+        from memory import Layout
+        layout = Layout("definitions/memory_layout.yaml")
+        for region in layout.regions:
+            if region.name == "logs":
+                self.base_addr = region.start
+                break
+
+        self.areas = []
+        area_re = re.compile(r"LOG\(\s*(\w+).*")
+        with open("src/libraries/j6/j6/tables/log_areas.inc", 'r') as areas_inc:
+            for line in areas_inc:
+                m = area_re.match(line)
+                if m:
+                    self.areas.append(m.group(1))
+
+    def get_entry(self, addr):
+        addr = int(addr)
+        size = int(gdb.parse_and_eval(f"((j6_log_entry*){addr:#x})->bytes"))
+        mlen = size - 8
+
+        return LogEntry(
+                int(gdb.parse_and_eval(f"((j6_log_entry*){addr:#x})->id")),
+                size,
+                int(gdb.parse_and_eval(f"((j6_log_entry*){addr:#x})->severity")),
+                int(gdb.parse_and_eval(f"((j6_log_entry*){addr:#x})->area")),
+                gdb.parse_and_eval(f"((j6_log_entry*){addr:#x})->message").string(length=mlen))
+
+    def invoke(self, arg, from_tty):
+        start = gdb.parse_and_eval("g_logger.m_start & (g_logger.m_buffer.count - 1)")
+        end = gdb.parse_and_eval("g_logger.m_end & (g_logger.m_buffer.count - 1)")
+        if end < start:
+            end += gdb.parse_and_eval("g_logger.m_buffer.count")
+
+        print(f"Logs are {start} -> {end}")
+
+        addr = self.base_addr + start
+        end += self.base_addr
+        while addr < end:
+            entry = self.get_entry(addr)
+            addr += entry.bytes
+            area = self.areas[entry.area]
+            level = self.level_names[entry.severity]
+            print(f"{area:>7}:{level:7}  {entry.message}")
+
+
 class CapTablePrinter:
     def __init__(self, val):
         node_map = val["m_caps"]
@@ -415,6 +470,7 @@ PrintBacktraceCommand()
 TableWalkCommand()
 GetThreadsCommand()
 PrintProfilesCommand()
+DumpLogCommand()
 
 gdb.execute("display/i $rip")
 if not gdb.selected_inferior().was_attached:
