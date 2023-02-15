@@ -11,7 +11,6 @@ using mem::linear_offset;
 using level = page_table::level;
 
 free_page_header * page_table::s_page_cache = nullptr;
-size_t page_table::s_cache_count = 0;
 util::spinlock page_table::s_lock;
 constexpr size_t page_table::entry_sizes[4];
 
@@ -182,14 +181,13 @@ page_table::get_table_page()
     {
         util::scoped_lock lock(s_lock);
 
-        if (!s_cache_count)
+        if (!s_page_cache)
             fill_table_page_cache();
 
         kassert(s_page_cache, "Somehow the page cache pointer is null");
 
         page = s_page_cache;
         s_page_cache = s_page_cache->next;
-        --s_cache_count;
     }
 
     memset(page, 0, frame_size);
@@ -204,34 +202,29 @@ page_table::free_table_page(page_table *pt)
         reinterpret_cast<free_page_header*>(pt);
     page->next = s_page_cache;
     s_page_cache = page;
-    ++s_cache_count;
 }
 
 void
 page_table::fill_table_page_cache()
 {
-    constexpr size_t min_pages = 32;
-
+    static constexpr size_t request_pages = 32;
     frame_allocator &fa = frame_allocator::get();
-    while (s_cache_count < min_pages) {
-        uintptr_t phys = 0;
-        size_t n = fa.allocate(min_pages - s_cache_count, &phys);
-        kassert(phys, "Got physical page 0 as a page table");
 
-        free_page_header *start =
-            mem::to_virtual<free_page_header>(phys);
+    uintptr_t phys = 0;
+    size_t n = fa.allocate(request_pages, &phys);
 
-        for (int i = 0; i < n - 1; ++i)
-            util::offset_pointer(start, i * frame_size)
-                ->next = util::offset_pointer(start, (i+1) * frame_size);
+    free_page_header *start =
+        mem::to_virtual<free_page_header>(phys);
 
-        free_page_header *end =
-            util::offset_pointer(start, (n-1) * frame_size);
+    for (int i = 0; i < n - 1; ++i)
+        util::offset_pointer(start, i * frame_size)
+            ->next = util::offset_pointer(start, (i+1) * frame_size);
 
-        end->next = s_page_cache;
-        s_page_cache = start;
-        s_cache_count += n;
-    }
+    free_page_header *end =
+        util::offset_pointer(start, (n-1) * frame_size);
+
+    end->next = s_page_cache;
+    s_page_cache = start;
 }
 
 void
