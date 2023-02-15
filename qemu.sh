@@ -36,7 +36,7 @@ while true; do
         -r | --remote)
             shift
             vnchost="${1:-${VNCHOST:-localhost}}"
-            gfx="-vnc ${vnchost}:7000,reverse"
+            gfx="-vnc ${vnchost}:5500,reverse"
             vga=""
             shift
             ;;
@@ -73,11 +73,14 @@ fi
 
 if [[ -n $TMUX ]]; then
     if [[ -n $debug ]]; then
-        tmux split-window -h "gdb ${debugtarget}" &
+        tmux split-window -h -l 270 "sleep 1; nc -t localhost 45455 | tee debugcon.log"
+        tmux split-window -h -l 160 "gdb ${debugtarget}"
+        tmux select-pane -t .left
+        tmux select-pane -t .right
     else
-        tmux split-window -h -l 100 "sleep 1; telnet localhost 45455" &
+        tmux split-window -h -l 100 "sleep 1; telnet localhost 45455"
         tmux last-pane
-        tmux split-window -l 10 "sleep 1; telnet localhost 45454" &
+        tmux split-window -l 10 "sleep 1; telnet localhost 45454"
     fi
 elif [[ $DESKTOP_SESSION = "i3" ]]; then
     if [[ -n $debug ]]; then
@@ -99,7 +102,7 @@ qemu-system-x86_64 \
     -cpu "${cpu}" \
     -M q35 \
     -no-reboot \
-    -name "jsix" \
+    -name jsix \
     $isaexit $log $gfx $vga $kvm $debug
 
 ((result = ($? >> 1) - 1))
