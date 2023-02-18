@@ -52,20 +52,23 @@ process::create_kernel_process(page_table *pml4)
 void
 process::exit(int32_t code)
 {
-    util::scoped_lock lock {m_threads_lock};
-
     if (m_state == state::exited)
         return;
 
     m_state = state::exited;
     m_return_code = code;
 
+    thread &current = thread::current();
+
+    util::scoped_lock lock {m_threads_lock};
     for (auto *thread : m_threads) {
-        thread->exit();
+        if (thread != &current)
+            thread->exit();
     }
 
-    if (this == current_cpu().process)
-        scheduler::get().schedule();
+    lock.release();
+    if (&current.parent() == this)
+        current.exit();
 }
 
 void
@@ -123,8 +126,7 @@ process::thread_exited(thread *th)
     delete th;
 
     // TODO: delete the thread's stack VMA
-
-    if (m_threads.count() == 0) {
+    if (m_threads.empty() && m_state != state::exited) {
         exit(-1);
         return true;
     }

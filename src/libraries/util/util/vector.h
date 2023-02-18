@@ -82,6 +82,9 @@ public:
     /// Get the size of the array.
     inline count_t count() const { return m_size; }
 
+    /// Check if the array is empty
+    inline bool empty() const { return m_size == 0; }
+
     /// Get the capacity of the array. This is the amount of space
     /// actually allocated.
     inline count_t capacity() const { return m_capacity & cap_mask; }
