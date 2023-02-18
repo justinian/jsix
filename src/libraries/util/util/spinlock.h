@@ -1,7 +1,12 @@
 /// \file spinlock.h
 /// Spinlock types and related defintions
-
 #pragma once
+
+#include <stdint.h>
+
+#ifdef __j6kernel
+extern "C" uint32_t __current_thread_id();
+#endif
 
 namespace util {
 
@@ -18,6 +23,7 @@ public:
         bool blocked;
         waiter *next;
         char const *where;
+        uint32_t thread;
     };
 
     bool try_acquire(waiter *w);
@@ -36,7 +42,7 @@ public:
             spinlock &lock,
             const char *where = __builtin_FUNCTION()) :
         m_lock(lock),
-        m_waiter {false, nullptr, where},
+        m_waiter {false, nullptr, where, get_thread()},
         m_is_locked {false}
     {
         m_lock.acquire(&m_waiter);
@@ -59,6 +65,14 @@ public:
             m_lock.release(&m_waiter);
             m_is_locked = false;
         }
+    }
+
+    inline uint32_t get_thread() const {
+#ifdef __j6kernel
+        return __current_thread_id();
+#else
+        return -1u;
+#endif
     }
 
 private:

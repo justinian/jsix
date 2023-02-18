@@ -207,3 +207,5 @@ private:
 };
 
 } // namespace obj
+
+extern "C" uint32_t __current_thread_id();

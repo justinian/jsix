@@ -180,3 +180,10 @@ thread::create_idle_thread(process &kernel, uintptr_t rsp0)
 }
 
 } // namespace obj
+
+uint32_t
+__current_thread_id()
+{
+    cpu_data &cpu = current_cpu();
+    return cpu.thread ? cpu.thread->obj_id() : -1u;
+}
