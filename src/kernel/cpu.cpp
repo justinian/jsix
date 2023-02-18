@@ -12,7 +12,6 @@
 #include "logger.h"
 #include "msr.h"
 #include "objects/thread.h"
-#include "scheduler.h"
 #include "syscall.h"
 #include "tss.h"
 
@@ -162,7 +161,6 @@ cpu_init(cpu_data *cpu, bool bsp)
 
     obj::thread *idle = obj::thread::create_idle_thread(
             g_kernel_process,
-            scheduler::max_priority,
             cpu->rsp0);
 
     cpu->thread = idle;

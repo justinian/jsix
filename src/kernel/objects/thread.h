@@ -168,9 +168,8 @@ public:
 
     /// Create the kernel idle thread
     /// \arg kernel The process object that owns kernel tasks
-    /// \arg pri    The idle thread priority value
     /// \arg rsp    The existing stack for the idle thread
-    static thread * create_idle_thread(process &kernel, uint8_t pri, uintptr_t rsp);
+    static thread * create_idle_thread(process &kernel, uintptr_t rsp);
 
 protected:
     /// Don't delete a thread on no handles, the scheduler takes

@@ -29,8 +29,11 @@ public:
     /// Total number of priority levels
     static const uint8_t num_priorities = 8;
 
+    /// Idle task priority, less urgent than anything
+    static const uint8_t idle_priority = num_priorities - 1;
+
     /// Maximum (least urgent/interactive) priority
-    static const uint8_t max_priority = num_priorities - 1;
+    static const uint8_t max_priority = idle_priority - 1;
 
     /// Default priority on process creation
     static const uint8_t default_priority = 1;

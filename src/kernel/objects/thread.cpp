@@ -171,9 +171,9 @@ thread::setup_kernel_stack()
 }
 
 thread *
-thread::create_idle_thread(process &kernel, uint8_t pri, uintptr_t rsp0)
+thread::create_idle_thread(process &kernel, uintptr_t rsp0)
 {
-    thread *idle = new thread(kernel, pri, rsp0);
+    thread *idle = new thread(kernel, scheduler::idle_priority, rsp0);
     idle->set_state(state::constant);
     idle->set_state(state::ready);
     return idle;

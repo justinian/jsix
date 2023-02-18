@@ -226,8 +226,8 @@ scheduler::steal_work(cpu_data &cpu)
 
         size_t stolen = 0;
 
-        // Don't steal from max_priority, that's the idle thread
-        for (unsigned pri = 0; pri < max_priority; ++pri)
+        // Steal from most urgent queues first, don't steal idle threads
+        for (unsigned pri = 0; pri < idle_priority; ++pri)
             stolen += balance_lists(my_queue.ready[pri], other_queue.ready[pri], cpu);
 
         stolen += balance_lists(my_queue.blocked, other_queue.blocked, cpu);
@@ -334,6 +334,7 @@ void
 scheduler::maybe_schedule(TCB *t)
 {
     cpu_data *cpu = t->cpu;
+    kassert(cpu, "thread with a null cpu");
 
     run_queue &queue = m_run_queues[cpu->index];
     uint8_t current_pri = queue.current->priority;
