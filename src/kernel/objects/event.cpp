@@ -28,22 +28,15 @@ event::wait()
     // Wait for event::signal() to wake us with a value
     thread &current = thread::current();
     m_queue.add_thread(&current);
-    return current.block();
+    current.block();
+    return read();
 }
 
 void
 event::wake_observer()
 {
-    util::scoped_lock lock {m_queue.get_lock()};
-    thread *t = m_queue.get_next_unlocked();
-    if (!t) return;
-
-    uint64_t value = read();
-    if (value) {
-        m_queue.pop_next_unlocked();
-        lock.release();
-        t->wake(value);
-    }
+    thread *t = m_queue.pop_next();
+    if (t) t->wake();
 }
 
 } // namespace obj

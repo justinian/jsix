@@ -15,30 +15,14 @@ public:
     /// Wake all threads when destructing
     ~wait_queue();
 
-    /// Add the given thread to the queue. Locks the
-    /// queue lock.
+    /// Add the given thread to the queue.
     void add_thread(obj::thread *t);
 
     /// Block the current thread on the queue.
     void wait();
 
     /// Pops the next waiting thread off the queue.
-    /// Locks the queue lock.
-    inline obj::thread * pop_next() {
-        util::scoped_lock lock {m_lock};
-        return pop_next_unlocked();
-    }
-
-    /// Get the next waiting thread. Does not lock the
-    /// queue lock.
-    obj::thread * get_next_unlocked();
-
-    /// Pop the next thread off the queue. Does not
-    /// lock the queue lock.
-    obj::thread * pop_next_unlocked();
-
-    /// Get the spinlock to lock this queue
-    util::spinlock & get_lock() { return m_lock; }
+    obj::thread * pop_next();
 
     /// Wake and clear out all threads.
     /// \arg value  The value passed to thread::wake

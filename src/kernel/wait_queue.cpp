@@ -38,31 +38,24 @@ wait_queue::pop_exited()
 }
 
 obj::thread *
-wait_queue::get_next_unlocked()
+wait_queue::pop_next()
 {
     pop_exited();
     if (m_threads.empty())
         return nullptr;
-    return m_threads.first();
-}
 
-obj::thread *
-wait_queue::pop_next_unlocked()
-{
-    pop_exited();
-    if (m_threads.empty())
-        return nullptr;
-    return m_threads.pop_front();
+    obj::thread *t = m_threads.pop_front();
+    kassert(t, "Null thread in wait_queue");
+    t->handle_release();
+    return t;
 }
 
 void
 wait_queue::clear(uint64_t value)
 {
-    util::scoped_lock lock {m_lock};
-    while (!m_threads.empty()) {
-        obj::thread *t = pop_next_unlocked();
-        kassert(t, "Null thread in the wait queue");
-        if (!t->exited()) t->wake(value);
-        t->handle_release();
+    obj::thread *t = pop_next();
+    while (t) {
+        t->wake(value);
+        t = pop_next();
     }
 }
