@@ -91,9 +91,7 @@ serial_port::do_write()
 {
     // If another thread is writing data, just give up and
     // try again later
-    util::scoped_trylock lock {m_lock};
-    if (!lock.locked())
-        return;
+    util::scoped_lock lock {m_lock};
 
     uint8_t *data = nullptr;
     size_t n = m_out_buffer.get_block(reinterpret_cast<void**>(&data));
