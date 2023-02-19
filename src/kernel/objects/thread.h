@@ -57,9 +57,6 @@ public:
     /// Capabilities on a newly constructed thread handle
     static constexpr j6_cap_t creation_caps = j6_cap_thread_all;
 
-    /// Capabilities the parent process gets on new thread handles
-    static constexpr j6_cap_t parent_caps = j6_cap_thread_all;
-
     static constexpr kobject::type type = kobject::type::thread;
 
     enum class state : uint8_t {
@@ -168,9 +165,6 @@ public:
             uintptr_t rip0 = 0,
             uint64_t flags = 0);
 
-    /// Get the handle representing this thread to its process
-    j6_handle_t self_handle() const { return m_self_handle; }
-
     /// Create the kernel idle thread
     /// \arg kernel The process object that owns kernel tasks
     /// \arg rsp    The existing stack for the idle thread
@@ -208,7 +202,6 @@ private:
     message_data m_message_data;
 
     wait_queue m_join_queue;
-    j6_handle_t m_self_handle;
 };
 
 } // namespace obj

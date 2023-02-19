@@ -9,11 +9,10 @@
 #include <j6/syscalls.h>
 #include <j6/types.h>
 
-j6_handle_t __handle_self;
-
 namespace {
     constexpr size_t static_arr_count = 8;
     j6_handle_descriptor handle_array[static_arr_count];
+    j6_init_args init_args;
 } // namespace
 
 j6_handle_t
@@ -37,10 +36,12 @@ j6_find_first_handle(j6_object_type obj_type)
     return j6_handle_invalid;
 }
 
-extern "C" void
-__init_libj6(uint64_t *rsp)
+extern "C" j6_init_args *
+__init_libj6(uint64_t arg0, uint64_t arg1)
 {
-    __handle_self = j6_find_first_handle(j6_object_type_process);
+    init_args.args[0] = arg0;
+    init_args.args[1] = arg1;
+    return &init_args;
 }
 
 #endif // __j6kernel

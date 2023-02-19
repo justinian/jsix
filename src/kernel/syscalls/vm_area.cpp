@@ -31,14 +31,16 @@ vma_create_map(j6_handle_t *self, size_t size, uintptr_t base, uint32_t flags)
 j6_status_t
 vma_map(vm_area *self, process *proc, uintptr_t base)
 {
-    proc->space().add(base, self);
+    vm_space &space = proc ? proc->space() : process::current().space();
+    space.add(base, self);
     return j6_status_ok;
 }
 
 j6_status_t
 vma_unmap(vm_area *self, process *proc)
 {
-    proc->space().remove(self);
+    vm_space &space = proc ? proc->space() : process::current().space();
+    space.remove(self);
     return j6_status_ok;
 }
 

@@ -11,11 +11,14 @@ namespace {
 void
 run_ctor_list(cb *array, cb *end)
 {
+    if (!array || !end)
+        return;
+
     size_t i = 0;
     while (true) {
         const cb &ctor = array[i++];
         if (&ctor == end) return;
-        ctor();
+        if (ctor) ctor();
     }
 }
 

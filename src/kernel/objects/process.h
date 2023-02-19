@@ -20,9 +20,6 @@ public:
     /// Capabilities on a newly constructed process handle
     static constexpr j6_cap_t creation_caps = j6_cap_process_all;
 
-    /// Capabilities on a process to itself
-    static constexpr j6_cap_t self_caps = j6_cap_process_all;
-
     /// Top of memory area where thread stacks are allocated
     static constexpr uintptr_t stacks_top = 0x0000800000000000;
 
@@ -46,9 +43,6 @@ public:
     /// Terminate this process.
     /// \arg code   The return code to exit with.
     void exit(int32_t code);
-
-    /// Update internal bookkeeping about threads.
-    void update();
 
     /// Get the process' virtual memory space
     vm_space & space() { return m_space; }
@@ -105,7 +99,6 @@ private:
     // This constructor is called by create_kernel_process
     process(page_table *kpml4);
 
-    j6_handle_t m_self_handle;
     int32_t m_return_code;
 
     vm_space m_space;

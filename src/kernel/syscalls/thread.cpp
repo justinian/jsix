@@ -17,9 +17,14 @@ thread_create(j6_handle_t *self, process *proc, uintptr_t stack_top, uintptr_t e
     thread &parent_th = thread::current();
     process &parent_pr = parent_th.parent();
 
+    if (!proc)
+        proc = &parent_pr;
+
     thread *child = proc->create_thread(stack_top);
     child->add_thunk_user(entrypoint, arg0, arg1);
-    *self = child->self_handle();
+
+    *self = g_cap_table.create(child, thread::creation_caps);
+
     child->set_state(thread::state::ready);
 
     log::verbose(logs::task, "Thread <%02lx:%02lx> spawned new thread <%02lx:%02lx>",

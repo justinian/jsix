@@ -24,8 +24,6 @@ process::process() :
     kobject {kobject::type::process},
     m_state {state::running}
 {
-    m_self_handle = g_cap_table.create(this, process::self_caps);
-    add_handle(m_self_handle);
 }
 
 // The "kernel process"-only constructor
@@ -69,28 +67,6 @@ process::exit(int32_t code)
     lock.release();
     if (&current.parent() == this)
         current.exit();
-}
-
-void
-process::update()
-{
-    util::scoped_lock lock {m_threads_lock};
-
-    kassert(false, "process::update used!");
-    kassert(m_threads.count() > 0, "process::update with zero threads!");
-
-    size_t i = 0;
-    while (i < m_threads.count()) {
-        thread *th = m_threads[i];
-        if (th->has_state(thread::state::exited)) {
-            m_threads.remove_swap_at(i);
-            continue;
-        }
-        i++;
-    }
-
-    if (m_threads.count() == 0)
-        exit(-1);
 }
 
 thread *

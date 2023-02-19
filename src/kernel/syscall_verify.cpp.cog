@@ -133,7 +133,7 @@ for id, scope, method in syscalls.methods:
                     param.type.object.cname,
                     arg,
                     get_caps(param.options, param.type.object),
-                    param.optional))
+                    param.optional != "required"))
 
                 if needs_obj:
                     objparams.append((type, arg))
@@ -149,7 +149,7 @@ for id, scope, method in syscalls.methods:
                 f"obj::{param.type.object.cname}",
                 arg,
                 get_caps(param.options, param.type.object,
-                param.optional)))
+                param.optional != "required")))
 
         if param.refparam:
             subs = param.type.c_names(param.options)

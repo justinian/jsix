@@ -32,8 +32,6 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
         m_tcb.rsp0 = rsp0;
 
     m_creator = current_cpu().thread;
-    m_self_handle = g_cap_table.create(this, thread::parent_caps);
-    parent.add_handle(m_self_handle);
 }
 
 thread::~thread()

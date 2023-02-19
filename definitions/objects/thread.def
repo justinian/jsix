@@ -7,7 +7,7 @@ object thread : object {
     ]
 
     method create [constructor] {
-        param process ref process [cap:create_thread]
+        param process ref process [optional cap:create_thread]
         param stack_top address
         param entrypoint address
         param arg0 uint64

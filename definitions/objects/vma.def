@@ -22,12 +22,12 @@ object vma : object {
     }
 
     method map [cap:map] {
-        param process ref process
+        param process ref process [optional]
         param address address
     }
 
     method unmap [cap:unmap] {
-        param process ref process
+        param process ref process [optional]
     }
 
     method resize [cap:resize] {
