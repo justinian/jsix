@@ -171,7 +171,13 @@ page_table::set(int i, page_table *p, uint16_t flags)
         (flags & 0xfff);
 }
 
-struct free_page_header { free_page_header *next; };
+struct free_page_header
+{
+    free_page_header *next;
+
+    static constexpr size_t x_count = (frame_size - sizeof(next)) / sizeof(uint64_t);
+    uint64_t x [x_count];
+};
 
 page_table *
 page_table::get_table_page()
@@ -213,18 +219,14 @@ page_table::fill_table_page_cache()
     uintptr_t phys = 0;
     size_t n = fa.allocate(request_pages, &phys);
 
-    free_page_header *start =
+    free_page_header *pages =
         mem::to_virtual<free_page_header>(phys);
 
-    for (int i = 0; i < n - 1; ++i)
-        util::offset_pointer(start, i * frame_size)
-            ->next = util::offset_pointer(start, (i+1) * frame_size);
-
-    free_page_header *end =
-        util::offset_pointer(start, (n-1) * frame_size);
-
-    end->next = s_page_cache;
-    s_page_cache = start;
+    for (int i = 0; i < n - 1; ++i) {
+        pages[i].next = &pages[i + 1];
+    }
+    pages[n - 1].next = s_page_cache;
+    s_page_cache = pages;
 }
 
 void

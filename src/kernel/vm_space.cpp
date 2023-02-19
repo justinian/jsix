@@ -15,8 +15,10 @@
 using obj::vm_flags;
 
 // The initial memory for the array of areas for the kernel space
-constexpr size_t num_kernel_areas = 8;
+static constexpr size_t num_kernel_areas = 8;
 static uint64_t kernel_areas[num_kernel_areas * 2];
+
+static constexpr uint64_t locked_page_tag = 0xbadfe11a;
 
 int
 vm_space::area::compare(const vm_space::area &o) const
@@ -115,7 +117,7 @@ vm_space::can_resize(const obj::vm_area &vma, size_t size) const
 {
     uintptr_t base = 0;
     unsigned n = m_areas.count();
-    for (unsigned i = 0; i < n - 1; ++i) {
+    for (unsigned i = 1; i < n - 1; ++i) {
         const area &prev = m_areas[i - 1];
         if (prev.area != &vma)
             continue;
@@ -251,6 +253,38 @@ vm_space::clear(const obj::vm_area &vma, uintptr_t offset, size_t count, bool fr
         fa.free(free_start, free_count);
 }
 
+void
+vm_space::lock(const obj::vm_area &vma, uintptr_t offset, size_t count)
+{
+    using mem::frame_size;
+    util::scoped_lock lock {m_lock};
+
+    uintptr_t base = 0;
+    if (!find_vma(vma, base))
+        return;
+
+    uintptr_t addr = base + offset;
+
+    frame_allocator &fa = frame_allocator::get();
+    page_table::iterator it {addr, m_pml4};
+
+    while (count--) {
+        uint64_t &e = it.entry(page_table::level::pt);
+        uintptr_t phys = e & ~0xfffull;
+
+        if (e & page_table::flag::present) {
+            uint64_t orig = e;
+            e = locked_page_tag;
+            if (orig & page_table::flag::accessed) {
+                auto *addr = reinterpret_cast<const uint8_t *>(it.vaddress());
+                asm ( "invlpg %0" :: "m"(*addr) : "memory" );
+            }
+            fa.free(phys, 1);
+        }
+        ++it;
+    }
+}
+
 uintptr_t
 vm_space::lookup(const obj::vm_area &vma, uintptr_t offset)
 {
@@ -297,6 +331,14 @@ vm_space::handle_fault(uintptr_t addr, fault_type fault)
     obj::vm_area *area = get(addr, &base);
     if (!area)
         return false;
+
+    if constexpr (__debug_heap_allocation) {
+        page_table::iterator it {addr, m_pml4};
+        uint64_t &e = it.entry(page_table::level::pt);
+        kassert(e != locked_page_tag, "Use-after-free");
+        if (e == locked_page_tag)
+            return false;
+    }
 
     uintptr_t offset = page - base;
     uintptr_t phys_page = 0;

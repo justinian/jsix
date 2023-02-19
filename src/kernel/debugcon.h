@@ -16,6 +16,7 @@ static constexpr bool enable =
 static constexpr uint16_t port = 0x6600;
 
 void logger_task();
+void write(const char *fmt, ...);
 
 inline void
 init_logger()

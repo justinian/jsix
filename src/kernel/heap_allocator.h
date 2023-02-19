@@ -34,8 +34,9 @@ public:
     /// allocation with the contents copied over.
     void * reallocate(void *p, size_t old_length, size_t new_length);
 
-    /// Minimum block size is (2^min_order). Must be at least 6.
-    static const unsigned min_order = 6;  // 2^6  == 64 B
+    /// Minimum block size is (2^min_order). Must be at least 5 in
+    /// order to hold a free_header.
+    static const unsigned min_order = 5;    // 2^5  == 32 B
 
     /// Maximum block size is (2^max_order). Must be less than 32 + min_order.
     static const unsigned max_order = 22; // 2^22 ==  4 MiB

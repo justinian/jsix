@@ -1,6 +1,7 @@
 #include <bootproto/kernel.h>
 
 #include "assert.h"
+#include "debugcon.h"
 #include "frame_allocator.h"
 #include "logger.h"
 #include "memory.h"
@@ -51,7 +52,7 @@ frame_allocator::allocate(size_t count, uintptr_t *address)
         unsigned frame = (o1 << 12) + (o2 << 6) + o3;
 
         // See how many contiguous pages are here
-        unsigned n = bsf(~m3 >> o3);
+        unsigned n = bsf(~(m3 >> o3));
         if (n > count)
             n = count;
 
@@ -71,6 +72,7 @@ frame_allocator::allocate(size_t count, uintptr_t *address)
             }
         }
 
+        //debugcon::write("Allocated %2d frames at %016lx - %016lx", n, *address, *address + n * frame_size);
         return n;
     }
 
@@ -87,6 +89,8 @@ frame_allocator::free(uintptr_t address, size_t count)
 
     if (!count)
         return;
+
+    //debugcon::write("Freeing   %2d frames at %016lx - %016lx", count, address, address + count * frame_size);
 
     for (long i = 0; i < m_count; ++i) {
         frame_block &block = m_blocks[i];

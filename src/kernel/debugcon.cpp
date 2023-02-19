@@ -27,6 +27,20 @@ namespace {
 } // anon namespace
 
 void
+write(const char *fmt, ...)
+{
+    char buffer[256];
+
+    va_list va;
+    va_start(va, fmt);
+    size_t n = util::vformat({buffer, sizeof(buffer)}, fmt, va);
+    va_end(va);
+
+    debug_out(buffer, n);
+    debug_out("\r\n", 2);
+}
+
+void
 output(j6_log_entry *entry)
 {
     char buffer [256];

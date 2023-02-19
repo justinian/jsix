@@ -38,6 +38,8 @@ public:
         return static_cast<type>((koid >> koid_type_shift) & koid_type_mask);
     }
 
+    static const char * type_name(type t);
+
     /// Get this object's type
     inline type get_type() const { return m_type; }
 

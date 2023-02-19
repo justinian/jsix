@@ -65,7 +65,14 @@ public:
     /// \arg offset Offset of the starting virutal address from the VMA base
     /// \arg count  The number of pages worth of mappings to clear
     /// \arg free   If true, free the pages back to the system
-    void clear(const obj::vm_area &vma, uintptr_t start, size_t count, bool free = false);
+    void clear(const obj::vm_area &vma, uintptr_t offset, size_t count, bool free = false);
+
+    /// Clear mappings from the given region, and mark it as locked. Used for
+    /// debugging heap allocation reuse.
+    /// \arg area   The VMA these mappings applies to
+    /// \arg offset Offset of the starting virutal address from the VMA base
+    /// \arg count  The number of pages worth of mappings to clear
+    void lock(const obj::vm_area &vma, uintptr_t offset, size_t count);
 
     /// Look up the address of a given VMA's offset
     uintptr_t lookup(const obj::vm_area &vma, uintptr_t offset);

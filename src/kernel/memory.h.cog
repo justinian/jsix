@@ -88,3 +88,6 @@ constexpr uintptr_t page_align_up(uintptr_t a) { return page_align_down(a-1) + f
 void initialize(bootproto::args &args);
 
 } // namespace mem
+
+static constexpr bool __debug_heap_allocation = false;
+

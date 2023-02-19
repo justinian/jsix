@@ -8,6 +8,8 @@
 #include "assert.h"
 #include "heap_allocator.h"
 #include "memory.h"
+#include "objects/vm_area.h"
+#include "vm_space.h"
 
 uint32_t & get_map_key(heap_allocator::block_info &info) { return info.offset; }
 
@@ -46,7 +48,6 @@ heap_allocator::heap_allocator(uintptr_t start, size_t size, uintptr_t heapmap) 
     m_maxsize {size},
     m_allocated_size {0},
     m_map (reinterpret_cast<block_info*>(heapmap), 512)
-
 {
     memset(m_free, 0, sizeof(m_free));
 }
@@ -56,6 +57,11 @@ heap_allocator::allocate(size_t length)
 {
     if (length == 0)
         return nullptr;
+
+    static constexpr unsigned min_order =
+        __debug_heap_allocation ?
+            12 : // allocating full pages in debug mode
+            heap_allocator::min_order;
 
     unsigned order = util::log2(length);
     if (order < min_order)
@@ -97,6 +103,15 @@ heap_allocator::free(void *p)
 
     size_t size = (1ull << info->order);
     m_allocated_size -= size;
+
+    if constexpr (__debug_heap_allocation) {
+        extern obj::vm_area_untracked &g_kernel_heap_area;
+
+        size_t offset = reinterpret_cast<uintptr_t>(p) - mem::heap_offset;
+        size_t pages = mem::bytes_to_pages(size);
+        vm_space::kernel_space().lock(g_kernel_heap_area, offset, pages);
+        return;
+    }
 
     block->clear(info->order);
     block = merge_block(block);
