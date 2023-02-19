@@ -60,8 +60,9 @@ process::exit(int32_t code)
 
     util::scoped_lock lock {m_threads_lock};
     for (auto *thread : m_threads) {
-        if (thread != &current)
+        if (thread != &current) {
             thread->exit();
+        }
     }
 
     lock.release();
@@ -82,6 +83,7 @@ process::create_thread(uintptr_t rsp3, uint8_t priority)
 
     thread *th = new thread(*this, priority);
     kassert(th, "Failed to create thread!");
+    th->handle_retain();
 
     if (rsp3)
         th->tcb()->rsp3 = rsp3;
@@ -91,23 +93,25 @@ process::create_thread(uintptr_t rsp3, uint8_t priority)
     return th;
 }
 
-bool
+void
 process::thread_exited(thread *th)
 {
-    util::scoped_lock lock {m_threads_lock};
-
     kassert(&th->m_parent == this, "Process got thread_exited for non-child!");
-    m_threads.remove_swap(th);
-    remove_handle(th->self_handle());
-    delete th;
 
-    // TODO: delete the thread's stack VMA
-    if (m_threads.empty() && m_state != state::exited) {
-        exit(-1);
-        return true;
+    if (m_state != state::exited) {
+        // if we're already going away, just release
+        // the thread's handle and skip all this
+        util::scoped_lock lock {m_threads_lock};
+        m_threads.remove_swap(th);
+
+        // TODO: delete the thread's stack VMA
+        if (m_threads.empty()) {
+            lock.release();
+            exit(-1);
+        }
     }
 
-    return false;
+    th->handle_release();
 }
 
 void

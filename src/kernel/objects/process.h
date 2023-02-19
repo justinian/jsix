@@ -75,11 +75,7 @@ public:
 
     /// Inform the process of an exited thread
     /// \args th  The thread which has exited
-    /// \returns  True if this thread ending has ended the process
-    bool thread_exited(thread *th);
-
-    /// Get the handle for this process to refer to itself
-    inline j6_handle_t self_handle() const { return m_self_handle; }
+    void thread_exited(thread *th);
 
     /// Get the process object that owns kernel threads and the
     /// kernel address space

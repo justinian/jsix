@@ -111,6 +111,9 @@ scheduler::add_thread(TCB *t)
     run_queue &queue = m_run_queues[cpu->index];
     util::scoped_lock lock {queue.lock};
 
+    obj::thread *th = t->thread;
+    th->handle_retain();
+
     t->cpu = cpu;
     t->time_left = quantum(t->priority);
     queue.blocked.push_back(static_cast<tcb_node*>(t));
@@ -147,12 +150,7 @@ scheduler::prune(run_queue &queue, uint64_t now)
             if (current) continue;
 
             queue.blocked.remove(remove);
-            process &p = th->parent();
-
-            // thread_exited deletes the thread, and returns true if the process
-            // should also now be deleted
-            if(!current && p.thread_exited(th))
-                delete &p;
+            th->handle_release();
         } else {
             queue.blocked.remove(remove);
             log::spam(logs::sched, "Prune: readying unblocked thread %llx", th->koid());

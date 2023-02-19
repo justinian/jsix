@@ -68,6 +68,7 @@ cap_table::derive(j6_handle_t base, j6_cap_t caps)
 capability *
 cap_table::find_without_retain(j6_handle_t id)
 {
+    util::scoped_lock lock {m_lock};
     return m_caps.find(id);
 }
 

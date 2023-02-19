@@ -22,6 +22,7 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
     m_wake_value   {0},
     m_wake_timeout {0}
 {
+    parent.handle_retain();
     parent.space().initialize_tcb(m_tcb);
     m_tcb.priority = pri;
     m_tcb.thread = this;
@@ -37,6 +38,7 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 thread::~thread()
 {
     g_kernel_stacks.return_section(m_tcb.kernel_stack);
+    m_parent.handle_release();
 }
 
 thread & thread::current() { return *current_cpu().thread; }
@@ -99,6 +101,7 @@ thread::exit()
 {
     m_wake_timeout = 0;
     set_state(state::exited);
+    m_parent.thread_exited(this);
     m_join_queue.clear();
     block();
 }

@@ -170,11 +170,6 @@ public:
     /// \arg rsp    The existing stack for the idle thread
     static thread * create_idle_thread(process &kernel, uintptr_t rsp);
 
-protected:
-    /// Don't delete a thread on no handles, the scheduler takes
-    /// care of that.
-    virtual void on_no_handles() override {}
-
 private:
     thread() = delete;
     thread(const thread &other) = delete;
