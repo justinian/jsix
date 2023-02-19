@@ -101,9 +101,9 @@ frame_allocator::free(uintptr_t address, size_t count)
         unsigned o3 = frame & 0x3f;
 
         while (count--) {
-            block.map1 |= (1 << o1);
-            block.map2[o1] |= (1 << o2);
-            block.bitmap[o2] |= (1 << o3);
+            block.map1 |= (1ull << o1);
+            block.map2[o1] |= (1ull << o2);
+            block.bitmap[o2] |= (1ull << o3);
             if (++o3 == 64) {
                 o3 = 0;
                 if (++o2 == 64) {
@@ -139,12 +139,12 @@ frame_allocator::used(uintptr_t address, size_t count)
         unsigned o3 = frame & 0x3f;
 
         while (count--) {
-            block.bitmap[o2] &= ~(1 << o3);
+            block.bitmap[o2] &= ~(1ull << o3);
             if (!block.bitmap[o2]) {
-                block.map2[o1] &= ~(1 << o2);
+                block.map2[o1] &= ~(1ull << o2);
 
                 if (!block.map2[o1]) {
-                    block.map1 &= ~(1 << o1);
+                    block.map1 &= ~(1ull << o1);
                 }
             }
 

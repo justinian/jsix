@@ -265,7 +265,7 @@ public:
     void ensure_capacity(count_t size)
     {
         if (capacity() >= size) return;
-        count_t capacity = (1 << log2(size));
+        count_t capacity = (1ull << log2(size));
         if (capacity < min_capacity)
             capacity = min_capacity;
         set_capacity(capacity);

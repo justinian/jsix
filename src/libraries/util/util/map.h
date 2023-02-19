@@ -84,7 +84,7 @@ public:
         m_nodes(nullptr)
     {
         if (capacity)
-            set_capacity(1 << log2(capacity));
+            set_capacity(1ull << log2(capacity));
     }
 
     virtual ~base_map() {

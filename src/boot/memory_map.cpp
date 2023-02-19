@@ -249,13 +249,13 @@ build_frame_blocks(const util::counted<bootproto::mem_entry> &kmap)
                 unsigned i = 0;
 
                 uint64_t b1 = (page_count + 4095) / 4096;
-                blk->map1 = (1 << b1) - 1;
+                blk->map1 = (1ull << b1) - 1;
 
                 uint64_t b2 = (page_count + 63) / 64;
                 uint64_t b2q = b2 / 64;
                 uint64_t b2r = b2 % 64;
                 g_alloc.memset(blk->map2, b2q, 0xff);
-                blk->map2[b2q] = (1 << b2r) - 1;
+                blk->map2[b2q] = (1ull << b2r) - 1;
                 break;
             }
         }
@@ -269,7 +269,7 @@ build_frame_blocks(const util::counted<bootproto::mem_entry> &kmap)
         size_t b = blk.count / 64;
         size_t r = blk.count % 64;
         g_alloc.memset(blk.bitmap, b*8, 0xff);
-        blk.bitmap[b] = (1 << r) - 1;
+        blk.bitmap[b] = (1ull << r) - 1;
 
         bitmap += bitmap_size(blk.count);
     }

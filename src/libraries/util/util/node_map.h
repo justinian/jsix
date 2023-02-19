@@ -50,7 +50,7 @@ public:
         m_nodes {nullptr}
     {
         if (capacity) {
-            m_capacity = 1 << log2(capacity);
+            m_capacity = 1ull << log2(capacity);
             m_nodes = reinterpret_cast<node_type*>(
                     alloc::allocate(m_capacity * sizeof(node_type)));
             for (size_t i = 0; i < m_capacity; ++i)

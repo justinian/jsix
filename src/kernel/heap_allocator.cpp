@@ -27,7 +27,7 @@ struct heap_allocator::free_header
 
     inline free_header * buddy() const {
         return reinterpret_cast<free_header *>(
-            reinterpret_cast<uintptr_t>(this) ^ (1 << order));
+            reinterpret_cast<uintptr_t>(this) ^ (1ull << order));
     }
 
     inline bool eldest() const { return this < buddy(); }
@@ -67,7 +67,7 @@ heap_allocator::allocate(size_t length)
 
     util::scoped_lock lock {m_lock};
 
-    m_allocated_size += (1 << order);
+    m_allocated_size += (1ull << order);
 
     free_header *block = pop_free(order);
     if (!block && !split_off(order, block)) {
@@ -95,7 +95,8 @@ heap_allocator::free(void *p)
     kassert(info, "Attempt to free pointer not known to the heap");
     if (!info) return;
 
-    m_allocated_size -= (1 << info->order);
+    size_t size = (1ull << info->order);
+    m_allocated_size -= size;
 
     block->clear(info->order);
     block = merge_block(block);
@@ -118,7 +119,7 @@ heap_allocator::reallocate(void *p, size_t old_length, size_t new_length)
     if (!info)
         return nullptr;
 
-    if (new_length <= (1 << info->order))
+    if (new_length <= (1ull << info->order))
         return p;
 
     lock.release();
@@ -180,12 +181,12 @@ heap_allocator::new_block(unsigned order)
     unsigned current = address_order(m_end);
     while (current < order) {
         register_free_block(reinterpret_cast<free_header*>(m_end), current);
-        m_end += 1 << current;
+        m_end += 1ull << current;
         current = address_order(m_end);
     }
 
     void *block = reinterpret_cast<void*>(m_end);
-    m_end += 1 << order;
+    m_end += 1ull << order;
     m_map[map_key(block)].order = order;
     return block;
 }

@@ -385,7 +385,7 @@ device_manager::dispatch_irq(unsigned irq)
     if (!binding.target || binding.target == ignore_event)
         return binding.target == ignore_event;
 
-    binding.target->signal(1 << binding.signal);
+    binding.target->signal(1ull << binding.signal);
     return true;
 }
 
