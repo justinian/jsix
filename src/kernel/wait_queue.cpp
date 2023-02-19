@@ -6,6 +6,7 @@ wait_queue::~wait_queue() { clear(); }
 void
 wait_queue::add_thread(obj::thread *t)
 {
+    kassert(t, "Adding a null thread to the wait queue");
     util::scoped_lock lock {m_lock};
     t->handle_retain();
     m_threads.push_back(t);
@@ -15,8 +16,12 @@ void
 wait_queue::wait()
 {
     obj::thread &current = obj::thread::current();
-    add_thread(&current);
-    current.block();
+
+    util::scoped_lock lock {m_lock};
+    current.handle_retain();
+    m_threads.push_back(&current);
+
+    current.block(lock);
 }
 
 void
@@ -54,9 +59,10 @@ void
 wait_queue::clear(uint64_t value)
 {
     util::scoped_lock lock {m_lock};
-    for (auto *t : m_threads) {
+    while (!m_threads.empty()) {
+        obj::thread *t = pop_next_unlocked();
+        kassert(t, "Null thread in the wait queue");
         if (!t->exited()) t->wake(value);
         t->handle_release();
     }
-    m_threads.clear();
 }

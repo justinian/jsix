@@ -96,8 +96,13 @@ public:
     inline void set_priority(uint8_t p) { if (!constant()) m_tcb.priority = p; }
 
     /// Block this thread, waiting for a value
-    /// \returns  The value passed to wake()
+    /// \returns   The value passed to wake()
     uint64_t block();
+
+    /// Block this thread, waiting for a value
+    /// \arg held  A held lock to unlock when blocking
+    /// \returns   The value passed to wake()
+    uint64_t block(util::scoped_lock &held);
 
     /// Block the calling thread until this thread exits
     j6_status_t join();

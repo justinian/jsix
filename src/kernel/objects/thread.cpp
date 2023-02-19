@@ -52,6 +52,18 @@ thread::block()
     return m_wake_value;
 }
 
+uint64_t
+thread::block(util::scoped_lock &lock)
+{
+    kassert(current_cpu().thread == this,
+            "unlocking block() called on non-current thread");
+
+    clear_state(state::ready);
+    lock.release();
+    scheduler::get().schedule();
+    return m_wake_value;
+}
+
 j6_status_t
 thread::join()
 {
