@@ -8,8 +8,6 @@
 #include <j6/syscalls.h>
 #include <j6/thread.hh>
 
-extern j6_handle_t __handle_self;
-
 namespace j6 {
 
 static constexpr size_t stack_size = 0x10000;
@@ -42,7 +40,7 @@ thread::start(void *user)
     uint64_t arg0 = reinterpret_cast<uint64_t>(this);
     uint64_t arg1 = reinterpret_cast<uint64_t>(user);
 
-    m_status = j6_thread_create(&m_thread, __handle_self,
+    m_status = j6_thread_create(&m_thread, 0,
         m_stack_top, reinterpret_cast<uintptr_t>(init_proc),
         arg0, arg1);
 

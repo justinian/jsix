@@ -13,8 +13,6 @@
 
 using bootproto::module;
 
-extern j6_handle_t __handle_self;
-
 constexpr uintptr_t load_addr = 0xf8000000;
 constexpr size_t stack_size = 0x10000;
 constexpr uintptr_t stack_top = 0x80000000000;
@@ -30,7 +28,7 @@ map_phys(j6_handle_t sys, uintptr_t phys, size_t len, uintptr_t addr)
     if (!addr)
         addr = phys;
 
-    res = j6_vma_map(vma, __handle_self, addr);
+    res = j6_vma_map(vma, 0, addr);
     if (res != j6_status_ok)
         return j6_handle_invalid;
 
@@ -43,7 +41,7 @@ load_program(
         util::const_buffer data,
         j6_handle_t sys, j6_handle_t slp,
         char *err_msg,
-        module *arg)
+        const module *arg)
 {
     uintptr_t base_address = reinterpret_cast<uintptr_t>(data.pointer);
 
@@ -106,7 +104,7 @@ load_program(
             return false;
         }
 
-        res = j6_vma_unmap(sub_vma, __handle_self);
+        res = j6_vma_unmap(sub_vma, 0);
         if (res != j6_status_ok) {
             sprintf(err_msg, "  ** error loading program '%s': unmapping sub vma: %lx", name, res);
             return false;
@@ -125,12 +123,11 @@ load_program(
     uint64_t *stack = reinterpret_cast<uint64_t*>(load_addr + stack_size);
     memset(stack - 512, 0, 512 * sizeof(uint64_t)); // Zero top page
 
-    stack -= 2; // add null frame
-    size_t stack_consumed = 2 * sizeof(uint64_t);
+    size_t stack_consumed = 0;
 
     if (arg) {
         size_t arg_size = arg->bytes - sizeof(module);
-        uint8_t *arg_data = arg->data<uint8_t>();
+        const uint8_t *arg_data = arg->data<uint8_t>();
         uint8_t *arg_dest = reinterpret_cast<uint8_t*>(stack) - arg_size;
         memcpy(arg_dest, arg_data, arg_size);
         stack_consumed += arg_size;
@@ -143,7 +140,7 @@ load_program(
         return false;
     }
 
-    res = j6_vma_unmap(stack_vma, __handle_self);
+    res = j6_vma_unmap(stack_vma, 0);
     if (res != j6_status_ok) {
         sprintf(err_msg, "  ** error loading program '%s': unmapping stack vma: %lx", name, res);
         return false;

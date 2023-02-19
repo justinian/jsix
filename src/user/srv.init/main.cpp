@@ -7,7 +7,9 @@
 #include <j6/init.h>
 #include <j6/syscalls.h>
 #include <j6/types.h>
+
 #include <bootproto/init.h>
+#include <bootproto/devices/framebuffer.h>
 
 #include "j6romfs.h"
 #include "loader.h"
@@ -23,8 +25,6 @@ extern "C" {
 
 uintptr_t _arg_modules_phys;   // This gets filled in in _start
 
-extern j6_handle_t __handle_self;
-
 void
 load_driver(
     j6romfs::fs &initrd,
@@ -32,7 +32,7 @@ load_driver(
     const char *name,
     j6_handle_t sys,
     j6_handle_t slp,
-    module *arg = nullptr)
+    const module *arg = nullptr)
 {
     const j6romfs::inode *in = initrd.lookup_inode_in_dir(dir, name);
 
@@ -90,7 +90,7 @@ main(int argc, const char **argv)
         return s;
 
     std::vector<const module*> mods;
-    load_modules(_arg_modules_phys, sys, __handle_self, mods);
+    load_modules(_arg_modules_phys, sys, 0, mods);
 
     module const *initrd_module;
     std::vector<module const*> devices;
@@ -136,6 +136,17 @@ main(int argc, const char **argv)
     }
 
     load_driver(initrd, driver_dir, "drv.uart.elf", sys_child, slp_mb_child);
+    for (const module *m : devices) {
+        switch (m->type_id) {
+            case bootproto::devices::type_id_uefi_fb:
+                load_driver(initrd, driver_dir, "drv.uefi_fb.elf", sys_child, slp_mb_child, m);
+                break;
+
+            default:
+                sprintf(message, "Unknown device type id: %lx", m->type_id);
+                j6_log(message);
+        }
+    }
 
     initrd.for_each("/jsix/services",
             [=, &message](const j6romfs::inode *in, const char *name) {
