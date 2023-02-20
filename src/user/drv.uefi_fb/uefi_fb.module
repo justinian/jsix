@@ -1,6 +1,6 @@
 # vim: ft=python
 
-fb = module("drv.uefi_fb",
+module("drv.uefi_fb",
     targets = [ "user" ],
     deps = [ "libc", "bootproto" ],
     description = "UEFI framebuffer driver",
@@ -11,5 +11,3 @@ fb = module("drv.uefi_fb",
         "screen.cpp",
         "scrollback.cpp",
     ])
-
-fb.variables['asflags'] = ["${asflags}", "-dmain_func=driver_main"]

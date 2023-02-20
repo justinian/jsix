@@ -11,10 +11,6 @@ char inbuf[1024];
 extern j6_handle_t __handle_sys;
 j6_handle_t endp = j6_handle_invalid;
 
-extern "C" {
-    int main(int, const char **);
-}
-
 extern j6_handle_t __handle_self;
 
 constexpr uintptr_t stack_top = 0xf80000000;

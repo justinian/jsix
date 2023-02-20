@@ -18,8 +18,8 @@ extern "C" {
     void _get_init(size_t *initc, struct j6_init_value **initv);
 }
 
-extern "C" int
-driver_main(int argc, const char **argv, const char **env, const j6_init_args *init)
+int
+driver_main(unsigned argc, const char **argv, const char **env, const j6_init_args *init)
 {
     j6_log("fb driver starting");
 
@@ -130,5 +130,3 @@ driver_main(int argc, const char **argv, const char **env, const j6_init_args *i
     j6_log("fb driver done, exiting");
     return 0;
 }
-
-int main () __attribute__ ((weak, alias ("driver_main")));

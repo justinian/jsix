@@ -5,6 +5,7 @@ j6 = module("j6",
     deps = [ "util" ],
     sources = [
         "init.cpp",
+        "init.s",
         "protocol_ids.cpp",
         "syscalls.s.cog",
         "sysconf.cpp.cog",
