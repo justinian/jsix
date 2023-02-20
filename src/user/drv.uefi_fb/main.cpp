@@ -85,7 +85,7 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
     scrollback scroll(rows, cols);
 
     int pending = 0;
-    constexpr int pending_threshold = 5;
+    static constexpr int pending_threshold = 0;
 
     size_t buffer_size = 0;
     void *message_buffer = nullptr;
@@ -111,6 +111,7 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
 
             size_t eom = e->bytes - sizeof(j6_log_entry);
             e->message[eom] = 0;
+            seen = e->id;
 
             scroll.add_line(e->message, eom);
             if (++pending > pending_threshold) {

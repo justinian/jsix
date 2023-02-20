@@ -11,3 +11,4 @@ services:
   - testapp
 drivers:
   - drv.uart
+  - drv.uefi_fb
