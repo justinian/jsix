@@ -10,7 +10,7 @@
 
 namespace bootproto {
 
-enum class module_type : uint8_t { none, initrd, device, };
+enum class module_type : uint8_t { none, initrd, device, acpi };
 
 struct module
 {

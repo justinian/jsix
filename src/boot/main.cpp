@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <bootproto/acpi.h>
 #include <bootproto/bootconfig.h>
 #include <bootproto/kernel.h>
 #include <bootproto/memory.h>
@@ -176,8 +177,22 @@ efi_main(uefi::handle image, uefi::system_table *st)
     bootproto::entrypoint kentry =
         load_resources(args, screen, image, pager, bs);
 
+    bootproto::module *acpi_mod =
+        g_alloc.allocate_module(sizeof(bootproto::acpi));
+    acpi_mod->type = bootproto::module_type::acpi;
+    bootproto::acpi *acpi = acpi_mod->data<bootproto::acpi>();
+    acpi->root = args->acpi_table;
+
     pager.update_kernel_args(args);
     memory::efi_mem_map map = uefi_exit(args, image, st->boot_services);
+
+    for (size_t i = 0; i < args->mem_map.count; ++i) {
+        bootproto::mem_entry &e = args->mem_map.pointer[i];
+        if (e.type == bootproto::mem_type::acpi) {
+            acpi->region = util::buffer::from(e.start, e.pages * memory::page_size);
+            break;
+        }
+    }
 
     args->allocations = allocs;
     args->init_modules = reinterpret_cast<uintptr_t>(modules);

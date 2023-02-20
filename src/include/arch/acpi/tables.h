@@ -6,7 +6,9 @@
 #include <util/enum_bitfields.h>
 #include <util/misc.h> // for byteswap32
 
-struct acpi_table_header
+namespace acpi {
+
+struct table_header
 {
     uint32_t type;
     uint32_t length;
@@ -18,24 +20,26 @@ struct acpi_table_header
     uint32_t creator_id;
     uint32_t creator_revision;
 
-    bool validate(uint32_t expected_type = 0) const;
+    bool validate() const { return util::checksum(this, length) == 0; }
 } __attribute__ ((packed));
+
 
 #define TABLE_HEADER(signature) \
     static constexpr uint32_t type_id = util::byteswap32(signature); \
-    acpi_table_header header;
-
-
-template <typename T>
-bool acpi_validate(const T *t) { return t->header.validate(T::type_id); }
+    table_header header;
 
 template <typename T>
-size_t acpi_table_entries(const T *t, size_t size)
-{
+bool validate(const T *t) {
+    return t->header.validate(T::type_id);
+}
+
+template <typename T>
+size_t table_entries(const T *t, size_t size) {
     return (t->header.length - sizeof(T)) / size;
 }
 
-enum class acpi_gas_type : uint8_t
+
+enum class gas_type : uint8_t
 {
     system_memory,
     system_io,
@@ -46,9 +50,9 @@ enum class acpi_gas_type : uint8_t
     functional_fixed    = 0x7f
 };
 
-struct acpi_gas
+struct gas
 {
-    acpi_gas_type type;
+    gas_type type;
 
     uint8_t reg_bits;
     uint8_t reg_offset;
@@ -58,7 +62,7 @@ struct acpi_gas
 } __attribute__ ((packed));
 
 
-enum class acpi_fadt_flags : uint32_t
+enum class fadt_flags : uint32_t
 {
     wbinvd          = 0x00000001,
     wbinvd_flush    = 0x00000002,
@@ -83,9 +87,9 @@ enum class acpi_fadt_flags : uint32_t
     hw_reduced_acpi = 0x00100000,
     low_pwr_s0_idle = 0x00200000
 };
-is_bitfield(acpi_fadt_flags);
+is_bitfield(fadt_flags);
 
-struct acpi_fadt
+struct fadt
 {
     TABLE_HEADER('FACP');
 
@@ -130,9 +134,9 @@ struct acpi_fadt
 
     uint16_t iapc_boot_arch;
     uint8_t reserved1;
-    acpi_fadt_flags flags;
+    fadt_flags flags;
 
-    acpi_gas reset_reg;
+    gas reset_reg;
     uint8_t reset_value;
 
     uint16_t arm_boot_arch;
@@ -142,28 +146,28 @@ struct acpi_fadt
     uint64_t x_facs;
     uint64_t x_dsdt;
 
-    acpi_gas x_pm1a_event_block;
-    acpi_gas x_pm1b_event_block;
-    acpi_gas x_pm1a_control_block;
-    acpi_gas x_pm1b_control_block;
-    acpi_gas x_pm2_control_block;
-    acpi_gas x_pm_timer_block;
-    acpi_gas x_gpe0_block;
-    acpi_gas x_gpe1_block;
+    gas x_pm1a_event_block;
+    gas x_pm1b_event_block;
+    gas x_pm1a_control_block;
+    gas x_pm1b_control_block;
+    gas x_pm2_control_block;
+    gas x_pm_timer_block;
+    gas x_gpe0_block;
+    gas x_gpe1_block;
 
-    acpi_gas sleep_control_reg;
-    acpi_gas sleep_status_reg;
+    gas sleep_control_reg;
+    gas sleep_status_reg;
 
     uint64_t hypervisor_vendor_id;
 } __attribute__ ((packed));
 
-struct acpi_xsdt
+struct xsdt
 {
     TABLE_HEADER('XSDT');
-    acpi_table_header *headers[0];
+    table_header *headers[0];
 } __attribute__ ((packed));
 
-struct acpi_apic
+struct apic
 {
     TABLE_HEADER('APIC');
     uint32_t local_address;
@@ -171,7 +175,7 @@ struct acpi_apic
     uint8_t controller_data[0];
 } __attribute__ ((packed));
 
-struct acpi_mcfg_entry
+struct mcfg_entry
 {
     uint64_t base;
     uint16_t group;
@@ -180,24 +184,24 @@ struct acpi_mcfg_entry
     uint32_t reserved;
 } __attribute__ ((packed));
 
-struct acpi_mcfg
+struct mcfg
 {
     TABLE_HEADER('MCFG');
     uint64_t reserved;
-    acpi_mcfg_entry entries[0];
+    mcfg_entry entries[0];
 } __attribute__ ((packed));
 
-struct acpi_hpet
+struct hpet
 {
     TABLE_HEADER('HPET');
     uint32_t hardware_id;
-    acpi_gas base_address;
+    gas base_address;
     uint8_t index;
     uint16_t periodic_min;
     uint8_t attributes;
 } __attribute__ ((packed));
 
-struct acpi_bgrt
+struct bgrt
 {
     TABLE_HEADER('BGRT');
     uint16_t version;
@@ -208,3 +212,35 @@ struct acpi_bgrt
     uint32_t offset_y;
 } __attribute__ ((packed));
 
+struct rsdp1
+{
+    char signature[8];
+    uint8_t checksum;
+    char oem_id[6];
+    uint8_t revision;
+    uint32_t rsdt_address;
+} __attribute__ ((packed));
+
+struct rsdp2
+{
+    char signature[8];
+    uint8_t checksum10;
+    char oem_id[6];
+    uint8_t revision;
+    uint32_t rsdt_address;
+
+    uint32_t length;
+    table_header *xsdt_address;
+    uint8_t checksum20;
+    uint8_t reserved[3];
+} __attribute__ ((packed));
+
+template <typename T> static const T *
+check_get_table(const table_header *header)
+{
+    if (!header || header->type != T::type_id)
+        return nullptr;
+    return reinterpret_cast<const T *>(header);
+}
+
+} // namespace acpi

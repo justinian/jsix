@@ -6,10 +6,12 @@
 
 #include "apic.h"
 #include "hpet.h"
-#include "pci.h"
 
-struct acpi_table_header;
 class block_device;
+
+namespace acpi {
+    struct table_header;
+}
 
 namespace obj {
     class event;
@@ -53,18 +55,6 @@ public:
     /// \arg target The endpoint to remove
     void unbind_irqs(obj::event *target);
 
-    /// Allocate an MSI IRQ for a device
-    /// \arg name    Name of the interrupt, for display to user
-    /// \arg device  Device this MSI is being allocated for
-    /// \arg cb      Callback to call when the interrupt is received
-    /// \arg data    Data to pass to the callback
-    /// \returns     True if an interrupt was allocated successfully
-    bool allocate_msi(
-            const char *name,
-            pci_device &device,
-            irq_callback cb,
-            void *data);
-
     /// Dispatch an IRQ interrupt
     /// \arg irq  The irq number of the interrupt
     /// \returns  True if the interrupt was handled
@@ -103,23 +93,6 @@ public:
     ///           configuration, or null if no configuration was provided
     const irq_override * get_irq_override(uint8_t irq) const;
 
-    /// Register the existance of a block device.
-    /// \arg blockdev  Pointer to the block device
-    void register_block_device(block_device *blockdev);
-
-    /// Get the number of block devices in the system
-    /// \returns  A count of devices
-    inline unsigned get_num_block_devices() const { return m_blockdevs.count(); }
-
-    /// Get a block device
-    /// \arg i    Index of the device to get
-    /// \returns  A pointer to the requested device, or nullptr
-    inline block_device * get_block_device(unsigned i)
-    {
-        return i < m_blockdevs.count() ?
-            m_blockdevs[i] : nullptr;
-    }
-
     /// Get an HPET device
     /// \arg i    Index of the device to get
     /// \returns  A pointer to the requested device, or nullptr
@@ -132,23 +105,15 @@ public:
 private:
     /// Parse the ACPI XSDT and load relevant sub-tables.
     /// \arg xsdt  Pointer to the XSDT from the firmware
-    void load_xsdt(const acpi_table_header *xsdt);
+    void load_xsdt(const acpi::table_header *xsdt);
 
     /// Parse the ACPI MADT and initialize APICs from it.
     /// \arg apic  Pointer to the MADT from the XSDT
-    void load_apic(const acpi_table_header *apic);
-
-    /// Parse the ACPI MCFG and initialize PCIe from it.
-    /// \arg mcfg  Pointer to the MCFG from the XSDT
-    void load_mcfg(const acpi_table_header *mcfg);
+    void load_apic(const acpi::table_header *apic);
 
     /// Parse the ACPI HPET and initialize an HPET from it.
     /// \arg hpet  Pointer to the HPET from the XSDT
-    void load_hpet(const acpi_table_header *hpet);
-
-    /// Probe the PCIe busses and add found devices to our
-    /// device list. The device list is destroyed and rebuilt.
-    void probe_pci();
+    void load_hpet(const acpi::table_header *hpet);
 
     /// Handle a bad IRQ. Called when an interrupt is dispatched
     /// that has no callback.
@@ -162,17 +127,12 @@ private:
     util::vector<apic_nmi> m_nmis;
     util::vector<irq_override> m_overrides;
 
-    util::vector<pci_group> m_pci;
-    util::vector<pci_device> m_devices;
-
     struct irq_binding
     {
         obj::event *target = nullptr;
         unsigned signal = 0;
     };
     util::vector<irq_binding> m_irqs;
-
-    util::vector<block_device *> m_blockdevs;
 
     static device_manager s_instance;
 

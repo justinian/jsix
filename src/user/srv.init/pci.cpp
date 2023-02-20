@@ -1,6 +1,7 @@
-#include "assert.h"
-#include "logger.h"
-#include "interrupts.h"
+#include <assert.h>
+
+#include <j6/syslog.hh>
+
 #include "pci.h"
 
 struct pci_cap_msi
@@ -73,7 +74,6 @@ pci_device::pci_device() :
     m_subclass(0),
     m_progif(0),
     m_revision(0),
-    m_irq(isr::isrIgnore0),
     m_header_type(0)
 {
 }
@@ -81,8 +81,7 @@ pci_device::pci_device() :
 pci_device::pci_device(pci_group &group, uint8_t bus, uint8_t device, uint8_t func) :
     m_base(group.base_for(bus, device, func)),
     m_msi(nullptr),
-    m_bus_addr(bus_addr(bus, device, func)),
-    m_irq(isr::isrIgnore0)
+    m_bus_addr(bus_addr(bus, device, func))
 {
     m_vendor = m_base[0] & 0xffff;
     m_device = (m_base[0] >> 16) & 0xffff;
@@ -100,11 +99,11 @@ pci_device::pci_device(pci_group &group, uint8_t bus, uint8_t device, uint8_t fu
 
     uint16_t *status = command + 1;
 
-    log::info(logs::device, "Found PCIe device at %02d:%02d:%d of type %x.%x.%x id %04x:%04x",
+    j6::syslog("Found PCIe device at %02d:%02d:%d of type %x.%x.%x id %04x:%04x",
             bus, device, func, m_class, m_subclass, m_progif, m_vendor, m_device);
 
-    log::spam(logs::device, "  = BAR0 %016lld", get_bar(0));
-    log::spam(logs::device, "  = BAR1 %016lld", get_bar(1));
+    j6::syslog("  = BAR0 %016lld", get_bar(0));
+    j6::syslog("  = BAR1 %016lld", get_bar(1));
 
     if (*status & 0x0010) {
         // Walk the extended capabilities list
@@ -112,7 +111,7 @@ pci_device::pci_device(pci_group &group, uint8_t bus, uint8_t device, uint8_t fu
         while (next) {
             pci_cap *cap = reinterpret_cast<pci_cap *>(util::offset_pointer(m_base, next));
             next = cap->next;
-            log::verbose(logs::device, "  - found PCI cap type %02x", cap->id);
+            //log::verbose(logs::device, "  - found PCI cap type %02x", cap->id);
 
             if (cap->id == pci_cap::type::msi) {
                 m_msi = cap;
@@ -128,11 +127,10 @@ uint32_t
 pci_device::get_bar(unsigned i)
 {
     if (m_header_type == 0) {
-        kassert(i < 6, "Requested BAR >5 for PCI device");
-    } else if (m_header_type == 1) {
-        kassert(i < 2, "Requested BAR >1 for PCI bridge");
+        assert(i < 6); // Device max BAR is 5
     } else {
-        kassert(0, "Requested BAR for other PCI device type");
+        assert(m_header_type == 1); // Only device or bridge
+        assert(i < 2); // Bridge max BAR is 1
     }
 
     return m_base[4+i];
@@ -142,11 +140,10 @@ void
 pci_device::set_bar(unsigned i, uint32_t val)
 {
     if (m_header_type == 0) {
-        kassert(i < 6, "Requested BAR >5 for PCI device");
-    } else if (m_header_type == 1) {
-        kassert(i < 2, "Requested BAR >1 for PCI bridge");
+        assert(i < 6); // Device max BAR is 5
     } else {
-        kassert(0, "Requested BAR for other PCI device type");
+        assert(m_header_type == 1); // Only device or bridge
+        assert(i < 2); // Bridge max BAR is 1
     }
 
     m_base[4+i] = val;
@@ -155,7 +152,9 @@ pci_device::set_bar(unsigned i, uint32_t val)
 void
 pci_device::write_msi_regs(uintptr_t address, uint16_t data)
 {
-    kassert(m_msi, "Tried to write MSI for a device without that cap");
+    if (!m_msi)
+        return;
+
     if (m_msi->id == pci_cap::type::msi) {
         pci_cap_msi *mcap = reinterpret_cast<pci_cap_msi *>(m_msi);
         if (mcap->control & 0x0080) {
@@ -172,7 +171,7 @@ pci_device::write_msi_regs(uintptr_t address, uint16_t data)
         control |= 0x0001; // Enable MSI
         mcap->control = control;
     } else {
-        kassert(0, "MIS-X is NYI");
+        assert(0 && "MIS-X is NYI");
     }
 }
 

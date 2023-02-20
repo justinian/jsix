@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <util/misc.h> // for checksum
 #include <util/pointers.h>
+#include <arch/acpi/tables.h>
 
 #include "assert.h"
-#include "acpi_tables.h"
 #include "apic.h"
 #include "clock.h"
 #include "device_manager.h"
@@ -21,37 +21,6 @@ static const char expected_signature[] = "RSD PTR ";
 
 device_manager device_manager::s_instance;
 
-struct acpi1_rsdp
-{
-    char signature[8];
-    uint8_t checksum;
-    char oem_id[6];
-    uint8_t revision;
-    uint32_t rsdt_address;
-} __attribute__ ((packed));
-
-struct acpi2_rsdp
-{
-    char signature[8];
-    uint8_t checksum10;
-    char oem_id[6];
-    uint8_t revision;
-    uint32_t rsdt_address;
-
-    uint32_t length;
-    acpi_table_header *xsdt_address;
-    uint8_t checksum20;
-    uint8_t reserved[3];
-} __attribute__ ((packed));
-
-bool
-acpi_table_header::validate(uint32_t expected_type) const
-{
-    if (util::checksum(this, length) != 0) return false;
-    return !expected_type || (expected_type == type);
-}
-
-
 device_manager::device_manager() :
     m_lapic_base(0)
 {
@@ -63,37 +32,32 @@ device_manager::device_manager() :
     m_irqs[2] = {ignore_event, 0};
 }
 
-template <typename T> static const T *
-check_get_table(const acpi_table_header *header)
-{
-    kassert(header && header->validate(T::type_id), "Invalid ACPI table.");
-    return reinterpret_cast<const T *>(header);
-}
-
 void
 device_manager::parse_acpi(const void *root_table)
 {
     kassert(root_table != 0, "ACPI root table pointer is null.");
 
-    const acpi1_rsdp *acpi1 = mem::to_virtual(
-        reinterpret_cast<const acpi1_rsdp *>(root_table));
+    const acpi::rsdp1 *acpi1 = mem::to_virtual(
+        reinterpret_cast<const acpi::rsdp1 *>(root_table));
 
     for (int i = 0; i < sizeof(acpi1->signature); ++i)
         kassert(acpi1->signature[i] == expected_signature[i],
                 "ACPI RSDP table signature mismatch");
 
-    uint8_t sum = util::checksum(acpi1, sizeof(acpi1_rsdp), 0);
+    uint8_t sum = util::checksum(acpi1, sizeof(acpi::rsdp1), 0);
     kassert(sum == 0, "ACPI 1.0 RSDP checksum mismatch.");
 
     kassert(acpi1->revision > 1, "ACPI 1.0 not supported.");
 
-    const acpi2_rsdp *acpi2 =
-        reinterpret_cast<const acpi2_rsdp *>(acpi1);
+    const acpi::rsdp2 *acpi2 =
+        reinterpret_cast<const acpi::rsdp2 *>(acpi1);
 
-    sum = util::checksum(acpi2, sizeof(acpi2_rsdp), sizeof(acpi1_rsdp));
+    sum = util::checksum(acpi2, sizeof(acpi::rsdp2), sizeof(acpi::rsdp1));
     kassert(sum == 0, "ACPI 2.0 RSDP checksum mismatch.");
 
-    load_xsdt(mem::to_virtual(acpi2->xsdt_address));
+    const acpi::table_header *xsdt = mem::to_virtual(acpi2->xsdt_address);
+    kassert(xsdt->validate(), "Bad XSDT table");
+    load_xsdt(xsdt);
 }
 
 const device_manager::apic_nmi *
@@ -129,53 +93,50 @@ put_sig(char *into, uint32_t type)
 }
 
 void
-device_manager::load_xsdt(const acpi_table_header *header)
+device_manager::load_xsdt(const acpi::table_header *header)
 {
-    const auto *xsdt = check_get_table<acpi_xsdt>(header);
+    const auto *xsdt = acpi::check_get_table<acpi::xsdt>(header);
 
     char sig[5] = {0,0,0,0,0};
     log::info(logs::device, "ACPI 2.0+ tables loading");
 
     put_sig(sig, xsdt->header.type);
-    log::verbose(logs::device, "  Found table %s", sig);
+    log::verbose(logs::device, "  Loading table %s", sig);
 
-    size_t num_tables = acpi_table_entries(xsdt, sizeof(void*));
+    size_t num_tables = acpi::table_entries(xsdt, sizeof(void*));
     for (size_t i = 0; i < num_tables; ++i) {
-        const acpi_table_header *header =
+        const acpi::table_header *header =
             mem::to_virtual(xsdt->headers[i]);
 
-        put_sig(sig, header->type);
-        log::verbose(logs::device, "  Found table %s", sig);
-
         kassert(header->validate(), "Table failed validation.");
+        put_sig(sig, header->type);
 
         switch (header->type) {
-        case acpi_apic::type_id:
+        case acpi::apic::type_id:
+            log::verbose(logs::device, "  Loading table %s", sig);
             load_apic(header);
             break;
 
-        case acpi_mcfg::type_id:
-            load_mcfg(header);
-            break;
-
-        case acpi_hpet::type_id:
+        case acpi::hpet::type_id:
+            log::verbose(logs::device, "  Loading table %s", sig);
             load_hpet(header);
             break;
 
         default:
+            log::verbose(logs::device, "  Skipping table %s", sig);
             break;
         }
     }
 }
 
 void
-device_manager::load_apic(const acpi_table_header *header)
+device_manager::load_apic(const acpi::table_header *header)
 {
-    const auto *apic = check_get_table<acpi_apic>(header);
+    const auto *apic = acpi::check_get_table<acpi::apic>(header);
 
     m_lapic_base = apic->local_address;
 
-    size_t count = acpi_table_entries(apic, 1);
+    size_t count = acpi::table_entries(apic, 1);
     uint8_t const *p = apic->controller_data;
     uint8_t const *end = p + count;
 
@@ -265,33 +226,9 @@ device_manager::load_apic(const acpi_table_header *header)
 }
 
 void
-device_manager::load_mcfg(const acpi_table_header *header)
+device_manager::load_hpet(const acpi::table_header *header)
 {
-    const auto *mcfg = check_get_table<acpi_mcfg>(header);
-
-    size_t count = acpi_table_entries(mcfg, sizeof(acpi_mcfg_entry));
-    m_pci.set_size(count);
-    m_devices.set_capacity(16);
-
-    for (unsigned i = 0; i < count; ++i) {
-        const acpi_mcfg_entry &mcfge = mcfg->entries[i];
-
-        m_pci[i].group = mcfge.group;
-        m_pci[i].bus_start = mcfge.bus_start;
-        m_pci[i].bus_end = mcfge.bus_end;
-        m_pci[i].base = mem::to_virtual<uint32_t>(mcfge.base);
-
-        log::spam(logs::device, "  Found MCFG entry: base %lx  group %d  bus %d-%d",
-                mcfge.base, mcfge.group, mcfge.bus_start, mcfge.bus_end);
-    }
-
-    probe_pci();
-}
-
-void
-device_manager::load_hpet(const acpi_table_header *header)
-{
-    const auto *hpet = check_get_table<acpi_hpet>(header);
+    const auto *hpet = acpi::check_get_table<acpi::hpet>(header);
 
     log::verbose(logs::device, "  Found HPET device #%3d: base %016lx  pmin %d  attr %02x",
             hpet->index, hpet->base_address.address, hpet->periodic_min, hpet->attributes);
@@ -309,28 +246,6 @@ device_manager::load_hpet(const acpi_table_header *header)
 
     m_hpets.emplace(hpet->index,
         reinterpret_cast<uint64_t*>(hpet->base_address.address + mem::linear_offset));
-}
-
-void
-device_manager::probe_pci()
-{
-    for (auto &pci : m_pci) {
-        log::verbose(logs::device, "Probing PCI group at base %016lx", pci.base);
-
-        for (int bus = pci.bus_start; bus <= pci.bus_end; ++bus) {
-            for (int dev = 0; dev < 32; ++dev) {
-                if (!pci.has_device(bus, dev, 0)) continue;
-
-                auto &d0 = m_devices.emplace(pci, bus, dev, 0);
-                if (!d0.multi()) continue;
-
-                for (int i = 1; i < 8; ++i) {
-                    if (pci.has_device(bus, dev, i))
-                        m_devices.emplace(pci, bus, dev, i);
-                }
-            }
-        }
-    }
 }
 
 static uint64_t
@@ -366,7 +281,7 @@ device_manager::init_drivers()
 
         // becomes the singleton
         master_clock = new clock(h.rate(), hpet_clock_source, &h);
-        log::info(logs::clock, "Created master clock using HPET 0: Rate %d", h.rate());
+        log::info(logs::timer, "Created master clock using HPET 0: Rate %d", h.rate());
     } else {
         //TODO: Other clocks, APIC clock?
         master_clock = new clock(5000, tsc_clock_source, nullptr);
@@ -410,10 +325,10 @@ device_manager::unbind_irqs(obj::event *target)
     }
 }
 
+/*
 bool
 device_manager::allocate_msi(const char *name, pci_device &device, irq_callback cb, void *data)
 {
-    /*
     // TODO: find gaps to fill
     uint8_t irq = m_irqs.count();
     isr vector = isr::irq00 + irq;
@@ -424,12 +339,6 @@ device_manager::allocate_msi(const char *name, pci_device &device, irq_callback 
     device.write_msi_regs(
             0xFEE00000,
             static_cast<uint16_t>(vector));
-    */
     return true;
 }
-
-void
-device_manager::register_block_device(block_device *blockdev)
-{
-    m_blockdevs.append(blockdev);
-}
+*/

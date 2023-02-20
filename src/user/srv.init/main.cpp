@@ -9,9 +9,11 @@
 #include <j6/syslog.hh>
 #include <j6/types.h>
 
+#include <bootproto/acpi.h>
 #include <bootproto/init.h>
 #include <bootproto/devices/framebuffer.h>
 
+#include "acpi.h"
 #include "j6romfs.h"
 #include "loader.h"
 #include "modules.h"
@@ -86,12 +88,17 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
     load_modules(modules_addr, sys, 0, mods);
 
     module const *initrd_module = nullptr;
+    module const *acpi_module = nullptr;
     std::vector<module const*> devices;
 
     for (auto mod : mods) {
         switch (mod->type) {
         case module_type::initrd:
             initrd_module = mod;
+            break;
+
+        case module_type::acpi:
+            acpi_module = mod;
             break;
 
         case module_type::device:
@@ -105,7 +112,10 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
     }
 
     if (!initrd_module)
-        return 1;
+        return 2;
+
+    if (!acpi_module)
+        return 3;
 
     util::const_buffer initrd_buf = *initrd_module->data<util::const_buffer>();
 
@@ -120,6 +130,7 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
     // have driver_source objects..
     j6romfs::fs initrd {initrd_buf};
 
+    load_acpi(sys, acpi_module);
 
     const j6romfs::inode *driver_dir = initrd.lookup_inode("/jsix/drivers");
     if (!driver_dir) {

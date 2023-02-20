@@ -6,10 +6,12 @@ init = module("srv.init",
     description = "Init server",
     ld_script = "init.ld",
     sources = [
+        "acpi.cpp",
         "j6romfs.cpp",
         "loader.cpp",
         "main.cpp",
         "modules.cpp",
+        "pci.cpp",
         "service_locator.cpp",
         "start.s",
     ])

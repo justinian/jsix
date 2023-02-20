@@ -19,17 +19,14 @@ constexpr size_t stack_size = 0x10000;
 constexpr uintptr_t stack_top = 0x80000000000;
 
 j6_handle_t
-map_phys(j6_handle_t sys, uintptr_t phys, size_t len, uintptr_t addr)
+map_phys(j6_handle_t sys, uintptr_t phys, size_t len, j6_vm_flags flags)
 {
     j6_handle_t vma = j6_handle_invalid;
-    j6_status_t res = j6_system_map_phys(sys, &vma, phys, len, 0);
+    j6_status_t res = j6_system_map_phys(sys, &vma, phys, len, flags);
     if (res != j6_status_ok)
         return j6_handle_invalid;
 
-    if (!addr)
-        addr = phys;
-
-    res = j6_vma_map(vma, 0, addr);
+    res = j6_vma_map(vma, 0, phys);
     if (res != j6_status_ok)
         return j6_handle_invalid;
 

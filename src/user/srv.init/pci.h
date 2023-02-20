@@ -104,8 +104,6 @@ private:
     uint8_t m_revision;
     bool m_multi;
 
-    // Might as well cache these to fill out the struct align
-    isr m_irq;
     uint8_t m_header_type;
 };
 
