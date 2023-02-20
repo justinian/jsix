@@ -45,6 +45,7 @@ pick_mode(uefi::boot_services *bs)
     uint32_t res = info->horizontal_resolution * info->vertical_resolution;
     int pixmode = static_cast<int>(info->pixel_format);
 
+    /*
     const uint32_t modes = gop->mode->max_mode;
     for (uint32_t i = 0; i < modes; ++i) {
         size_t size = 0;
@@ -63,6 +64,7 @@ pick_mode(uefi::boot_services *bs)
             pixmode = new_pixmode;
         }
     }
+    */
 
     screen *s = new screen;
     s->mode = {
