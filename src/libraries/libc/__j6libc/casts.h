@@ -31,6 +31,7 @@ inline T cast_to(S p) { return reinterpret_cast<T>(p); }
 */
 
 template <typename T, typename S>
+__attribute__ ((always_inline))
 inline T cast_to(S p) {
     return reinterpret_cast<T>(const_cast<typename non_const<S>::type>(p));
 }
