@@ -7,6 +7,7 @@
 #include <j6/errors.h>
 #include <j6/flags.h>
 #include <j6/syscalls.h>
+#include <j6/syslog.hh>
 #include <util/enum_bitfields.h>
 
 #include "loader.h"
@@ -40,7 +41,6 @@ load_program(
         const char *name,
         util::const_buffer data,
         j6_handle_t sys, j6_handle_t slp,
-        char *err_msg,
         const module *arg)
 {
     uintptr_t base_address = reinterpret_cast<uintptr_t>(data.pointer);
@@ -48,26 +48,26 @@ load_program(
     elf::file progelf {data};
 
     if (!progelf.valid()) {
-        sprintf(err_msg, "  ** error loading program '%s': ELF is invalid", name);
+        j6::syslog("  ** error loading program '%s': ELF is invalid", name);
         return false;
     }
 
     j6_handle_t proc = j6_handle_invalid;
     j6_status_t res = j6_process_create(&proc);
     if (res != j6_status_ok) {
-        sprintf(err_msg, "  ** error loading program '%s': creating process: %lx", name, res);
+        j6::syslog("  ** error loading program '%s': creating process: %lx", name, res);
         return false;
     }
 
     res = j6_process_give_handle(proc, sys);
     if (res != j6_status_ok) {
-        sprintf(err_msg, "  ** error loading program '%s': giving system handle: %lx", name, res);
+        j6::syslog("  ** error loading program '%s': giving system handle: %lx", name, res);
         return false;
     }
 
     res = j6_process_give_handle(proc, slp);
     if (res != j6_status_ok) {
-        sprintf(err_msg, "  ** error loading program '%s': giving SLP handle: %lx", name, res);
+        j6::syslog("  ** error loading program '%s': giving SLP handle: %lx", name, res);
         return false;
     }
 
@@ -88,7 +88,7 @@ load_program(
         j6_handle_t sub_vma = j6_handle_invalid;
         res = j6_vma_create_map(&sub_vma, seg.mem_size+prologue, load_addr, flags);
         if (res != j6_status_ok) {
-            sprintf(err_msg, "  ** error loading program '%s': creating sub vma: %lx", name, res);
+            j6::syslog("  ** error loading program '%s': creating sub vma: %lx", name, res);
             return false;
         }
 
@@ -100,13 +100,13 @@ load_program(
 
         res = j6_vma_map(sub_vma, proc, seg.vaddr & ~0xfffull);
         if (res != j6_status_ok) {
-            sprintf(err_msg, "  ** error loading program '%s': mapping sub vma to child: %lx", name, res);
+            j6::syslog("  ** error loading program '%s': mapping sub vma to child: %lx", name, res);
             return false;
         }
 
         res = j6_vma_unmap(sub_vma, 0);
         if (res != j6_status_ok) {
-            sprintf(err_msg, "  ** error loading program '%s': unmapping sub vma: %lx", name, res);
+            j6::syslog("  ** error loading program '%s': unmapping sub vma: %lx", name, res);
             return false;
         }
     }
@@ -114,7 +114,7 @@ load_program(
     j6_handle_t stack_vma = j6_handle_invalid;
     res = j6_vma_create_map(&stack_vma, stack_size, load_addr, j6_vm_flag_write);
     if (res != j6_status_ok) {
-        sprintf(err_msg, "  ** error loading program '%s': creating stack vma: %lx", name, res);
+        j6::syslog("  ** error loading program '%s': creating stack vma: %lx", name, res);
         return false;
     }
 
@@ -136,20 +136,20 @@ load_program(
 
     res = j6_vma_map(stack_vma, proc, stack_top-stack_size);
     if (res != j6_status_ok) {
-        sprintf(err_msg, "  ** error loading program '%s': mapping stack vma: %lx", name, res);
+        j6::syslog("  ** error loading program '%s': mapping stack vma: %lx", name, res);
         return false;
     }
 
     res = j6_vma_unmap(stack_vma, 0);
     if (res != j6_status_ok) {
-        sprintf(err_msg, "  ** error loading program '%s': unmapping stack vma: %lx", name, res);
+        j6::syslog("  ** error loading program '%s': unmapping stack vma: %lx", name, res);
         return false;
     }
 
     j6_handle_t thread = j6_handle_invalid;
     res = j6_thread_create(&thread, proc, stack_top - stack_consumed, progelf.entrypoint(), arg0, 0);
     if (res != j6_status_ok) {
-        sprintf(err_msg, "  ** error loading program '%s': creating thread: %lx", name, res);
+        j6::syslog("  ** error loading program '%s': creating thread: %lx", name, res);
         return false;
     }
 
