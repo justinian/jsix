@@ -9,7 +9,12 @@ variables:
     "-fno-omit-frame-pointer",
     "-fno-stack-protector",
 
-    "-g",
+    "-g3",
+    "-ggdb",
+
+    "-fno-plt",
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
 
     "-D__ELF__",
     "-D__jsix__",
@@ -28,8 +33,10 @@ variables:
 
   ldflags: [
     "-g",
+    "-m", "elf_x86_64",
     "-Bstatic",
     "--sysroot='${source_root}/sysroot'",
+    "--no-eh-frame-hdr",
     "-L", "${source_root}/sysroot/lib",
     "-z", "separate-code",
     "-lc++", "-lc++abi", "-lunwind",
