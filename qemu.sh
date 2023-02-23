@@ -72,11 +72,28 @@ if ! ninja -C "${build}"; then
 fi
 
 if [[ -n $TMUX ]]; then
+    cols=$(tput cols)
+
     if [[ -n $debug ]]; then
-        tmux split-window -h -l 270 "sleep 1; nc -t localhost 45455 | tee debugcon.log"
-        tmux split-window -h -l 160 "gdb ${debugtarget}"
-        tmux select-pane -t .left
-        tmux select-pane -t .right
+        log_width=100
+        gdb_width=$(($cols - 2 * $log_width))
+
+        debugcon_cmd="sleep 1; nc -t localhost 45455 | tee debugcon.log"
+
+        if (($gdb_width < 150)); then
+            stack=1
+            gdb_width=$(($cols - $log_width))
+            tmux split-window -h -l $gdb_width "gdb ${debugtarget}"
+            tmux select-pane -t .left
+            tmux split-window -v "$debugcon_cmd"
+            tmux select-pane -t .right
+        else
+            tmux split-window -h -l $(($log_width + $gdb_width)) "$debugcon_cmd"
+            tmux split-window -h -l $gdb_width "gdb ${debugtarget}"
+            tmux select-pane -t .left
+            tmux select-pane -t .right
+        fi
+            
     else
         tmux split-window -h -l 100 "sleep 1; telnet localhost 45455"
         tmux last-pane
