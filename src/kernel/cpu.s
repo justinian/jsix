@@ -1,3 +1,34 @@
+global get_mxcsr: function hidden (get_mxcsr.end - get_mxcsr)
+get_mxcsr:
+    push 0
+    stmxcsr [rsp]
+    pop rax
+    ret
+.end:
+
+global set_mxcsr: function hidden (set_mxcsr.end - set_mxcsr)
+set_mxcsr:
+    push rdi
+    ldmxcsr [rsp]
+    pop rax
+    ret
+.end:
+
+global get_xcr0: function hidden (get_xcr0.end - get_xcr0)
+get_xcr0:
+    xor rcx, rcx ; there is no dana there is only xcr0
+    xgetbv
+    ret ; technically edx has the high 32 bits, but bits 10+ are reserved
+.end:
+
+global set_xcr0: function hidden (set_xcr0.end - set_xcr0)
+set_xcr0:
+    xor rcx, rcx ; there is no dana there is only xcr0
+    mov rax, rdi ; technically edx should be or'd into the high bits, but xcr0 bits 10+ are resereved
+    xsetbv
+    ret
+.end:
+
 global get_rsp: function hidden (get_rsp.end - get_rsp)
 get_rsp:
 	mov rax, rsp

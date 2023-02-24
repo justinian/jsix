@@ -1,5 +1,7 @@
+
 CPU_FEATURE_OPT(pcid,       0x00000001, 0, ecx, 17)
 CPU_FEATURE_OPT(x2apic,     0x00000001, 0, ecx, 21)
+CPU_FEATURE_REQ(xsave,      0x00000001, 0, ecx, 26)
 CPU_FEATURE_OPT(in_hv,      0x00000001, 0, ecx, 31)
 
 CPU_FEATURE_REQ(fpu,        0x00000001, 0, edx,  0)
@@ -18,6 +20,11 @@ CPU_FEATURE_OPT(invpcid,    0x00000007, 0, ebx, 10)
 
 CPU_FEATURE_OPT(pku,        0x00000007, 0, ecx,  3)
 CPU_FEATURE_OPT(rdpid,      0x00000007, 0, ecx, 22)
+
+CPU_FEATURE_OPT(xsaveopt,   0x0000000d, 1, eax,  0)
+CPU_FEATURE_OPT(xsavec,     0x0000000d, 1, eax,  1)
+CPU_FEATURE_OPT(xinuse,     0x0000000d, 1, eax,  2)
+CPU_FEATURE_OPT(xsaves,     0x0000000d, 1, eax,  3)
 
 CPU_FEATURE_OPT(extapic,    0x80000001, 0, ecx,  3)
 

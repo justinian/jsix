@@ -63,6 +63,13 @@ cpu_early_init(cpu_data *cpu)
     cpu->idt->install();
     cpu->gdt->install();
 
+    util::bitset64 cr0_val = 0;
+    asm ("mov %%cr0, %0" : "=r"(cr0_val));
+    cr0_val
+        .set(cr0::WP)
+        .clear(cr0::CD);
+    asm volatile ( "mov %0, %%cr0" :: "r" (cr0_val) );
+
     util::bitset64 cr4_val = 0;
     asm ("mov %%cr4, %0" : "=r"(cr4_val));
     cr4_val
@@ -78,6 +85,11 @@ cpu_early_init(cpu_data *cpu)
         .set(efer::SCE)
         .set(efer::NXE);
     wrmsr(msr::ia32_efer, efer_val);
+
+    util::bitset64 xcr0_val = get_xcr0();
+    xcr0_val
+        .set(xcr0::SSE);
+    set_xcr0(xcr0_val);
 
     // Install the GS base pointint to the cpu_data
     wrmsr(msr::ia32_gs_base, reinterpret_cast<uintptr_t>(cpu));
@@ -119,8 +131,11 @@ bsp_late_init()
     asm ("mov %%cr0, %0" : "=r"(cr0v));
     asm ("mov %%cr4, %0" : "=r"(cr4v));
 
+    uint32_t mxcsrv = get_mxcsr();
+    uint64_t xcr0v = get_xcr0();
+
     uint64_t efer = rdmsr(msr::ia32_efer);
-    log::spam(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx", cr0v, cr4v, efer);
+    log::spam(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx mxcsr:%x xcr0:%x", cr0v, cr4v, efer, mxcsrv, xcr0v);
 }
 
 cpu_data *

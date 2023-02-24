@@ -17,9 +17,12 @@ enum class cr0
 {
     PE =  0,    // Protected mode enable
     MP =  1,    // Monitor co-processor
+    EM =  2,    // (FPU) Emulation
+    TS =  3,    // Task switched
     ET =  4,    // Extension type
     NE =  5,    // Numeric error
     WP = 16,    // (ring 0) Write protect
+    CD = 30,    // Cache disable
     PG = 31,    // Paging
 };
 
@@ -56,6 +59,26 @@ enum class efer
     LMA   = 10, // Long mode active
     NXE   = 11, // No-execute enable
     FFXSR = 14, // Fast FXSAVE
+};
+
+enum class mxcsr
+{
+    IE  =  0, // Invalid operation flag
+    DE  =  1, // Denormal flag
+    ZE  =  2, // Divide by zero flag
+    OE  =  3, // Overflow flag
+    UE  =  4, // Underflow flag
+    PE  =  5, // Precision flag
+    DAZ =  6, // Denormals are zero
+    IM  =  7, // Invalid operation mask
+    DM  =  8, // Denormal mask
+    ZM  =  9, // Divide by zero mask
+    OM  = 10, // Overflow mask
+    UM  = 11, // Underflow mask
+    PM  = 12, // Precision mask
+    RC0 = 13, // Rounding control bit 0
+    RC1 = 14, // Rounding control bit 1
+    FTZ = 15, // Flush to zero
 };
 
 struct cpu_state
@@ -107,7 +130,15 @@ struct cpu_data
     panic_data *panic;
 };
 
-extern "C" cpu_data * _current_gsbase();
+extern "C" {
+    uint32_t get_mxcsr();
+    uint32_t set_mxcsr(uint32_t val);
+
+    uint64_t get_xcr0();
+    uint64_t set_xcr0(uint64_t val);
+
+    cpu_data * _current_gsbase();
+}
 
 /// Do early initialization of the BSP CPU.
 /// \returns  A pointer to the BSP cpu_data structure
