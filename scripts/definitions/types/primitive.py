@@ -42,31 +42,37 @@ class PrimitiveRef(Primitive):
     def cxx_names(self, options):
         return self.c_names(options)
 
+_inttypes = {
+    "int": "int",
+    "uint": "unsigned",
+    "size": "size_t",
+    "address": "uintptr_t",
+
+    "int8": "int8_t",
+    "uint8": "uint8_t",
+    "int16": "int16_t",
+    "uint16": "uint16_t",
+    "int32": "int32_t",
+    "uint32": "uint32_t",
+    "int64": "int64_t",
+    "uint64": "uint64_t",
+}
+
 _primitives = {
     "string": PrimitiveRef("string", "char"),
     "buffer": PrimitiveRef("buffer", "void", counted=True),
-
-    "int": Primitive("int", "int"),
-    "uint": Primitive("uint", "unsigned"),
-    "size": Primitive("size", "size_t"),
-    "address": Primitive("address", "uintptr_t"),
-
-    "int8": Primitive("int8", "int8_t"),
-    "uint8": Primitive("uint8", "uint8_t"),
-
-    "int16": Primitive("int16", "int16_t"),
-    "uint16": Primitive("uint16", "uint16_t"),
-
-    "int32": Primitive("int32", "int32_t"),
-    "uint32": Primitive("uint32", "uint32_t"),
-
-    "int64": Primitive("int64", "int64_t"),
-    "uint64": Primitive("uint64", "uint64_t"),
 }
 
 def get_primitive(name):
     p = _primitives.get(name)
-    if not p:
-        from ..errors import InvalidType
-        raise InvalidType(name)
-    return p
+    if p: return p
+
+    it = _inttypes.get(name.replace('*', ''))
+    if it:
+        if '*' in name:
+            return PrimitiveRef(name, it)
+        else:
+            return Primitive(name, it)
+
+    from ..errors import InvalidType
+    raise InvalidType(name)
