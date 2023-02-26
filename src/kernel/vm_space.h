@@ -117,6 +117,12 @@ public:
     /// \returnd    The number of bytes copied
     static size_t copy(vm_space &source, vm_space &dest, const void *from, void *to, size_t length);
 
+    /// Get the physical address of a virtual address from this space
+    /// \arg vrit  The virtual address
+    /// \returns   The physical address mapped to that virtual address,
+    ///            or 0 for none.
+    uintptr_t find_physical(uintptr_t virt);
+
 private:
     friend class obj::vm_area;
 

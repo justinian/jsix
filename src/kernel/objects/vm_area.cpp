@@ -86,7 +86,7 @@ vm_area_fixed::resize(size_t size)
 }
 
 bool
-vm_area_fixed::get_page(uintptr_t offset, uintptr_t &phys)
+vm_area_fixed::get_page(uintptr_t offset, uintptr_t &phys, bool alloc)
 {
     if (offset > m_size)
         return false;
@@ -106,10 +106,15 @@ vm_area_untracked::~vm_area_untracked()
 }
 
 bool
-vm_area_untracked::get_page(uintptr_t offset, uintptr_t &phys)
+vm_area_untracked::get_page(uintptr_t offset, uintptr_t &phys, bool alloc)
 {
     if (offset > m_size)
         return false;
+
+    if (!alloc) {
+        phys = 0;
+        return true;
+    }
 
     return frame_allocator::get().allocate(1, &phys);
 }
@@ -136,9 +141,12 @@ vm_area_open::~vm_area_open()
 }
 
 bool
-vm_area_open::get_page(uintptr_t offset, uintptr_t &phys)
+vm_area_open::get_page(uintptr_t offset, uintptr_t &phys, bool alloc)
 {
-    return page_tree::find_or_add(m_mapped, offset, phys);
+    if (alloc)
+        return page_tree::find_or_add(m_mapped, offset, phys);
+    else
+        return page_tree::find(m_mapped, offset, phys);
 }
 
 void
@@ -171,7 +179,7 @@ vm_area_guarded::return_section(uintptr_t addr)
 }
 
 bool
-vm_area_guarded::get_page(uintptr_t offset, uintptr_t &phys)
+vm_area_guarded::get_page(uintptr_t offset, uintptr_t &phys, bool alloc)
 {
     if (offset >= m_stacks.end())
         return false;
@@ -181,7 +189,7 @@ vm_area_guarded::get_page(uintptr_t offset, uintptr_t &phys)
     if ((offset >> 12) % m_pages == 0)
         return false;
 
-    return vm_area_open::get_page(offset, phys);
+    return vm_area_open::get_page(offset, phys, alloc);
 }
 
 vm_area_ring::vm_area_ring(size_t size, vm_flags flags) :
@@ -193,11 +201,11 @@ vm_area_ring::vm_area_ring(size_t size, vm_flags flags) :
 vm_area_ring::~vm_area_ring() {}
 
 bool
-vm_area_ring::get_page(uintptr_t offset, uintptr_t &phys)
+vm_area_ring::get_page(uintptr_t offset, uintptr_t &phys, bool alloc)
 {
     if (offset > m_bufsize)
         offset -= m_bufsize;
-    return vm_area_open::get_page(offset, phys);
+    return vm_area_open::get_page(offset, phys, alloc);
 }
 
 } // namespace obj

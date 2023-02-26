@@ -71,8 +71,10 @@ public:
     /// Get the physical page for the given offset
     /// \arg offset The offset into the VMA
     /// \arg phys   [out] Receives the physical page address, if any
+    /// \arg alloc  If true, and this is a valid address with no frame,
+    ///             allocate one if applicable
     /// \returns    True if there should be a page at the given offset
-    virtual bool get_page(uintptr_t offset, uintptr_t &phys) = 0;
+    virtual bool get_page(uintptr_t offset, uintptr_t &phys, bool alloc = true) = 0;
 
 protected:
     /// A VMA is not deleted until both no handles remain AND it's not
@@ -106,7 +108,7 @@ public:
     virtual ~vm_area_fixed();
 
     virtual size_t resize(size_t size) override;
-    virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
+    virtual bool get_page(uintptr_t offset, uintptr_t &phys, bool alloc = true) override;
 
 private:
     uintptr_t m_start;
@@ -124,7 +126,7 @@ public:
     vm_area_open(size_t size, vm_flags flags);
     virtual ~vm_area_open();
 
-    virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
+    virtual bool get_page(uintptr_t offset, uintptr_t &phys, bool alloc = true) override;
 
     /// Tell this VMA about an existing mapping that did not originate
     /// from get_page.
@@ -147,7 +149,7 @@ public:
     virtual ~vm_area_untracked();
 
     virtual bool add_to(vm_space *space) override;
-    virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
+    virtual bool get_page(uintptr_t offset, uintptr_t &phys, bool alloc = true) override;
 };
 
 
@@ -175,7 +177,7 @@ public:
     /// Return a section address to the available pool
     void return_section(uintptr_t addr);
 
-    virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
+    virtual bool get_page(uintptr_t offset, uintptr_t &phys, bool alloc = true) override;
 
 private:
     size_t m_pages;
@@ -196,7 +198,7 @@ public:
     vm_area_ring(size_t size, vm_flags flags);
     virtual ~vm_area_ring();
 
-    virtual bool get_page(uintptr_t offset, uintptr_t &phys) override;
+    virtual bool get_page(uintptr_t offset, uintptr_t &phys, bool alloc = true) override;
 
 private:
     size_t m_bufsize;

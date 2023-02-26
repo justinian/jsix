@@ -367,3 +367,17 @@ vm_space::copy(vm_space &source, vm_space &dest, const void *from, void *to, siz
 
     return length;
 }
+
+uintptr_t
+vm_space::find_physical(uintptr_t virt)
+{
+    uintptr_t base = 0;
+    obj::vm_area *area = get(virt, &base);
+    if (!area)
+        return 0;
+
+    uintptr_t phys = 0;
+    area->get_page(virt - base, phys, false);
+    return phys;
+}
+

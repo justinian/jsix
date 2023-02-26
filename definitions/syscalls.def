@@ -43,6 +43,19 @@ interface syscalls [syscall] {
         param mask uint32                        # The capability bitmask
     }
 
+    # Block waiting on a futex
+    function futex_wait [static] {
+        param address uint32*  # Address of the futex value
+        param current uint32   # Current value of the futex
+        param timeout uint64   # Wait timeout in nanoseconds
+    }
+
+    # Wake threads waiting on a futex
+    function futex_wake [static] {
+        param address uint32*  # Address of the futex value
+        param count uint64     # Number of threads to wake, or 0 for all
+    }
+
     # Testing mode only: Have the kernel finish and exit QEMU with the given exit code
     function test_finish [test] {
         param exit_code uint32
