@@ -12,6 +12,11 @@ namespace obj {
 class wait_queue
 {
 public:
+    wait_queue() = default;
+    wait_queue(wait_queue &&other);
+
+    wait_queue & operator=(wait_queue &&other);
+
     /// Wake all threads when destructing
     ~wait_queue();
 
@@ -27,6 +32,9 @@ public:
     /// Wake and clear out all threads.
     /// \arg value  The value passed to thread::wake
     void clear(uint64_t value = 0);
+
+    /// Check if the queue is empty
+    bool empty() const { return m_threads.empty(); }
 
 private:
     /// Get rid of any exited threads that are next

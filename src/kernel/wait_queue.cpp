@@ -1,7 +1,19 @@
+#include <utility>
 #include "objects/thread.h"
 #include "wait_queue.h"
 
+wait_queue::wait_queue(wait_queue &&other) :
+    m_threads {std::move(other.m_threads)} {}
+
 wait_queue::~wait_queue() { clear(); }
+
+wait_queue &
+wait_queue::operator=(wait_queue &&other)
+{
+    clear();
+    m_threads = std::move(other.m_threads);
+    return *this;
+}
 
 void
 wait_queue::add_thread(obj::thread *t)

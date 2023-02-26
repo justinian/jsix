@@ -2,6 +2,7 @@
 /// \file linked_list.h
 /// A generic templatized linked list.
 
+#include <utility>
 #include <assert.h>
 #include <string.h>
 #include <util/linked_list.h>
@@ -37,8 +38,22 @@ public:
         size_t index;
     };
 
-    deque() : m_first(0), m_next(N) {}
+    deque() : m_first {0}, m_next {N} {}
+
+    deque(deque &&other) :
+        m_first {other.m_first},
+        m_next {other.m_next},
+        m_list {std::move(other.m_list)} {}
+
     ~deque() { clear(); }
+
+    deque & operator=(deque &&other) {
+        clear();
+        m_first = other.m_first;
+        m_next = other.m_next;
+        m_list = std::move(other.m_list);
+        return *this;
+    }
 
     inline void push_front(const T& item) {
         if (!m_first) { // need a new block at the start

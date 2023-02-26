@@ -150,7 +150,7 @@ public:
             key_type &key_at_slot = get_map_key(node_at_slot);
 
             if (open(key_at_slot)) {
-                node_at_slot = node;
+                node_at_slot = std::move(node);
                 if (!found)
                     inserted_at = slot;
                 return m_nodes[inserted_at];
