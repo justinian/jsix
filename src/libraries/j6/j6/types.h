@@ -35,7 +35,7 @@ typedef uint64_t j6_handle_t;
 typedef uint16_t j6_cap_t;
 
 enum j6_object_type {
-#define OBJECT_TYPE( name, val ) j6_object_type_ ## name = val,
+#define OBJECT_TYPE( name ) j6_object_type_ ## name ,
 #include <j6/tables/object_types.inc>
 #undef OBJECT_TYPE
 

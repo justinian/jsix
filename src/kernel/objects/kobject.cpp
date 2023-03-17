@@ -16,7 +16,7 @@ static_assert(types_count <= (1 << kobject::koid_type_bits),
         "kobject::koid_type_bits cannot represent all kobject types");
 
 static const char *type_names[] = {
-#define OBJECT_TYPE( name, val ) #name ,
+#define OBJECT_TYPE( name ) #name ,
 #include <j6/tables/object_types.inc>
 #undef OBJECT_TYPE
     nullptr
