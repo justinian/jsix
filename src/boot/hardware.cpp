@@ -79,7 +79,7 @@ check_cpu_supported()
     status_line status {L"Checking CPU features"};
 
     cpu::cpu_id cpu;
-    cpu::cpu_id::features features = cpu.validate();
+    cpu::features features = cpu.features();
     bool supported = true;
 
 #define CPU_FEATURE_OPT(...)

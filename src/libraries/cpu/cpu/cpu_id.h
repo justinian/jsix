@@ -16,10 +16,11 @@ enum class feature {
     max
 };
 
+using features = util::bitset<(unsigned)feature::max>;
+
 class cpu_id
 {
 public:
-    using features = util::bitset<(unsigned)feature::max>;
     static constexpr uint32_t cpuid_extended = 0x80000000;
 
     /// CPUID result register values
@@ -46,7 +47,7 @@ public:
 
     /// Check which of the cpu::feature flags this CPU supports.
     /// \returns  A util::bitset mapping to cpu::feature values
-    features validate() const;
+    features features() const;
 
     /// The the result of a given CPUID leaf/subleaf
     /// \arg leaf     The leaf selector (initial EAX)

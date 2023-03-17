@@ -34,10 +34,10 @@ cpu_id::cpu_id()
     __cpuid(cpuid_extended, 0, &m_high_ext);
 }
 
-cpu_id::features
-cpu_id::validate() const
+features
+cpu_id::features() const
 {
-    cpu_id::features feats;
+    ::cpu::features feats;
     uint32_t leaf = -1u;
     uint32_t sub = -1u;
     regs r;

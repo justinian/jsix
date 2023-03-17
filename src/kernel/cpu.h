@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <cpu/cpu_id.h>
 
 class GDT;
 class IDT;
@@ -128,6 +129,7 @@ struct cpu_data
     // the assembly version
     lapic *apic;
     panic_data *panic;
+    cpu::features features;
 };
 
 extern "C" {

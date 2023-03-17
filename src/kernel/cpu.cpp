@@ -2,10 +2,10 @@
 #include <stdint.h>
 #include <string.h>
 #include <util/bitset.h>
+#include <util/no_construct.h>
 
 #include "assert.h"
 #include "cpu.h"
-#include "cpu/cpu_id.h"
 #include "device_manager.h"
 #include "gdt.h"
 #include "idt.h"
@@ -20,38 +20,49 @@ unsigned g_num_cpus = 1;
 panic_data g_panic_data;
 panic_data *g_panic_data_p = &g_panic_data;
 
-cpu_data g_bsp_cpu_data;
+static util::no_construct<cpu_data> __g_bsp_cpu_storage;
+cpu_data &g_bsp_cpu_data = __g_bsp_cpu_storage.value;
+
 cpu_data **g_cpu_data = nullptr;
 
 
+static cpu::features
+get_features()
+{
+    cpu::cpu_id cpuid;
+    return cpuid.features();
+}
+
 // Validate the required CPU features are present. Really, the bootloader already
 // validated the required features, but still iterate the options and log about them.
-void
-cpu_validate()
+static cpu::features
+cpu_validate(cpu_data *c)
 {
-    cpu::cpu_id cpu;
+    cpu::cpu_id cpuid;
 
     char brand_name[50];
-    cpu.brand_name(brand_name);
+    cpuid.brand_name(brand_name);
 
-    cpu::cpu_id::features features = cpu.validate();
+    cpu::features &features = c->features;
 
-    log::info(logs::boot, "CPU: %s", brand_name);
-    log::info(logs::boot, "    Vendor is %s", cpu.vendor_id());
+    log::info(logs::boot, "CPU %2d: %s", c->index, brand_name);
+    log::info(logs::boot, "    Vendor is %s", cpuid.vendor_id());
 
-    log::spam(logs::boot, "    Higest basic CPUID: 0x%02x", cpu.highest_basic());
-    log::spam(logs::boot, "    Higest ext CPUID:   0x%02x", cpu.highest_ext() & ~cpu::cpu_id::cpuid_extended);
+    log::spam(logs::boot, "    Higest basic CPUID: 0x%02x", cpuid.highest_basic());
+    log::spam(logs::boot, "    Higest ext CPUID:   0x%02x", cpuid.highest_ext() & ~cpu::cpu_id::cpuid_extended);
 
 #define CPU_FEATURE_OPT(name, ...) \
-    log::verbose(logs::boot, "    Supports %9s: %s", #name, features[cpu::feature::name] ? "yes" : "no");
+    log::verbose(logs::boot, "    Flag %11s: %s", #name, features[cpu::feature::name] ? "yes" : "no");
 
 #define CPU_FEATURE_REQ(name, feat_leaf, feat_sub, regname, bit) \
-    log::verbose(logs::boot, "    Supports %9s: %s", #name, features[cpu::feature::name] ? "yes" : "no"); \
+    log::verbose(logs::boot, "    Flag %11s: %s", #name, features[cpu::feature::name] ? "yes" : "no"); \
     kassert(features[cpu::feature::name], "Missing required CPU feature " #name );
 
 #include "cpu/features.inc"
 #undef CPU_FEATURE_OPT
 #undef CPU_FEATURE_REQ
+
+    return features;
 }
 
 
@@ -70,13 +81,24 @@ cpu_early_init(cpu_data *cpu)
         .clear(cr0::CD);
     asm volatile ( "mov %0, %%cr0" :: "r" (cr0_val) );
 
+    cpu->features = get_features();
+
+    uintptr_t cr3_val;
+    asm ("mov %%cr3, %0" : "=r"(cr3_val));
+
     util::bitset64 cr4_val = 0;
     asm ("mov %%cr4, %0" : "=r"(cr4_val));
     cr4_val
         .set(cr4::OSXFSR)
         .set(cr4::OSXMMEXCPT)
-        .set(cr4::PCIDE)
         .set(cr4::OSXSAVE);
+
+    // TODO: On KVM setting PCIDE generates a #GP even though
+    // the feature is listed as available in CPUID.
+    /*
+    if (cpu->features[cpu::feature::pcid])
+        cr4_val.set(cr4::PCIDE);
+    */
     asm volatile ( "mov %0, %%cr4" :: "r" (cr4_val) );
 
     // Enable SYSCALL and NX bit
@@ -98,7 +120,6 @@ cpu_early_init(cpu_data *cpu)
 cpu_data *
 bsp_early_init()
 {
-    cpu_validate();
     memset(&g_panic_data, 0, sizeof(g_panic_data));
 
     extern IDT &g_bsp_idt;
@@ -135,7 +156,12 @@ bsp_late_init()
     uint64_t xcr0v = get_xcr0();
 
     uint64_t efer = rdmsr(msr::ia32_efer);
+<<<<<<< HEAD
     log::spam(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx mxcsr:%x xcr0:%x", cr0v, cr4v, efer, mxcsrv, xcr0v);
+=======
+    log::spam(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx", cr0v, cr4v, efer);
+    cpu_validate(&g_bsp_cpu_data);
+>>>>>>> 66a5273 ([cpu] Rename cpu_id::validate() to cpu_id::features())
 }
 
 cpu_data *

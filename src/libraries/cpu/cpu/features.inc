@@ -2,7 +2,7 @@
 CPU_FEATURE_OPT(pcid,       0x00000001, 0, ecx, 17)
 CPU_FEATURE_OPT(x2apic,     0x00000001, 0, ecx, 21)
 CPU_FEATURE_REQ(xsave,      0x00000001, 0, ecx, 26)
-CPU_FEATURE_OPT(in_hv,      0x00000001, 0, ecx, 31)
+CPU_FEATURE_OPT(hypervisor, 0x00000001, 0, ecx, 31)
 
 CPU_FEATURE_REQ(fpu,        0x00000001, 0, edx,  0)
 CPU_FEATURE_REQ(pse,        0x00000001, 0, edx,  3)
