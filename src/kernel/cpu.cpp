@@ -156,12 +156,8 @@ bsp_late_init()
     uint64_t xcr0v = get_xcr0();
 
     uint64_t efer = rdmsr(msr::ia32_efer);
-<<<<<<< HEAD
     log::spam(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx mxcsr:%x xcr0:%x", cr0v, cr4v, efer, mxcsrv, xcr0v);
-=======
-    log::spam(logs::boot, "Control regs: cr0:%lx cr4:%lx efer:%lx", cr0v, cr4v, efer);
     cpu_validate(&g_bsp_cpu_data);
->>>>>>> 66a5273 ([cpu] Rename cpu_id::validate() to cpu_id::features())
 }
 
 cpu_data *
