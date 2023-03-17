@@ -34,7 +34,7 @@ event_wait(event *self, j6_signal_t *signals, uint64_t timeout)
     }
 
     *signals = self->wait();
-    return j6_status_ok;
+    return *signals ? j6_status_ok : j6_err_timed_out;
 }
 
 
