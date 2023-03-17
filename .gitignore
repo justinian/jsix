@@ -3,7 +3,7 @@
 /build*
 *.bak
 tags
-jsix.log
+*.log
 *.out
 *.o
 *.a

@@ -9,7 +9,8 @@ gfx="-nographic"
 vga="-vga none"
 log=""
 kvm=""
-cpu="Broadwell,+pdpe1gb"
+cpu_features=",+pdpe1gb,+invtsc,+hypervisor,+x2apic,+xsavec,+xsaves,+xsaveopt"
+cpu="Broadwell"
 smp=4
 
 while true; do
@@ -42,7 +43,7 @@ while true; do
             ;;
         -k | --kvm)
             kvm="-enable-kvm"
-            cpu="host"
+            cpu="max"
             shift
             ;;
         -c | --cpus)
@@ -78,7 +79,7 @@ if [[ -n $TMUX ]]; then
         log_width=100
         gdb_width=$(($cols - 2 * $log_width))
 
-        debugcon_cmd="sleep 1; nc -t localhost 45455 | tee debugcon.log"
+        debugcon_cmd="less --follow-name -r +F debugcon.log"
 
         if (($gdb_width < 150)); then
             stack=1
@@ -93,9 +94,8 @@ if [[ -n $TMUX ]]; then
             tmux select-pane -t .left
             tmux select-pane -t .right
         fi
-            
     else
-        tmux split-window -h -l 100 "sleep 1; telnet localhost 45455"
+        tmux split-window -h -l 100 "less --follow-name -r +F debugcon.log"
         tmux last-pane
         tmux split-window -l 10 "sleep 1; telnet localhost 45454"
     fi
@@ -111,12 +111,12 @@ qemu-system-x86_64 \
     -drive "if=pflash,format=raw,readonly,file=${assets}/ovmf/x64/ovmf_code.fd" \
     -drive "if=pflash,format=raw,file=${build}/ovmf_vars.fd" \
     -drive "format=raw,file=${build}/jsix.img" \
-    -chardev socket,host=localhost,port=45455,server,nowait,telnet=on,id=jsix_debug -device isa-debugcon,iobase=0x6600,chardev=jsix_debug \
+    -chardev file,path=debugcon.log,id=jsix_debug -device isa-debugcon,iobase=0x6600,chardev=jsix_debug \
     -monitor telnet:localhost:45454,server,nowait \
     -serial stdio \
     -smp "${smp}" \
     -m 4096 \
-    -cpu "${cpu}" \
+    -cpu "${cpu}${cpu_features}" \
     -M q35 \
     -no-reboot \
     -name jsix \
