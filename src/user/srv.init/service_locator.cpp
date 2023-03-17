@@ -32,7 +32,7 @@ service_locator_start(j6_handle_t mb)
 
     while (true) {
         j6_status_t s = j6_mailbox_respond(mb, &tag, &subtag, &give_handle,
-                &reply_tag, j6_mailbox_block);
+                &reply_tag, j6_flag_block);
 
         if (s != j6_status_ok)
             while (1);

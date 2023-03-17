@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <j6/channel.hh>
 #include <j6/cap_flags.h>
 #include <j6/errors.h>
 #include <j6/flags.h>
@@ -30,21 +31,7 @@ char const * const area_names[] = {
 };
 
 void
-send_all(j6_handle_t cout, char *data, size_t len)
-{
-    do {
-        size_t sent = len;
-        j6_status_t s = j6_channel_send(cout, data, &sent);
-        if (s != j6_status_ok)
-            return;
-
-        len -= sent;
-        data += sent;
-    } while (len);
-}
-
-void
-print_header(j6_handle_t cout)
+print_header(j6::channel *cout)
 {
     char stringbuf[150];
 
@@ -57,11 +44,11 @@ print_header(j6_handle_t cout)
             "\e[38;5;21mjsix OS\e[38;5;8m %d.%d.%d (%07x) booting...\e[0m\r\n",
             version_major, version_minor, version_patch, version_git);
 
-    send_all(cout, stringbuf, len);
+    cout->send(stringbuf, len);
 }
 
 void
-log_pump_proc(j6_handle_t cout)
+log_pump_proc(j6::channel *cout)
 {
     size_t buffer_size = 0;
     void *message_buffer = nullptr;
@@ -96,10 +83,10 @@ log_pump_proc(j6_handle_t cout)
 
         int message_len = static_cast<int>(e->bytes - sizeof(j6_log_entry));
         size_t len = snprintf(stringbuf, sizeof(stringbuf),
-                "\e[38;5;%dm%7s %7s: %.*s\e[38;5;0m\r\n",
-                level_color, area_name, level_name,
+                "\e[38;5;%dm%5lx %7s %7s: %.*s\e[38;5;0m\r\n",
+                level_color, seen, area_name, level_name,
                 message_len, e->message);
-        send_all(cout, stringbuf, len + 1);
+        cout->send(stringbuf, len+1);
     }
 }
 
@@ -117,24 +104,28 @@ main(int argc, const char **argv)
     if (g_handle_sys == j6_handle_invalid)
         return 2;
 
-    j6_handle_t cout = j6_handle_invalid;
+    j6_handle_t cout_vma = j6_handle_invalid;
 
     for (unsigned i = 0; i < 100; ++i) {
         uint64_t tag = j6_proto_sl_find;
         uint64_t proto_id = "jsix.protocol.stream.ouput"_id;
 
-        j6_status_t s = j6_mailbox_call(slp, &tag, &proto_id, &cout);
+        j6_status_t s = j6_mailbox_call(slp, &tag, &proto_id, &cout_vma);
         if (s == j6_status_ok &&
             tag == j6_proto_sl_result &&
-            cout != j6_handle_invalid)
+            cout_vma != j6_handle_invalid)
             break;
 
-        cout = j6_handle_invalid;
+        cout_vma = j6_handle_invalid;
         j6_thread_sleep(10000); // 10ms
     }
 
-    if (cout == j6_handle_invalid)
+    if (cout_vma == j6_handle_invalid)
         return 3;
+
+    j6::channel *cout = j6::channel::open(cout_vma);
+    if (!cout)
+        return 4;
 
     print_header(cout);
     log_pump_proc(cout);

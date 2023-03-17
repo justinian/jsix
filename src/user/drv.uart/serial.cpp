@@ -56,9 +56,11 @@ serial_port::handle_interrupt()
                 break;
 
             case 1: // Transmit buffer empty
+                do_write();
+                break;
+
             case 2: // Received data available
-                if (read_ready(m_port)) do_read();
-                if (write_ready(m_port)) do_write();
+                do_read();
                 break;
 
             case 3: // Line status change
@@ -89,8 +91,6 @@ serial_port::do_read()
 void
 serial_port::do_write()
 {
-    // If another thread is writing data, just give up and
-    // try again later
     util::scoped_lock lock {m_lock};
 
     uint8_t *data = nullptr;

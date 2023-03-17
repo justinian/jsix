@@ -4,12 +4,14 @@
 #include <stdio.h>
 
 #include <j6/cap_flags.h>
+#include <j6/channel.hh>
 #include <j6/errors.h>
 #include <j6/flags.h>
 #include <j6/init.h>
 #include <j6/protocols/service_locator.h>
 #include <j6/syscalls.h>
 #include <j6/sysconf.h>
+#include <j6/syslog.hh>
 #include <j6/types.h>
 #include <util/hash.h>
 
@@ -70,20 +72,14 @@ main(int argc, const char **argv)
     if (slp == j6_handle_invalid)
         return 1;
 
-    j6_handle_t cout = j6_handle_invalid;
-    result = j6_channel_create(&cout);
-    if (result != j6_status_ok)
+    j6::channel *cout = j6::channel::create(0x2000);
+    if (!cout)
         return 2;
-
-    j6_handle_t cout_write = j6_handle_invalid;
-    result = j6_handle_clone(cout, &cout_write,
-            j6_cap_channel_send | j6_cap_object_clone);
-    if (result != j6_status_ok)
-        return 3;
 
     uint64_t tag = j6_proto_sl_register;
     uint64_t proto_id = "jsix.protocol.stream.ouput"_id;
-    result = j6_mailbox_call(slp, &tag, &proto_id, &cout_write);
+    uint64_t handle = cout->handle();
+    result = j6_mailbox_call(slp, &tag, &proto_id, &handle);
     if (result != j6_status_ok)
         return 4;
 
@@ -96,21 +92,29 @@ main(int argc, const char **argv)
 
     while (true) {
         size_t size = buffer_size;
-        result = j6_channel_receive(cout, buffer, &size, 0);
-        if (result == j6_status_ok)
+        while (true) {
+            result = cout->receive(buffer, &size, 0);
+            if (result != j6_status_ok)
+                break;
+
+            j6::syslog("uart driver: got %d bytes from channel", size);
             com1.write(buffer, size);
+        }
+        if (result != j6_status_would_block)
+            j6::syslog("uart driver: error %lx receiving from channel", result);
 
         uint64_t signals = 0;
-        result = j6_event_wait(event, &signals, 100);
+        result = j6_event_wait(event, &signals, 500);
         if (result == j6_err_timed_out) {
-            com1.handle_interrupt();
-            com2.handle_interrupt();
+            com1.do_write();
             continue;
         }
 
         if (result != j6_status_ok) {
-            j6_log("uart driver got error waiting for irq");
+            j6::syslog("uart driver: error %lx waiting for irq", result);
             continue;
+        } else {
+            j6::syslog("uart driver: irq signals: %lx", signals);
         }
 
         if (signals & (1<<0))

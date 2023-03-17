@@ -19,6 +19,7 @@ public:
     char read();
 
     void handle_interrupt();
+    void do_write();
 
 private:
     bool m_writing;
@@ -28,6 +29,5 @@ private:
     util::spinlock m_lock;
 
     void do_read();
-    void do_write();
     void handle_error(uint16_t reg, uint8_t value);
 };

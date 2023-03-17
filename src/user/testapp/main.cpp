@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <j6/channel.hh>
 #include <j6/errors.h>
 #include <j6/flags.h>
 #include <j6/syscalls.h>
@@ -17,13 +18,15 @@ constexpr uintptr_t stack_top = 0xf80000000;
 uint32_t flipflop = 0;
 
 void
-thread_proc(void*)
+thread_proc(void* channelp)
 {
     j6_log("sub thread starting");
 
+    j6::channel *chan = reinterpret_cast<j6::channel*>(channelp);
+
     char buffer[512];
     size_t len = sizeof(buffer);
-    j6_status_t result = j6_channel_receive(endp, (void*)buffer, &len, j6_channel_block);
+    j6_status_t result = chan->receive((void*)buffer, &len);
 
     __sync_synchronize();
     flipflop = 1;
@@ -37,7 +40,7 @@ thread_proc(void*)
         if (buffer[i] >= 'A' && buffer[i] <= 'Z')
             buffer[i] += 0x20;
 
-    result = j6_channel_send(endp, (void*)buffer, &len);
+    result = chan->send((void*)buffer, len);
     if (result != j6_status_ok)
         j6_thread_exit();
 
@@ -70,14 +73,14 @@ main(int argc, const char **argv)
 
     j6_log("main thread wrote to memory area");
 
-    j6_status_t result = j6_channel_create(&endp);
-    if (result != j6_status_ok)
-        return result;
+    j6::channel *chan = j6::channel::create(0x2000);
+    if (!chan)
+        return 2;
 
     j6_log("main thread created channel");
 
     j6::thread child_thread {thread_proc, stack_top};
-    result = child_thread.start();
+    j6_status_t result = child_thread.start(chan);
     if (result != j6_status_ok)
         return result;
 
@@ -86,13 +89,13 @@ main(int argc, const char **argv)
     char message[] = "MAIN THREAD SUCCESSFULLY CALLED SEND AND RECEIVE IF THIS IS LOWERCASE";
     size_t size = sizeof(message);
 
-    result = j6_channel_send(endp, (void*)message, &size);
+    result = chan->send((void*)message, size);
     if (result != j6_status_ok)
         return result;
 
     while (!flipflop);
 
-    result = j6_channel_receive(endp, (void*)message, &size, j6_channel_block);
+    result = chan->receive((void*)message, &size);
     if (result != j6_status_ok)
         return result;
 
