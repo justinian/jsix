@@ -95,11 +95,11 @@ logger::get_entry(uint64_t seen, void *buffer, size_t size)
     }
 
     size_t off = m_start;
-    j6_log_entry *ent = util::at<j6_log_entry>(m_buffer, off);
+    j6_log_entry *ent = util::at<j6_log_entry>(m_buffer, offset(off));
     while (seen >= ent->id) {
         off += ent->bytes;
         kassert(off < m_end, "Got to the end while looking for new log entry");
-        ent = util::at<j6_log_entry>(m_buffer, off);
+        ent = util::at<j6_log_entry>(m_buffer, offset(off));
     }
 
     if (size >= ent->bytes)
