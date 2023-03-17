@@ -33,6 +33,9 @@ public:
         m_mutex.unlock();
     }
 
+    inline void acquire() { m_mutex.lock(); }
+    inline void release() { m_mutex.unlock(); }
+
 private:
     mutex &m_mutex;
 };

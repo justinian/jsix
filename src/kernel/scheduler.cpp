@@ -13,7 +13,6 @@
 #include "io.h"
 #include "logger.h"
 #include "msr.h"
-#include "objects/channel.h"
 #include "objects/process.h"
 #include "objects/system.h"
 #include "objects/thread.h"

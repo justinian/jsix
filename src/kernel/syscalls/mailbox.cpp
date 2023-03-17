@@ -70,7 +70,7 @@ mailbox_respond(
             return s;
     }
 
-    bool block = flags & j6_mailbox_block;
+    bool block = flags & j6_flag_block;
     j6_status_t s = self->receive(data, *reply_tag, block);
     if (s != j6_status_ok)
         return s;

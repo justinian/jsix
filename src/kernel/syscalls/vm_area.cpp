@@ -15,15 +15,23 @@ j6_status_t
 vma_create(j6_handle_t *self, size_t size, uint32_t flags)
 {
     vm_flags f = vm_flags::user_mask & flags;
-    construct_handle<vm_area_open>(self, size, f);
+    if (util::bits::has(f, vm_flags::ring))
+        construct_handle<vm_area_ring>(self, size, f);
+    else
+        construct_handle<vm_area_open>(self, size, f);
     return j6_status_ok;
 }
 
 j6_status_t
 vma_create_map(j6_handle_t *self, size_t size, uintptr_t base, uint32_t flags)
 {
+    vm_area *a = nullptr;
     vm_flags f = vm_flags::user_mask & flags;
-    vm_area *a = construct_handle<vm_area_open>(self, size, f);
+    if (util::bits::has(f, vm_flags::ring))
+        a = construct_handle<vm_area_ring>(self, size, f);
+    else
+        a = construct_handle<vm_area_open>(self, size, f);
+
     process::current().space().add(base, a);
     return j6_status_ok;
 }

@@ -3,6 +3,7 @@
 #include <util/spinlock.h>
 
 #include "clock.h"
+#include "logger.h"
 #include "objects/process.h"
 #include "objects/thread.h"
 #include "vm_space.h"
@@ -36,8 +37,13 @@ util::spinlock g_futexes_lock;
 j6_status_t
 futex_wait(const uint32_t *value, uint32_t expected, uint64_t timeout)
 {
-    if (*value != expected)
-        return j6_status_would_block;
+    thread& t = thread::current();
+    process &p = t.parent();
+
+    if (*value != expected) {
+        log::spam(logs::syscall, "<%02x:%02x> futex %lx: %x != %x", p.obj_id(), t.obj_id(), value, *value, expected);
+        return j6_status_futex_changed;
+    }
 
     uintptr_t address = reinterpret_cast<uintptr_t>(value);
     vm_space &space = process::current().space();
@@ -46,15 +52,18 @@ futex_wait(const uint32_t *value, uint32_t expected, uint64_t timeout)
     util::scoped_lock lock {g_futexes_lock};
 
     futex &f = g_futexes[phys];
-    thread& t = thread::current();
 
     if (timeout) {
         timeout += clock::get().value();
         t.set_wake_timeout(timeout);
     }
 
+    log::spam(logs::syscall, "<%02x:%02x> blocking on futex %lx", p.obj_id(), t.obj_id(), value);
+
     lock.release();
     f.queue.wait();
+
+    log::spam(logs::syscall, "<%02x:%02x> woke on futex %lx", p.obj_id(), t.obj_id(), value);
     return j6_status_ok;
 }
 
@@ -69,9 +78,14 @@ futex_wake(const uint32_t *value, size_t count)
 
     futex *f = g_futexes.find(phys);
     if (f) {
-        for (unsigned i = 0; i < count; ++i) {
-            obj::thread *t = f->queue.pop_next();
-            t->wake();
+        if (count) {
+            for (unsigned i = 0; i < count; ++i) {
+                obj::thread *t = f->queue.pop_next();
+                if (!t) break;
+                t->wake();
+            }
+        } else {
+            f->queue.clear();
         }
 
         if (f->queue.empty())
