@@ -237,11 +237,7 @@ class GetThreadsCommand(gdb.Command):
             self.print_cpudata(cpu)
 
             previous = int(gdb.parse_and_eval(f"{runlist}.prev"))
-            if previous != 0:
-                tcb = f"((TCB*){previous:#x})"
-                thread = f"({tcb}->thread)"
-                koid = int(gdb.parse_and_eval(f"{thread}->m_obj_id"))
-                print(f"            prev: {koid:x}")
+            print(f"            prev: {previous:x}")
             print()
 
             for pri in range(8):
@@ -332,8 +328,13 @@ class DumpLogCommand(gdb.Command):
         end += self.base_addr
         while addr < end:
             entry = self.get_entry(addr)
+            if entry.bytes < 8:
+                print(f"Bad log header size: {entry.bytes}")
+                break
             addr += entry.bytes
-            area = self.areas[entry.area]
+            area = "??"
+            if entry.area < len(self.areas):
+                area = self.areas[entry.area]
             level = self.level_names[entry.severity]
             print(f"{area:>7}:{level:7}  {entry.message}")
 

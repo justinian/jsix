@@ -28,7 +28,7 @@ scheduler *scheduler::s_instance = nullptr;
 struct run_queue
 {
     tcb_node *current = nullptr;
-    tcb_node *prev = nullptr;
+    uint64_t prev = 0;
     tcb_list ready[scheduler::num_priorities];
     tcb_list blocked;
 
@@ -310,7 +310,7 @@ scheduler::schedule()
         return;
     }
 
-    queue.prev = queue.current;
+    queue.prev = queue.current->thread->obj_id();
     thread *next_thread = next->thread;
 
     cpu.thread = next_thread;
