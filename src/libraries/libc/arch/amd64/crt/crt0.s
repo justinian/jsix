@@ -17,7 +17,7 @@ _libc_crt0_start:
 
     call __init_libc
 
-    pop rdi
+    mov rdi, 0
     mov rsi, rsp
     mov rdx, 0    ; TODO: actually parse stack for argc, argv, envp
     mov rcx, rbx
