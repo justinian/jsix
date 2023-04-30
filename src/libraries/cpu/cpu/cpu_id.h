@@ -27,7 +27,9 @@ public:
     struct regs {
         union {
             uint32_t reg[4];
-            uint32_t eax, ebx, ecx, edx;
+            struct {
+                uint32_t eax, ebx, ecx, edx;
+            };
         };
 
         /// Return true if bit |bit| of EAX is set
