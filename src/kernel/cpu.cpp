@@ -54,6 +54,10 @@ cpu_validate(cpu_data *c)
 #define CPU_FEATURE_OPT(name, ...) \
     log::verbose(logs::boot, "    Flag %11s: %s", #name, features[cpu::feature::name] ? "yes" : "no");
 
+#define CPU_FEATURE_WRN(name, feat_leaf, feat_sub, regname, bit) \
+    log::verbose(logs::boot, "    Flag %11s: %s", #name, features[cpu::feature::name] ? "yes" : "no"); \
+    if (!features[cpu::feature::name]) log::warn(logs::boot, "Missing cpu feature %s but continuing", #name);
+
 #define CPU_FEATURE_REQ(name, feat_leaf, feat_sub, regname, bit) \
     log::verbose(logs::boot, "    Flag %11s: %s", #name, features[cpu::feature::name] ? "yes" : "no"); \
     kassert(features[cpu::feature::name], "Missing required CPU feature " #name );

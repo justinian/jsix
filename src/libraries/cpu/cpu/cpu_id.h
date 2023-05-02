@@ -10,7 +10,9 @@ namespace cpu {
 enum class feature {
 #define CPU_FEATURE_REQ(name, ...)  name,
 #define CPU_FEATURE_OPT(name, ...)  name,
+#define CPU_FEATURE_WRN(name, ...)  name,
 #include "cpu/features.inc"
+#undef CPU_FEATURE_WRN
 #undef CPU_FEATURE_OPT
 #undef CPU_FEATURE_REQ
     max

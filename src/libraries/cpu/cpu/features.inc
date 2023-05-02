@@ -33,6 +33,6 @@ CPU_FEATURE_OPT(rdtscp,     0x80000001, 0, edx, 27)
 CPU_FEATURE_REQ(syscall,    0x80000001, 0, edx, 11)
 CPU_FEATURE_REQ(pdpe1gb,    0x80000001, 0, edx, 26)
 
-CPU_FEATURE_OPT(invtsc,     0x80000007, 0, edx,  8)
+CPU_FEATURE_WRN(invtsc,     0x80000007, 0, edx,  8)
 
 // vim: et

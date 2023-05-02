@@ -49,12 +49,16 @@ cpu_id::features() const
     if (r.regname & (1ull << bit)) \
         feats.set(feature::name);
 
+#define CPU_FEATURE_WRN(name, feat_leaf, feat_sub, regname, bit) \
+    CPU_FEATURE_OPT(name, feat_leaf, feat_sub, regname, bit);
+
 #define CPU_FEATURE_REQ(name, feat_leaf, feat_sub, regname, bit) \
     CPU_FEATURE_OPT(name, feat_leaf, feat_sub, regname, bit);
 
 #include "cpu/features.inc"
 #undef CPU_FEATURE_OPT
 #undef CPU_FEATURE_REQ
+#undef CPU_FEATURE_WRN
 
     return feats;
 }

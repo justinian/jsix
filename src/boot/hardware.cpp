@@ -83,6 +83,7 @@ check_cpu_supported()
     bool supported = true;
 
 #define CPU_FEATURE_OPT(...)
+#define CPU_FEATURE_WRN(...)
 #define CPU_FEATURE_REQ(name, ...) \
     if (!features[cpu::feature::name]) { \
         status::fail(L"CPU required feature " L ## #name, uefi::status::unsupported); \
