@@ -14,6 +14,7 @@
 #include "objects/thread.h"
 #include "syscall.h"
 #include "tss.h"
+#include "xsave.h"
 
 unsigned g_num_cpus = 1;
 
@@ -140,6 +141,7 @@ bsp_early_init()
     cpu->gdt = new (&g_bsp_gdt) GDT {cpu->tss};
     cpu->rsp0 = reinterpret_cast<uintptr_t>(&idle_stack_end);
     cpu_early_init(cpu);
+    xsave_init();
 
     return cpu;
 }
@@ -229,4 +231,6 @@ cpu_init(cpu_data *cpu, bool bsp)
         cpu->id = apic->get_id();
         apic->calibrate_timer();
     }
+
+    xsave_enable();
 }

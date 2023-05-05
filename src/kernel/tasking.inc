@@ -4,6 +4,7 @@ struc TCB
 .rsp3:         resq 1
 .rflags3:      resq 1
 .pml4:         resq 1
+.xsave:        resq 1
 endstruc
 
 struc CPU_DATA

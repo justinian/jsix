@@ -5,6 +5,7 @@
 #include <j6/errors.h>
 #include <j6/flags.h>
 #include <j6/syscalls.h>
+#include <j6/syslog.hh>
 #include <j6/thread.hh>
 #include <j6/types.h>
 
@@ -17,10 +18,41 @@ extern j6_handle_t __handle_self;
 constexpr uintptr_t stack_top = 0xf80000000;
 uint32_t flipflop = 0;
 
+bool
+test_floats()
+{
+    static constexpr int len = 30;
+    double as[len];
+    double bs[len];
+
+    double orig = 345.72;
+    double mult = 3.21;
+    for (int i = 0; i < len * 100; ++i) {
+        int idx = i % len;
+        as[idx] = orig * idx;
+    }
+    for (int i = 0; i < len * 100; ++i) {
+        int idx = i % len;
+        bs[idx] = as[idx] * mult;
+    }
+
+    for (int i = 0; i < len; ++i) {
+        if (bs[i] != orig * i * mult) {
+            j6::syslog("ERROR: floating point discrepency");
+            return false;
+        }
+    }
+
+    return true;
+}
+
 void
 thread_proc(void* channelp)
 {
     j6_log("sub thread starting");
+
+    for (int i = 0; i < 100; ++i)
+        if (!test_floats()) break;
 
     j6::channel *chan = reinterpret_cast<j6::channel*>(channelp);
 
@@ -85,6 +117,9 @@ main(int argc, const char **argv)
         return result;
 
     j6_log("main thread created sub thread");
+
+    for (int i = 0; i < 100; ++i)
+        if (!test_floats()) break;
 
     char message[] = "MAIN THREAD SUCCESSFULLY CALLED SEND AND RECEIVE IF THIS IS LOWERCASE";
     size_t size = sizeof(message);

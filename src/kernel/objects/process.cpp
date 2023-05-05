@@ -88,6 +88,9 @@ process::create_thread(uintptr_t rsp3, uint8_t priority)
     if (rsp3)
         th->tcb()->rsp3 = rsp3;
 
+    if (this != &g_kernel_process)
+        th->init_xsave_area();
+
     m_threads.append(th);
     scheduler::get().add_thread(th->tcb());
     return th;

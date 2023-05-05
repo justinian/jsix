@@ -8,6 +8,7 @@
 #include "objects/process.h"
 #include "objects/vm_area.h"
 #include "scheduler.h"
+#include "xsave.h"
 
 extern "C" void initialize_user_cpu();
 extern obj::vm_area_guarded &g_kernel_stacks;
@@ -37,6 +38,9 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
 
 thread::~thread()
 {
+    if (m_tcb.xsave)
+        delete [] reinterpret_cast<uint8_t*>(m_tcb.xsave);
+
     g_kernel_stacks.return_section(m_tcb.kernel_stack);
     m_parent.handle_release();
 }
@@ -156,6 +160,14 @@ thread::add_thunk_user(uintptr_t rip3, uint64_t arg0, uint64_t arg1, uintptr_t r
     static const uintptr_t trampoline =
         reinterpret_cast<uintptr_t>(initialize_user_cpu);
     add_thunk_kernel(rip0 ? rip0 : trampoline);
+}
+
+void
+thread::init_xsave_area()
+{
+    void *xsave_area = new uint8_t [xsave_size];
+    memset(xsave_area, 0, xsave_size);
+    m_tcb.xsave = reinterpret_cast<uintptr_t>(xsave_area);
 }
 
 void

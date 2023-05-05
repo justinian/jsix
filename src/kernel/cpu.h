@@ -51,6 +51,8 @@ enum class xcr0
     ZMM_Hi256,
     ZMM_Hi16,
     PKRU = 9,
+
+    J6_SUPPORTED = X87 | SSE | AVX | BINDREG | BINDCSR | OPMASK | ZMM_Hi16 | ZMM_Hi256,
 };
 
 enum class efer

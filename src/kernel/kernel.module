@@ -65,6 +65,7 @@ kernel = module("kernel",
         "tss.cpp",
         "vm_space.cpp",
         "wait_queue.cpp",
+        "xsave.cpp",
     ])
 
 if config == "debug":

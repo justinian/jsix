@@ -22,7 +22,7 @@ variables:
     '-DGIT_VERSION=\"${version_major}.${version_minor}.${version_patch}+${version_sha}\"',
     '-DGIT_VERSION_WIDE=L\"${version_major}.${version_minor}.${version_patch}+${version_sha}\"',
 
-    "-Wformat=2", "-Winit-self", "-Wfloat-equal", "-Winline", "-Wmissing-format-attribute",
+    "-Wformat=2", "-Winit-self", "-Winline", "-Wmissing-format-attribute",
     "-Wmissing-include-dirs", "-Wswitch", "-Wundef", "-Wdisabled-optimization",
     "-Wpointer-arith", "-Wno-attributes", "-Wno-sign-compare", "-Wno-multichar",
     "-Wno-div-by-zero", "-Wno-endif-labels", "-Wno-pragmas", "-Wno-format-extra-args",

@@ -26,6 +26,7 @@ struct TCB
     uintptr_t rsp3;
     uintptr_t rflags3;
     uintptr_t pml4;
+    uintptr_t xsave;
     // End of area used by asembly
 
     obj::thread* thread;
@@ -181,6 +182,9 @@ private:
     /// \arg pri     Initial priority level of this thread
     /// \arg rsp0    The existing kernel stack rsp, 0 for none
     thread(process &parent, uint8_t pri, uintptr_t rsp0 = 0);
+
+    /// Set up the XSAVE saved processor state area for this thread
+    void init_xsave_area();
 
     /// Set up a new empty kernel stack for this thread.
     void setup_kernel_stack();
