@@ -111,14 +111,14 @@ print_cpu_state(serial_port &out, const cpu_state &regs)
     print_reg(out, "rdi", regs.rdi, "0;37");
     print_reg(out, "rcx", regs.rcx, "0;37");
     print_reg(out, "r10", regs.r10, "0;37");
-    print_reg(out, "r14", regs.r12, "0;37");
+    print_reg(out, "r14", regs.r14, "0;37");
     out.write("\n");
 
     // Row 4
     print_reg(out, "rsi", regs.rdi, "0;37");
     print_reg(out, "rdx", regs.rcx, "0;37");
     print_reg(out, "r11", regs.r11, "0;37");
-    print_reg(out, "r15", regs.r13, "0;37");
+    print_reg(out, "r15", regs.r15, "0;37");
     out.write("\n");
 
     // Row 4
