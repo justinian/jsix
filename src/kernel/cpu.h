@@ -142,6 +142,8 @@ extern "C" {
     uint64_t set_xcr0(uint64_t val);
 
     cpu_data * _current_gsbase();
+
+    void cpu_initialize_thread_state();
 }
 
 /// Do early initialization of the BSP CPU.

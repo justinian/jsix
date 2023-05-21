@@ -7,10 +7,10 @@
 #include <util/linked_list.h>
 #include <util/spinlock.h>
 
+#include "cpu.h"
 #include "objects/kobject.h"
 #include "wait_queue.h"
 
-struct cpu_data;
 struct page_table;
 
 namespace obj {
@@ -176,6 +176,7 @@ private:
     thread(const thread &other) = delete;
     thread(const thread &&other) = delete;
     friend class process;
+    friend void ::cpu_initialize_thread_state();
 
     /// Constructor. Used when a kernel stack already exists.
     /// \arg parent  The process which owns this thread
@@ -195,6 +196,7 @@ private:
     thread *m_creator;
 
     state m_state;
+    util::bitset32 m_mxcsr;
 
     uint64_t m_wake_value;
     uint64_t m_wake_timeout;

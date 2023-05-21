@@ -145,6 +145,30 @@ isr_handler(cpu_state *regs)
         }
         break;
 
+    case isr::isrSIMDFPE: {
+            uint32_t mxcsr = 0;
+            asm volatile ("stmxcsr %0" : "=m"(mxcsr));
+            util::format({message, sizeof(message)},
+                "SIMD Exception; MXCSR[%s%s%s%s%s%s%s%s%s%s%s%s%s%s rc:%d]",
+                (mxcsr & 0x0001) ? " IE" : "",
+                (mxcsr & 0x0002) ? " DE" : "",
+                (mxcsr & 0x0004) ? " ZE" : "",
+                (mxcsr & 0x0008) ? " OE" : "",
+                (mxcsr & 0x0010) ? " UE" : "",
+                (mxcsr & 0x0020) ? " PE" : "",
+                (mxcsr & 0x0040) ? " DAZ" : "",
+                (mxcsr & 0x0080) ? " IM" : "",
+                (mxcsr & 0x0100) ? " DM" : "",
+                (mxcsr & 0x0200) ? " ZM" : "",
+                (mxcsr & 0x0400) ? " OM" : "",
+                (mxcsr & 0x0800) ? " UM" : "",
+                (mxcsr & 0x1000) ? " PM" : "",
+                (mxcsr & 0x8000) ? " FTZ" : "",
+                ((mxcsr >> 13) & 0x3));
+            kassert(false, message, regs);
+        }
+        break;
+ 
     case isr::isrSpurious:
         // No EOI for the spurious interrupt
         return;

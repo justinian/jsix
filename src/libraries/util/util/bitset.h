@@ -66,8 +66,6 @@ namespace {
 template <>
 class bitset<64>
 {
-    static constexpr unsigned num_elems = 1;
-
     template <typename T>
     static constexpr uint64_t bit_or(T b) { return 1ull << uint64_t(b); }
 
@@ -127,8 +125,6 @@ private:
 template <>
 class bitset<32>
 {
-    static constexpr unsigned num_elems = 1;
-
     template <typename T>
     static constexpr uint32_t bit_or(T b) { return 1u << uint32_t(b); }
 

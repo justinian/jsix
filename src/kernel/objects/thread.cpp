@@ -34,6 +34,15 @@ thread::thread(process &parent, uint8_t pri, uintptr_t rsp0) :
         m_tcb.rsp0 = rsp0;
 
     m_creator = current_cpu().thread;
+
+    asm volatile ( "stmxcsr %0" : "=m"(m_mxcsr) );
+    m_mxcsr
+        .clear(mxcsr::IE)
+        .clear(mxcsr::DE)
+        .clear(mxcsr::ZE)
+        .clear(mxcsr::OE)
+        .clear(mxcsr::UE)
+        .clear(mxcsr::PE);
 }
 
 thread::~thread()

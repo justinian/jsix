@@ -16,10 +16,11 @@ STAR_HIGH  equ \
 ; IA32_FMASK - Mask off interrupts in syscalls
 FMASK_VAL  equ 0x200
 
-extern __counter_syscall_enter
-extern __counter_syscall_sysret
-extern syscall_registry
-extern syscall_invalid
+extern __counter_syscall_enter          ; syscall.cpp.cog
+extern __counter_syscall_sysret         ;
+extern syscall_registry                 ;
+extern syscall_invalid                  ;
+extern cpu_initialize_thread_state      ; cpu.cpp
 
 
 global syscall_handler_prelude: function hidden (syscall_handler_prelude.end - syscall_handler_prelude)
@@ -79,6 +80,8 @@ syscall_handler_prelude:
 
 global initialize_user_cpu: function hidden (initialize_user_cpu.end - initialize_user_cpu)
 initialize_user_cpu:
+    call cpu_initialize_thread_state
+
     mov rax, 0xaaaaaaaa
     mov rdx, 0xdddddddd
     mov r8,  0x08080808

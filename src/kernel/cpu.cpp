@@ -118,6 +118,19 @@ cpu_early_init(cpu_data *cpu)
         .set(xcr0::SSE);
     set_xcr0(xcr0_val);
 
+    // Set initial floating point state
+    const util::bitset32 mxcsr_val {
+        mxcsr::DAZ,
+        mxcsr::IM,
+        mxcsr::DM,
+        mxcsr::ZM,
+        mxcsr::OM,
+        mxcsr::UM,
+        mxcsr::PM,
+        mxcsr::FTZ,
+    };
+    asm ( "ldmxcsr %0" :: "m"(mxcsr_val) );
+
     // Install the GS base pointint to the cpu_data
     wrmsr(msr::ia32_gs_base, reinterpret_cast<uintptr_t>(cpu));
 }
@@ -233,4 +246,14 @@ cpu_init(cpu_data *cpu, bool bsp)
     }
 
     xsave_enable();
+}
+
+/// Set up initial per-thread CPU state. Called once from initialize_user_cpu in
+/// syscall.s, the first code run after a thread comes out of task_switch for the
+/// very first time.
+extern "C" void
+cpu_initialize_thread_state()
+{
+    const util::bitset32 &mxcsr_val = obj::thread::current().m_mxcsr;
+    asm ( "ldmxcsr %0" :: "m"(mxcsr_val) );
 }
