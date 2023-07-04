@@ -9,6 +9,7 @@ gfx="-nographic"
 vga="-vga none"
 log=""
 kvm=""
+debugcon_cmd=""
 cpu_features=",+pdpe1gb,+invtsc,+hypervisor,+x2apic,+xsavec,+xsaves,+xsaveopt"
 cpu="Broadwell"
 smp=4
@@ -36,8 +37,8 @@ while true; do
             ;;
         -r | --remote)
             shift
-            vnchost="${1:-${VNCHOST:-localhost}}"
-            gfx="-vnc ${vnchost}:5500,reverse"
+            vnchost="${1:-${VNCHOST:-"localhost:5500"}}"
+            gfx="-vnc ${vnchost},reverse"
             vga=""
             shift
             ;;
@@ -52,6 +53,10 @@ while true; do
             ;;
         -l | --log)
             log="-d mmu,int,guest_errors -D jsix.log"
+            shift
+            ;;
+        -x | --debugcon)
+            debugcon_cmd="less --follow-name -R +F debugcon.log"
             shift
             ;;
         *)
@@ -74,29 +79,37 @@ fi
 
 if [[ -n $TMUX ]]; then
     cols=$(tput cols)
+    log_width=100
 
     if [[ -n $debug ]]; then
-        log_width=100
-        gdb_width=$(($cols - 2 * $log_width))
+        log_cols=1
+        if [[ $debugcon_cmd ]]; then
+            log_cols=2
+        fi
 
-        debugcon_cmd="less --follow-name -r +F debugcon.log"
+        gdb_width=$(($cols - $log_cols * $log_width))
 
         if (($gdb_width < 150)); then
             stack=1
             gdb_width=$(($cols - $log_width))
             tmux split-window -h -l $gdb_width "gdb ${debugtarget}"
-            tmux select-pane -t .left
-            tmux split-window -v "$debugcon_cmd"
-            tmux select-pane -t .right
+            if [[ $debugcon_cmd ]]; then
+                tmux select-pane -t .left
+                tmux split-window -v "$debugcon_cmd"
+            fi
         else
-            tmux split-window -h -l $(($log_width + $gdb_width)) "$debugcon_cmd"
+            if [[ $debugcon_cmd ]]; then
+                tmux split-window -h -l $(($log_width + $gdb_width)) "$debugcon_cmd"
+            fi
             tmux split-window -h -l $gdb_width "gdb ${debugtarget}"
             tmux select-pane -t .left
             tmux select-pane -t .right
         fi
     else
-        tmux split-window -h -l 100 "less --follow-name -r +F debugcon.log"
-        tmux last-pane
+        if [[ $debugcon_cmd ]]; then
+            tmux split-window -h -l $log_width "$debugcon_cmd"
+            tmux last-pane
+        fi
         tmux split-window -l 10 "sleep 1; telnet localhost 45454"
     fi
 elif [[ $DESKTOP_SESSION = "i3" ]]; then
