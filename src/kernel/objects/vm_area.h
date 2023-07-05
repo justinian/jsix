@@ -11,10 +11,9 @@
 
 #include "block_allocator.h"
 #include "objects/kobject.h"
+#include "page_tree.h"
 
-class page_tree;
 class vm_space;
-
 
 namespace obj {
 

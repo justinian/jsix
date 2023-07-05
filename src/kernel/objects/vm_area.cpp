@@ -3,7 +3,6 @@
 #include "frame_allocator.h"
 #include "memory.h"
 #include "objects/vm_area.h"
-#include "page_tree.h"
 #include "vm_space.h"
 
 namespace obj {
@@ -146,7 +145,7 @@ vm_area_open::get_page(uintptr_t offset, uintptr_t &phys, bool alloc)
     if (alloc)
         return page_tree::find_or_add(m_mapped, offset, phys);
     else
-        return page_tree::find(m_mapped, offset, phys);
+        return page_tree::find(m_mapped, offset, &phys);
 }
 
 void

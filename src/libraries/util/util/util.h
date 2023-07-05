@@ -8,7 +8,7 @@
 namespace util {
 
 constexpr size_t const_log2(size_t n) {
-    return n < 2 ? 1 : 1 + const_log2(n/2);
+    return n < 2 ? 0 : 1 + const_log2(n/2);
 }
 
 constexpr bool is_pow2(size_t n) {
