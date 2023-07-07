@@ -1,0 +1,41 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Ninja",
+            "type": "shell",
+            "command": "source ${workspaceFolder}/venv/bin/activate.fish; ninja",
+            "detail": "Build the project",
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run QEMU",
+            "command": "./qemu.sh",
+            "args": [ "--no-build", "--kvm" ],
+            "dependsOn": ["Ninja"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+        },
+        {
+            "label": "clean",
+            "command": "${workspaceFolder}/venv/bin/ninja",
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "args": [
+                "-t",
+                "clean"
+            ]
+        }
+    ]
+}

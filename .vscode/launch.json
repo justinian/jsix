@@ -1,0 +1,30 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "QEMU Debug Server",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/jsix.elf",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "logging": {
+                //"engineLogging": true,
+                "programOutput": true
+            },  
+            "stopAtConnect": true,
+            "stopAtEntry": false,
+
+            "setupCommands": [],
+
+            "MIMode": "gdb",
+            "miDebuggerServerAddress": "localhost:1234",
+            "debugServerPath": "${workspaceFolder}/qemu.sh",
+            "debugServerArgs": "--debug --no-build",
+            "serverLaunchTimeout": 5000,
+        }
+    ]
+}
