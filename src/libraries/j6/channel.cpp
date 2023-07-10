@@ -54,7 +54,7 @@ channel::create(size_t size)
 
     util::scoped_lock lock {addr_spinlock};
     uintptr_t addr = channel_addr;
-    channel_addr += size;
+    channel_addr += size * 2; // account for ring buffer virtual space doubling
     lock.release();
 
     result = j6_vma_create_map(&vma, size, addr, j6_vm_flag_write|j6_vm_flag_ring);
