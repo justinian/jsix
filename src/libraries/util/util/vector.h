@@ -110,10 +110,20 @@ public:
     /// Add an item onto the array by copying it.
     /// \arg item  The item to add
     /// \returns   A reference to the added item
-    T & append(const T& item)
+    T & append(const T &item)
     {
         ensure_capacity(m_size + 1);
         m_elements[m_size] = item;
+        return m_elements[m_size++];
+    }
+
+    /// Add an item onto the array by copying it.
+    /// \arg item  The item to add
+    /// \returns   A reference to the added item
+    T & append(T &&item)
+    {
+        ensure_capacity(m_size + 1);
+        m_elements[m_size] = std::move(item);
         return m_elements[m_size++];
     }
 
