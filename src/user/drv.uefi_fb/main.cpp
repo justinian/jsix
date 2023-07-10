@@ -8,6 +8,7 @@
 #include <j6/errors.h>
 #include <j6/flags.h>
 #include <j6/syscalls.h>
+#include <j6/syslog.hh>
 #include <j6/types.h>
 
 #include "font.h"
@@ -21,7 +22,7 @@ extern "C" {
 int
 driver_main(unsigned argc, const char **argv, const char **env, const j6_init_args *init)
 {
-    j6_log("fb driver starting");
+    j6::syslog("fb driver starting");
 
     using bootproto::devices::uefi_fb;
     using bootproto::devices::video_mode;
@@ -30,7 +31,7 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
     const uefi_fb *fb = reinterpret_cast<const uefi_fb*>(init->args[0]);
 
     if (!fb || !fb->framebuffer) {
-        j6_log("fb driver didn't find a framebuffer, exiting");
+        j6::syslog("fb driver didn't find a framebuffer, exiting");
         return 1;
     }
 
@@ -102,7 +103,7 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
             buffer_size = size;
             continue;
         } else if (s != j6_status_ok) {
-            j6_log("fb driver got error from get_log, quitting");
+            j6::syslog("fb driver got error from get_log, quitting");
             return s;
         }
 
@@ -128,6 +129,6 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
         }
     }
 
-    j6_log("fb driver done, exiting");
+    j6::syslog("fb driver done, exiting");
     return 0;
 }

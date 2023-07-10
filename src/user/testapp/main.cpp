@@ -97,7 +97,7 @@ main(int argc, const char **argv)
 
     void *base = malloc(0x1000);
     if (!base)
-        return 1;
+        return 1001;
 
     uint64_t *vma_ptr = reinterpret_cast<uint64_t*>(base);
     for (int i = 0; i < 3; ++i)
@@ -107,7 +107,7 @@ main(int argc, const char **argv)
 
     j6::channel *chan = j6::channel::create(0x2000);
     if (!chan)
-        return 2;
+        return 1002;
 
     j6_log("main thread created channel");
 

@@ -97,7 +97,7 @@ main(int argc, const char **argv)
             if (result != j6_status_ok)
                 break;
 
-            j6::syslog("uart driver: got %d bytes from channel", size);
+            //j6::syslog("uart driver: got %d bytes from channel", size);
             com1.write(buffer, size);
         }
         if (result != j6_status_would_block)
