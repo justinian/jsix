@@ -13,3 +13,6 @@ sysroot
 __pycache__
 /venv
 compile_commands.json
+buddy_allocs.txt
+frame_allocs.txt
+heap_allocs.txt

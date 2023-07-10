@@ -18,7 +18,9 @@
             "stopAtConnect": true,
             "stopAtEntry": false,
 
-            "setupCommands": [],
+            "setupCommands": [
+                {"text": "dashboard -enabled off", "ignoreFailures": true}
+            ],
 
             "MIMode": "gdb",
             "miDebuggerServerAddress": "localhost:1234",

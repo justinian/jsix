@@ -4,6 +4,8 @@ import gdb.printing
 import sys
 sys.path.append('./scripts')
 
+import re
+
 from collections import namedtuple
 Capability = namedtuple("Capability", ["id", "parent", "refcount", "caps", "type", "koid"])
 LogEntry = namedtuple("LogHeader", ["id", "bytes", "severity", "area", "message"])
@@ -339,6 +341,23 @@ class DumpLogCommand(gdb.Command):
             print(f"{area:>7}:{level:7}  {entry.message}")
 
 
+class ShowCurrentProcessCommand(gdb.Command):
+    def __init__(self):
+        super().__init__("j6current", gdb.COMMAND_DATA)
+
+    def invoke(self, arg, from_tty):
+        def get_obj_and_id(name):
+            obj = int(gdb.parse_and_eval(f"((cpu_data*)$gs_base)->{name}"))
+            oid = -1
+            if obj != 0:
+                oid = int(gdb.parse_and_eval(f"((obj::kobject*){obj:#x})->m_obj_id"))
+            return obj, oid
+
+        process, pid = get_obj_and_id("process")
+        thread, tid = get_obj_and_id("thread")
+        print(f"{pid:02x}/{tid:02x}  [ {process:x} / {thread:x} ]")
+
+
 class CapTablePrinter:
     def __init__(self, val):
         node_map = val["m_caps"]
@@ -472,8 +491,10 @@ TableWalkCommand()
 GetThreadsCommand()
 PrintProfilesCommand()
 DumpLogCommand()
+ShowCurrentProcessCommand()
 
 gdb.execute("display/i $rip")
+gdb.execute("define hook-quit\nkill\nend")
 if not gdb.selected_inferior().was_attached:
     gdb.execute("add-symbol-file build/panic.serial.elf")
     gdb.execute("target remote :1234")
