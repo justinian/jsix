@@ -39,7 +39,9 @@ mailbox_call(
 
     data.tag = *tag;
     data.subtag = *subtag;
-    data.handle = *handle;
+
+    if (handle)
+        data.handle = *handle;
 
     j6_status_t s = self->call();
     if (s != j6_status_ok)
@@ -47,8 +49,11 @@ mailbox_call(
 
     *tag = data.tag;
     *subtag = data.subtag;
-    *handle = data.handle;
-    process::current().add_handle(*handle);
+
+    if (handle) {
+        *handle = data.handle;
+        process::current().add_handle(*handle);
+    }
 
     return j6_status_ok;
 }
