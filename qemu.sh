@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
-build="$(dirname $0)/build"
-assets="$(dirname $0)/assets"
+root=$(dirname $0)
+build="${root}/build"
+assets="${root}/assets"
+
+no_build=""
 debug=""
 isaexit='-device isa-debug-exit,iobase=0xf4,iosize=0x04'
 debugtarget="${build}/jsix.elf"
@@ -52,11 +55,15 @@ while true; do
             shift 2
             ;;
         -l | --log)
-            log="-d mmu,int,guest_errors -D jsix.log"
+            log="-d mmu,int,guest_errors -D ${root}/jsix.log"
             shift
             ;;
         -x | --debugcon)
             debugcon_cmd="less --follow-name -R +F debugcon.log"
+            shift
+            ;;
+        --no-build)
+            no_build="yes"
             shift
             ;;
         *)
@@ -73,7 +80,7 @@ if [[ ! -c /dev/kvm ]]; then
     kvm=""
 fi
 
-if ! ninja -C "${build}"; then
+[[ -z "${no_build}" ]] && if ! ninja -C "${build}"; then
     exit 1
 fi
 
@@ -120,11 +127,16 @@ elif [[ $DESKTOP_SESSION = "i3" ]]; then
     fi
 fi
 
+if [[ -n "${debug}" ]]; then
+    (sleep 1; echo "Debugging ready.") &
+fi
+
 qemu-system-x86_64 \
-    -drive "if=pflash,format=raw,readonly,file=${assets}/ovmf/x64/ovmf_code.fd" \
+    -drive "if=pflash,format=raw,readonly=on,file=${assets}/ovmf/x64/ovmf_code.fd" \
     -drive "if=pflash,format=raw,file=${build}/ovmf_vars.fd" \
     -drive "format=raw,file=${build}/jsix.img" \
-    -chardev file,path=debugcon.log,id=jsix_debug -device isa-debugcon,iobase=0x6600,chardev=jsix_debug \
+    -chardev "file,path=${root}/debugcon.log,id=jsix_debug" \
+    -device "isa-debugcon,iobase=0x6600,chardev=jsix_debug" \
     -monitor telnet:localhost:45454,server,nowait \
     -serial stdio \
     -smp "${smp}" \
