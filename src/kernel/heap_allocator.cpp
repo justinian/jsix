@@ -138,11 +138,11 @@ heap_allocator::reallocate(void *p, size_t old_length, size_t new_length)
         return p;
 
     lock.release();
-    void *new_block = allocate(new_length);
-    memcpy(new_block, p, old_length);
+    void *reallocated = allocate(new_length);
+    memcpy(reallocated, p, old_length);
     free(p);
 
-    return new_block;
+    return reallocated;
 }
 
 heap_allocator::free_header *
@@ -202,7 +202,9 @@ heap_allocator::new_block(unsigned order)
 
     void *block = reinterpret_cast<void*>(m_end);
     m_end += 1ull << order;
-    m_map[map_key(block)].order = order;
+    block_info &info = m_map[map_key(block)];
+    info.order = order;
+    info.free = false;
     return block;
 }
 
