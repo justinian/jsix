@@ -7,9 +7,12 @@
 using namespace j6;
 using namespace __j6libc;
 
-void *memcpy(void * restrict s1, const void * restrict s2, size_t n) {
-    asm volatile ("rep movsb" : "+D"(s1), "+S"(s2), "+c"(n) :: "memory");
-    return s1;
+void *memcpy(void * restrict dst, const void * restrict src, size_t n) {
+    asm volatile ("rep movsb"
+        :
+        : "D"(dst), "S"(src), "c"(n)
+        : "memory");
+    return dst;
 }
 
 static void memmove_dispatch(char *s1, const char *s2, size_t n) {
