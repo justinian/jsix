@@ -5,14 +5,16 @@
 # many files that it's unweildy. So if a file is added or removed in
 # libc, remember to run configure again.
 
-def glob(ext):
+def glob(ext, root=''):
     from glob import glob
+    from pathlib import Path
+
+    base = Path(module_root) / root
 
     def resolve(path):
-        from pathlib import Path
-        return str(Path(path).relative_to(module_root))
+        return str(Path(path).relative_to(base))
 
-    return list(map(resolve, glob(f"{module_root}/**/*.{ext}", recursive=True)))
+    return list(map(resolve, glob(f"{base}/**/*.{ext}", recursive=True)))
 
 sources = []
 for ext in ("c", "cpp", "s", "inc"):
@@ -20,7 +22,7 @@ for ext in ("c", "cpp", "s", "inc"):
 
 headers = []
 for ext in ("h",):
-    headers += glob(ext) + glob(ext + ".cog")
+    headers += glob(ext, "include") + glob(ext + ".cog", "include")
 
 libc = module("libc",
     kind = "lib",

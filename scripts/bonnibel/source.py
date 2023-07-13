@@ -72,22 +72,21 @@ class ParseSource(Source):
             variables = dict(name=self.path),
             )
 
-class HeaderSource(Source):
+class CopySource(ParseSource):
     action = "cp"
-    gather = True
+
+    def __init__(self, path, root = "${module_dir}", deps=tuple(), prefix = ""): 
+        self.path = path
+        self.root = root
+        self.deps = deps
+        self.prefix = prefix
 
     @property
-    def outputs(self):
-        return (self.path,)
+    def output(self):
+        from pathlib import Path
+        return Path(self.prefix) / self.path
 
-    @property
-    def args(self):
-        return dict(
-            outputs = [mod_rel(self.path)],
-            inputs = [join(self.root, self.path)],
-            implicit = list(map(_resolve, self.deps)),
-            variables = dict(name=self.path),
-            )
+class HeaderSource(Source): pass
 
 class CompileSource(Source):
     action = property(_dynamic_action("compile"))
@@ -117,3 +116,6 @@ def make_source(root, path):
         return HeaderSource(path, root)
     else:
         raise RuntimeError(f"{path} has no Source type")
+
+def make_copy_source(root, path, prefix = ""):
+    return CopySource(path, root, prefix=prefix)

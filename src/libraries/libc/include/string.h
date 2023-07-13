@@ -13,6 +13,7 @@
 #include <__j6libc/null.h>
 #include <__j6libc/restrict.h>
 #include <__j6libc/size_t.h>
+#include <j6/memutils.h> // memcpy, memmove, memset are defined in libj6
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,8 +21,6 @@ extern "C" {
 
 // Copying functions
 //
-void *memcpy(void * restrict s1, const void * restrict s2, size_t n);
-void *memmove(void * restrict s1, const void * restrict s2, size_t n);
 char *strncpy(char * restrict s1, const char * restrict s2, size_t n);
 
 // Concatenation functions
@@ -49,7 +48,6 @@ char *strtok(char * restrict s1, const char * restrict s2);
 
 // Miscellaneous functions
 //
-void *memset(void *s, int c, size_t n);
 char *strerror(int errnum);
 size_t strlen(const char *s);
 

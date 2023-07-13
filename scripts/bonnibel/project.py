@@ -50,10 +50,6 @@ class Project:
                 build.subninja(output / target.name / "target.ninja")
             build.newline()
 
-            for mod in modules.values():
-                build.subninja(output / f"headers.{mod.name}.ninja")
-            build.newline()
-
             build.build(
                 rule = "touch",
                 outputs = "${build_root}/.all_headers",

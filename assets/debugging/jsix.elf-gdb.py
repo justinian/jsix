@@ -300,7 +300,7 @@ class DumpLogCommand(gdb.Command):
 
         self.areas = []
         area_re = re.compile(r"LOG\(\s*(\w+).*")
-        with open("src/libraries/j6/j6/tables/log_areas.inc", 'r') as areas_inc:
+        with open("src/libraries/j6/include/j6/tables/log_areas.inc", 'r') as areas_inc:
             for line in areas_inc:
                 m = area_re.match(line)
                 if m:

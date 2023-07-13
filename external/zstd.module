@@ -3,6 +3,7 @@
 zstd = module("zstd",
     root = "${source_root}/external/zstd",
     kind = "lib",
+    copy_headers = True,
     deps = [ "libc" ],
     output = "libzstd.a",
     sources = [
