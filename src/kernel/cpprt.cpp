@@ -1,4 +1,4 @@
-#include "assert.h"
+#include "kassert.h"
 
 using __exit_func = void (*)(void *);
 

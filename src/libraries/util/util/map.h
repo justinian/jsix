@@ -13,8 +13,8 @@
 #include <new>
 #include <assert.h>
 #include <stdint.h>
-#include <string.h>
 
+#include <j6/memutils.h>
 #include <util/hash.h>
 #include <util/vector.h>
 #include <util/util.h>

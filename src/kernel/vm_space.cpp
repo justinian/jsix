@@ -1,8 +1,7 @@
-#include <string.h>
-
+#include <j6/memutils.h>
 #include <arch/memory.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "frame_allocator.h"
 #include "logger.h"
 #include "memory.h"

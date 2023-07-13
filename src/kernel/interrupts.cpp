@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <util/format.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "cpu.h"
 #include "device_manager.h"
 #include "idt.h"

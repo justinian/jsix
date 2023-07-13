@@ -2,10 +2,11 @@
 /// \file slab_allocated.h
 /// A parent template class for slab-allocated objects
 
-#include <stdlib.h>
+#include <j6/memutils.h>
 #include <util/pointers.h>
 #include <util/vector.h>
 
+#include "kassert.h"
 #include "memory.h"
 
 template <typename T, size_t N>

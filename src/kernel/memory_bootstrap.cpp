@@ -1,11 +1,8 @@
-#include <new>
-#include <utility>
-
 #include <arch/memory.h>
 #include <bootproto/kernel.h>
 #include <util/no_construct.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "capabilities.h"
 #include "device_manager.h"
 #include "frame_allocator.h"

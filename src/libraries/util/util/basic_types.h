@@ -73,4 +73,21 @@ template <unsigned N> struct sized_uint {
     using type = typename sized_uint_type<N>::type;
 };
 
+template <typename T> struct remove_reference       { using type = T; };
+template <typename T> struct remove_reference<T&>   { using type = T; };
+template <typename T> struct remove_reference<T&&>  { using type = T; };
+
 } // namespace types
+
+namespace util {
+
+template<typename T>
+typename types::remove_reference<T>::type&&
+move( T&& x ) { return (typename types::remove_reference<T>::type&&)x; }
+
+template<typename T> T&& forward(typename types::remove_reference<T>::type&& param) { return static_cast<T&&>(param); }
+template<typename T> T&& forward(typename types::remove_reference<T>::type&  param) { return static_cast<T&&>(param); }
+
+template<typename T> void swap(T &t1, T &t2) { T tmp = move(t1); t1 = move(t2); t2 = move(tmp); }
+
+} // namespace util

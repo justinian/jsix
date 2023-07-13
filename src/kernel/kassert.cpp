@@ -1,4 +1,4 @@
-#include "assert.h"
+#include "kassert.h"
 #include "idt.h"
 
 namespace panic {

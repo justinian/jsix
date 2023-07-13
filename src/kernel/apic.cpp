@@ -1,5 +1,5 @@
 #include "apic.h"
-#include "assert.h"
+#include "kassert.h"
 #include "clock.h"
 #include "interrupts.h"
 #include "io.h"

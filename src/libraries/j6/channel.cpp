@@ -2,13 +2,12 @@
 // but should not include the user-specific code.
 #ifndef __j6kernel
 
-#include <string.h>
-
 #include <arch/memory.h>
 #include <j6/channel.hh>
 #include <j6/condition.hh>
 #include <j6/errors.h>
 #include <j6/flags.h>
+#include <j6/memutils.h>
 #include <j6/mutex.hh>
 #include <j6/syscalls.h>
 #include <j6/syslog.hh>

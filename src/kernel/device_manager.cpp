@@ -1,11 +1,10 @@
-#include <new>
 #include <stddef.h>
 #include <stdint.h>
 #include <util/misc.h> // for checksum
 #include <util/pointers.h>
 #include <arch/acpi/tables.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "apic.h"
 #include "clock.h"
 #include "device_manager.h"

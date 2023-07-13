@@ -1,11 +1,11 @@
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
+#include <j6/memutils.h>
 #include <bootproto/kernel.h>
 #include <util/vector.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "capabilities.h"
 #include "cpu.h"
 #include "debugcon.h"

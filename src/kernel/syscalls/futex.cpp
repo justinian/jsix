@@ -1,4 +1,5 @@
 #include <j6/errors.h>
+#include <util/basic_types.h>
 #include <util/node_map.h>
 #include <util/spinlock.h>
 
@@ -20,11 +21,11 @@ struct futex
     futex() = default;
     futex(futex &&other) :
         address {other.address},
-        queue {std::move(other.queue)} {}
+        queue {util::move(other.queue)} {}
 
     futex & operator=(futex &&other) {
         address = other.address;
-        queue = std::move(other.queue);
+        queue = util::move(other.queue);
         return *this;
     }
 };

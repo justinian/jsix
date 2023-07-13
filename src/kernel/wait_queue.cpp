@@ -1,9 +1,9 @@
-#include <utility>
+#include <util/basic_types.h>
 #include "objects/thread.h"
 #include "wait_queue.h"
 
 wait_queue::wait_queue(wait_queue &&other) :
-    m_threads {std::move(other.m_threads)} {}
+    m_threads {util::move(other.m_threads)} {}
 
 wait_queue::~wait_queue() { clear(); }
 
@@ -11,7 +11,7 @@ wait_queue &
 wait_queue::operator=(wait_queue &&other)
 {
     clear();
-    m_threads = std::move(other.m_threads);
+    m_threads = util::move(other.m_threads);
     return *this;
 }
 

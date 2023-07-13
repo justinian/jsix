@@ -1,5 +1,6 @@
 #include <util/pointers.h>
 
+#include "kassert.h"
 #include "capabilities.h"
 #include "cpu.h"
 #include "logger.h"

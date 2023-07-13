@@ -1,4 +1,4 @@
-#include "assert.h"
+#include "kassert.h"
 #include "device_manager.h"
 #include "hpet.h"
 #include "io.h"

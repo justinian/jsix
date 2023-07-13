@@ -3,7 +3,7 @@
 #include <util/spinlock.h>
 
 #include "apic.h"
-#include "assert.h"
+#include "kassert.h"
 #include "clock.h"
 #include "cpu.h"
 #include "debug.h"

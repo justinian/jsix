@@ -1,8 +1,6 @@
-#include <new>
-
 #include <util/no_construct.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "capabilities.h"
 #include "cpu.h"
 #include "objects/process.h"

@@ -1,4 +1,4 @@
-#include <new>
+#include <util/new.h>
 #include <util/no_construct.h>
 
 #include "cpu.h"

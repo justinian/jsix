@@ -1,7 +1,7 @@
-#include <string.h>
+#include <j6/memutils.h>
 #include <util/pointers.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "memory.h"
 #include "frame_allocator.h"
 #include "page_table.h"

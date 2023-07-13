@@ -9,7 +9,6 @@ variables:
 
   ccflags: [
     "-I${source_root}/src/include",
-    "-I${source_root}/src/include/x86_64",
     "-fcolor-diagnostics",
     "-U__STDCPP_THREADS__",
     "-D_LIBCPP_HAS_NO_THREADS",

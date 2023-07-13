@@ -21,15 +21,13 @@ variables:
     "-U__linux",
     "-U__linux__",
 
-    "-isystem${source_root}/sysroot/include",
-    "-isystem${build_root}/include/libc",
     "--sysroot='${source_root}/sysroot'" ]
 
 
   cxxflags: [
     "-fno-exceptions",
     "-fno-rtti",
-    "-isystem${source_root}/sysroot/include/c++/v1" ]
+    ]
 
   ldflags: [
     "-g",

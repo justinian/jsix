@@ -1,9 +1,7 @@
-#include <stdint.h>
-#include <string.h>
-
+#include <j6/memutils.h>
 #include <util/no_construct.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "cpu.h"
 #include "gdt.h"
 #include "logger.h"

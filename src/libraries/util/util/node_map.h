@@ -13,10 +13,10 @@
 ///  http://codecapsule.com/2013/11/17/robin-hood-hashing-backward-shift-deletion/
 
 #include <stdint.h>
-#include <string.h>
-#include <utility>
 
+#include <j6/memutils.h>
 #include <util/allocator.h>
+#include <util/basic_types.h>
 #include <util/hash.h>
 #include <util/util.h>
 
@@ -118,7 +118,7 @@ public:
 
         node_type new_node;
         get_map_key(new_node) = key;
-        return insert(std::move(new_node));
+        return insert(util::move(new_node));
     }
 
     node_type * find(const key_type &key) {
@@ -150,7 +150,7 @@ public:
             key_type &key_at_slot = get_map_key(node_at_slot);
 
             if (open(key_at_slot)) {
-                node_at_slot = std::move(node);
+                node_at_slot = util::move(node);
                 if (!found)
                     inserted_at = slot;
                 return m_nodes[inserted_at];
@@ -162,7 +162,7 @@ public:
                     found = true;
                     inserted_at = slot;
                 }
-                std::swap(node, node_at_slot);
+                util::swap(node, node_at_slot);
                 dist = psl_at_slot;
             }
 
@@ -202,7 +202,7 @@ protected:
             if (open(next_key) || psl(next_key, next_slot) == 0)
                 return;
 
-            m_nodes[slot] = std::move(next);
+            m_nodes[slot] = util::move(next);
             next.~node_type();
             next_key = invalid_id;
             ++slot;
@@ -236,7 +236,7 @@ protected:
                 continue;
 
             --m_count;
-            insert(std::move(node));
+            insert(util::move(node));
             node.~node_type();
             key = invalid_id;
         }
@@ -297,7 +297,7 @@ public:
     bool add(item_type item) {
         if (contains(item))
             return false;
-        m_map.insert(std::move(item));
+        m_map.insert(util::move(item));
         return true;
     }
 

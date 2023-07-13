@@ -26,6 +26,7 @@ libc = module("libc",
     kind = "lib",
     deps = [ "j6" ],
     output = "libc.a",
+    include_phase = "late",
     sources = sources,
     public_headers = headers,
     )

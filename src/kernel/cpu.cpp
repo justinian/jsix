@@ -1,10 +1,9 @@
-#include <new>
 #include <stdint.h>
-#include <string.h>
+#include <j6/memutils.h>
 #include <util/bitset.h>
 #include <util/no_construct.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "cpu.h"
 #include "device_manager.h"
 #include "gdt.h"

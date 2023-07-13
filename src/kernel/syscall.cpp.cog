@@ -1,6 +1,6 @@
 // vim: ft=cpp
 #include <stddef.h>
-#include <string.h>
+#include <j6/memutils.h>
 
 
 #include "debug.h"

@@ -2,7 +2,7 @@
 #include <j6/types.h>
 #include <util/vector.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "logger.h"
 #include "objects/thread.h"
 #include "syscalls/helpers.h"

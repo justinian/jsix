@@ -3,7 +3,7 @@
 zstd = module("zstd",
     root = "${source_root}/external/zstd",
     kind = "lib",
-    deps = [ ],
+    deps = [ "libc" ],
     output = "libzstd.a",
     sources = [
         "decompress/zstd_decompress.c",

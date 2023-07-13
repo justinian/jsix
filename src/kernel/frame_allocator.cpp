@@ -1,6 +1,6 @@
 #include <bootproto/kernel.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "debugcon.h"
 #include "frame_allocator.h"
 #include "logger.h"

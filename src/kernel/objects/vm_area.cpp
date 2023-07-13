@@ -1,5 +1,5 @@
 
-#include "assert.h"
+#include "kassert.h"
 #include "frame_allocator.h"
 #include "memory.h"
 #include "objects/vm_area.h"

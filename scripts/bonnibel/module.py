@@ -7,8 +7,10 @@ def resolve(path):
     return str(Path(path).resolve())
 
 class BuildOptions:
-    def __init__(self, includes=tuple(), libs=tuple(), order_only=tuple(), ld_script=None):
+    def __init__(self, includes=tuple(), local=tuple(), late=tuple(), libs=tuple(), order_only=tuple(), ld_script=None):
         self.includes = list(includes)
+        self.local = list(local)
+        self.late = list(late)
         self.libs = list(libs)
         self.order_only = list(order_only)
         self.ld_script = ld_script and str(ld_script)
@@ -30,6 +32,7 @@ class Module:
         "deps":  (set, ()),
         "public_headers":  (set, ()),
         "includes": (tuple, ()),
+        "include_phase": (str, "normal"),
         "sources": (tuple, ()),
         "drivers": (tuple, ()),
         "variables": (dict, ()),
@@ -58,6 +61,9 @@ class Module:
         for name in kwargs:
             if not name in self.__fields:
                 raise AttributeError(f"No attribute named {name} on Module")
+
+        if not self.no_libc:
+            self.deps.add("libc_free")
 
         # Turn strings into real Source objects
         self.sources = [make_source(root, f) for f in self.sources]
@@ -132,8 +138,6 @@ class Module:
 
             header_targets = []
             if add_headers:
-                if not self.no_libc:
-                    header_targets.append(f"${{build_root}}/include/libc/{phony}")
                 if self.public_headers:
                     header_targets.append(f"${{build_root}}/include/{self.name}/{phony}")
 
@@ -184,7 +188,7 @@ class Module:
             build.variable("module_dir", target_rel(self.name + ".dir"))
 
             modopts = BuildOptions(
-                includes = [self.root, "${module_dir}"],
+                local = [self.root, "${module_dir}"],
                 ld_script = self.ld_script and self.root / self.ld_script,
                 )
             if self.public_headers:
@@ -207,19 +211,37 @@ class Module:
                     modopts.includes.append(str(incpath))
                     modopts.includes.append(destpath)
 
-            all_deps = walk_deps(self.depmods)
             for dep in all_deps:
                 if dep.public_headers:
-                    modopts.includes += [f"${{build_root}}/include/{dep.name}"]
+                    if dep.include_phase == "normal":
+                        modopts.includes += [f"${{build_root}}/include/{dep.name}"]
+                    elif dep.include_phase == "late":
+                        modopts.late += [f"${{build_root}}/include/{dep.name}"]
+                    else:
+                        from . import BonnibelError
+                        raise BonnibelError(f"Module {dep.name} has invalid include_phase={dep.include_phase}")
 
                 if dep.kind == "lib":
                     modopts.libs.append(target_rel(dep.output))
                 else:
                     modopts.order_only.append(target_rel(dep.output))
 
+            cc_includes = []
+            if modopts.local:
+                cc_includes += [f"-iquote{i}" for i in modopts.local]
+
             if modopts.includes:
-                build.variable("ccflags", ["${ccflags}"] + [f"-I{i}" for i in modopts.includes])
-                build.variable("asflags", ["${asflags}"] + [f"-I{i}" for i in modopts.includes])
+                cc_includes += [f"-I{i}" for i in modopts.includes]
+
+            if modopts.late:
+                cc_includes += [f"-idirafter{i}" for i in modopts.late]
+
+            if cc_includes:
+                build.variable("ccflags", ["${ccflags}"] + cc_includes)
+
+            as_includes = [f"-I{d}" for d in modopts.local + modopts.includes + modopts.late]
+            if as_includes:
+                build.variable("asflags", ["${asflags}"] + as_includes)
 
             if modopts.libs:
                 build.variable("libs", ["${libs}"] + modopts.libs)

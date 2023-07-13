@@ -10,7 +10,7 @@ kernel = module("kernel",
     ld_script = "kernel.ld",
     sources = [
         "apic.cpp",
-        "assert.cpp",
+        "kassert.cpp",
         "boot.s",
         "capabilities.cpp",
         "clock.cpp",

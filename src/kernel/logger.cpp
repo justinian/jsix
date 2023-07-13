@@ -1,10 +1,8 @@
-#include <new>
-#include <string.h>
-
+#include <j6/memutils.h>
 #include <util/format.h>
 #include <util/no_construct.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "logger.h"
 #include "objects/system.h"
 #include "objects/thread.h"

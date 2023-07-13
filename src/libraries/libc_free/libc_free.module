@@ -1,0 +1,24 @@
+# vim: ft=python
+
+libc_free = module("libc_free",
+    kind = "lib",
+    no_libc = True,
+    include_phase = "late",
+    public_headers = [
+        'float.h',
+        'iso646.h',
+        'limits.h',
+        'stdalign.h',
+        'stdarg.h',
+        'stdbool.h',
+        'stddef.h',
+        'stdint.h.cog',
+        'stdnoreturn.h',
+
+        '__j6libc/bits.h',
+        '__j6libc/casts.h',
+        '__j6libc/null.h',
+        '__j6libc/restrict.h',
+        '__j6libc/size_t.h',
+        '__j6libc/wchar_t.h',
+    ])

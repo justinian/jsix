@@ -2,12 +2,11 @@
 /// \file vector.h
 /// Definition of a simple dynamic vector collection for use in kernel space
 
-#include <assert.h>
-#include <new>
-#include <string.h>
-#include <utility>
-
+#include <j6/memutils.h>
 #include <util/allocator.h>
+#include <util/assert.h>
+#include <util/basic_types.h>
+#include <util/new.h>
 #include <util/util.h>
 
 namespace util {
@@ -123,7 +122,7 @@ public:
     T & append(T &&item)
     {
         ensure_capacity(m_size + 1);
-        m_elements[m_size] = std::move(item);
+        m_elements[m_size] = util::move(item);
         return m_elements[m_size++];
     }
 
@@ -133,7 +132,7 @@ public:
     T & emplace(Args&&... args)
     {
         ensure_capacity(m_size + 1);
-        new (&m_elements[m_size]) T(std::forward<Args>(args)...);
+        new (&m_elements[m_size]) T(util::forward<Args>(args)...);
         return m_elements[m_size++];
     }
 

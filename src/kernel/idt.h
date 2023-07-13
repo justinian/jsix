@@ -2,7 +2,7 @@
 /// \file idt.h
 /// Definitions relating to a CPU's IDT table
 #include <stdint.h>
-#include "assert.h"
+#include "kassert.h"
 
 class IDT
 {

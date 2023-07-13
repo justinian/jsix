@@ -3,7 +3,7 @@
 /// Definition of a generic radix_tree structure
 
 #include <stdint.h>
-#include <string.h>
+#include <j6/memutils.h>
 #include <util/util.h>
 
 namespace util {

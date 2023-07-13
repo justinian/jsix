@@ -1,23 +1,10 @@
 #pragma once
-/** \file j6libc/copy.h
-  * Internal implementations to aid in implementing mem* functions
-  *
-  * This file is part of the C standard library for the jsix operating
-  * system.
-  *
-  * This Source Code Form is subject to the terms of the Mozilla Public
-  * License, v. 2.0. If a copy of the MPL was not distributed with this
-  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
-  */
-
-#ifndef __cplusplus
-#error "__j6libc/copy.h included by non-C++ code"
-#endif
+/// \file copy.h
+/// Internal implementations to aid in implementing mem* functions
 
 #include <stddef.h>
-#include <__j6libc/size_t.h>
 
-namespace __j6libc {
+namespace j6 {
 
 template <size_t N>
 inline void do_copy(char *s1, const char *s2) {
@@ -52,4 +39,4 @@ inline void do_backward_copy(char *s1, const char *s2, size_t n) {
         s1[i] = s2[i];
 }
 
-} // namespace __j6libc
+} // namespace j6

@@ -1,5 +1,4 @@
-#include <string.h>
-
+#include <j6/memutils.h>
 #include <util/no_construct.h>
 
 #include "cpu.h"

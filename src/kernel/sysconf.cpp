@@ -1,6 +1,6 @@
-#include <string.h>
+#include <j6/memutils.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "cpu.h"
 #include "frame_allocator.h"
 #include "memory.h"

@@ -2,7 +2,7 @@
 
 rule compile.c
   command = $cc -MMD -MF $out.d $cflags $ccflags -o $out -c $in
-  description = Compiling $name
+  description = Compiling [$target]:$name
   depfile = $out.d
   deps = gcc
 
@@ -17,7 +17,7 @@ rule dump_c_run
 
 rule compile.cpp
   command = $cxx -MMD -MF $out.d $cxxflags $ccflags -o $out -c $in
-  description = Compiling $name
+  description = Compiling [$target]:$name
   depfile = $out.d
   deps = gcc
 
@@ -32,13 +32,13 @@ rule dump_cpp_run
 
 rule compile.s
   command = $nasm -o $out -felf64 -MD $out.d $asflags $in
-  description = Assembling $name
+  description = Assembling [$target]:$name
   depfile = $out.d
   deps = gcc
 
 rule parse.cog
   command = cog -o $out -d -D target=$target $cogflags $in
-  description = Parsing $name
+  description = Parsing [$target]:$name
 
 rule exe
   command = $ld $ldflags -o $out $in $libs
@@ -46,11 +46,11 @@ rule exe
 
 rule lib
   command = $ar qcs $out $in
-  description = Archiving $name
+  description = Archiving [$target]:$name
 
 rule cp
   command = cp $in $out
-  description = Copying $name
+  description = Copying [$target]:$name
 
 rule dump
   command = objdump -DSC -M intel $in > $out

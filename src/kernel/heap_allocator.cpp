@@ -1,11 +1,10 @@
-#include <new>
 #include <stdint.h>
-#include <string.h>
 
+#include <j6/memutils.h>
 #include <util/pointers.h>
 #include <util/util.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "heap_allocator.h"
 #include "memory.h"
 #include "objects/vm_area.h"

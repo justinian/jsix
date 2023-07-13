@@ -1,7 +1,7 @@
 #include <j6/errors.h>
 #include <j6/types.h>
 
-#include "assert.h"
+#include "kassert.h"
 #include "logger.h"
 #include "objects/kobject.h"
 #include "objects/thread.h"
