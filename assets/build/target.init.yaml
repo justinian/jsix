@@ -1,6 +1,4 @@
 ---
-asflags: [ "-I${source_root}/src/kernel/" ]
-
 ccflags: [
   "--target=x86_64-jsix-elf",
   "-fno-omit-frame-pointer",
@@ -14,18 +12,17 @@ ccflags: [
   "-U__linux",
   "-U__linux__",
 
-  "--sysroot='${source_root}/sysroot'",
-
-  "-fpic"
+  "--sysroot='${source_root}/sysroot'"
 ]
 
 
 cxxflags: [
   "-fno-exceptions",
   "-fno-rtti",
-  ]
+]
 
 ldflags: [
+  "-Bstatic",
   "-m", "elf_x86_64",
   "--sysroot='${source_root}/sysroot'",
   "--no-eh-frame-hdr",

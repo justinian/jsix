@@ -1,0 +1,9 @@
+---
+ccflags: [
+  "-g3",
+  "-ggdb",
+]
+
+ldflags: [
+  "-g",
+]

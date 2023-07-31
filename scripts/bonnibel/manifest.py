@@ -26,7 +26,7 @@ class Manifest:
                 name="kernel", target="kernel")
 
         self.init = self.__build_entry(modules,
-                config.get("init", None))
+                config.get("init", None), target="init")
 
         self.panics = [self.__build_entry(modules, i, target="kernel")
                 for i in config.get("panic", tuple())]

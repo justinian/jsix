@@ -1,0 +1,9 @@
+---
+ccflags: [
+  "-fpie"
+]
+
+ldflags: [
+  "-pie",
+  "--dynamic-linker", "/tools/ld.so",
+]

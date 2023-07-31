@@ -12,8 +12,7 @@ ccflags: [
   "-mno-red-zone",
   "-fshort-wchar",
   "-fno-omit-frame-pointer",
-  "-ggdb",
-  "-g3" ]
+]
 
 cxxflags: [ "-fno-exceptions", "-fno-rtti" ]
 
@@ -23,5 +22,5 @@ ldflags: [
   "-Wl,-entry:efi_main",
   "-Wl,-subsystem:efi_application",
   "-fuse-ld=lld-link",
-  "-g" ]
+]
 

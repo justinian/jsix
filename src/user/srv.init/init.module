@@ -1,7 +1,7 @@
 # vim: ft=python
 
 init = module("srv.init",
-    targets = [ "user" ],
+    targets = [ "init" ],
     deps = [ "libc", "elf", "bootproto", "zstd" ],
     description = "Init server",
     ld_script = "init.ld",

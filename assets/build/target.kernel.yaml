@@ -21,9 +21,6 @@ ccflags: [
   "-fvisibility=hidden",
   "-fvisibility-inlines-hidden",
 
-  "-g3",
-  "-ggdb",
-
   "-D__ELF__",
   "-D__jsix__",
   "-D__j6kernel",
@@ -32,7 +29,8 @@ ccflags: [
   "-DPRINTF_ALIAS_STANDARD_FUNCTION_NAMES=1",
   "-DPRINTF_INCLUDE_CONFIG_H=1",
 
-  "--sysroot='${source_root}/sysroot'" ]
+  "--sysroot='${source_root}/sysroot'"
+]
 
 
 cflags: [ '-nostdinc' ]
@@ -41,14 +39,14 @@ cxxflags: [
   "-fno-exceptions",
   "-fno-rtti",
   "-nostdinc",
-  ]
+]
 
 ldflags: [
-  "-g",
   "-m", "elf_x86_64",
   "-nostdlib",
   "-Bstatic",
   "--no-eh-frame-hdr",
   "-z", "norelro",
-  "-z", "separate-code" ]
+  "-z", "separate-code"
+]
 
