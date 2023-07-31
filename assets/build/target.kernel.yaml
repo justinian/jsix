@@ -1,0 +1,54 @@
+---
+asflags: [ "-I${source_root}/src/kernel/" ]
+
+ccflags: [
+  "--target=x86_64-jsix-elf",
+  "-fno-stack-protector",
+
+  "-I${source_root}/external",
+
+  "-nostdinc",
+  "-nostdlib",
+  "-ffreestanding",
+  "-nodefaultlibs",
+  "-fno-builtin",
+  "-fno-plt",
+
+  "-mno-sse",
+  "-fno-omit-frame-pointer",
+  "-mno-red-zone",
+  "-mcmodel=kernel",
+  "-fvisibility=hidden",
+  "-fvisibility-inlines-hidden",
+
+  "-g3",
+  "-ggdb",
+
+  "-D__ELF__",
+  "-D__jsix__",
+  "-D__j6kernel",
+  "-U__linux",
+  "-U__linux__",
+  "-DPRINTF_ALIAS_STANDARD_FUNCTION_NAMES=1",
+  "-DPRINTF_INCLUDE_CONFIG_H=1",
+
+  "--sysroot='${source_root}/sysroot'" ]
+
+
+cflags: [ '-nostdinc' ]
+
+cxxflags: [
+  "-fno-exceptions",
+  "-fno-rtti",
+  "-nostdinc",
+  ]
+
+ldflags: [
+  "-g",
+  "-m", "elf_x86_64",
+  "-nostdlib",
+  "-Bstatic",
+  "--no-eh-frame-hdr",
+  "-z", "norelro",
+  "-z", "separate-code" ]
+

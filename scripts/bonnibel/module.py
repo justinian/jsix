@@ -88,6 +88,8 @@ class Module:
 
         if self.kind == "lib":
             return f"lib{self.name}.a"
+        elif self.kind == "driver":
+            return f"{self.name}.drv"
         else:
             return f"{self.name}.elf"
 
@@ -157,6 +159,11 @@ class Module:
             build.newline()
 
             build.variable("module_dir", target_rel(self.name + ".dir"))
+            build.variable("module_kind", self.kind)
+            build.newline()
+
+            build.include(f"${{target_dir}}/config.{self.kind}.ninja")
+            build.newline()
 
             modopts = BuildOptions(
                 local = [self.root, "${module_dir}"],

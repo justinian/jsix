@@ -37,6 +37,9 @@ class Manifest:
         self.drivers = [self.__build_entry(modules, i)
                 for i in config.get("drivers", tuple())]
 
+        self.tools = [self.__build_entry(modules, i)
+                for i in config.get("tools", tuple())]
+
         self.flags = config.get("flags", tuple())
 
         self.symbols = ""

@@ -48,6 +48,10 @@ rule lib
   command = $ar qcs $out $in
   description = Archiving [$target]:$name
 
+rule driver
+  command = $ld $ldflags -shared -o $out $in $libs
+  description = Linking $name
+
 rule cp
   command = cp $in $out
   description = Copying [$target]:$name
