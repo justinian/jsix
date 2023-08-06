@@ -31,7 +31,6 @@ ldflags: [
   "--no-eh-frame-hdr",
   "-L", "${source_root}/sysroot/lib",
   "-z", "separate-code",
-  "-lc++", "-lc++abi", "-lunwind",
   "--no-dependent-libraries",
 ]
 
