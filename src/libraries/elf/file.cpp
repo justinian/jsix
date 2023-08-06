@@ -20,22 +20,29 @@ file::file(util::const_buffer data) :
 }
 
 bool
-file::valid() const
+file::valid(elf::filetype type) const
 {
     if (m_data.count < sizeof(file_header))
         return false;
 
     const file_header *fheader = header();
 
-    return
+    bool abi_valid =
         fheader->magic == expected_magic &&
         fheader->word_size == wordsize::bits64 &&
         fheader->endianness == encoding::lsb &&
         fheader->os_abi == osabi::sysV &&
-        fheader->file_type == filetype::executable &&
         fheader->machine_type == machine::x64 &&
         fheader->ident_version == 1 &&
         fheader->version == 1;
+
+    if (!abi_valid)
+        return false;
+
+    if (type != filetype::none && fheader->file_type != type)
+        return false;
+
+    return true;
 }
 
 uintptr_t

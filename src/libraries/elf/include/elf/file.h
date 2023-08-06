@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <elf/headers.h>
 #include <util/counted.h>
 #include <util/pointers.h>
 
@@ -42,8 +43,9 @@ public:
     file(util::const_buffer data);
 
     /// Check the validity of the ELF data
-    /// \returns  true for valid ELF data
-    bool valid() const;
+    /// \arg type  Expected file type of the data
+    /// \returns   true for valid ELF data
+    bool valid(elf::filetype type = elf::filetype::executable) const;
 
     /// Get the entrypoint address of the program image
     /// \returns  A pointer to the entrypoint of the program
@@ -60,9 +62,13 @@ public:
     /// Get the ELF section headers
     inline const subheaders<section_header> & sections() const { return m_sections; }
 
+    /// Get the ELF file header
     inline const file_header * header() const {
         return reinterpret_cast<const file_header *>(m_data.pointer);
     }
+
+    /// Get the ELF file type from the header
+    inline filetype type() const { return header()->file_type; }
 
 private:
     subheaders<segment_header> m_segments;
