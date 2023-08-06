@@ -43,8 +43,10 @@ load_program(
     uintptr_t base_address = reinterpret_cast<uintptr_t>(data.pointer);
 
     elf::file progelf {data};
+    bool dyn = progelf.type() == elf::filetype::shared;
+    uintptr_t image_base = dyn ? 0xa'0000'0000 : 0;
 
-    if (!progelf.valid()) {
+    if (!progelf.valid(dyn ? elf::filetype::shared : elf::filetype::executable)) {
         j6::syslog("  ** error loading program '%s': ELF is invalid", name);
         return false;
     }
@@ -80,7 +82,7 @@ load_program(
 
         uintptr_t start = base_address + seg.offset;
         size_t prologue = seg.vaddr & 0xfff;
-        size_t epilogue = seg.mem_size - (prologue+seg.file_size);
+        size_t epilogue = seg.mem_size - seg.file_size;
 
         j6_handle_t sub_vma = j6_handle_invalid;
         res = j6_vma_create_map(&sub_vma, seg.mem_size+prologue, load_addr, flags);
@@ -95,7 +97,7 @@ load_program(
         memcpy(dest+prologue, src, seg.file_size);
         memset(dest+prologue+seg.file_size, 0, epilogue);
 
-        res = j6_vma_map(sub_vma, proc, seg.vaddr & ~0xfffull);
+        res = j6_vma_map(sub_vma, proc, (image_base + seg.vaddr) & ~0xfffull);
         if (res != j6_status_ok) {
             j6::syslog("  ** error loading program '%s': mapping sub vma to child: %lx", name, res);
             return false;
@@ -144,7 +146,7 @@ load_program(
     }
 
     j6_handle_t thread = j6_handle_invalid;
-    res = j6_thread_create(&thread, proc, stack_top - stack_consumed, progelf.entrypoint(), arg0, 0);
+    res = j6_thread_create(&thread, proc, stack_top - stack_consumed, image_base + progelf.entrypoint(), image_base, arg1);
     if (res != j6_status_ok) {
         j6::syslog("  ** error loading program '%s': creating thread: %lx", name, res);
         return false;
