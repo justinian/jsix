@@ -68,7 +68,7 @@ template <> struct sized_uint_type<32> { using type = uint32_t; };
 template <> struct sized_uint_type<64> { using type = uint64_t; };
 
 template <unsigned N> struct sized_uint {
-    static constexpr uint64_t mask = ((1<<N)-1);
+    static constexpr uint64_t mask = ((1ull<<N)-1);
     static constexpr unsigned bits = N;
     using type = typename sized_uint_type<N>::type;
 };
