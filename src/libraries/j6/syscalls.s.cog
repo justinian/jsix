@@ -1,7 +1,7 @@
 ; vim: ft=asm
 
 %macro define_syscall 2
-    global j6_%1
+    global j6_%1: function (j6_%1.end - j6_%1)
     j6_%1:
         push rbp
         mov rbp, rsp
@@ -28,6 +28,7 @@
         pop rbx
         pop rbp
         ret
+    .end:
 %endmacro
 
 ; [[[cog code generation
