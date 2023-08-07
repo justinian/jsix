@@ -22,7 +22,6 @@ for obj in syscalls.exposes:
 ]]]*/
 //[[[end]]]
 
-
 /*[[[cog code generation
 cog.outl(f'constexpr size_t syscall_count = {len(syscalls.methods)};')
 ]]]*/
@@ -115,25 +114,39 @@ for id, scope, method in syscalls.methods:
             scope.cname,
             "self",
             get_caps(method.options, scope),
-            False))
+            False,
+            None))
 
     for param in method.params:
         needs_obj = param.type.needs_object(param.options)
         needs_handle = ("handle" in param.options) or needs_obj
 
+        argnames = []
         for type, suffix in param.type.c_names(param.options):
             arg = f"{param.name}{suffix}"
+            argnames.append(arg)
             argdefs.append((type, arg))
 
-        for type, suffix in param.type.cxx_names(param.options):
+        is_list = "list" in param.options
+        count_arg = None
+        if is_list:
+            count_arg = argnames[1]
+            if param.refparam:
+                count_arg = "*" + count_arg
+
+        cxx_names = param.type.cxx_names(param.options)
+
+        for i in range(len(cxx_names)):
+            type, suffix = cxx_names[i]
             arg = f"{param.name}{suffix}"
 
-            if needs_handle:
+            if needs_handle and i == 0:
                 handles.append((
                     param.type.object.cname,
                     arg,
                     get_caps(param.options, param.type.object),
-                    param.optional != "required"))
+                    param.optional != "required",
+                    count_arg))
 
                 if needs_obj:
                     objparams.append((type, arg))
@@ -148,8 +161,9 @@ for id, scope, method in syscalls.methods:
             handles.append((
                 f"obj::{param.type.object.cname}",
                 arg,
-                get_caps(param.options, param.type.object,
-                param.optional != "required")))
+                get_caps(param.options, param.type.object),
+                param.optional != "required",
+                count_arg))
 
         if param.refparam:
             subs = param.type.c_names(param.options)
@@ -184,16 +198,30 @@ for id, scope, method in syscalls.methods:
     if handles:
         cog.outl(f"    j6_status_t res;")
 
-    for type, arg, caps, optional in handles:
+    for type, arg, caps, optional, count_arg in handles:
         capsval = "0"
         if caps:
             capsval = " | ".join(caps)
 
-        optstr = (optional and "true") or "false"
-
         cog.outl(f"    obj::{type} *{arg}_obj = nullptr;")
-        cog.outl(f"    res = get_handle<typename obj::{type}>({arg}, {capsval}, {arg}_obj, {optstr});")
-        cog.outl(f"    if (res != j6_status_ok) return res;")
+
+        handle_arg = arg
+        if count_arg is not None:
+            cog.outl(f"    for(unsigned i = 0; i < {count_arg}; ++i) {{")
+            handle_arg = arg + "[i]"
+            optional = True
+        else:
+            cog.outl( "    do {")
+
+        optstr = (optional and "true") or "false"
+        cog.outl(f"        res = get_handle<typename obj::{type}>({handle_arg}, {capsval}, {arg}_obj, {optstr});")
+        cog.outl(f"        if (res != j6_status_ok) return res;")
+
+        if count_arg is not None:
+            cog.outl( "    }")
+        else:
+            cog.outl( "    } while (0);")
+
         cog.outl()
 
     if "noreturn" in method.options:
@@ -208,8 +236,20 @@ for id, scope, method in syscalls.methods:
         cog.outl(f"""        _retval = {name}({", ".join(args)});""")
         cog.outl("    }\n")
 
-        for type, arg, caps, optional in handles:
-            cog.outl(f"    release_handle({arg});")
+        for type, arg, caps, optional, count_arg in handles:
+            handle_arg = arg
+            if count_arg is not None:
+                cog.outl(f"    for(unsigned i = 0; i < {count_arg}; ++i) {{")
+                handle_arg = arg + "[i]"
+                optional = True
+            else:
+                cog.outl( "    do {")
+            cog.outl(f"        release_handle({handle_arg});")
+
+            if count_arg is not None:
+                cog.outl( "    }")
+            else:
+                cog.outl( "    } while (0);")
 
         cog.outl(f"""    return _retval;""")
 
