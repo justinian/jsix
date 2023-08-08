@@ -1,4 +1,5 @@
 #include <unordered_map>
+#include <stdlib.h>
 
 #include <j6/errors.h>
 #include <j6/flags.h>
@@ -24,45 +25,44 @@ service_locator_start(j6_handle_t mb)
     std::unordered_map<uint64_t, j6_handle_t> services;
 
     uint64_t tag = 0;
-    uint64_t subtag = 0;
+    uint64_t data = 0;
+    uint64_t handle_count = 1;
     uint64_t reply_tag = 0;
 
     j6_handle_t give_handle = j6_handle_invalid;
     uint64_t proto_id;
 
     while (true) {
-        j6_status_t s = j6_mailbox_respond(mb, &tag, &subtag, &give_handle,
-                &reply_tag, j6_flag_block);
+        uint64_t data_len = sizeof(uint64_t);
+        j6_status_t s = j6_mailbox_respond(mb, &tag,
+            &data, &data_len, data_len,
+            &give_handle, &handle_count,
+            &reply_tag, j6_flag_block);
 
         if (s != j6_status_ok)
-            while (1);
+            exit(128);
 
         handle_entry *found = nullptr;
 
         switch (tag) {
-        case j6_proto_base_get_proto_id:
-            tag = j6_proto_base_proto_id;
-            subtag = j6_proto_sl_id;
-            give_handle = j6_handle_invalid;
-            break;
-
         case j6_proto_sl_register:
-            proto_id = subtag;
+            proto_id = data;
             if (give_handle == j6_handle_invalid) {
                 tag = j6_proto_base_status;
-                subtag = j6_err_invalid_arg;
+                data = j6_err_invalid_arg;
                 break;
             }
 
             services.insert( {proto_id, give_handle} );
             tag = j6_proto_base_status;
-            subtag = j6_status_ok;
+            data = j6_status_ok;
             give_handle = j6_handle_invalid;
             break;
 
         case j6_proto_sl_find:
-            proto_id = subtag;
+            proto_id = data;
             tag = j6_proto_sl_result;
+            data = 0;
 
             {
                 auto found = services.find(proto_id);
@@ -75,7 +75,7 @@ service_locator_start(j6_handle_t mb)
 
         default:
             tag = j6_proto_base_status;
-            subtag = j6_err_invalid_arg;
+            data = j6_err_invalid_arg;
             give_handle = j6_handle_invalid;
             break;
         }

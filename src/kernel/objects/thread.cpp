@@ -1,3 +1,4 @@
+#include <util/basic_types.h>
 #include <util/pointers.h>
 
 #include "kassert.h"
@@ -109,6 +110,9 @@ thread::wake_only()
     m_wake_timeout = 0;
     set_state(state::ready);
 }
+
+void thread::set_message_data(ipc::message &&md) { m_message = util::move(md); }
+ipc::message && thread::get_message_data() { return util::move(m_message); }
 
 void
 thread::exit()

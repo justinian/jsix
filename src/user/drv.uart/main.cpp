@@ -8,7 +8,7 @@
 #include <j6/errors.h>
 #include <j6/flags.h>
 #include <j6/init.h>
-#include <j6/protocols/service_locator.h>
+#include <j6/protocols/service_locator.hh>
 #include <j6/syscalls.h>
 #include <j6/sysconf.h>
 #include <j6/syslog.hh>
@@ -76,15 +76,12 @@ main(int argc, const char **argv)
     if (!cout)
         return 2;
 
-    uint64_t tag = j6_proto_sl_register;
     uint64_t proto_id = "jsix.protocol.stream.ouput"_id;
     uint64_t handle = cout->handle();
-    result = j6_mailbox_call(slp, &tag, &proto_id, &handle);
+    j6::proto::sl::client slp_client {slp};
+    result = slp_client.register_service(proto_id, handle);
     if (result != j6_status_ok)
         return 4;
-
-    if (tag != j6_proto_base_status)
-        return 5;
 
     result = j6_system_request_iopl(g_handle_sys, 3);
     if (result != j6_status_ok)

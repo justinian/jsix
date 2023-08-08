@@ -8,6 +8,7 @@
 #include <util/spinlock.h>
 
 #include "cpu.h"
+#include "ipc_message.h"
 #include "objects/kobject.h"
 #include "wait_queue.h"
 
@@ -121,13 +122,8 @@ public:
     /// \returns  The clock time at which to wake. 0 for no timeout.
     inline uint64_t wake_timeout() const { return m_wake_timeout; }
 
-    struct message_data
-    {
-        uint64_t tag, subtag;
-        j6_handle_t handle;
-    };
-
-    message_data & get_message_data() { return m_message_data; }
+    void set_message_data(ipc::message &&md);
+    ipc::message && get_message_data();
 
     inline bool has_state(state s) const {
         return __atomic_load_n(reinterpret_cast<const uint8_t*>(&m_state), __ATOMIC_ACQUIRE) &
@@ -200,7 +196,8 @@ private:
 
     uint64_t m_wake_value;
     uint64_t m_wake_timeout;
-    message_data m_message_data;
+
+    ipc::message m_message;
 
     wait_queue m_join_queue;
 };

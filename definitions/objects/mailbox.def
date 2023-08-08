@@ -1,5 +1,6 @@
-# Mailboxes are objects that enable synchronous IPC via short message-passing
-# of tagged handles.
+# Mailboxes are objects that enable synchronous IPC via arbitrary
+# message-passing of tagged data and/or handles. Not as efficient
+# as shared memory channels, but more flexible.
 
 object mailbox : object {
     uid 99934ad04ece1e07
@@ -13,13 +14,14 @@ object mailbox : object {
     method create [constructor]
     method close [destructor cap:close]
 
-    # Send a message to the reciever, and block until a
-    # response is sent. Note that getting this response
-    # does not require the receive capability.
+    # Send a message to the reciever, and block until a response is
+    # sent. Note that getting this response does not require the
+    # receive capability.
     method call [cap:send] {
         param tag uint64 [inout]
-        param subtag uint64 [inout]
-        param give_handle ref object [optional inout handle]
+        param data buffer [optional inout]
+        param data_in_len size  # number of bytes in data used for input
+        param handles ref object [optional inout handle list]
     }
 
     # Respond to a message sent using call, and wait for another
@@ -28,8 +30,9 @@ object mailbox : object {
     # to waiting for a new message.
     method respond [cap:receive] {
         param tag uint64 [inout]
-        param subtag uint64 [inout]
-        param give_handle ref object [optional inout handle]
+        param data buffer [optional inout]
+        param data_in_len size  # number of bytes in data used for input
+        param handles ref object [optional inout handle list]
         param reply_tag uint64 [inout]
         param flags uint64
     }

@@ -118,6 +118,10 @@ process::thread_exited(thread *th)
 void
 process::add_handle(j6_handle_t handle)
 {
+    // Passing the invalid handle is fine, just don't add anything
+    if (handle == j6_handle_invalid)
+        return;
+
     capability *c = g_cap_table.retain(handle);
     kassert(c, "Trying to add a non-existant handle to a process!");
 

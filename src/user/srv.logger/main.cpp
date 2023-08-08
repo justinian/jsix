@@ -8,7 +8,7 @@
 #include <j6/errors.h>
 #include <j6/flags.h>
 #include <j6/init.h>
-#include <j6/protocols/service_locator.h>
+#include <j6/protocols/service_locator.hh>
 #include <j6/syscalls.h>
 #include <j6/sysconf.h>
 #include <j6/types.h>
@@ -106,13 +106,12 @@ main(int argc, const char **argv)
 
     j6_handle_t cout_vma = j6_handle_invalid;
 
-    for (unsigned i = 0; i < 100; ++i) {
-        uint64_t tag = j6_proto_sl_find;
-        uint64_t proto_id = "jsix.protocol.stream.ouput"_id;
+    uint64_t proto_id = "jsix.protocol.stream.ouput"_id;
+    j6::proto::sl::client slp_client {slp};
 
-        j6_status_t s = j6_mailbox_call(slp, &tag, &proto_id, &cout_vma);
+    for (unsigned i = 0; i < 100; ++i) {
+        j6_status_t s = slp_client.lookup_service(proto_id, cout_vma);
         if (s == j6_status_ok &&
-            tag == j6_proto_sl_result &&
             cout_vma != j6_handle_invalid)
             break;
 

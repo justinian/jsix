@@ -1,4 +1,6 @@
+#include <util/basic_types.h>
 #include <util/counted.h>
+#include <j6/memutils.h>
 
 #include "objects/mailbox.h"
 #include "objects/thread.h"
@@ -49,7 +51,7 @@ mailbox::call()
 }
 
 j6_status_t
-mailbox::receive(thread::message_data &data, reply_tag_t &reply_tag, bool block)
+mailbox::receive(ipc::message &data, reply_tag_t &reply_tag, bool block)
 {
     if (closed())
         return j6_status_closed;
@@ -81,7 +83,7 @@ mailbox::receive(thread::message_data &data, reply_tag_t &reply_tag, bool block)
 }
 
 j6_status_t
-mailbox::reply(reply_tag_t reply_tag, const thread::message_data &data)
+mailbox::reply(reply_tag_t reply_tag, ipc::message &&data)
 {
     if (closed())
         return j6_status_closed;
@@ -95,7 +97,7 @@ mailbox::reply(reply_tag_t reply_tag, const thread::message_data &data)
     m_reply_map.erase(reply_tag);
     lock.release();
 
-    caller->get_message_data() = data;
+    caller->set_message_data(util::move(data));
     caller->wake(j6_status_ok);
     return j6_status_ok;
 }

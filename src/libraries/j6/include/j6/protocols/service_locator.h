@@ -4,8 +4,6 @@
 
 #include <j6/protocols.h>
 
-extern const uint64_t j6_proto_sl_id;
-
 enum j6_proto_sl_tag
 {
     j6_proto_sl_register = j6_proto_base_first_proto_id,
