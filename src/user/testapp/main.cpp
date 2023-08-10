@@ -111,8 +111,8 @@ main(int argc, const char **argv)
 
     j6_log("main thread created channel");
 
-    j6::thread child_thread {thread_proc, stack_top};
-    j6_status_t result = child_thread.start(chan);
+    j6::thread child_thread {[=](){ thread_proc(chan); }, stack_top};
+    j6_status_t result = child_thread.start();
     if (result != j6_status_ok)
         return result;
 

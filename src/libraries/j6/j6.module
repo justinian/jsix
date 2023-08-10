@@ -15,7 +15,6 @@ j6 = module("j6",
         "syscalls.s.cog",
         "sysconf.cpp.cog",
         "syslog.cpp",
-        "thread.cpp",
     ],
     public_headers = [
         "j6/cap_flags.h.cog",
