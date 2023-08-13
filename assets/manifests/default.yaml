@@ -12,3 +12,5 @@ services:
 drivers:
   - drv.uart
   - drv.uefi_fb
+tools:
+  - ld.so

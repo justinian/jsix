@@ -7,6 +7,7 @@
 #include <j6/init.h>
 #include <j6/syscalls.h>
 #include <j6/syslog.hh>
+#include <j6/thread.hh>
 #include <j6/types.h>
 
 #include <bootproto/acpi.h>
@@ -14,6 +15,7 @@
 #include <bootproto/devices/framebuffer.h>
 
 #include "acpi.h"
+#include "initfs.h"
 #include "j6romfs.h"
 #include "loader.h"
 #include "modules.h"
@@ -22,30 +24,7 @@
 using bootproto::module;
 using bootproto::module_type;
 
-void
-load_driver(
-    j6romfs::fs &initrd,
-    const j6romfs::inode *dir,
-    const char *name,
-    j6_handle_t sys,
-    j6_handle_t slp,
-    const module *arg = nullptr)
-{
-    const j6romfs::inode *in = initrd.lookup_inode_in_dir(dir, name);
-
-    if (in->type != j6romfs::inode_type::file)
-        return;
-
-    j6::syslog("Loading driver: %s", name);
-
-    uint8_t *data = new uint8_t [in->size];
-    util::buffer program {data, in->size};
-
-    initrd.load_inode_data(in, program);
-    load_program(name, program, sys, slp, arg);
-
-    delete [] data;
-}
+constexpr uintptr_t stack_top = 0xf80000000;
 
 int
 driver_main(unsigned argc, const char **argv, const char **env, const j6_init_args *initp)
@@ -57,6 +36,9 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
 
     j6_handle_t sys = j6_handle_invalid;
     j6_handle_t sys_child = j6_handle_invalid;
+
+    j6_handle_t vfs_mb = j6_handle_invalid;
+    j6_handle_t vfs_mb_child = j6_handle_invalid;
 
     j6_log("srv.init starting");
 
@@ -77,6 +59,16 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
         return s;
 
     s = j6_handle_clone(slp_mb, &slp_mb_child,
+            j6_cap_mailbox_send |
+            j6_cap_object_clone);
+    if (s != j6_status_ok)
+        return s;
+
+    s = j6_mailbox_create(&vfs_mb);
+    if (s != j6_status_ok)
+        return s;
+
+    s = j6_handle_clone(vfs_mb, &vfs_mb_child,
             j6_cap_mailbox_send |
             j6_cap_object_clone);
     if (s != j6_status_ok)
@@ -130,19 +122,17 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
     // have driver_source objects..
     j6romfs::fs initrd {initrd_buf};
 
+    j6::thread vfs_thread {[=, &initrd](){ initfs_start(initrd, vfs_mb); }, stack_top};
+    j6_status_t result = vfs_thread.start();
+
     load_acpi(sys, acpi_module);
 
-    const j6romfs::inode *driver_dir = initrd.lookup_inode("/jsix/drivers");
-    if (!driver_dir) {
-        j6_log("Could not load drivers directory");
-        return 1;
-    }
+    load_program("/jsix/drivers/drv.uart.elf", initrd, sys_child, slp_mb_child, vfs_mb_child);
 
-    load_driver(initrd, driver_dir, "drv.uart.elf", sys_child, slp_mb_child);
     for (const module *m : devices) {
         switch (m->type_id) {
             case bootproto::devices::type_id_uefi_fb:
-                load_driver(initrd, driver_dir, "drv.uefi_fb.elf", sys_child, slp_mb_child, m);
+                load_program("/jsix/drivers/drv.uefi_fb.elf", initrd, sys_child, slp_mb_child, vfs_mb_child, m);
                 break;
 
             default:
@@ -155,16 +145,10 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
         if (in->type != j6romfs::inode_type::file)
             return;
 
-        j6::syslog("Loading service: %s", name);
-
-        uint8_t *data = new uint8_t [in->size];
-        util::buffer program {data, in->size};
-
-        initrd.load_inode_data(in, program);
-        load_program(name, program, sys_child, slp_mb_child);
-
-        delete [] data;
-    });
+        char path [128];
+        sprintf(path, "/jsix/services/%s", name);
+        load_program(path, initrd, sys_child, slp_mb_child, vfs_mb_child);
+   });
 
     service_locator_start(slp_mb);
     return 0;

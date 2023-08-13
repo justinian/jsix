@@ -7,6 +7,7 @@ init = module("srv.init",
     ld_script = "init.ld",
     sources = [
         "acpi.cpp",
+        "initfs.cpp",
         "j6romfs.cpp",
         "loader.cpp",
         "main.cpp",

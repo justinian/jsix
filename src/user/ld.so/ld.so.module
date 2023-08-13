@@ -1,0 +1,15 @@
+# vim: ft=python
+
+ldso = module("ld.so",
+    kind = "shared",
+    output = "ld.so",
+    targets = [ "user" ],
+    deps = [ "libc", "util", "elf" ],
+    description = "Dynamic Linker",
+    sources = [
+        "main.cpp",
+        "relocate.cpp",
+        "start.s",
+    ])
+
+ldso.variables["ldflags"] = ["${ldflags}", "--entry=_ldso_start"]

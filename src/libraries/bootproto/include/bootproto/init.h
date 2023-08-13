@@ -6,7 +6,6 @@
 #include <stdint.h>
 
 #include <util/counted.h>
-#include <util/enum_bitfields.h>
 
 namespace bootproto {
 
