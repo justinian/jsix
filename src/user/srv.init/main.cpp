@@ -27,7 +27,7 @@ using bootproto::module_type;
 constexpr uintptr_t stack_top = 0xf80000000;
 
 int
-driver_main(unsigned argc, const char **argv, const char **env, const j6_init_args *initp)
+main(int argc, const char **argv, const char **env)
 {
     j6_status_t s;
 
@@ -74,6 +74,7 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
     if (s != j6_status_ok)
         return s;
 
+    const j6_init_args *initp = j6_get_init_args();
     uintptr_t modules_addr = initp->args[0];
 
     std::vector<const module*> mods;

@@ -20,7 +20,7 @@ extern "C" {
 }
 
 int
-driver_main(unsigned argc, const char **argv, const char **env, const j6_init_args *init)
+main(int argc, const char **argv, const char **env)
 {
     j6::syslog("fb driver starting");
 
@@ -28,6 +28,7 @@ driver_main(unsigned argc, const char **argv, const char **env, const j6_init_ar
     using bootproto::devices::video_mode;
     using bootproto::devices::fb_layout;
 
+    const j6_init_args *init = j6_get_init_args();
     const uefi_fb *fb = reinterpret_cast<const uefi_fb*>(init->args[0]);
 
     if (!fb || !fb->framebuffer) {

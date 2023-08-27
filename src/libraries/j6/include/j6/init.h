@@ -73,6 +73,9 @@ struct j6_init_args
 /// Find the first handle of the given type held by this process
 j6_handle_t j6_find_first_handle(j6_object_type obj_type);
 
+/// Get the init args
+const j6_init_args * j6_get_init_args();
+
 /// Drivers may use driver_main instead of main
 int driver_main(unsigned, const char **, const char **, const j6_init_args *);
 
