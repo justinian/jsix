@@ -1,9 +1,10 @@
 #include <j6/protocols/service_locator.h>
 #include <j6/types.h>
+#include <util/api.h>
 
 namespace j6::proto::sl {
 
-class client
+class API client
 {
 public:
     /// Constructor.

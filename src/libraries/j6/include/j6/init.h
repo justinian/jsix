@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <j6/types.h>
+#include <util/api.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -71,7 +72,7 @@ struct j6_init_args
 
 
 /// Find the first handle of the given type held by this process
-j6_handle_t j6_find_first_handle(j6_object_type obj_type);
+j6_handle_t API j6_find_first_handle(j6_object_type obj_type);
 
 /// Get the init args
 const j6_init_args * j6_get_init_args();

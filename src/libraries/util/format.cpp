@@ -88,7 +88,6 @@ append_string(char_t *&out, size_t &count, size_t max, unsigned width, char_t co
     }
 }
 
-} // namespace
 
 template <typename char_t> size_t
 vformat(counted<char_t> output, char_t const *format, va_list va)
@@ -169,20 +168,28 @@ vformat(counted<char_t> output, char_t const *format, va_list va)
     return count;
 }
 
-template <typename char_t> size_t
-format(counted<char_t> output, const char_t *format, ...)
+} // namespace
+
+size_t API format(counted<char> output, const char *format, ...)
 {
     va_list va;
     va_start(va, format);
-    size_t result = vformat<char_t>(output, format, va);
+    size_t result = vformat<char>(output, format, va);
     va_end(va);
     return result;
 }
 
-template size_t format<char>(counted<char> output, const char *format, ...);
-template size_t vformat<char>(counted<char> output, const char *format, va_list va);
+size_t API format(counted<wchar_t> output, const wchar_t *format, ...)
+{
+    va_list va;
+    va_start(va, format);
+    size_t result = vformat<wchar_t>(output, format, va);
+    va_end(va);
+    return result;
+}
 
-template size_t format<wchar_t>(counted<wchar_t> output, const wchar_t *format, ...);
-template size_t vformat<wchar_t>(counted<wchar_t> output, const wchar_t *format, va_list va);
+size_t API vformat(counted<char> output, const char *format, va_list va) { return vformat<char>(output, format, va); }
+size_t API vformat(counted<wchar_t> output, const wchar_t *format, va_list va) { return vformat<wchar_t>(output, format, va); }
+
 
 } //namespace util

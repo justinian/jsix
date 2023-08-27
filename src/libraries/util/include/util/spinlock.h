@@ -3,6 +3,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <util/api.h>
 
 #ifdef __j6kernel
 extern "C" uint32_t __current_thread_id();
@@ -11,7 +12,7 @@ extern "C" uint32_t __current_thread_id();
 namespace util {
 
 /// An MCS based spinlock
-class spinlock
+class API spinlock
 {
 public:
     spinlock();

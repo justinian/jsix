@@ -2,6 +2,9 @@
 /// \file allocator.h
 /// Definition of the allocator interface.
 
+#include <stddef.h>
+#include <j6/memutils.h>
+
 namespace util {
 
 // Allocators are types with three static methods with these signatures

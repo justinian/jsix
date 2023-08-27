@@ -10,6 +10,7 @@ module("util",
     ],
     public_headers = [
         "util/allocator.h",
+        "util/api.h",
         "util/assert.h",
         "util/basic_types.h",
         "util/bip_buffer.h",

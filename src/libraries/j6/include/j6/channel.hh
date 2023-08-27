@@ -8,10 +8,11 @@
 
 #include <stddef.h>
 #include <j6/types.h>
+#include <util/api.h>
 
 namespace j6 {
 
-class channel
+class API channel
 {
 public:
     /// Create a new channel of the given size.

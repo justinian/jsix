@@ -36,13 +36,13 @@ j6_find_first_handle(j6_object_type obj_type)
     return j6_handle_invalid;
 }
 
-const j6_init_args *
+const j6_init_args * API
 j6_get_init_args()
 {
     return &init_args;
 }
 
-extern "C" void
+extern "C" void API
 __init_libj6(uint64_t arg0, uint64_t arg1)
 {
     init_args.args[0] = arg0;

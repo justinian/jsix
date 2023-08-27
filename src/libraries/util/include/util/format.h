@@ -4,14 +4,16 @@
 #pragma once
 
 #include <stdarg.h>
+#include <util/api.h>
 #include <util/counted.h>
 
 namespace util {
 
-template <typename char_t>
-size_t format(counted<char_t> output, const char_t *format, ...);
+size_t API format(counted<char> output, const char *format, ...);
+size_t API vformat(counted<char> output, const char *format, va_list va);
 
-template <typename char_t>
-size_t vformat(counted<char_t> output, const char_t *format, va_list va);
+
+size_t API format(counted<wchar_t> output, const wchar_t *format, ...);
+size_t API vformat(counted<wchar_t> output, const wchar_t *format, va_list va);
 
 }

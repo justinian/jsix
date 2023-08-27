@@ -27,7 +27,7 @@ for ext in ("h",):
 libc = module("libc",
     kind = "lib",
     deps = [ "j6" ],
-    output = "libc.a",
+    basename = "libc",
     include_phase = "late",
     sources = sources,
     public_headers = headers,
@@ -35,6 +35,7 @@ libc = module("libc",
 
 libc.variables["ccflags"] = [
     "${ccflags}",
+    "-fvisibility=default",
     "-DPRINTF_SUPPORT_DECIMAL_SPECIFIERS=0",
     "-DPRINTF_SUPPORT_EXPONENTIAL_SPECIFIERS=0",
 ]

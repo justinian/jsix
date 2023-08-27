@@ -10,6 +10,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <util/api.h>
 
 /*[[[cog code generation
 from os.path import join
@@ -35,7 +36,7 @@ enum j6_sysconf_arg
 
 /// Get the kernel configuration value specified by
 /// the argument.
-unsigned long j6_sysconf(j6_sysconf_arg arg);
+unsigned long API j6_sysconf(j6_sysconf_arg arg);
 
 #ifdef __cplusplus
 } // extern C

@@ -4,6 +4,7 @@
 
 #include <util/format.h>
 #include <j6/syscalls.h>
+#include <j6/syslog.hh>
 
 namespace j6 {
 

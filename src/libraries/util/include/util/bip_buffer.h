@@ -6,11 +6,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <util/api.h>
 #include <util/spinlock.h>
 
 namespace util {
 
-class bip_buffer
+class API bip_buffer
 {
 public:
     /// Default constructor. Creates a zero-size buffer.
