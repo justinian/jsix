@@ -3,6 +3,7 @@
 init = module("srv.init",
     targets = [ "init" ],
     deps = [ "libc", "elf", "bootproto", "zstd" ],
+    static = True,
     description = "Init server",
     ld_script = "init.ld",
     sources = [

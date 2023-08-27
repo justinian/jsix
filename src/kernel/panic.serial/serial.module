@@ -1,9 +1,9 @@
 # vim: ft=python
 
 panic = module("panic.serial",
-    kind = "exe",
     targets = [ "kernel" ],
     deps = [ "util", "elf", "kernel" ],
+    static = True,
     includes = [ ".." ],
     description = "Serial panic handler",
     ld_script = "panic.serial.ld",

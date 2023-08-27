@@ -1,12 +1,12 @@
 # vim: ft=python
 
 kernel = module("kernel",
-    kind = "exe",
     default = True,
-    output = "jsix.elf",
+    basename = "jsix",
     targets = [ "kernel" ],
     description = "jsix kernel",
     deps = [ "util", "cpu", "bootproto", "j6" ],
+    static = True,
     ld_script = "kernel.ld",
     sources = [
         "apic.cpp",

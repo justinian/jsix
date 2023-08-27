@@ -1,4 +1,5 @@
 from . import include_rel, mod_rel, target_rel
+from . import BonnibelError
 
 def resolve(path):
     if path.startswith('/') or path.startswith('$'):
@@ -17,17 +18,27 @@ class BuildOptions:
 
     @property
     def implicit(self):
+        libfiles = list(map(lambda x: x[0], self.libs))
         if self.ld_script is not None:
-            return self.libs + [self.ld_script]
+            return libfiles + [self.ld_script]
         else:
-            return self.libs
+            return libfiles
+
+    @property
+    def linker_args(self):
+        from pathlib import Path
+        def arg(path, static):
+            if static: return path
+            return "-l:" + Path(path).name
+        return [arg(*l) for l in self.libs]
 
 
 class Module:
     __fields = {
         # name: (type, default)
         "kind": (str, "exe"),
-        "output": (str, None),
+        "outfile": (str, None),
+        "basename": (str, None),
         "targets": (set, ()),
         "deps":  (set, ()),
         "public_headers":  (set, ()),
@@ -41,6 +52,7 @@ class Module:
         "description": (str, None),
         "no_libc": (bool, False),
         "ld_script": (str, None),
+        "static": (bool, False),
     }
 
     def __init__(self, name, modfile, root, **kwargs):
@@ -62,7 +74,7 @@ class Module:
 
         for name in kwargs:
             if not name in self.__fields:
-                raise AttributeError(f"No attribute named {name} on Module")
+                raise AttributeError(f"No attribute named {name} on Module ({modfile})")
 
         if not self.no_libc:
             self.deps.add("libc_free")
@@ -78,24 +90,30 @@ class Module:
         # Filled by Module.update
         self.depmods = set()
 
-    def __str__(self):
-        return "Module {} {}\n\t{}".format(self.kind, self.name, "\n\t".join(map(str, self.sources)))
+    def __repr__(self):
+        return f"<Module {self.kind} {self.name}>"
 
     @property
-    def output(self):
-        if self.__output is not None:
-            return self.__output
-
+    def basename(self):
+        if self.__basename is not None:
+            return self.__basename
         if self.kind == "lib":
-            return f"lib{self.name}.a"
-        elif self.kind == "driver":
-            return f"{self.name}.drv"
+            return f"lib{self.name}"
         else:
-            return f"{self.name}.elf"
+            return self.name
 
-    @output.setter
-    def output(self, value):
-        self.__output = value
+    @basename.setter
+    def basename(self, value):
+        self.__basename = value
+
+    def get_output(self, static=False):
+        if self.outfile is not None:
+            return self.outfile
+        elif self.kind == "headers":
+            return None
+        else:
+            ext = dict(exe=".elf", driver=".drv", lib=(static and ".a" or ".so"))
+            return self.basename + ext.get(self.kind, "")
 
     @classmethod
     def update(cls, mods):
@@ -128,21 +146,20 @@ class Module:
         from collections import defaultdict
         from ninja.ninja_syntax import Writer
 
-        def walk_deps(deps):
-            open_set = set(deps)
-            closed_set = set()
-            while open_set:
-                dep = open_set.pop()
-                closed_set.add(dep)
-                open_set |= {m for m in dep.depmods if not m in closed_set}
-            return closed_set
+        def walk_deps(deps, static, results):
+            for mod in deps:
+                if static or mod.name not in results:
+                    results[mod.name] = (mod, static)
+                walk_deps(mod.depmods, static or mod.static, results)
 
-        all_deps = walk_deps(self.depmods)
+        all_deps = {}
+        walk_deps(self.depmods, self.static, all_deps)
+        all_deps = all_deps.values()
 
         def gather_phony(build, deps, child_rel):
             phony = ".headers.phony"
             child_phony = [child_rel(phony, module=c.name)
-                    for c in all_deps]
+                    for c, _ in all_deps]
 
             build.build(
                 rule = "touch",
@@ -192,7 +209,7 @@ class Module:
                     modopts.includes.append(str(incpath))
                     modopts.includes.append(destpath)
 
-            for dep in all_deps:
+            for dep, static in all_deps:
                 if dep.public_headers:
                     if dep.include_phase == "normal":
                         modopts.includes += [dep.root / "include", f"${{target_dir}}/{dep.name}.dir/include"]
@@ -202,10 +219,12 @@ class Module:
                         from . import BonnibelError
                         raise BonnibelError(f"Module {dep.name} has invalid include_phase={dep.include_phase}")
 
-                if dep.kind == "lib":
-                    modopts.libs.append(target_rel(dep.output))
+                if dep.kind == "headers":
+                    continue
+                elif dep.kind == "lib":
+                    modopts.libs.append((target_rel(dep.get_output(static)), static))
                 else:
-                    modopts.order_only.append(target_rel(dep.output))
+                    modopts.order_only.append(target_rel(dep.get_output(static)))
 
             cc_includes = []
             if modopts.local:
@@ -225,7 +244,7 @@ class Module:
                 build.variable("asflags", ["${asflags}"] + as_includes)
 
             if modopts.libs:
-                build.variable("libs", ["${libs}"] + modopts.libs)
+                build.variable("libs", ["-L${target_dir}", "${libs}"] + modopts.linker_args)
 
             if modopts.ld_script:
                 build.variable("ldflags", ["${ldflags}"] + ["-T", modopts.ld_script])
@@ -267,7 +286,11 @@ class Module:
 
             gather_phony(build, header_deps, target_rel)
 
-            output = target_rel(self.output)
+            if self.kind == "headers":
+                # Header-only, don't output a build rule
+                return
+
+            output = target_rel(self.get_output())
             build.newline()
             build.build(
                 rule = self.kind,
@@ -275,6 +298,7 @@ class Module:
                 inputs = inputs,
                 implicit = modopts.implicit,
                 order_only = modopts.order_only,
+                variables = {"name": self.name},
             )
 
             dump = output + ".dump"
@@ -285,6 +309,26 @@ class Module:
                 inputs = output,
                 variables = {"name": self.name},
             )
+
+            s_output = target_rel(self.get_output(static=True))
+            if s_output != output:
+                build.newline()
+                build.build(
+                    rule = self.kind + "_static",
+                    outputs = s_output,
+                    inputs = inputs,
+                    order_only = modopts.order_only,
+                    variables = {"name": self.name},
+                )
+
+                dump = s_output + ".dump"
+                build.newline()
+                build.build(
+                    rule = "dump",
+                    outputs = dump,
+                    inputs = s_output,
+                    variables = {"name": self.name},
+                )
 
             if self.default:
                 build.newline()

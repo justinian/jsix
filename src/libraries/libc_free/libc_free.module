@@ -1,7 +1,8 @@
 # vim: ft=python
 
 libc_free = module("libc_free",
-    kind = "lib",
+    kind = "headers",
+    basename = "libc_free",
     no_libc = True,
     include_phase = "late",
     public_headers = [

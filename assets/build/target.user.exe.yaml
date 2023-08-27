@@ -5,6 +5,6 @@ ccflags: [
 
 ldflags: [
   "-pie",
-  "--dynamic-linker", "/jsix/tools/ld.so",
-  "-lc++", "-lc++abi", "-lunwind",
+  "--dynamic-linker", "/jsix/lib/ld.so",
+  "--push-state", "--as-needed", "-Bstatic", "-lc++", "-lc++abi", "-lunwind", "--pop-state",
 ]

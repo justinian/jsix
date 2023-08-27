@@ -15,6 +15,7 @@ ccflags: [
   "-U__linux__",
 
   "--sysroot='${source_root}/sysroot'",
+  "-fpic",
 ]
 
 cxxflags: [
@@ -29,5 +30,4 @@ ldflags: [
   "-L", "${source_root}/sysroot/lib",
   "-z", "separate-code",
   "--no-dependent-libraries",
-  "-Bstatic",
 ]

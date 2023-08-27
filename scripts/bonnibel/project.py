@@ -154,8 +154,8 @@ class Project:
             for program in manifest.drivers:
                 add_initrd_stripped("jsix/drivers", program)
 
-            for program in manifest.tools:
-                add_initrd_stripped("jsix/tools", program)
+            for program in manifest.libs:
+                add_initrd_stripped("jsix/lib", program)
 
             syms = manifest.add_data("symbol_table.dat",
                     "Symbol table", ("symbols",))
@@ -166,7 +166,7 @@ class Project:
             build.build(
                 rule = "makest",
                 outputs = [syms_out],
-                inputs = [f"${{build_root}}/kernel/{modules['kernel'].output}"],
+                inputs = [f"${{build_root}}/kernel/{modules['kernel'].get_output(static=True)}"],
                 )
             fatroot_content.append(syms_out)
             manifest.symbols = syms_file

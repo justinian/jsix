@@ -1,7 +1,7 @@
 # vim: ft=python
 
 bp = module("bootproto",
-    kind = "lib",
+    kind = "headers",
     public_headers = [
         "bootproto/acpi.h",
         "bootproto/bootconfig.h",

@@ -1,8 +1,9 @@
 # vim: ft=python
 
 ldso = module("ld.so",
-    kind = "shared",
-    output = "ld.so",
+    kind = "lib",
+    static = True,
+    basename = "ld",
     targets = [ "user" ],
     deps = [ "libc", "util", "elf" ],
     description = "Dynamic Linker",

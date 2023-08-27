@@ -5,7 +5,6 @@ zstd = module("zstd",
     kind = "lib",
     copy_headers = True,
     deps = [ "libc" ],
-    output = "libzstd.a",
     sources = [
         "decompress/zstd_decompress.c",
         "decompress/zstd_ddict.c",
