@@ -30,7 +30,7 @@ void panic_handler(const cpu_state *regs)
     // If we're not running on the CPU that panicked, wait
     // for it to finish
     if (!panic) {
-        while (!main_cpu_done);
+        while (!main_cpu_done) asm ("pause");
     } else {
         new (&com1) panicking::serial_port {panicking::COM1};
         new (&syms) panicking::symbol_table {panic->symbol_data};
