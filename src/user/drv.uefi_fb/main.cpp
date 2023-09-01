@@ -55,7 +55,7 @@ main(int argc, const char **argv, const char **env)
         return s;
     }
 
-    s = j6_vma_map(fb_handle, 0, lfb_addr);
+    s = j6_vma_map(fb_handle, 0, &lfb_addr, j6_vm_flag_exact);
     if (s != j6_status_ok) {
         return s;
     }

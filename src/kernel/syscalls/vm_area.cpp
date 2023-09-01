@@ -23,7 +23,7 @@ vma_create(j6_handle_t *self, size_t size, uint32_t flags)
 }
 
 j6_status_t
-vma_create_map(j6_handle_t *self, size_t size, uintptr_t base, uint32_t flags)
+vma_create_map(j6_handle_t *self, size_t size, uintptr_t *base, uint32_t flags)
 {
     vm_area *a = nullptr;
     vm_flags f = vm_flags::user_mask & flags;
@@ -32,16 +32,17 @@ vma_create_map(j6_handle_t *self, size_t size, uintptr_t base, uint32_t flags)
     else
         a = construct_handle<vm_area_open>(self, size, f);
 
-    process::current().space().add(base, a);
-    return j6_status_ok;
+    *base = process::current().space().add(*base, a, f);
+    return *base ? j6_status_ok : j6_err_collision;
 }
 
 j6_status_t
-vma_map(vm_area *self, process *proc, uintptr_t base)
+vma_map(vm_area *self, process *proc, uintptr_t *base, uint32_t flags)
 {
     vm_space &space = proc ? proc->space() : process::current().space();
-    space.add(base, self);
-    return j6_status_ok;
+    vm_flags f = vm_flags::user_mask & flags;
+    *base = space.add(*base, self, f);
+    return *base ? j6_status_ok : j6_err_collision;
 }
 
 j6_status_t

@@ -102,8 +102,8 @@ memory_initialize_pre_ctors(bootproto::args &kargs)
     obj::vm_area *heap_map = new (&g_kernel_heapmap_area)
         obj::vm_area_untracked(mem::heapmap_size, vm_flags::write);
 
-    vm.add(mem::heap_offset, heap);
-    vm.add(mem::heapmap_offset, heap_map);
+    vm.add(mem::heap_offset, heap, vm_flags::exact);
+    vm.add(mem::heapmap_offset, heap_map, vm_flags::exact);
 
     new (&g_kernel_heap) heap_allocator {mem::heap_offset, mem::heap_size, mem::heapmap_offset};
 
@@ -111,7 +111,7 @@ memory_initialize_pre_ctors(bootproto::args &kargs)
     size_t log_buffer_size = log::log_pages * arch::frame_size;
     obj::vm_area *logs = new (&g_kernel_log_area)
         obj::vm_area_ring(log_buffer_size, vm_flags::write);
-    vm.add(mem::logs_offset, logs);
+    vm.add(mem::logs_offset, logs, vm_flags::exact);
 
     new (&g_logger) log::logger(
             util::buffer::from(mem::logs_offset, log_buffer_size));
@@ -120,7 +120,7 @@ memory_initialize_pre_ctors(bootproto::args &kargs)
     obj::vm_area *caps = new (&g_cap_table_area)
         obj::vm_area_untracked(mem::caps_size, vm_flags::write);
 
-    vm.add(mem::caps_offset, caps);
+    vm.add(mem::caps_offset, caps, vm_flags::exact);
 
     new (&g_cap_table) cap_table {mem::caps_offset};
 
@@ -129,7 +129,7 @@ memory_initialize_pre_ctors(bootproto::args &kargs)
         mem::kernel_stack_pages,
         mem::stacks_size,
         vm_flags::write};
-    vm.add(mem::stacks_offset, &g_kernel_stacks);
+    vm.add(mem::stacks_offset, &g_kernel_stacks, vm_flags::exact);
 
     // Clean out any remaning bootloader page table entries
     for (unsigned i = 0; i < arch::kernel_root_index; ++i)
@@ -140,7 +140,7 @@ void
 memory_initialize_post_ctors(bootproto::args &kargs)
 {
     vm_space &vm = vm_space::kernel_space();
-    vm.add(mem::buffers_offset, &g_kernel_buffers);
+    vm.add(mem::buffers_offset, &g_kernel_buffers, vm_flags::exact);
 
     g_frame_allocator.free(
         get_physical_page(kargs.page_tables.pointer),

@@ -12,5 +12,5 @@ enum j6_vm_flags {
 enum j6_flags {
     j6_flag_block = 0x01,
 
-    j6_flags_COUNT // custom per-type flags should start here
+    j6_flags_MAX // custom per-type flags should start here
 };

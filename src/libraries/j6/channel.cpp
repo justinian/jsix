@@ -56,7 +56,7 @@ channel::create(size_t size)
     channel_addr += size * 2; // account for ring buffer virtual space doubling
     lock.release();
 
-    result = j6_vma_create_map(&vma, size, addr, j6_vm_flag_write|j6_vm_flag_ring);
+    result = j6_vma_create_map(&vma, size, &addr, j6_vm_flag_write|j6_vm_flag_ring);
     if (result != j6_status_ok) {
         syslog("Failed to create channel VMA. Error: %lx", result);
         return nullptr;
@@ -77,7 +77,7 @@ channel::open(j6_handle_t vma)
     util::scoped_lock lock {addr_spinlock};
     uintptr_t addr = channel_addr;
 
-    result = j6_vma_map(vma, 0, addr);
+    result = j6_vma_map(vma, 0, &addr, 0);
     if (result != j6_status_ok) {
         syslog("Failed to map channel VMA. Error: %lx", result);
         return nullptr;

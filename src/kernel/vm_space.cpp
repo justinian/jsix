@@ -57,7 +57,7 @@ vm_space::vm_space() :
             sizeof(system_config),
             vm_flags::none);
 
-    add(sysconf_user_address, sysc);
+    add(sysconf_user_address, sysc, vm_flags::exact);
 }
 
 vm_space::~vm_space()
@@ -80,14 +80,34 @@ vm_space::kernel_space()
     return obj::process::kernel_process().space();
 }
 
-bool
-vm_space::add(uintptr_t base, obj::vm_area *area)
+uintptr_t
+vm_space::add(uintptr_t base, obj::vm_area *area, obj::vm_flags flags)
 {
-    //TODO: check for collisions
+    if (!base)
+        base = min_auto_address;
+
+    uintptr_t end = base + area->size();
+
+    //TODO: optimize find/insert
+    bool exact = util::bits::has(flags, j6_vm_flag_exact);
+    for (size_t i = 0; i < m_areas.count(); ++i) {
+        const vm_space::area &a = m_areas[i];
+        uintptr_t aend = a.base + a.area->size();
+        if (base >= aend)
+            continue;
+
+        if (end <= a.base)
+            break;
+        else if (exact)
+            return 0;
+        else
+            base = aend;
+    }
+
     m_areas.sorted_insert({base, area});
     area->add_to(this);
     area->handle_retain();
-    return true;
+    return base;
 }
 
 void

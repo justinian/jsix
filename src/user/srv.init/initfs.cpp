@@ -10,7 +10,6 @@
 
 static uint64_t initfs_running = 1;
 static constexpr size_t buffer_size = 2048;
-static constexpr uintptr_t load_addr = 0xf00000000;
 
 j6_status_t
 handle_load_request(j6romfs::fs &fs, const char *path, j6_handle_t &vma)
@@ -21,7 +20,8 @@ handle_load_request(j6romfs::fs &fs, const char *path, j6_handle_t &vma)
         return j6_status_ok;
     }
 
-    j6_vma_create_map(&vma, in->size, load_addr, j6_vm_flag_write);
+    uintptr_t load_addr = 0;
+    j6_vma_create_map(&vma, in->size, &load_addr, j6_vm_flag_write);
     util::buffer dest = util::buffer::from(load_addr, in->size);
     fs.load_inode_data(in, dest);
     j6_vma_unmap(vma, 0);

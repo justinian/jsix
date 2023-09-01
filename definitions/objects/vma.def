@@ -17,13 +17,14 @@ object vma : object {
 
     method create_map [constructor cap:map] {
         param size size
-        param address address
+        param address address [inout]
         param flags uint32
     }
 
     method map [cap:map] {
         param process ref process [optional]
-        param address address
+        param address address [inout]
+        param flags uint32
     }
 
     method unmap [cap:unmap] {

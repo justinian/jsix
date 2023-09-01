@@ -58,7 +58,7 @@ start(cpu_data &bsp, void *kpml4)
     uintptr_t addr = 0x8000; // TODO: find a valid address, rewrite addresses
     isr vector = static_cast<isr>(addr >> 12);
     obj::vm_area *vma = new obj::vm_area_fixed(addr, 0x1000, vm_flags::write);
-    vm_space::kernel_space().add(addr, vma);
+    vm_space::kernel_space().add(addr, vma, obj::vm_flags::exact);
     memcpy(
         reinterpret_cast<void*>(addr),
         reinterpret_cast<void*>(&ap_startup),

@@ -24,4 +24,5 @@
 #define j6_err_insufficient         j6_err(0x0005)
 #define j6_err_timed_out            j6_err(0x0006)
 #define j6_err_denied               j6_err(0x0007)
+#define j6_err_collision            j6_err(0x0008)
 

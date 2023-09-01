@@ -100,7 +100,7 @@ load_init_server(bootproto::program &program, uintptr_t modules_address)
             ((sect.type && section_flags::write) ? vm_flags::write : vm_flags::none);
 
         obj::vm_area *vma = new obj::vm_area_fixed(sect.phys_addr, sect.size, flags);
-        space.add(sect.virt_addr, vma);
+        space.add(sect.virt_addr, vma, obj::vm_flags::exact);
     }
 
     uint64_t iopl = (3ull << 12);

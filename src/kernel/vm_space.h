@@ -4,23 +4,27 @@
 
 #include <stdint.h>
 
+#include <j6/flags.h>
 #include <util/enum_bitfields.h>
 #include <util/spinlock.h>
 #include <util/vector.h>
 
+#include "objects/vm_area.h"
 #include "page_table.h"
 
 struct TCB;
 
 namespace obj {
     class process;
-    class vm_area;
 }
 
 /// Tracks a region of virtual memory address space
 class vm_space
 {
 public:
+    /// Never map below this address unless explicitly asked.
+    static constexpr uintptr_t min_auto_address = 16 * 1024 * 1024; // 16 MiB
+
     /// Constructor for the kernel address space
     /// \arg pml4   The existing kernel PML4
     vm_space(page_table *pml4);
@@ -33,8 +37,9 @@ public:
     /// Add a virtual memorty area to this address space
     /// \arg base  The starting address of the area
     /// \arg area  The area to add
-    /// \returns   True if the add succeeded
-    bool add(uintptr_t base, obj::vm_area *area);
+    /// \arg flags Flags for the operation (exact, clobber, etc)
+    /// \returns   The base address the area was added at
+    uintptr_t add(uintptr_t base, obj::vm_area *area, obj::vm_flags flags);
 
     /// Remove a virtual memory area from this address space
     /// \arg area  The area to remove

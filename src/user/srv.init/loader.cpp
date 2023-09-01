@@ -16,10 +16,9 @@
 
 using bootproto::module;
 
-static uintptr_t load_addr = 0xf'000'0000;
-static constexpr size_t stack_size = 0x10000;
-static constexpr uintptr_t stack_top = 0x80000000000;
 static constexpr size_t MiB = 0x10'0000ull;
+static constexpr size_t stack_size = 16 * MiB;
+static constexpr uintptr_t stack_top = 0x7f0'0000'0000;
 
 inline uintptr_t align_up(uintptr_t a) { return ((a-1) & ~(MiB-1)) + MiB; }
 
@@ -31,7 +30,7 @@ map_phys(j6_handle_t sys, uintptr_t phys, size_t len, j6_vm_flags flags)
     if (res != j6_status_ok)
         return j6_handle_invalid;
 
-    res = j6_vma_map(vma, 0, phys);
+    res = j6_vma_map(vma, 0, &phys, j6_vm_flag_exact);
     if (res != j6_status_ok)
         return j6_handle_invalid;
 
@@ -72,8 +71,7 @@ load_program_into(j6_handle_t proc, elf::file &file, uintptr_t image_base, const
         if (seg.type != elf::segment_type::load)
             continue;
 
-        uintptr_t addr = load_addr;
-        load_addr = align_up(load_addr + seg.mem_size);
+        uintptr_t addr = 0;
 
         // TODO: way to remap VMA as read-only if there's no write flag on
         // the segment
@@ -86,7 +84,7 @@ load_program_into(j6_handle_t proc, elf::file &file, uintptr_t image_base, const
         size_t epilogue = seg.mem_size - seg.file_size;
 
         j6_handle_t sub_vma = j6_handle_invalid;
-        j6_status_t res = j6_vma_create_map(&sub_vma, seg.mem_size+prologue, addr, flags);
+        j6_status_t res = j6_vma_create_map(&sub_vma, seg.mem_size+prologue, &addr, flags);
         if (res != j6_status_ok) {
             j6::syslog("  ** error loading ELF '%s': creating sub vma: %lx", path, res);
             return 0;
@@ -102,9 +100,9 @@ load_program_into(j6_handle_t proc, elf::file &file, uintptr_t image_base, const
         if (eos > eop)
             eop = eos;
 
-        uintptr_t start_addr = (image_base + seg.vaddr);
+        uintptr_t start_addr = (image_base + seg.vaddr) & ~0xfffull;
         j6::syslog("Mapping segment from %s at %012lx - %012lx", path, start_addr, start_addr+seg.mem_size);
-        res = j6_vma_map(sub_vma, proc, start_addr & ~0xfffull);
+        res = j6_vma_map(sub_vma, proc, &start_addr, j6_vm_flag_exact);
         if (res != j6_status_ok) {
             j6::syslog("  ** error loading ELF '%s': mapping sub vma to child: %lx", path, res);
             return 0;
@@ -193,10 +191,9 @@ load_program(
     if (!eop)
         return false;
 
-    uintptr_t stack_addr = load_addr;
-    load_addr = align_up(load_addr + stack_size);
+    uintptr_t stack_addr = 0;
     j6_handle_t stack_vma = j6_handle_invalid;
-    j6_status_t res = j6_vma_create_map(&stack_vma, stack_size, stack_addr, j6_vm_flag_write);
+    j6_status_t res = j6_vma_create_map(&stack_vma, stack_size, &stack_addr, j6_vm_flag_write);
     if (res != j6_status_ok) {
         j6::syslog("  ** error loading program '%s': creating stack vma: %lx", path, res);
         return false;
@@ -223,9 +220,8 @@ load_program(
         const elf::file_header *h = program_elf.header();
         loader_arg->image_base = program_image_base;
         loader_arg->phdr = h->ph_offset;
-        loader_arg->phdr_size = h->ph_entsize;
         loader_arg->phdr_count = h->ph_num;
-        loader_arg->entrypoint = program_elf.entrypoint();
+        loader_arg->entrypoint = entrypoint;
 
         j6_arg_handles *handles_arg = stack_push<j6_arg_handles>(stack, 2 * sizeof(j6_arg_handle_entry));
         handles_arg->nhandles = 1;
@@ -258,7 +254,8 @@ load_program(
         }
     }
 
-    res = j6_vma_map(stack_vma, proc, stack_top-stack_size);
+    uintptr_t stack_base = stack_top-stack_size;
+    res = j6_vma_map(stack_vma, proc, &stack_base, j6_vm_flag_exact);
     if (res != j6_status_ok) {
         j6::syslog("  ** error loading program '%s': mapping stack vma: %lx", path, res);
         return false;
