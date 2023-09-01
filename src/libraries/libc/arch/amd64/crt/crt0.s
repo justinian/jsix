@@ -1,3 +1,5 @@
+%include "util/got.inc"
+
 extern main
 extern exit
 extern __init_libj6
@@ -12,17 +14,21 @@ _libc_crt0_start:
     push 0
     mov rbp, rsp
 
-    call __init_libj6 wrt ..got
+    lookup_GOT __init_libj6 
+    call rax
     mov rbx, rax
 
-    call __init_libc wrt ..got
+    lookup_GOT __init_libc
+    call rax
 
     mov rdi, 0
     mov rsi, rsp
     mov rdx, 0    ; TODO: actually parse stack for argc, argv, envp
     mov rcx, rbx
-    call main wrt ..got
+    lookup_GOT main
+    call rax
 
     mov rdi, rax
-    call exit wrt ..got
+    lookup_GOT exit
+    call rax
 .end:
