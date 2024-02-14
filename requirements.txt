@@ -5,3 +5,4 @@ pyyaml >= 5.4
 lark == 0.12.0
 pure-cdb == 4
 pyzstd == 0.15
+pyelftools

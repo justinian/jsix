@@ -474,11 +474,39 @@ class HandleSetPrinter:
         return self._iterator(self.node_map['m_nodes'], self.capacity)
 
 
+class LinkedListPrinter:
+    def __init__(self, llist):
+        self.name = llist.type.tag
+        self.head = llist['m_head']
+        self.tail = llist['m_tail']
+
+        self.items = []
+        current = self.head
+        while current:
+            item = current.dereference()
+            self.items.append((str(len(self.items)), item))
+            current = item['m_next']
+
+    class _iterator:
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            raise StopIteration
+
+    def to_string(self):
+        return f"{self.name}[{len(self.items)}]"
+
+    def children(self):
+        return self.items
+
+
 def build_pretty_printers():
     pp = gdb.printing.RegexpCollectionPrettyPrinter("jsix")
     pp.add_printer("cap table", '^cap_table$', CapTablePrinter)
     pp.add_printer("handle set", '^util::node_set<unsigned long, 0, heap_allocated>$', HandleSetPrinter)
     pp.add_printer("vector", '^util::vector<.*>$', VectorPrinter)
+    pp.add_printer("linked list", '^util::linked_list<.*>$', LinkedListPrinter)
     return pp
 
 gdb.printing.register_pretty_printer(
