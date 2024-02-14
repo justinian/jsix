@@ -12,6 +12,8 @@ ccflags: [
   "-U__linux",
   "-U__linux__",
 
+  "-DMSPACES",
+
   "--sysroot='${source_root}/sysroot'"
 ]
 
@@ -32,3 +34,6 @@ ldflags: [
   "--no-dependent-libraries",
 ]
 
+libs: [
+  "${target_dir}/crt0.o",
+]

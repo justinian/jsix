@@ -1,4 +1,5 @@
 ---
+
 ccflags: [
   "-fpie"
 ]
@@ -7,4 +8,8 @@ ldflags: [
   "-pie",
   "--dynamic-linker", "/jsix/lib/ld.so",
   "--push-state", "--as-needed", "-Bstatic", "-lc++", "-lc++abi", "-lunwind", "--pop-state",
+]
+
+libs: [
+  "${target_dir}/crt0.o",
 ]

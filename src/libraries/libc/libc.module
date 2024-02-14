@@ -18,7 +18,7 @@ def glob(ext, root=''):
 
 sources = []
 for ext in ("c", "cpp", "s", "inc"):
-    sources += glob(ext) + glob(ext + ".cog")
+    sources += [f for f in glob(ext) + glob(ext + ".cog") if not "crt" in f]
 
 headers = []
 for ext in ("h",):
@@ -26,7 +26,7 @@ for ext in ("h",):
 
 libc = module("libc",
     kind = "lib",
-    deps = [ "j6" ],
+    deps = [ "j6", "crt0.o" ],
     basename = "libc",
     include_phase = "late",
     sources = sources,
@@ -39,3 +39,9 @@ libc.variables["ccflags"] = [
     "-DPRINTF_SUPPORT_DECIMAL_SPECIFIERS=0",
     "-DPRINTF_SUPPORT_EXPONENTIAL_SPECIFIERS=0",
 ]
+
+crt = module("crt0.o",
+    kind = "cp",
+    sources = [
+        "arch/amd64/crt/crt0.s",
+    ])

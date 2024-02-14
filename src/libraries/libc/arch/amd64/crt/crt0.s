@@ -1,9 +1,17 @@
-%include "util/got.inc"
+extern _GLOBAL_OFFSET_TABLE_
 
 extern main
 extern exit
 extern __init_libj6
 extern __init_libc
+
+; Put the address of the given symbol in rax
+; This macro is the same as in util/got.inc,
+; but crt0 can't have a dep on libutil
+%macro lookup_GOT 1
+    lea rax, [rel _GLOBAL_OFFSET_TABLE_]
+    mov rax, [rax + %1 wrt ..got]
+%endmacro
 
 global _start:function weak (_libc_crt0_start.end - _libc_crt0_start)
 global _libc_crt0_start:function (_libc_crt0_start.end - _libc_crt0_start)

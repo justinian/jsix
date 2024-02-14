@@ -1,5 +1,5 @@
 ---
-asflags: [ "-I${source_root}/src/kernel/" ]
+asflags: []
 
 ccflags: [
   "--target=x86_64-jsix-elf",
