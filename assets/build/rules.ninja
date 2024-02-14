@@ -47,7 +47,7 @@ rule driver
   description = Linking driver [$target]:$name
 
 rule lib
-  command = $ld -shared $ldflags -o $out $in $libs
+  command = $ld -shared -soname $soname $ldflags -o $out $in $libs
   description = Linking [$target]:$name
 
 rule lib_static

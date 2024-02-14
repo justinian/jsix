@@ -298,7 +298,8 @@ class Module:
                 inputs = inputs,
                 implicit = modopts.implicit,
                 order_only = modopts.order_only,
-                variables = {"name": self.name},
+                variables = {"name": self.name,
+                             "soname": self.get_output()},
             )
 
             dump = output + ".dump"
