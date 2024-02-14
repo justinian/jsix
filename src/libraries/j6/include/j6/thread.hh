@@ -69,6 +69,7 @@ public:
     thread(const thread&) = delete;
 
 private:
+    __attribute__ ((force_align_arg_pointer))
     static void init_proc(thread *t)
     {
         t->m_proc();
