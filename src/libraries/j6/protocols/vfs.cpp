@@ -12,7 +12,7 @@ client::client(j6_handle_t vfs_mb) :
 {
 }
 
-inline size_t simple_strlen(const char *s) { size_t n = 0; while (s && *s) n++; return n; }
+inline size_t simple_strlen(const char *s) { size_t n = 0; while (s && *s) s++, n++; return n; }
 
 j6_status_t
 client::load_file(char *path, j6_handle_t &vma)
