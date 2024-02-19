@@ -65,7 +65,7 @@ stack_push(uint8_t *&stack, size_t extra)
 uintptr_t
 load_program_into(j6_handle_t proc, elf::file &file, uintptr_t image_base, const char *path)
 {
-    uintptr_t eop = 0;
+    uintptr_t eop = 0; // end of program
 
     for (auto &seg : file.segments()) {
         if (seg.type != elf::segment_type::load)
@@ -96,6 +96,7 @@ load_program_into(j6_handle_t proc, elf::file &file, uintptr_t image_base, const
         memcpy(dest+prologue, src, seg.file_size);
         memset(dest+prologue+seg.file_size, 0, epilogue);
 
+        // end of segment
         uintptr_t eos = image_base + seg.vaddr + seg.mem_size + prologue;
         if (eos > eop)
             eop = eos;
@@ -219,12 +220,16 @@ load_program(
         j6_arg_loader *loader_arg = stack_push<j6_arg_loader>(stack, 0);
         const elf::file_header *h = program_elf.header();
         loader_arg->image_base = program_image_base;
-        loader_arg->phdr = h->ph_offset;
-        loader_arg->phdr_count = h->ph_num;
-        loader_arg->entrypoint = entrypoint;
+
+        const elf::section_header *got_section = program_elf.get_section_by_name(".got.plt");
+        if (got_section)
+            loader_arg->got = reinterpret_cast<uintptr_t*>(program_image_base + got_section->addr);
+
+        // The dynamic linker will offset the entrypoint, don't do it here.
+        loader_arg->entrypoint = program_elf.entrypoint();
 
         j6_arg_handles *handles_arg = stack_push<j6_arg_handles>(stack, 2 * sizeof(j6_arg_handle_entry));
-        handles_arg->nhandles = 1;
+        handles_arg->nhandles = 2;
         handles_arg->handles[0].handle = slp;
         handles_arg->handles[0].proto = j6::proto::sl::id;
         handles_arg->handles[1].handle = vfs;
@@ -268,8 +273,9 @@ load_program(
     }
 
     j6_handle_t thread = j6_handle_invalid;
-    ptrdiff_t stack_consumed = stack_orig - stack;
-    res = j6_thread_create(&thread, proc, stack_top - stack_consumed, entrypoint, program_image_base, 0);
+    uintptr_t target_stack = stack_top - (stack_orig - stack);
+    target_stack &= ~0xfull; // Align to 16-byte stack
+    res = j6_thread_create(&thread, proc, target_stack, entrypoint, program_image_base, 0);
     if (res != j6_status_ok) {
         j6::syslog("  ** error loading program '%s': creating thread: %lx", path, res);
         return false;

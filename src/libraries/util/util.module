@@ -2,6 +2,7 @@
 
 module("util",
     kind = "lib",
+    static = True,
     sources = [
         "cdb.cpp",
         "bip_buffer.cpp",

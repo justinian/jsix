@@ -18,7 +18,8 @@ public:
     /// Load a file into a VMA
     /// \arg path  Path of the file to load
     /// \arg vma   [out] Handle to the loaded VMA, or invalid if not found
-    j6_status_t load_file(char *path, j6_handle_t &vma);
+    /// \arg size  [out] Size of the file
+    j6_status_t load_file(char *path, j6_handle_t &vma, size_t &size);
 
 private:
     j6_handle_t m_service;

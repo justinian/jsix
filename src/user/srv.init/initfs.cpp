@@ -26,7 +26,7 @@ handle_load_request(j6romfs::fs &fs, const char *path, j6_handle_t &vma)
     fs.load_inode_data(in, dest);
     j6_vma_unmap(vma, 0);
 
-    return j6_err_nyi;
+    return j6_status_ok;
 }
 
 void

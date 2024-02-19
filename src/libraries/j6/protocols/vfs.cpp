@@ -15,7 +15,7 @@ client::client(j6_handle_t vfs_mb) :
 inline size_t simple_strlen(const char *s) { size_t n = 0; while (s && *s) s++, n++; return n; }
 
 j6_status_t
-client::load_file(char *path, j6_handle_t &vma)
+client::load_file(char *path, j6_handle_t &vma, size_t &size)
 {
     if (!path)
         return j6_err_invalid_arg;
@@ -43,8 +43,16 @@ client::load_file(char *path, j6_handle_t &vma)
     if (s != j6_status_ok)
         return s;
 
-    if (tag == j6_proto_vfs_file)
+    if (tag == j6_proto_vfs_file) {
+        size = 0;
+
+        // Get the size into `size`
+        s = j6_vma_resize(vma, &size);
+        if (s != j6_status_ok)
+            return s;
+
         return j6_status_ok; // handle is already in `vma`
+    }
 
     else if (tag == j6_proto_base_status)
         return *reinterpret_cast<j6_status_t*>(data); // contains a status

@@ -10,7 +10,7 @@
 #include <j6/types.h>
 
 namespace {
-    constexpr size_t static_arr_count = 8;
+    constexpr size_t static_arr_count = 32;
     j6_handle_descriptor handle_array[static_arr_count];
     j6_init_args init_args;
 } // namespace

@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <j6/errors.h>
+#include <j6/flags.h>
 #include <j6/syscalls.h>
 
 namespace __j6libc {
@@ -21,7 +22,7 @@ void * increase_core(intptr_t i)
 		if (i < 0)
 			return (void*)-1;
 
-		j6_status_t result = j6_vma_create_map(&core_handle, i, &core_base, 1);
+		j6_status_t result = j6_vma_create_map(&core_handle, i, &core_base, j6_vm_flag_write);
 		if (result != j6_status_ok)
 			return (void*)-1;
 

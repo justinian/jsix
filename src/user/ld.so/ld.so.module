@@ -8,8 +8,8 @@ ldso = module("ld.so",
     deps = [ "libc", "util", "elf" ],
     description = "Dynamic Linker",
     sources = [
+        "image.cpp",
         "main.cpp",
-        "relocate.cpp",
         "start.s",
     ])
 

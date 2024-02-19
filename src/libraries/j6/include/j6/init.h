@@ -2,7 +2,9 @@
 /// \file init.h
 /// Process initialization utility functions
 
+#include <stddef.h>
 #include <stdint.h>
+
 #include <j6/types.h>
 #include <util/api.h>
 
@@ -38,9 +40,7 @@ struct j6_arg_loader
     add_header(loader);
     uintptr_t loader_base;
     uintptr_t image_base;
-    uintptr_t phdr;
-    size_t phdr_size;
-    size_t phdr_count;
+    uintptr_t *got;
     uintptr_t entrypoint;
 };
 

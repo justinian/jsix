@@ -3,32 +3,16 @@
 
 #include <elf/headers.h>
 #include <j6/init.h>
+#include <j6/protocols/vfs.hh>
 #include <j6/syslog.hh>
 #include <util/pointers.h>
-#include "relocate.h"
 
-uintptr_t
-locate_dyn_section(uintptr_t base, uintptr_t phdr, size_t phdr_size, size_t phdr_count)
-{
-    if (!phdr || !phdr_count)
-        return 0;
+#include "image.h"
 
-    const elf::segment_header *ph_base =
-        reinterpret_cast<const elf::segment_header*>(phdr + base);
-
-    for (size_t i = 0; i < phdr_count; ++i) {
-        const elf::segment_header *ph =
-            util::offset_pointer(ph_base, i*phdr_size);
-
-        if (ph->type == elf::segment_type::dynamic)
-            return ph->vaddr;
-    }
-
-    return 0;
-}
+image_list all_images;
 
 extern "C" uintptr_t
-ldso_init(j6_arg_header *stack_args, uintptr_t const *got)
+ldso_init(j6_arg_header *stack_args, uintptr_t *got)
 {
     j6_arg_loader *arg_loader = nullptr;
     j6_arg_handles *arg_handles = nullptr;
@@ -57,14 +41,37 @@ ldso_init(j6_arg_header *stack_args, uintptr_t const *got)
         exit(127);
     }
 
-    relocate_image(arg_loader->loader_base, got[0]);
+    j6_handle_t vfs = j6_handle_invalid;
+    if (arg_handles) {
+        for (size_t i = 0; i < arg_handles->nhandles; ++i) {
+            j6_arg_handle_entry &ent = arg_handles->handles[i];
+            if (ent.proto == j6::proto::vfs::id) {
+                vfs = ent.handle;
+                break;
+            }
+        }
+    }
 
-    uintptr_t dyn_section = locate_dyn_section(
-        arg_loader->image_base,
-        arg_loader->phdr,
-        arg_loader->phdr_size,
-        arg_loader->phdr_count);
-    relocate_image(arg_loader->image_base, dyn_section);
+
+    // First relocate ld.so itself. It cannot have any dependencies
+    image_list::item_type ldso_image;
+    ldso_image.base = arg_loader->loader_base;
+    ldso_image.got = got;
+    ldso_image.read_dyn_table(
+        reinterpret_cast<const dyn_entry*>(got[0] + arg_loader->loader_base));
+
+    image_list just_ldso;
+    just_ldso.push_back(&ldso_image);
+    ldso_image.relocate(just_ldso);
+
+    image_list::item_type target_image;
+    target_image.base = arg_loader->image_base;
+    target_image.got = arg_loader->got;
+    target_image.read_dyn_table(
+        reinterpret_cast<const dyn_entry*>(arg_loader->got[0] + arg_loader->image_base));
+
+    all_images.push_back(&target_image);
+    all_images.load(vfs, 0xb00'0000);
 
     return arg_loader->entrypoint + arg_loader->image_base;
 }
