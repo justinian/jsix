@@ -22,8 +22,8 @@ enum class vm_flags : uint32_t
 #define VM_FLAG(name, v) name = v,
 #include <j6/tables/vm_flags.inc>
 #undef VM_FLAG
-    driver_mask     = 0x000fffff, ///< flags allowed via syscall for drivers
-    user_mask       = 0x0000ffff, ///< flags allowed via syscall for non-drivers
+    driver_mask     = 0x00ff'ffff, ///< flags allowed via syscall for drivers
+    user_mask       = 0x000f'ffff, ///< flags allowed via syscall for non-drivers
 };
 is_bitfield(vm_flags);
 

@@ -56,7 +56,11 @@ vma_unmap(vm_area *self, process *proc)
 j6_status_t
 vma_resize(vm_area *self, size_t *size)
 {
-    *size = self->resize(*size);
+    if (!*size) {
+        *size = self->size();
+    } else {
+        *size = self->resize(*size);
+    }
     return j6_status_ok;
 }
 

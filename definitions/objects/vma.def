@@ -32,6 +32,6 @@ object vma : object {
     }
 
     method resize [cap:resize] {
-        param size size [inout]
+        param size size [inout]  # New size for the VMA, or 0 to query the current size without changing
     }
 }
