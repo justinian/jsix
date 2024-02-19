@@ -8,6 +8,7 @@ module("util",
         "bip_buffer.cpp",
         "format.cpp",
         "spinlock.cpp",
+        "xoroshiro.cpp",
     ],
     public_headers = [
         "util/allocator.h",
@@ -33,4 +34,5 @@ module("util",
         "util/spinlock.h",
         "util/util.h",
         "util/vector.h",
+        "util/xoroshiro.h",
     ])
