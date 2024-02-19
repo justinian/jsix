@@ -67,6 +67,8 @@ public:
         return reinterpret_cast<const file_header *>(m_data.pointer);
     }
 
+    const section_header * get_section_by_name(const char *);
+
     /// Get the ELF file type from the header
     inline filetype type() const { return header()->file_type; }
 

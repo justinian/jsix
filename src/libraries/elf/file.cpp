@@ -13,10 +13,11 @@ const T *convert(util::const_buffer data, size_t offset) {
 }
 
 file::file(util::const_buffer data) :
-    m_segments(convert<segment_header>(data, fh(data)->ph_offset), fh(data)->ph_entsize, fh(data)->ph_num),
-    m_sections(convert<section_header>(data, fh(data)->sh_offset), fh(data)->sh_entsize, fh(data)->sh_num),
-    m_data(data)
+    m_segments {convert<segment_header>(data, fh(data)->ph_offset), fh(data)->ph_entsize, fh(data)->ph_num},
+    m_sections {convert<section_header>(data, fh(data)->sh_offset), fh(data)->sh_entsize, fh(data)->sh_num},
+    m_data {data}
 {
+
 }
 
 bool
@@ -51,5 +52,30 @@ file::entrypoint() const
     return static_cast<uintptr_t>(header()->entrypoint);
 }
 
+
+
+const section_header *
+file::get_section_by_name(const char *name)
+{
+    if (!name)
+        return nullptr;
+
+    const section_header &shstrtab = m_sections[header()->sh_str_idx];
+    util::counted<const char> strings = {
+        reinterpret_cast<const char*>(m_data.pointer) + shstrtab.offset,
+        shstrtab.size,
+    };
+
+    for (auto &sec : m_sections) {
+        const char *section_name = &strings[sec.name_offset];
+        size_t i = 0;
+
+        // Can't depend on libc, do our own basic strcmp here
+        while (name[i] && section_name[i] && name[i] == section_name[i]) ++i;
+        if (name[i] == section_name[i])
+            return &sec;
+    }
+    return nullptr;
+}
 
 } // namespace elf
