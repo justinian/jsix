@@ -37,7 +37,6 @@ ldso_init(j6_arg_header *stack_args, uintptr_t *got)
     }
 
     if (!arg_loader) {
-        j6::syslog("ld.so: error: did not get j6_arg_loader");
         exit(127);
     }
 
@@ -71,7 +70,7 @@ ldso_init(j6_arg_header *stack_args, uintptr_t *got)
         reinterpret_cast<const dyn_entry*>(arg_loader->got[0] + arg_loader->image_base));
 
     all_images.push_back(&target_image);
-    all_images.load(vfs, 0xb00'0000);
+    all_images.load(vfs, arg_loader->start_addr);
 
     return arg_loader->entrypoint + arg_loader->image_base;
 }

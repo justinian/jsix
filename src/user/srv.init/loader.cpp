@@ -10,6 +10,7 @@
 #include <j6/protocols.h>
 #include <j6/syscalls.h>
 #include <j6/syslog.hh>
+#include <util/xoroshiro.h>
 
 #include "j6romfs.h"
 #include "loader.h"
@@ -19,6 +20,8 @@ using bootproto::module;
 static constexpr size_t MiB = 0x10'0000ull;
 static constexpr size_t stack_size = 16 * MiB;
 static constexpr uintptr_t stack_top = 0x7f0'0000'0000;
+
+static util::xoroshiro256pp rng {0x123456};
 
 inline uintptr_t align_up(uintptr_t a) { return ((a-1) & ~(MiB-1)) + MiB; }
 
@@ -180,7 +183,9 @@ load_program(
     elf::file program_elf {program_data};
 
     bool dyn = program_elf.type() == elf::filetype::shared;
-    uintptr_t program_image_base = dyn ? 0xa00'0000 : 0;
+    uintptr_t program_image_base = 0;
+    if (dyn)
+        program_image_base = (rng.next() & 0xffe0 + 16) << 20;
 
     if (!program_elf.valid(dyn ? elf::filetype::shared : elf::filetype::executable)) {
         j6::syslog("  ** error loading program '%s': ELF is invalid", path);
@@ -250,8 +255,10 @@ load_program(
                     return false;
                 }
 
-                load_program_into(proc, ldso_elf, ldso_image_base, ldso_path);
+                uintptr_t eop = load_program_into(proc, ldso_elf, ldso_image_base, ldso_path);
+                eop = (eop & ~0xfffffull) + 0x100000;
                 loader_arg->loader_base = ldso_image_base;
+                loader_arg->start_addr = eop;
                 entrypoint = ldso_elf.entrypoint() + ldso_image_base;
                 delete [] reinterpret_cast<uint8_t*>(ldso_data.pointer);
                 break;
