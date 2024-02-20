@@ -17,10 +17,6 @@
 #include <__j6libc/wchar_t.h>
 #include <stdarg.h>
 
-typedef unsigned int wint_t;
-
-#define WEOF  ((wint_t)-1)
-
 struct tm;
 
 typedef struct {

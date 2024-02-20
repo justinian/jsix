@@ -14,5 +14,9 @@
 typedef __WCHAR_TYPE__   wchar_t;
 #endif
 
+typedef unsigned int wint_t;
+
+#define WEOF  ((wint_t)-1)
+
 #define WCHAR_MAX  __WCHAR_MAX__
 #define WCHAR_MIN  ((-__WCHAR_MAX__) - 1)

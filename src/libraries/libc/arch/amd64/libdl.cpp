@@ -4,4 +4,5 @@ extern "C" {
     // we have a real libdl
     int dladdr(const void *, void *) { return 0; }
     int dl_iterate_phdr(void *, void *) { return 0; }
+    int dlsym(void *, const char *) { return 0; }
 }

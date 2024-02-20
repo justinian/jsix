@@ -10,4 +10,7 @@
   * file, You can obtain one at https://mozilla.org/MPL/2.0/.
   */
 
-#error wctype.h is not yet implemented.
+#include <__j6libc/wchar_t.h>
+
+typedef int wctrans_t;
+typedef int wctype_t;

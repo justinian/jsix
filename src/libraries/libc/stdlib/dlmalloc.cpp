@@ -5420,6 +5420,8 @@ void* dlrealloc_in_place(void* oldmem, size_t bytes) {
     return mem;
 }
 
+void* aligned_alloc(size_t alignment, size_t size) { return dlmemalign(alignment, size); }
+
 void* dlmemalign(size_t alignment, size_t bytes) {
     if (alignment <= MALLOC_ALIGNMENT) {
         return dlmalloc(bytes);
