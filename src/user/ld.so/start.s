@@ -17,10 +17,12 @@ _ldso_start:
     ; Call ldso_init with the loader-provided stack data and
     ; also the address of the GOT, since clang refuses to take
     ; the address of it, only dereference it.
-    mov rdi, rbp
+    mov rdi, [rbp]
     lea rsi, [rel _GLOBAL_OFFSET_TABLE_]
     call ldso_init
-    ; The real program's entrypoint is now in rax
+
+    ; The real program's entrypoint is now in rax, save it to r11
+    mov r11, rax
 
     ; Put the function call params back
     pop r9
@@ -30,7 +32,19 @@ _ldso_start:
     pop rsi
     pop rdi
 
-    jmp rax
+    ; Pop all the loader args
+    pop rsp ; Point the stack at the first arg
+    mov rax, 0
+    mov rbx, 0
+.poploop:
+    mov eax, [dword rsp]    ; size
+    mov ebx, [dword rsp+4]  ; type
+    add rsp, rax
+    cmp ebx, 0
+    jne .poploop
+
+    mov rbp, rsp
+    jmp r11
 .end:
 
 

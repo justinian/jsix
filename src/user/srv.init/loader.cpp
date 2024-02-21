@@ -49,7 +49,7 @@ stack_push_sentinel(uint8_t *&stack)
     memset(stack, 0, size);
     j6_arg_header *header = reinterpret_cast<j6_arg_header*>(stack);
     header->type = j6_arg_type_none;
-    header->size = 0;
+    header->size = size;
 }
 
 template <typename T> T *
@@ -222,6 +222,7 @@ load_program(
     uintptr_t entrypoint = program_elf.entrypoint() + program_image_base;
 
     if (dyn) {
+        stack_push_sentinel(stack);
         j6_arg_loader *loader_arg = stack_push<j6_arg_loader>(stack, 0);
         const elf::file_header *h = program_elf.header();
         loader_arg->image_base = program_image_base;
@@ -239,6 +240,15 @@ load_program(
         handles_arg->handles[0].proto = j6::proto::sl::id;
         handles_arg->handles[1].handle = vfs;
         handles_arg->handles[1].proto = j6::proto::vfs::id;
+
+        // Align the stack to be one word short of 16-byte aligned, so
+        // that the arg address will be aligned when pushed
+        while ((reinterpret_cast<uintptr_t>(stack) & 0xf) != 0x8) --stack;
+
+        // Push the args list address itself
+        stack -= sizeof(uintptr_t);
+        uintptr_t *args_addr = reinterpret_cast<uintptr_t*>(stack);
+        *args_addr = stack_top - (stack_orig - reinterpret_cast<uint8_t*>(handles_arg));
 
         uintptr_t ldso_image_base = (eop & ~(MiB-1)) + MiB;
 

@@ -43,7 +43,6 @@ struct j6_arg_loader
     uintptr_t *got;
     uintptr_t entrypoint;
     uintptr_t start_addr;
-    uintptr_t other;
 };
 
 struct j6_arg_driver
