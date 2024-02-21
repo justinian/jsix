@@ -1,4 +1,3 @@
-#include <new>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -42,7 +41,7 @@ main(int argc, const char **argv)
     j6_handle_t event = j6_handle_invalid;
     j6_status_t result = j6_status_ok;
 
-    g_handle_sys = j6_find_first_handle(j6_object_type_system);
+    g_handle_sys = j6_find_init_handle(0);
     if (g_handle_sys == j6_handle_invalid)
         return 1;
 
@@ -68,7 +67,7 @@ main(int argc, const char **argv)
     static constexpr size_t buffer_size = 512;
     char buffer[buffer_size];
 
-    j6_handle_t slp = j6_find_first_handle(j6_object_type_mailbox);
+    j6_handle_t slp = j6_find_init_handle(j6::proto::sl::id);
     if (slp == j6_handle_invalid)
         return 1;
 

@@ -18,6 +18,8 @@ global _libc_crt0_start:function (_libc_crt0_start.end - _libc_crt0_start)
 
 _start:
 _libc_crt0_start:
+    mov rdx, [rsp]      ; grab args pointer
+
     push 0              ; Add null frame
     push 0
     mov rbp, rsp

@@ -95,12 +95,11 @@ main(int argc, const char **argv)
 {
     j6_log("logging server starting");
 
-
-    g_handle_sys = j6_find_first_handle(j6_object_type_system);
+    g_handle_sys = j6_find_init_handle(0);
     if (g_handle_sys == j6_handle_invalid)
         return 1;
 
-    j6_handle_t slp = j6_find_first_handle(j6_object_type_mailbox);
+    j6_handle_t slp = j6_find_init_handle(j6::proto::sl::id);
     if (g_handle_sys == j6_handle_invalid)
         return 2;
 

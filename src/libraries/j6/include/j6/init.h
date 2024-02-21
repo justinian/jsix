@@ -33,6 +33,13 @@ struct j6_arg_header
 {
     uint32_t size;
     uint16_t type;
+    uint16_t reserved;
+    j6_arg_header *next;
+};
+
+struct j6_arg_none
+{
+    add_header(none);
 };
 
 struct j6_arg_loader
@@ -67,13 +74,16 @@ struct j6_arg_handles
 
 struct j6_init_args
 {
-    uint64_t args[2];
+    uint64_t argv[2];
+    j6_arg_header *args;
 };
-
 
 
 /// Find the first handle of the given type held by this process
 j6_handle_t API j6_find_first_handle(j6_object_type obj_type);
+
+/// Find the first handle tagged with the given proto in the process init args
+j6_handle_t API j6_find_init_handle(uint64_t proto);
 
 /// Get the init args
 const j6_init_args * j6_get_init_args();

@@ -18,7 +18,7 @@ ldso_init(j6_arg_header *stack_args, uintptr_t *got)
     j6_arg_handles *arg_handles = nullptr;
 
     j6_arg_header *arg = stack_args;
-    while (arg && arg->type != j6_arg_type_none) {
+    while (arg) {
         switch (arg->type)
         {
         case j6_arg_type_loader:
@@ -33,7 +33,7 @@ ldso_init(j6_arg_header *stack_args, uintptr_t *got)
             break;
         }
 
-        arg = util::offset_pointer(arg, arg->size);
+        arg = arg->next;
     }
 
     if (!arg_loader) {

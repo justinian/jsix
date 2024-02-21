@@ -29,7 +29,7 @@ main(int argc, const char **argv, const char **env)
     using bootproto::devices::fb_layout;
 
     const j6_init_args *init = j6_get_init_args();
-    const uefi_fb *fb = reinterpret_cast<const uefi_fb*>(init->args[0]);
+    const uefi_fb *fb = reinterpret_cast<const uefi_fb*>(init->argv[0]);
 
     if (!fb || !fb->framebuffer) {
         j6::syslog("fb driver didn't find a framebuffer, exiting");
@@ -45,7 +45,7 @@ main(int argc, const char **argv, const char **env)
         j6_vm_flag_write_combine |
         j6_vm_flag_mmio;
 
-    j6_handle_t sys = j6_find_first_handle(j6_object_type_system);
+    j6_handle_t sys = j6_find_init_handle(0);
     if (sys == j6_handle_invalid)
         return 1;
 

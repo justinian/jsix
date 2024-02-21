@@ -12,7 +12,7 @@
 namespace {
     constexpr size_t static_arr_count = 32;
     j6_handle_descriptor handle_array[static_arr_count];
-    j6_init_args init_args;
+    j6_init_args init_args = { 0, 0, 0 };
 } // namespace
 
 j6_handle_t
@@ -36,6 +36,26 @@ j6_find_first_handle(j6_object_type obj_type)
     return j6_handle_invalid;
 }
 
+j6_handle_t
+j6_find_init_handle(uint64_t proto)
+{
+    j6_arg_header *arg = init_args.args;
+    while (arg) {
+        if (arg->type == j6_arg_type_handles) {
+            j6_arg_handles *harg = reinterpret_cast<j6_arg_handles*>(arg);
+            for (unsigned i = 0; i < harg->nhandles; ++i) {
+                j6_arg_handle_entry &ent = harg->handles[i];
+                if (ent.proto == proto)
+                    return ent.handle;
+            }
+        }
+        arg = arg->next;
+    }
+
+    return j6_handle_invalid;
+}
+
+
 const j6_init_args * API
 j6_get_init_args()
 {
@@ -43,10 +63,11 @@ j6_get_init_args()
 }
 
 extern "C" void API
-__init_libj6(uint64_t arg0, uint64_t arg1)
+__init_libj6(uint64_t argv0, uint64_t argv1, j6_arg_header *args)
 {
-    init_args.args[0] = arg0;
-    init_args.args[1] = arg1;
+    init_args.argv[0] = argv0;
+    init_args.argv[1] = argv1;
+    init_args.args = args;
 }
 
 

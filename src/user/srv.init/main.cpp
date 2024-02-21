@@ -75,7 +75,7 @@ main(int argc, const char **argv, const char **env)
         return s;
 
     const j6_init_args *initp = j6_get_init_args();
-    uintptr_t modules_addr = initp->args[0];
+    uintptr_t modules_addr = initp->argv[0];
 
     std::vector<const module*> mods;
     load_modules(modules_addr, sys, 0, mods);

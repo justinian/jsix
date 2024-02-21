@@ -25,6 +25,47 @@ static util::xoroshiro256pp rng {0x123456};
 
 inline uintptr_t align_up(uintptr_t a) { return ((a-1) & ~(MiB-1)) + MiB; }
 
+class stack_pusher
+{
+public:
+    stack_pusher(uint8_t *local_top, uintptr_t child_top) :
+        m_local_top {local_top}, m_child_top {child_top}, m_used {0}, m_last_arg {0} {
+        memset(local_top - 4096, 0, 4096); // Zero top page
+    }
+
+    template <typename T, size_t A = 8>
+    T * push(size_t extra = 0) {
+        m_used += sizeof(T) + extra;
+        m_used = (m_used + (A-1ull)) & ~(A-1ull);
+        return reinterpret_cast<T*>(local_pointer());
+    }
+
+    template <typename T>
+    T * push_arg(size_t extra = 0) {
+        T * arg = push<T>(extra);
+        arg->header.size = sizeof(T) + extra;
+        arg->header.type = T::type_id;
+        arg->header.next = reinterpret_cast<j6_arg_header*>(m_last_arg);
+        m_last_arg = child_pointer();
+        return arg;
+    }
+
+    void push_current_pointer() {
+        uintptr_t addr = child_pointer();
+        uintptr_t *ptr = push<uintptr_t, 16>();
+        *ptr = addr;
+    }
+
+    uint8_t * local_pointer() { return m_local_top - m_used; }
+    uintptr_t child_pointer() { return m_child_top - m_used; }
+
+private:
+    uint8_t *m_local_top;
+    uintptr_t m_child_top;
+    size_t m_used;
+    uintptr_t m_last_arg;
+};
+
 j6_handle_t
 map_phys(j6_handle_t sys, uintptr_t phys, size_t len, j6_vm_flags flags)
 {
@@ -38,31 +79,6 @@ map_phys(j6_handle_t sys, uintptr_t phys, size_t len, j6_vm_flags flags)
         return j6_handle_invalid;
 
     return vma;
-}
-
-void
-stack_push_sentinel(uint8_t *&stack)
-{
-    static constexpr size_t size = sizeof(j6_arg_header);
-
-    stack -= size;
-    memset(stack, 0, size);
-    j6_arg_header *header = reinterpret_cast<j6_arg_header*>(stack);
-    header->type = j6_arg_type_none;
-    header->size = size;
-}
-
-template <typename T> T *
-stack_push(uint8_t *&stack, size_t extra)
-{
-    size_t len = sizeof(T) + extra;
-    size_t size = (len + 7) & ~7ull;
-    stack -= size;
-    memset(stack, 0, sizeof(T));
-    T * arg = reinterpret_cast<T*>(stack);
-    arg->header.type = T::type_id;
-    arg->header.size = len;
-    return arg;
 }
 
 uintptr_t
@@ -205,50 +221,51 @@ load_program(
         return false;
     }
 
-    uint8_t *stack_orig = reinterpret_cast<uint8_t*>(stack_addr + stack_size);
-    uint8_t *stack = stack_orig;
-    memset(stack - 4096, 0, 4096); // Zero top page
-    stack_push_sentinel(stack);
+    stack_pusher stack {
+        reinterpret_cast<uint8_t*>(stack_addr + stack_size),
+        stack_top,
+    };
+
+    // Push program's arg sentinel
+    stack.push_arg<j6_arg_none>();
+
+    j6_arg_handles *handles_arg = stack.push_arg<j6_arg_handles>(3 * sizeof(j6_arg_handle_entry));
+    handles_arg->nhandles = 3;
+    handles_arg->handles[0].handle = sys;
+    handles_arg->handles[0].proto = 0;
+    handles_arg->handles[1].handle = slp;
+    handles_arg->handles[1].proto = j6::proto::sl::id;
+    handles_arg->handles[2].handle = vfs;
+    handles_arg->handles[2].proto = j6::proto::vfs::id;
 
     if (arg) {
-        size_t data_size = arg->bytes - sizeof(module);
-        j6_arg_driver *driver_arg = stack_push<j6_arg_driver>(stack, data_size);
+        size_t data_size = arg->bytes - sizeof(*arg);
+        j6_arg_driver *driver_arg = stack.push_arg<j6_arg_driver>(data_size);
         driver_arg->device = arg->type_id;
 
         const uint8_t *arg_data = arg->data<uint8_t>();
         memcpy(driver_arg->data, arg_data, data_size);
     }
 
+    // Add an aligned pointer to the program's args list
+    stack.push_current_pointer();
+
     uintptr_t entrypoint = program_elf.entrypoint() + program_image_base;
 
     if (dyn) {
-        stack_push_sentinel(stack);
-        j6_arg_loader *loader_arg = stack_push<j6_arg_loader>(stack, 0);
-        const elf::file_header *h = program_elf.header();
+        // Push loaders's arg sentinel
+        stack.push_arg<j6_arg_none>();
+
+        j6_arg_loader *loader_arg = stack.push_arg<j6_arg_loader>();
         loader_arg->image_base = program_image_base;
+        loader_arg->entrypoint = program_elf.entrypoint(); // ld.so will offset the entrypoint, don't do it here.
 
         const elf::section_header *got_section = program_elf.get_section_by_name(".got.plt");
         if (got_section)
             loader_arg->got = reinterpret_cast<uintptr_t*>(program_image_base + got_section->addr);
 
-        // The dynamic linker will offset the entrypoint, don't do it here.
-        loader_arg->entrypoint = program_elf.entrypoint();
-
-        j6_arg_handles *handles_arg = stack_push<j6_arg_handles>(stack, 2 * sizeof(j6_arg_handle_entry));
-        handles_arg->nhandles = 2;
-        handles_arg->handles[0].handle = slp;
-        handles_arg->handles[0].proto = j6::proto::sl::id;
-        handles_arg->handles[1].handle = vfs;
-        handles_arg->handles[1].proto = j6::proto::vfs::id;
-
-        // Align the stack to be one word short of 16-byte aligned, so
-        // that the arg address will be aligned when pushed
-        while ((reinterpret_cast<uintptr_t>(stack) & 0xf) != 0x8) --stack;
-
-        // Push the args list address itself
-        stack -= sizeof(uintptr_t);
-        uintptr_t *args_addr = reinterpret_cast<uintptr_t*>(stack);
-        *args_addr = stack_top - (stack_orig - reinterpret_cast<uint8_t*>(handles_arg));
+        // Add an aligned pointer to the loaders's args list
+        stack.push_current_pointer();
 
         uintptr_t ldso_image_base = (eop & ~(MiB-1)) + MiB;
 
@@ -290,9 +307,7 @@ load_program(
     }
 
     j6_handle_t thread = j6_handle_invalid;
-    uintptr_t target_stack = stack_top - (stack_orig - stack);
-    target_stack &= ~0xfull; // Align to 16-byte stack
-    res = j6_thread_create(&thread, proc, target_stack, entrypoint, program_image_base, 0);
+    res = j6_thread_create(&thread, proc, stack.child_pointer(), entrypoint, program_image_base, 0);
     if (res != j6_status_ok) {
         j6::syslog("  ** error loading program '%s': creating thread: %lx", path, res);
         return false;
