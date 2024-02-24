@@ -42,7 +42,7 @@ client::lookup_service(uint64_t proto_id, j6_handle_t &handle)
     size_t data_size = sizeof(proto_id);
     handle = j6_handle_invalid;
 
-    j6::syslog("Looking up service for %x", proto_id);
+    j6::syslog(j6::logs::proto, j6::log_level::verbose, "Looking up service for %x", proto_id);
     j6_status_t s = j6_mailbox_call(m_service, &tag,
         &data, &data_size, data_size,
         &handle, &handle_count);

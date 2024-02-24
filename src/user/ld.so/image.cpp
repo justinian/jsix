@@ -64,20 +64,20 @@ load_image(image_list::item_type &img, j6::proto::vfs::client &vfs)
     j6_handle_t vma = j6_handle_invalid;
     j6_status_t r = vfs.load_file(path, vma, file_size);
     if (r != j6_status_ok) {
-        j6::syslog("Error %d opening %s", r, path);
+        j6::syslog(j6::logs::app, j6::log_level::error, "Error %d opening %s", r, path);
         return 0;
     }
 
     uintptr_t file_addr = 0;
     r = j6_vma_map(vma, 0, &file_addr, 0);
     if (r != j6_status_ok) {
-        j6::syslog("Error %d opening %s", r, path);
+        j6::syslog(j6::logs::app, j6::log_level::error, "Error %d opening %s", r, path);
         return 0;
     }
 
     elf::file file { util::const_buffer::from(file_addr, file_size) };
     if (!file.valid(elf::filetype::shared)) {
-        j6::syslog("Error opening %s: Not an ELF shared object", path);
+        j6::syslog(j6::logs::app, j6::log_level::error, "Error opening %s: Not an ELF shared object", path);
         return 0;
     }
 
@@ -105,7 +105,7 @@ load_image(image_list::item_type &img, j6::proto::vfs::client &vfs)
         j6_handle_t sub_vma = j6_handle_invalid;
         j6_status_t res = j6_vma_create_map(&sub_vma, seg.mem_size+prologue, &addr, flags);
         if (res != j6_status_ok) {
-            j6::syslog("  ** error loading ELF '%s': creating sub vma: %lx", path, res);
+            j6::syslog(j6::logs::app, j6::log_level::error, "error loading '%s': creating sub vma: %lx", path, res);
             return 0;
         }
 
@@ -279,11 +279,11 @@ image_list::load(j6_handle_t vfs_mb, uintptr_t addr)
         // Load the file
         addr = load_image(*img, vfs);
         if (!img->got) {
-            j6::syslog("Error opening %s: Could not find GOT", img->name);
+            j6::syslog(j6::logs::app, j6::log_level::error, "Error opening %s: Could not find GOT", img->name);
             return;
         }
 
-        j6::syslog("Loaded %s at base address 0x%x", img->name, img->base);
+        j6::syslog(j6::logs::app, j6::log_level::verbose, "Loaded %s at base address 0x%x", img->name, img->base);
         addr = (addr & ~0xffffull) + 0x10000;
 
         // Find the DT_NEEDED entries
@@ -317,7 +317,7 @@ image::parse_rela_table(const util::counted<const rela> &table, image_list &ctx)
             break;
 
         default:
-            j6::syslog("Unknown rela relocation type %d in %s", rel.type, name);
+            j6::syslog(j6::logs::app, j6::log_level::verbose, "Unknown rela relocation type %d in %s", rel.type, name);
             exit(126);
             break;
         }

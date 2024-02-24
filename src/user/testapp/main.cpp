@@ -38,7 +38,7 @@ test_floats()
 
     for (int i = 0; i < len; ++i) {
         if (bs[i] != orig * i * mult) {
-            j6::syslog("ERROR: floating point discrepency");
+            j6::syslog(j6::logs::app, j6::log_level::error, "ERROR: floating point discrepency");
             return false;
         }
     }
@@ -49,7 +49,7 @@ test_floats()
 void
 thread_proc(void* channelp)
 {
-    j6_log("sub thread starting");
+    j6::syslog(j6::logs::app, j6::log_level::info, "sub thread starting");
 
     for (int i = 0; i < 100; ++i)
         if (!test_floats()) break;
@@ -66,7 +66,7 @@ thread_proc(void* channelp)
     if (result != j6_status_ok)
         j6_thread_exit();
 
-    j6_log("sub thread received message");
+    j6::syslog(j6::logs::app, j6::log_level::info, "sub thread received message");
 
     for (int i = 0; i < len; ++i)
         if (buffer[i] >= 'A' && buffer[i] <= 'Z')
@@ -76,12 +76,12 @@ thread_proc(void* channelp)
     if (result != j6_status_ok)
         j6_thread_exit();
 
-    j6_log("sub thread sent message");
+    j6::syslog(j6::logs::app, j6::log_level::info, "sub thread sent message");
 
     for (int i = 1; i < 5; ++i)
         j6_thread_sleep(i*10);
 
-    j6_log("sub thread exiting");
+    j6::syslog(j6::logs::app, j6::log_level::info, "sub thread exiting");
     j6_thread_exit();
 }
 
@@ -90,10 +90,10 @@ main(int argc, const char **argv)
 {
     j6_signal_t out = 0;
 
-    j6_log("main thread starting");
+    j6::syslog(j6::logs::app, j6::log_level::info, "main thread starting");
 
     for (int i = 0; i < argc; ++i)
-        j6_log(argv[i]);
+        j6::syslog(j6::logs::app, j6::log_level::info, argv[i]);
 
     void *base = malloc(0x1000);
     if (!base)
@@ -103,20 +103,20 @@ main(int argc, const char **argv)
     for (int i = 0; i < 3; ++i)
         vma_ptr[i*100] = uint64_t(i);
 
-    j6_log("main thread wrote to memory area");
+    j6::syslog(j6::logs::app, j6::log_level::info, "main thread wrote to memory area");
 
     j6::channel *chan = j6::channel::create(0x2000);
     if (!chan)
         return 1002;
 
-    j6_log("main thread created channel");
+    j6::syslog(j6::logs::app, j6::log_level::info, "main thread created channel");
 
     j6::thread child_thread {[=](){ thread_proc(chan); }, stack_top};
     j6_status_t result = child_thread.start();
     if (result != j6_status_ok)
         return result;
 
-    j6_log("main thread created sub thread");
+    j6::syslog(j6::logs::app, j6::log_level::info, "main thread created sub thread");
 
     for (int i = 0; i < 100; ++i)
         if (!test_floats()) break;
@@ -134,12 +134,12 @@ main(int argc, const char **argv)
     if (result != j6_status_ok)
         return result;
 
-    j6_log(message);
+    j6::syslog(j6::logs::app, j6::log_level::info, message);
 
-    j6_log("main thread waiting on sub thread");
+    j6::syslog(j6::logs::app, j6::log_level::info, "main thread waiting on sub thread");
     child_thread.join();
 
-    j6_log("main thread done, exiting");
+    j6::syslog(j6::logs::app, j6::log_level::info, "main thread done, exiting");
     return 0;
 }
 

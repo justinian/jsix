@@ -47,7 +47,7 @@ channel::create(size_t size)
     j6_handle_t vma = j6_handle_invalid;
 
     if (size < arch::frame_size || (size & (size - 1)) != 0) {
-        syslog("Bad channel size: %lx", size);
+        syslog(j6::logs::ipc, j6::log_level::error, "Bad channel size: %lx", size);
         return nullptr;
     }
 
@@ -58,7 +58,7 @@ channel::create(size_t size)
 
     result = j6_vma_create_map(&vma, size, &addr, j6_vm_flag_write|j6_vm_flag_ring);
     if (result != j6_status_ok) {
-        syslog("Failed to create channel VMA. Error: %lx", result);
+        syslog(j6::logs::ipc, j6::log_level::error, "Failed to create channel VMA. Error: %lx", result);
         return nullptr;
     }
 
@@ -79,7 +79,7 @@ channel::open(j6_handle_t vma)
 
     result = j6_vma_map(vma, 0, &addr, 0);
     if (result != j6_status_ok) {
-        syslog("Failed to map channel VMA. Error: %lx", result);
+        syslog(j6::logs::ipc, j6::log_level::error, "Failed to map channel VMA. Error: %lx", result);
         return nullptr;
     }
 

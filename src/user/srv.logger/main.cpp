@@ -1,4 +1,3 @@
-#include <new>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -11,6 +10,7 @@
 #include <j6/protocols/service_locator.hh>
 #include <j6/syscalls.h>
 #include <j6/sysconf.h>
+#include <j6/syslog.hh>
 #include <j6/types.h>
 #include <util/hash.h>
 
@@ -70,7 +70,7 @@ log_pump_proc(j6::channel *cout)
             message_buffer = malloc(buffer_size);
             continue;
         } else if (s != j6_status_ok) {
-            j6_log("uart driver got error from get_log");
+            j6::syslog(j6::logs::srv, j6::log_level::warn, "log server got error from get_log");
             continue;
         }
 
@@ -93,7 +93,7 @@ log_pump_proc(j6::channel *cout)
 int
 main(int argc, const char **argv)
 {
-    j6_log("logging server starting");
+    j6::syslog(j6::logs::srv, j6::log_level::info, "logging server starting");
 
     g_handle_sys = j6_find_init_handle(0);
     if (g_handle_sys == j6_handle_invalid)

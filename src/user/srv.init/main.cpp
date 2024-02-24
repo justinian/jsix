@@ -40,7 +40,7 @@ main(int argc, const char **argv, const char **env)
     j6_handle_t vfs_mb = j6_handle_invalid;
     j6_handle_t vfs_mb_child = j6_handle_invalid;
 
-    j6_log("srv.init starting");
+    j6::syslog(j6::logs::srv, j6::log_level::info, "srv.init starting");
 
     sys = j6_find_first_handle(j6_object_type_system);
     if (sys == j6_handle_invalid)
@@ -115,7 +115,7 @@ main(int argc, const char **argv, const char **env)
     j6_handle_t initrd_vma =
         map_phys(sys, initrd_buf.pointer, initrd_buf.count);
     if (initrd_vma == j6_handle_invalid) {
-        j6_log("  ** error loading ramdisk: mapping physical vma");
+        j6::syslog(j6::logs::srv, j6::log_level::info, "error loading ramdisk: mapping physical vma");
         return 4;
     }
 
@@ -137,7 +137,7 @@ main(int argc, const char **argv, const char **env)
                 break;
 
             default:
-                j6::syslog("Unknown device type id: %lx", m->type_id);
+                j6::syslog(j6::logs::srv, j6::log_level::warn, "Unknown device type id: %lx", m->type_id);
         }
     }
 

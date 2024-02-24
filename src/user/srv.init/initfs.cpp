@@ -59,7 +59,7 @@ initfs_start(j6romfs::fs &fs, j6_handle_t mb)
 
     while (initfs_running) {
         if (s != j6_status_ok) {
-            j6::syslog("initfs: error in j6_mailbox_respond: %x", s);
+            j6::syslog(j6::logs::srv, j6::log_level::error, "initfs: error in j6_mailbox_respond: %x", s);
             return;
         }
 

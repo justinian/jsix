@@ -105,7 +105,7 @@ load_program_into(j6_handle_t proc, elf::file &file, uintptr_t image_base, const
         j6_handle_t sub_vma = j6_handle_invalid;
         j6_status_t res = j6_vma_create_map(&sub_vma, seg.mem_size+prologue, &addr, flags);
         if (res != j6_status_ok) {
-            j6::syslog("  ** error loading ELF '%s': creating sub vma: %lx", path, res);
+            j6::syslog(j6::logs::srv, j6::log_level::error, "error loading '%s': creating sub vma: %lx", path, res);
             return 0;
         }
 
@@ -121,16 +121,16 @@ load_program_into(j6_handle_t proc, elf::file &file, uintptr_t image_base, const
             eop = eos;
 
         uintptr_t start_addr = (image_base + seg.vaddr) & ~0xfffull;
-        j6::syslog("Mapping segment from %s at %012lx - %012lx", path, start_addr, start_addr+seg.mem_size);
+        j6::syslog(j6::logs::srv, j6::log_level::verbose, "Mapping segment from %s at %012lx - %012lx", path, start_addr, start_addr+seg.mem_size);
         res = j6_vma_map(sub_vma, proc, &start_addr, j6_vm_flag_exact);
         if (res != j6_status_ok) {
-            j6::syslog("  ** error loading ELF '%s': mapping sub vma to child: %lx", path, res);
+            j6::syslog(j6::logs::srv, j6::log_level::error, "error loading '%s': mapping sub vma to child: %lx", path, res);
             return 0;
         }
 
         res = j6_vma_unmap(sub_vma, 0);
         if (res != j6_status_ok) {
-            j6::syslog("  ** error loading ELF '%s': unmapping sub vma: %lx", path, res);
+            j6::syslog(j6::logs::srv, j6::log_level::error, "error loading '%s': unmapping sub vma: %lx", path, res);
             return 0;
         }
     }
@@ -144,7 +144,7 @@ give_handle(j6_handle_t proc, j6_handle_t h, const char *name)
     if (h != j6_handle_invalid) {
         j6_status_t res = j6_process_give_handle(proc, h);
         if (res != j6_status_ok) {
-            j6::syslog("  ** error loading program: giving %s handle: %lx", name, res);
+            j6::syslog(j6::logs::srv, j6::log_level::error, "error loading '%s': giving handle: %lx", name, res);
             return false;
         }
     }
@@ -158,7 +158,7 @@ create_process(j6_handle_t sys, j6_handle_t slp, j6_handle_t vfs)
     j6_handle_t proc = j6_handle_invalid;
     j6_status_t res = j6_process_create(&proc);
     if (res != j6_status_ok) {
-        j6::syslog("  ** error loading program: creating process: %lx", res);
+        j6::syslog(j6::logs::srv, j6::log_level::error, "error loading program: creating process: %lx", res);
         return j6_handle_invalid;
     }
 
@@ -175,7 +175,7 @@ load_file(const j6romfs::fs &fs, const char *path)
     if (!in || in->type != j6romfs::inode_type::file)
         return {};
 
-    j6::syslog("  Loading file: %s", path);
+    j6::syslog(j6::logs::srv, j6::log_level::info, "  Loading file: %s", path);
 
     uint8_t *data = new uint8_t [in->size];
     util::buffer program {data, in->size};
@@ -191,7 +191,7 @@ load_program(
         j6_handle_t sys, j6_handle_t slp, j6_handle_t vfs,
         const module *arg)
 {
-    j6::syslog("Loading program '%s' into new process", path);
+    j6::syslog(j6::logs::srv, j6::log_level::info, "Loading program '%s' into new process", path);
     util::buffer program_data = load_file(fs, path);
     if (!program_data.pointer)
         return false;
@@ -204,7 +204,7 @@ load_program(
         program_image_base = (rng.next() & 0xffe0 + 16) << 20;
 
     if (!program_elf.valid(dyn ? elf::filetype::shared : elf::filetype::executable)) {
-        j6::syslog("  ** error loading program '%s': ELF is invalid", path);
+        j6::syslog(j6::logs::srv, j6::log_level::error, "error loading '%s': ELF is invalid", path);
         return false;
     }
 
@@ -217,7 +217,7 @@ load_program(
     j6_handle_t stack_vma = j6_handle_invalid;
     j6_status_t res = j6_vma_create_map(&stack_vma, stack_size, &stack_addr, j6_vm_flag_write);
     if (res != j6_status_ok) {
-        j6::syslog("  ** error loading program '%s': creating stack vma: %lx", path, res);
+        j6::syslog(j6::logs::srv, j6::log_level::error, "error loading '%s': creating stack vma: %lx", path, res);
         return false;
     }
 
@@ -278,7 +278,7 @@ load_program(
 
                 elf::file ldso_elf {ldso_data};
                 if (!ldso_elf.valid(elf::filetype::shared)) {
-                    j6::syslog("  ** error loading dynamic linker for program '%s': ELF is invalid", path);
+                    j6::syslog(j6::logs::srv, j6::log_level::error, "error loading dynamic linker for '%s': ELF is invalid", path);
                     return false;
                 }
 
@@ -296,20 +296,20 @@ load_program(
     uintptr_t stack_base = stack_top-stack_size;
     res = j6_vma_map(stack_vma, proc, &stack_base, j6_vm_flag_exact);
     if (res != j6_status_ok) {
-        j6::syslog("  ** error loading program '%s': mapping stack vma: %lx", path, res);
+        j6::syslog(j6::logs::srv, j6::log_level::error, "error loading '%s': mapping stack vma: %lx", path, res);
         return false;
     }
 
     res = j6_vma_unmap(stack_vma, 0);
     if (res != j6_status_ok) {
-        j6::syslog("  ** error loading program '%s': unmapping stack vma: %lx", path, res);
+        j6::syslog(j6::logs::srv, j6::log_level::error, "error loading '%s': unmapping stack vma: %lx", path, res);
         return false;
     }
 
     j6_handle_t thread = j6_handle_invalid;
     res = j6_thread_create(&thread, proc, stack.child_pointer(), entrypoint, program_image_base, 0);
     if (res != j6_status_ok) {
-        j6::syslog("  ** error loading program '%s': creating thread: %lx", path, res);
+        j6::syslog(j6::logs::srv, j6::log_level::error, "error loading '%s': creating thread: %lx", path, res);
         return false;
     }
 

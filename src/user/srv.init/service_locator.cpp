@@ -33,7 +33,7 @@ service_locator_start(j6_handle_t mb)
     j6_handle_t give_handle = j6_handle_invalid;
     uint64_t proto_id;
 
-    j6::syslog("SL> Starting service locator on mbx handle %x", mb);
+    j6::syslog(j6::logs::proto, j6::log_level::verbose, "SL> Starting service locator on mbx handle %x", mb);
 
     while (true) {
         uint64_t data_len = sizeof(uint64_t);
@@ -56,7 +56,7 @@ service_locator_start(j6_handle_t mb)
                 break;
             }
 
-            j6::syslog("SL> Registering handle %x for proto %x", give_handle, proto_id);
+            j6::syslog(j6::logs::proto, j6::log_level::verbose, "SL> Registering handle %x for proto %x", give_handle, proto_id);
 
             services.insert( {proto_id, give_handle} );
             tag = j6_proto_base_status;
@@ -72,10 +72,10 @@ service_locator_start(j6_handle_t mb)
             {
                 auto found = services.find(proto_id);
                 if (found != services.end()) {
-                    j6::syslog("SL> Found handle %x for proto %x", give_handle, proto_id);
+                    j6::syslog(j6::logs::proto, j6::log_level::verbose, "SL> Found handle %x for proto %x", give_handle, proto_id);
                     give_handle = found->second;
                 } else {
-                    j6::syslog("SL> Found no handles for proto %x", proto_id);
+                    j6::syslog(j6::logs::proto, j6::log_level::verbose, "SL> Found no handles for proto %x", proto_id);
                     give_handle = j6_handle_invalid;
                 }
             }

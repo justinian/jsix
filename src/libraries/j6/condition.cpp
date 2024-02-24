@@ -12,7 +12,7 @@ namespace j6 {
 void
 condition::wait()
 {
-    j6::syslog("Waiting on condition %lx", this);
+    j6::syslog(j6::logs::app, j6::log_level::verbose, "Waiting on condition %lx", this);
     uint32_t v = __atomic_add_fetch(&m_state, 1, __ATOMIC_ACQ_REL);
     j6_status_t s = j6_futex_wait(&m_state, v, 0);
     while (s == j6_status_futex_changed) {
@@ -20,7 +20,7 @@ condition::wait()
         if (v == 0) break;
         s = j6_futex_wait(&m_state, v, 0);
     }
-    j6::syslog("Woke on condition %lx", this);
+    j6::syslog(j6::logs::app, j6::log_level::verbose, "Woke on condition %lx", this);
 }
 
 void

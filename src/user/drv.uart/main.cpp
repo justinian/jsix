@@ -36,7 +36,7 @@ constexpr uintptr_t stack_top = 0xf80000000;
 int
 main(int argc, const char **argv)
 {
-    j6_log("uart driver starting");
+    j6::syslog(j6::logs::srv, j6::log_level::info, "uart driver starting");
 
     j6_handle_t event = j6_handle_invalid;
     j6_status_t result = j6_status_ok;
@@ -93,11 +93,11 @@ main(int argc, const char **argv)
             if (result != j6_status_ok)
                 break;
 
-            //j6::syslog("uart driver: got %d bytes from channel", size);
+            j6::syslog(j6::logs::srv, j6::log_level::spam, "uart driver: got %d bytes from channel", size);
             com1.write(buffer, size);
         }
         if (result != j6_status_would_block)
-            j6::syslog("uart driver: error %lx receiving from channel", result);
+            j6::syslog(j6::logs::srv, j6::log_level::error, "uart driver: error %lx receiving from channel", result);
 
         uint64_t signals = 0;
         result = j6_event_wait(event, &signals, 500);
@@ -107,10 +107,10 @@ main(int argc, const char **argv)
         }
 
         if (result != j6_status_ok) {
-            j6::syslog("uart driver: error %lx waiting for irq", result);
+            j6::syslog(j6::logs::srv, j6::log_level::error, "uart driver: error %lx waiting for irq", result);
             continue;
         } else {
-            j6::syslog("uart driver: irq signals: %lx", signals);
+            j6::syslog(j6::logs::srv, j6::log_level::verbose, "uart driver: irq signals: %lx", signals);
         }
 
         if (signals & (1<<0))
@@ -119,7 +119,7 @@ main(int argc, const char **argv)
             com1.handle_interrupt();
     }
 
-    j6_log("uart driver somehow got to the end of main");
+    j6::syslog(j6::logs::srv, j6::log_level::error, "uart driver somehow got to the end of main");
     return 0;
 }
 

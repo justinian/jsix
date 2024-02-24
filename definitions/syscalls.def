@@ -24,6 +24,8 @@ interface syscalls [syscall] {
 
     # Write a message to the kernel log
     function log {
+        param area uint8
+        param severity uint8
         param message string
     }
 

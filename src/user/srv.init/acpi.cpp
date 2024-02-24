@@ -13,7 +13,7 @@ inline constexpr j6_vm_flags mmio_flags = (j6_vm_flags)(j6_vm_flag_write | j6_vm
 void
 probe_pci(j6_handle_t sys, pci_group &pci)
 {
-    j6::syslog("Probing PCI group at base %016lx", pci.base);
+    j6::syslog(j6::logs::srv, j6::log_level::info, "Probing PCI group at base %016lx", pci.base);
     map_phys(sys, pci.base, bus_mmio_size, mmio_flags);
 
     for (unsigned b = pci.bus_start; b <= pci.bus_end; ++b) {
@@ -57,7 +57,7 @@ load_mcfg(j6_handle_t sys, const acpi::table_header *header)
 
         probe_pci(sys, group);
 
-        j6::syslog("  Found MCFG entry: base %lx  group %d  bus %d-%d",
+        j6::syslog(j6::logs::srv, j6::log_level::info, "  Found MCFG entry: base %lx  group %d  bus %d-%d",
                 mcfge.base, mcfge.group, mcfge.bus_start, mcfge.bus_end);
     }
 
@@ -74,7 +74,7 @@ load_acpi(j6_handle_t sys, const bootproto::module *mod)
 
     const void *root_table = info->root;
     if (!root_table) {
-        j6::syslog("null ACPI root table pointer");
+        j6::syslog(j6::logs::srv, j6::log_level::error, "null ACPI root table pointer");
         return;
     }
 
@@ -88,7 +88,7 @@ load_acpi(j6_handle_t sys, const bootproto::module *mod)
     for (size_t i = 0; i < num_tables; ++i) {
         const acpi::table_header *header = xsdt->headers[i];
         if (!header->validate()) {
-            j6::syslog("ACPI table at %lx failed validation", header);
+            j6::syslog(j6::logs::srv, j6::log_level::error, "ACPI table at %lx failed validation", header);
             continue;
         }
 

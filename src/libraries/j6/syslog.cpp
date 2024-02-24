@@ -9,7 +9,7 @@
 namespace j6 {
 
 void
-syslog(const char *fmt, ...)
+syslog(logs area, log_level severity, const char *fmt, ...)
 {
     char buffer[200];
 
@@ -19,7 +19,7 @@ syslog(const char *fmt, ...)
     va_end(va);
 
     buffer[n] = 0;
-    j6_log(buffer);
+    j6_log(static_cast<uint8_t>(area), static_cast<uint8_t>(severity), buffer);
 }
 
 } // namespace j6

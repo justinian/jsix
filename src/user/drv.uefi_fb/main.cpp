@@ -22,7 +22,7 @@ extern "C" {
 int
 main(int argc, const char **argv, const char **env)
 {
-    j6::syslog("fb driver starting");
+    j6::syslog(j6::logs::srv, j6::log_level::info, "fb driver starting");
 
     using bootproto::devices::uefi_fb;
     using bootproto::devices::video_mode;
@@ -32,7 +32,7 @@ main(int argc, const char **argv, const char **env)
     const uefi_fb *fb = reinterpret_cast<const uefi_fb*>(init->argv[0]);
 
     if (!fb || !fb->framebuffer) {
-        j6::syslog("fb driver didn't find a framebuffer, exiting");
+        j6::syslog(j6::logs::srv, j6::log_level::error, "fb driver didn't find a framebuffer, exiting");
         return 1;
     }
 
@@ -104,7 +104,7 @@ main(int argc, const char **argv, const char **env)
             buffer_size = size;
             continue;
         } else if (s != j6_status_ok) {
-            j6::syslog("fb driver got error from get_log, quitting");
+            j6::syslog(j6::logs::srv, j6::log_level::error, "fb driver got error from get_log, quitting");
             return s;
         }
 
@@ -130,6 +130,6 @@ main(int argc, const char **argv, const char **env)
         }
     }
 
-    j6::syslog("fb driver done, exiting");
+    j6::syslog(j6::logs::srv, j6::log_level::info, "fb driver done, exiting");
     return 0;
 }

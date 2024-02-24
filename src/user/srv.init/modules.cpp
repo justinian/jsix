@@ -5,6 +5,7 @@
 #include <arch/memory.h>
 #include <j6/errors.h>
 #include <j6/syscalls.h>
+#include <j6/syslog.hh>
 
 #include "loader.h"
 #include "modules.h"
@@ -23,7 +24,7 @@ load_modules(
     while (p) {
         j6_handle_t mod_vma = map_phys(system, p, arch::frame_size);
         if (mod_vma == j6_handle_invalid) {
-            j6_log("  ** error loading modules: mapping physical vma");
+            j6::syslog(j6::logs::srv, j6::log_level::error, "error loading modules: mapping physical vma");
             return;
         }
 

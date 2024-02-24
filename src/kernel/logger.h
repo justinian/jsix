@@ -77,6 +77,7 @@ private:
     friend void warn   (logs area, const char *fmt, ...);
     friend void error  (logs area, const char *fmt, ...);
     friend void fatal  (logs area, const char *fmt, ...);
+    friend void log    (logs area, level severity, const char *fmt, ...);
 
     void output(level severity, logs area, const char *fmt, va_list args);
 
@@ -112,6 +113,8 @@ void info   (logs area, const char *fmt, ...);
 void warn   (logs area, const char *fmt, ...);
 void error  (logs area, const char *fmt, ...);
 void fatal  (logs area, const char *fmt, ...);
+
+void log    (logs area, level severity, const char *fmt, ...);
 
 } // namespace log
 

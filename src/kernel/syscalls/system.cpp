@@ -21,10 +21,11 @@ namespace syscalls {
 using system = class ::system;
 
 j6_status_t
-log(const char *message)
+log(uint8_t area, uint8_t severity, const char *message)
 {
     thread &th = thread::current();
-    log::info(logs::syscall, "Message <%02lx:%02lx>: %s", th.parent().obj_id(), th.obj_id(), message);
+    log::log(static_cast<logs>(area), static_cast<log::level>(severity),
+        "<%02lx:%02lx>: %s", th.parent().obj_id(), th.obj_id(), message);
     return j6_status_ok;
 }
 

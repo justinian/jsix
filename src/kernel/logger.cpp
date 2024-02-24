@@ -124,7 +124,8 @@ LOG_LEVEL_FUNCTION(info);
 LOG_LEVEL_FUNCTION(warn);
 LOG_LEVEL_FUNCTION(error);
 
-void fatal(logs area, const char *fmt, ...)
+void
+fatal(logs area, const char *fmt, ...)
 {
     logger *l = logger::s_log;
     if (!l) return;
@@ -135,6 +136,21 @@ void fatal(logs area, const char *fmt, ...)
     va_end(args);
 
     kassert(false, "log::fatal");
+}
+
+void
+log(logs area, level severity, const char *fmt, ...)
+{
+    logger *l = logger::s_log;
+    if (!l) return;
+
+    level limit = l->get_level(area);
+    if (severity > limit) return;
+
+    va_list args;
+    va_start(args, fmt);
+    l->output(severity, area, fmt, args);
+    va_end(args);
 }
 
 } // namespace log

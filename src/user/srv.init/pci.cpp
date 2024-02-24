@@ -99,11 +99,11 @@ pci_device::pci_device(pci_group &group, uint8_t bus, uint8_t device, uint8_t fu
 
     uint16_t *status = command + 1;
 
-    j6::syslog("Found PCIe device at %02d:%02d:%d of type %x.%x.%x id %04x:%04x",
+    j6::syslog(j6::logs::srv, j6::log_level::info, "Found PCIe device at %02d:%02d:%d of type %x.%x.%x id %04x:%04x",
             bus, device, func, m_class, m_subclass, m_progif, m_vendor, m_device);
 
-    j6::syslog("  = BAR0 %016lld", get_bar(0));
-    j6::syslog("  = BAR1 %016lld", get_bar(1));
+    j6::syslog(j6::logs::srv, j6::log_level::verbose, "  = BAR0 %016lld", get_bar(0));
+    j6::syslog(j6::logs::srv, j6::log_level::verbose, "  = BAR1 %016lld", get_bar(1));
 
     if (*status & 0x0010) {
         // Walk the extended capabilities list
