@@ -9,16 +9,11 @@ extern cb __init_array_end;
 namespace {
 
 void
-run_ctor_list(cb *array, cb *end)
+run_ctor_list(cb *p, cb *end)
 {
-    if (!array || !end)
-        return;
-
-    size_t i = 0;
-    while (true) {
-        const cb &ctor = array[i++];
-        if (&ctor == end) return;
-        if (ctor) ctor();
+    while (p && end && p < end) {
+        if (p) (*p)();
+        ++p;
     }
 }
 
@@ -31,8 +26,8 @@ run_global_ctors()
 
 } // namespace
 
-extern "C"
-void __init_libc()
+extern "C" void
+__init_libc()
 {
     run_global_ctors();
 }

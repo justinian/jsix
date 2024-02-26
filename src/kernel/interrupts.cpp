@@ -123,16 +123,19 @@ isr_handler(cpu_state *regs)
             uintptr_t cr2 = 0;
             __asm__ __volatile__ ("mov %%cr2, %0" : "=r"(cr2));
 
-            bool user = cr2 < mem::kernel_offset;
-            vm_space::fault_type ft =
-                static_cast<vm_space::fault_type>(regs->errorcode);
+            // The zero page is always invalid
+            if (cr2 > mem::frame_size) {
+                bool user = cr2 < mem::kernel_offset;
+                vm_space::fault_type ft =
+                    static_cast<vm_space::fault_type>(regs->errorcode);
 
-            vm_space &space = user
-                ? obj::process::current().space()
-                : vm_space::kernel_space();
+                vm_space &space = user
+                    ? obj::process::current().space()
+                    : vm_space::kernel_space();
 
-            if (cr2 && space.handle_fault(cr2, ft))
-                break;
+                if (cr2 && space.handle_fault(cr2, ft))
+                    break;
+            }
 
             util::format({message, sizeof(message)},
                 "Page fault: %016lx%s%s%s%s%s", cr2,
