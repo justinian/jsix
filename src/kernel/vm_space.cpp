@@ -55,9 +55,9 @@ vm_space::vm_space() :
     obj::vm_area *sysc = new obj::vm_area_fixed(
             g_sysconf_phys,
             sizeof(system_config),
-            vm_flags::none);
+            0);
 
-    add(sysconf_user_address, sysc, vm_flags::exact);
+    add(sysconf_user_address, sysc, util::bitset32::of(vm_flags::exact));
 }
 
 vm_space::~vm_space()
@@ -81,7 +81,7 @@ vm_space::kernel_space()
 }
 
 uintptr_t
-vm_space::add(uintptr_t base, obj::vm_area *area, obj::vm_flags flags)
+vm_space::add(uintptr_t base, obj::vm_area *area, util::bitset32 flags)
 {
     if (!base)
         base = min_auto_address;
@@ -89,7 +89,7 @@ vm_space::add(uintptr_t base, obj::vm_area *area, obj::vm_flags flags)
     uintptr_t end = base + area->size();
 
     //TODO: optimize find/insert
-    bool exact = util::bits::has(flags, j6_vm_flag_exact);
+    bool exact = flags.get(vm_flags::exact);
     for (size_t i = 0; i < m_areas.count(); ++i) {
         const vm_space::area &a = m_areas[i];
         uintptr_t aend = a.base + a.area->size();
@@ -192,7 +192,7 @@ vm_space::copy_from(const vm_space &source, const obj::vm_area &vma)
 
     while (count--) {
         uint64_t &e = dit.entry(page_table::level::pt);
-        if (e & page_table::flag::present) {
+        if (util::bitset64::from(e) & page_flags::present) {
             // TODO: handle clobbering mapping
         }
         e = sit.entry(page_table::level::pt);
@@ -210,11 +210,11 @@ vm_space::page_in(const obj::vm_area &vma, uintptr_t offset, uintptr_t phys, siz
         return;
 
     uintptr_t virt = base + offset;
-    page_table::flag flags =
-        page_table::flag::present |
-        (m_kernel ? page_table::flag::none : page_table::flag::user) |
-        ((vma.flags() && vm_flags::write) ? page_table::flag::write : page_table::flag::none) |
-        ((vma.flags() && vm_flags::write_combine) ? page_table::flag::wc : page_table::flag::none);
+    util::bitset64 flags =
+        page_flags::present |
+        (m_kernel ? page_flags::none : page_flags::user) |
+        (vma.flags().get(vm_flags::write) ? page_flags::write : page_flags::none) |
+        (vma.flags().get(vm_flags::write_combine) ? page_flags::wc : page_flags::none);
 
     page_table::iterator it {virt, m_pml4};
 
@@ -222,7 +222,7 @@ vm_space::page_in(const obj::vm_area &vma, uintptr_t offset, uintptr_t phys, siz
         uint64_t &entry = it.entry(page_table::level::pt);
         entry = (phys + i * frame_size) | flags;
         log::spam(logs::paging, "Setting entry for %016llx: %016llx [%04llx]",
-                it.vaddress(), (phys + i * frame_size), flags);
+                it.vaddress(), (phys + i * frame_size), flags.value());
         ++it;
     }
 }
@@ -247,11 +247,11 @@ vm_space::clear(const obj::vm_area &vma, uintptr_t offset, size_t count, bool fr
     while (count--) {
         uint64_t &e = it.entry(page_table::level::pt);
         uintptr_t phys = e & ~0xfffull;
+        util::bitset64 flags = e;
 
-        if (e & page_table::flag::present) {
-            uint64_t orig = e;
+        if (flags & page_flags::present) {
             e = 0;
-            if (orig & page_table::flag::accessed) {
+            if (flags & page_flags::accessed) {
                 auto *addr = reinterpret_cast<const uint8_t *>(it.vaddress());
                 asm ( "invlpg %0" :: "m"(*addr) : "memory" );
             }
@@ -290,11 +290,11 @@ vm_space::lock(const obj::vm_area &vma, uintptr_t offset, size_t count)
     while (count--) {
         uint64_t &e = it.entry(page_table::level::pt);
         uintptr_t phys = e & ~0xfffull;
+        util::bitset64 flags = e;
 
-        if (e & page_table::flag::present) {
-            uint64_t orig = e;
+        if (flags & page_flags::present) {
             e = locked_page_tag;
-            if (orig & page_table::flag::accessed) {
+            if (flags & page_flags::accessed) {
                 auto *addr = reinterpret_cast<const uint8_t *>(it.vaddress());
                 asm ( "invlpg %0" :: "m"(*addr) : "memory" );
             }
@@ -338,10 +338,10 @@ vm_space::initialize_tcb(TCB &tcb)
 }
 
 bool
-vm_space::handle_fault(uintptr_t addr, fault_type fault)
+vm_space::handle_fault(uintptr_t addr, util::bitset8 fault)
 {
     // TODO: Handle more fult types
-    if (fault && fault_type::present)
+    if (fault.get(fault_type::present))
         return false;
 
     uintptr_t page = (addr & ~0xfffull);

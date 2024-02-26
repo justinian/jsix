@@ -3,7 +3,7 @@
 /// Classes to control both local and I/O APICs.
 
 #include <stdint.h>
-#include <util/enum_bitfields.h>
+#include <util/bitset.h>
 
 #include "interrupts.h"
 
@@ -33,33 +33,30 @@ public:
     /// Get the local APIC's ID
     uint8_t get_id();
 
-    enum class ipi : uint32_t
+    enum class ipi_flags
     {
-        // Delivery modes
-        fixed    = 0x0000,
-        smi      = 0x0200,
-        nmi      = 0x0400,
-        init     = 0x0500,
-        startup  = 0x0600,
-
-        // Flags
-        deassert = 0x0000,
-        assert   = 0x4000,
-        edge     = 0x0000, ///< edge-triggered
-        level    = 0x8000, ///< level-triggered
+        logical  = 11,
+        pending  = 12,
+        assert   = 14,
+        level    = 15,
     };
+
+    // IPI flags based on delivery mode (bits 8-10)
+    static constexpr util::bitset32 ipi_fixed = 0;
+    static constexpr util::bitset32 ipi_init  = 0x500;
+    static constexpr util::bitset32 ipi_sipi  = 0x600;
 
     /// Send an inter-processor interrupt.
     /// \arg mode   The sending mode
     /// \arg vector The interrupt vector
     /// \arg dest   The APIC ID of the destination
-    void send_ipi(ipi mode, isr vector, uint8_t dest);
+    void send_ipi(util::bitset32 mode, isr vector, uint8_t dest);
 
     /// Send an inter-processor broadcast interrupt to all other CPUs
     /// \arg mode   The sending mode
     /// \arg self   If true, include this CPU in the broadcast
     /// \arg vector The interrupt vector
-    void send_ipi_broadcast(ipi mode, bool self, isr vector);
+    void send_ipi_broadcast(util::bitset32 mode, bool self, isr vector);
 
     /// Wait for an IPI to finish sending. This is done automatically
     /// before sending another IPI with send_ipi().
@@ -145,6 +142,3 @@ private:
     uint8_t m_id;
     uint8_t m_version;
 };
-
-is_bitfield(lapic::ipi);
-

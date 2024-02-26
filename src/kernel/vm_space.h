@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #include <j6/flags.h>
-#include <util/enum_bitfields.h>
+#include <util/bitset.h>
 #include <util/spinlock.h>
 #include <util/vector.h>
 
@@ -39,7 +39,7 @@ public:
     /// \arg area  The area to add
     /// \arg flags Flags for the operation (exact, clobber, etc)
     /// \returns   The base address the area was added at
-    uintptr_t add(uintptr_t base, obj::vm_area *area, obj::vm_flags flags);
+    uintptr_t add(uintptr_t base, obj::vm_area *area, util::bitset32 flags);
 
     /// Remove a virtual memory area from this address space
     /// \arg area  The area to remove
@@ -88,15 +88,6 @@ public:
     /// Set this space as the current active space
     void activate() const;
 
-    enum class fault_type : uint8_t {
-        none     = 0x00,
-        present  = 0x01,
-        write    = 0x02,
-        user     = 0x04,
-        reserved = 0x08,
-        fetch    = 0x10
-    };
-
     /// Allocate pages into virtual memory. May allocate less than requested.
     /// \arg virt  The virtual address at which to allocate
     /// \arg count The number of pages to allocate
@@ -104,11 +95,13 @@ public:
     /// \returns   The number of pages actually allocated
     size_t allocate(uintptr_t virt, size_t count, uintptr_t *phys);
 
+    enum class fault_type { present, write, user, reserved, fetch };
+
     /// Handle a page fault.
     /// \arg addr  Address which caused the fault
     /// \arg ft    Flags from the interrupt about the kind of fault
     /// \returns   True if the fault was successfully handled
-    bool handle_fault(uintptr_t addr, fault_type fault);
+    bool handle_fault(uintptr_t addr, util::bitset8 fault);
 
     /// Set up a TCB to operate in this address space.
     void initialize_tcb(TCB &tcb);
@@ -156,5 +149,3 @@ private:
 
     util::spinlock m_lock;
 };
-
-is_bitfield(vm_space::fault_type);

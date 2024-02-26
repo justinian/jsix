@@ -110,7 +110,7 @@ parse_program(const wchar_t *name, util::const_buffer data, bootproto::program &
         section.phys_addr = elf.base() + seg.offset;
         section.virt_addr = seg.vaddr;
         section.size = seg.mem_size;
-        section.type = static_cast<bootproto::section_flags>(seg.flags);
+        section.type = seg.flags;
 
         if (seg.mem_size != seg.file_size)
             section.phys_addr = allocate_bss(seg);
@@ -128,8 +128,6 @@ load_program(
     paging::pager &pager,
     bool verify)
 {
-    using util::bits::has;
-
     status_line status(L"Loading program", name);
 
     elf::file elf {data};
@@ -155,8 +153,8 @@ load_program(
 
         pager.map_pages(phys_addr, seg.vaddr,
             memory::bytes_to_pages(seg.mem_size),
-            has(seg.flags, elf::segment_flags::write),
-            has(seg.flags, elf::segment_flags::exec));
+            seg.flags.get(elf::segment_flags::write),
+            seg.flags.get(elf::segment_flags::exec));
     }
 
     return elf.entrypoint();

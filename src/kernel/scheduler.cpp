@@ -339,5 +339,5 @@ scheduler::maybe_schedule(TCB *t)
         return;
 
     current_cpu().apic->send_ipi(
-        lapic::ipi::fixed, isr::ipiSchedule, cpu->id);
+        lapic::ipi_fixed, isr::ipiSchedule, cpu->id);
 }

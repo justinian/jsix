@@ -4,10 +4,32 @@
 
 #include <stdint.h>
 #include <arch/memory.h>
-#include <util/enum_bitfields.h>
+#include <util/bitset.h>
 #include <util/spinlock.h>
 
 struct free_page_header;
+
+namespace page_flags {
+    inline constexpr util::bitset64 none      = 0x0000;
+    inline constexpr util::bitset64 present   = 0x0001; /// Entry is present in the table
+    inline constexpr util::bitset64 write     = 0x0002; /// Section may be written
+    inline constexpr util::bitset64 user      = 0x0004; /// User-accessible
+    inline constexpr util::bitset64 pat0      = 0x0008; /// PAT selector bit 0
+    inline constexpr util::bitset64 pat1      = 0x0010; /// PAT selector bit 1
+    inline constexpr util::bitset64 accessed  = 0x0020; /// Entry has been accessed
+    inline constexpr util::bitset64 dirty     = 0x0040; /// Page has been written to
+    inline constexpr util::bitset64 page      = 0x0080; /// Entry is a large page
+    inline constexpr util::bitset64 pat2      = 0x0080; /// PAT selector bit 2 on PT entries
+    inline constexpr util::bitset64 global    = 0x0100; /// Entry is not PCID-specific
+    inline constexpr util::bitset64 pat2_lg   = 0x1000; /// PAT selector bit 2 on large/huge pages
+
+    inline constexpr util::bitset64 wb    = 0;
+    inline constexpr util::bitset64 wt    = pat0;
+    inline constexpr util::bitset64 uc_   = pat1;
+    inline constexpr util::bitset64 uc    = pat0 | pat1;
+    inline constexpr util::bitset64 wc    = pat0 | pat1 | pat2;
+    inline constexpr util::bitset64 wc_lg = pat0 | pat1 | pat2_lg;
+} // page_flags
 
 /// Struct to allow easy accessing of a memory page being used as a page table.
 struct page_table
@@ -16,27 +38,19 @@ struct page_table
     enum class level : unsigned { pml4, pdp, pd, pt, page };
 
     /// Page entry flags
-    enum class flag : uint64_t
+    enum class flag
     {
-        none      = 0x0000,
-        present   = 0x0001, /// Entry is present in the table
-        write     = 0x0002, /// Section may be written
-        user      = 0x0004, /// User-accessible
-        pat0      = 0x0008, /// PAT selector bit 0
-        pat1      = 0x0010, /// PAT selector bit 1
-        accessed  = 0x0020, /// Entry has been accessed
-        dirty     = 0x0040, /// Page has been written to
-        page      = 0x0080, /// Entry is a large page
-        pat2      = 0x0080, /// PAT selector bit 2 on PT entries
-        global    = 0x0100, /// Entry is not PCID-specific
-        pat2_lg   = 0x1000, /// PAT selector bit 2 on large/huge pages
-
-        wb    = none,
-        wt    = pat0,
-        uc_   = pat1,
-        uc    = pat0 | pat1,
-        wc    = pat0 | pat1 | pat2,
-        wc_lg = pat0 | pat1 | pat2_lg,
+        present   =  0, /// Entry is present in the table
+        write     =  1, /// Section may be written
+        user      =  2, /// User-accessible
+        pat0      =  3, /// PAT selector bit 0
+        pat1      =  4, /// PAT selector bit 1
+        accessed  =  5, /// Entry has been accessed
+        dirty     =  6, /// Page has been written to
+        page      =  7, /// Entry is a large page
+        pat2      =  7, /// PAT selector bit 2 on PT entries
+        global    =  8, /// Entry is not PCID-specific
+        pat2_lg   = 12, /// PAT selector bit 2 on large/huge pages
     };
 
     /// Helper for getting the next level value
@@ -194,5 +208,3 @@ inline bool operator<(page_table::level a, page_table::level b) {
 
 inline page_table::level& operator++(page_table::level& l) { l = l + 1; return l; }
 inline page_table::level& operator--(page_table::level& l) { l = l - 1; return l; }
-
-is_bitfield(page_table::flag);

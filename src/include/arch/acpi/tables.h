@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <util/enum_bitfields.h>
+#include <util/bitset.h>
 #include <util/misc.h> // for byteswap32
 
 namespace acpi {
@@ -62,32 +62,31 @@ struct gas
 } __attribute__ ((packed));
 
 
-enum class fadt_flags : uint32_t
+enum class fadt_flags
 {
-    wbinvd          = 0x00000001,
-    wbinvd_flush    = 0x00000002,
-    proc_c1         = 0x00000004,
-    p_lvl2_up       = 0x00000008,
-    pwr_button      = 0x00000010,
-    slp_button      = 0x00000020,
-    fix_rtc         = 0x00000040,
-    rtc_s4          = 0x00000080,
-    tmr_val_ext     = 0x00000100,
-    dck_cap         = 0x00000200,
-    reset_reg_sup   = 0x00000400,
-    sealed_case     = 0x00000800,
-    headless        = 0x00001000,
-    cpu_sw_slp      = 0x00002000,
-    pci_exp_wak     = 0x00004000,
-    use_plat_clock  = 0x00008000,
-    s4_rtc_sts_val  = 0x00010000,
-    remote_pwr_cap  = 0x00020000,
-    apic_cluster    = 0x00040000,
-    apic_physical   = 0x00080000,
-    hw_reduced_acpi = 0x00100000,
-    low_pwr_s0_idle = 0x00200000
+    wbinvd,
+    wbinvd_flush,
+    proc_c1,
+    p_lvl2_up,
+    pwr_button,
+    slp_button,
+    fix_rtc,
+    rtc_s4,
+    tmr_val_ext,
+    dck_cap,
+    reset_reg_sup,
+    sealed_case,
+    headless,
+    cpu_sw_slp,
+    pci_exp_wak,
+    use_plat_clock,
+    s4_rtc_sts_val,
+    remote_pwr_cap,
+    apic_cluster,
+    apic_physical,
+    hw_reduced_acpi,
+    low_pwr_s0_idle
 };
-is_bitfield(fadt_flags);
 
 struct fadt
 {
@@ -134,7 +133,7 @@ struct fadt
 
     uint16_t iapc_boot_arch;
     uint8_t reserved1;
-    fadt_flags flags;
+    util::bitset32 flags;
 
     gas reset_reg;
     uint8_t reset_value;

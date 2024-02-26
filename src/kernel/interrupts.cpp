@@ -126,8 +126,7 @@ isr_handler(cpu_state *regs)
             // The zero page is always invalid
             if (cr2 > mem::frame_size) {
                 bool user = cr2 < mem::kernel_offset;
-                vm_space::fault_type ft =
-                    static_cast<vm_space::fault_type>(regs->errorcode);
+                util::bitset8 ft = regs->errorcode;
 
                 vm_space &space = user
                     ? obj::process::current().space()

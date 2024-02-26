@@ -67,12 +67,11 @@ system_map_phys(system *self, j6_handle_t * area, uintptr_t phys, size_t size, u
 {
     // TODO: check to see if frames are already used? How would that collide with
     // the bootloader's allocated pages already being marked used?
-    if (!(flags & vm_flags::mmio))
+    util::bitset32 f = flags & vm_driver_mask;
+    if (!f.get(vm_flags::mmio))
         frame_allocator::get().used(phys, mem::page_count(size));
 
-    vm_flags vmf = (static_cast<vm_flags>(flags) & vm_flags::driver_mask);
-    construct_handle<vm_area_fixed>(area, phys, size, vmf);
-
+    construct_handle<vm_area_fixed>(area, phys, size, f);
     return j6_status_ok;
 }
 

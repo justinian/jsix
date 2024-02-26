@@ -6,8 +6,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <util/bitset.h>
 #include <util/counted.h>
-#include <util/enum_bitfields.h>
 
 namespace bootproto {
 
@@ -18,19 +18,13 @@ constexpr uint64_t header_magic = 0x4c454e52454b366aull; // 'j6KERNEL'
 constexpr uint16_t header_version = 2;
 constexpr uint16_t min_header_version = 2;
 
-enum class section_flags : uint32_t {
-    none    = 0,
-    execute = 1,
-    write   = 2,
-    read    = 4,
-};
-is_bitfield(section_flags);
+enum class section_flags { none, execute, write, read };
 
 struct program_section {
     uintptr_t phys_addr;
     uintptr_t virt_addr;
     uint32_t size;
-    section_flags type;
+    util::bitset32 type;
 };
 
 struct program {
@@ -112,18 +106,13 @@ struct frame_block
     uint64_t *bitmap;
 };
 
-enum class boot_flags : uint16_t {
-    none  = 0x0000,
-    debug = 0x0001,
-    test  = 0x0002,
-};
-is_bitfield(boot_flags);
+enum class boot_flags { none, debug, test };
 
 struct args
 {
     uint32_t magic;
     uint16_t version;
-    boot_flags flags;
+    util::bitset16 flags;
 
     void *pml4;
     util::counted<void> page_tables;

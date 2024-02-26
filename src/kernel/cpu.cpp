@@ -118,7 +118,7 @@ cpu_early_init(cpu_data *cpu)
     set_xcr0(xcr0_val);
 
     // Set initial floating point state
-    const util::bitset32 mxcsr_val {
+    const util::bitset32 mxcsr_val = util::bitset32::of(
         mxcsr::DAZ,
         mxcsr::IM,
         mxcsr::DM,
@@ -126,8 +126,7 @@ cpu_early_init(cpu_data *cpu)
         mxcsr::OM,
         mxcsr::UM,
         mxcsr::PM,
-        mxcsr::FTZ,
-    };
+        mxcsr::FTZ);
     asm ( "ldmxcsr %0" :: "m"(mxcsr_val) );
 
     // Install the GS base pointint to the cpu_data

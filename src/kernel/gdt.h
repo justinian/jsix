@@ -3,7 +3,7 @@
 /// Definitions relating to a CPU's GDT table
 
 #include <stdint.h>
-#include <util/enum_bitfields.h>
+#include <util/bitset.h>
 
 class TSS;
 
@@ -25,21 +25,20 @@ public:
     /// \arg index  Which entry to print, or -1 for all entries
     void dump(unsigned index = -1) const;
 
-    enum class type : uint8_t
+    enum class type
     {
-        accessed    = 0x01,
-        read_write  = 0x02,
-        conforming  = 0x04,
-        execute     = 0x08,
-        system      = 0x10,
-        ring1       = 0x20,
-        ring2       = 0x40,
-        ring3       = 0x60,
-        present     = 0x80
+        accessed,
+        read_write,
+        conforming,
+        execute,
+        system,
+        ring1,
+        ring2,
+        present
     };
 
 private:
-    void set(uint8_t i, uint32_t base, uint64_t limit, bool is64, type t);
+    void set(uint8_t i, uint32_t base, uint64_t limit, bool is64, util::bitset8 t);
     void set_tss(TSS *tss);
 
     struct descriptor
@@ -47,7 +46,7 @@ private:
         uint16_t limit_low;
         uint16_t base_low;
         uint8_t base_mid;
-        type type;
+        util::bitset8 type;
         uint8_t size;
         uint8_t base_high;
     } __attribute__ ((packed, align(8)));
@@ -63,5 +62,3 @@ private:
 
     ptr m_ptr;
 };
-
-is_bitfield(GDT::type);

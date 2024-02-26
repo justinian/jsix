@@ -3,7 +3,6 @@
 /// Data structure for dealing with j6romfs images
 
 #include <util/counted.h>
-#include <util/enum_bitfields.h>
 
 namespace j6romfs
 {

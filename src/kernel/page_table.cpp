@@ -14,10 +14,7 @@ free_page_header * page_table::s_page_cache = nullptr;
 util::spinlock page_table::s_lock;
 constexpr size_t page_table::entry_sizes[4];
 
-
-constexpr page_table::flag table_flags =
-    page_table::flag::present |
-    page_table::flag::write;
+inline constexpr util::bitset64 table_flags = page_flags::present | page_flags::write;
 
 
 page_table::iterator::iterator(uintptr_t virt, page_table *pml4) :
@@ -140,9 +137,9 @@ page_table::iterator::ensure_table(level l)
     uintptr_t phys = reinterpret_cast<uintptr_t>(table) & ~linear_offset;
 
     uint64_t &parent = entry(l - 1);
-    flag flags = table_flags;
+    util::bitset64 flags = table_flags;
     if (m_index[0] < arch::kernel_root_index)
-        flags |= flag::user;
+        flags.set(flag::user);
 
     m_table[unsigned(l)] = table;
     parent = (phys & ~0xfffull) | flags;

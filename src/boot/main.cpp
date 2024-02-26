@@ -82,9 +82,8 @@ load_resources(
     util::buffer kernel = loader::load_file(disk, bc.kernel().path);
     uintptr_t kentry = loader::load_program(kernel, L"jsix kernel", pager, true);
 
-    args->flags = static_cast<bootproto::boot_flags>(bc.flags());
+    args->flags = bc.flags();
 
-    namespace bits = util::bits;
     using bootproto::desc_flags;
 
     bool has_panic = false;
@@ -96,7 +95,7 @@ load_resources(
         // Find the screen-specific panic handler first to
         // give it priority
         for (const descriptor &d : bc.panics()) {
-            if (bits::has(d.flags, desc_flags::graphical)) {
+            if (d.flags.get(desc_flags::graphical)) {
                 panic = loader::load_file(disk, d.path);
                 has_panic = true;
                 break;
@@ -106,7 +105,7 @@ load_resources(
 
     if (!has_panic) {
         for (const descriptor &d : bc.panics()) {
-            if (!bits::has(d.flags, desc_flags::graphical)) {
+            if (d.flags.get(desc_flags::graphical)) {
                 panic = loader::load_file(disk, d.path);
                 has_panic = true;
                 break;

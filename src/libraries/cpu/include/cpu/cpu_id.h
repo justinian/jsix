@@ -18,7 +18,7 @@ enum class feature {
     max
 };
 
-using features = util::bitset<(unsigned)feature::max>;
+using features = util::sized_bitset<(unsigned)feature::max>;
 
 class cpu_id
 {

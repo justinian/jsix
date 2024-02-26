@@ -3,6 +3,7 @@
 #pragma once
 
 #include <bootproto/bootconfig.h>
+#include <util/bitset.h>
 #include <util/counted.h>
 
 namespace uefi {
@@ -14,7 +15,7 @@ namespace boot {
 using desc_flags = bootproto::desc_flags;
 
 struct descriptor {
-    desc_flags flags;
+    util::bitset16 flags;
     wchar_t const *path;
 };
 
@@ -27,7 +28,7 @@ public:
     /// Constructor. Loads bootconfig from the given buffer.
     bootconfig(util::buffer data, uefi::boot_services *bs);
 
-    inline uint16_t flags() const { return m_flags; }
+    inline util::bitset16 flags() const { return m_flags; }
     inline const descriptor & kernel() const { return m_kernel; }
     inline const descriptor & init() const { return m_init; }
     inline const wchar_t * initrd() const { return m_initrd; }
@@ -35,7 +36,7 @@ public:
     inline const descriptors & panics() { return m_panics; }
 
 private:
-    uint16_t m_flags;
+    util::bitset16 m_flags;
     descriptor m_kernel;
     descriptor m_init;
     descriptors m_panics;

@@ -3,7 +3,6 @@
 /// Definition of thread kobject types
 
 #include <j6/cap_flags.h>
-#include <util/enum_bitfields.h>
 #include <util/linked_list.h>
 #include <util/spinlock.h>
 

@@ -1,6 +1,6 @@
 #pragma once
 #include <stdint.h>
-#include <util/enum_bitfields.h>
+#include <util/bitset.h>
 
 namespace elf {
 
@@ -54,19 +54,12 @@ struct file_header
 
 
 enum class segment_type : uint32_t { null, load, dynamic, interpreter, note };
-enum class segment_flags : uint32_t
-{
-    none  = 0x00,
-    exec  = 0x01,
-    write = 0x02,
-    read  = 0x04,
-};
-is_bitfield(segment_flags);
+enum class segment_flags { exec, write, read };
 
 struct segment_header
 {
     segment_type type;
-    segment_flags flags;
+    util::bitset32 flags;
     uint64_t offset;
 
     uint64_t vaddr;
@@ -80,18 +73,13 @@ struct segment_header
 
 
 enum class section_type : uint32_t { null, progbits };
-enum class section_flags : uint64_t
-{
-    write = 0x01,
-    alloc = 0x02,
-    exec  = 0x04,
-};
+enum class section_flags { write, alloc, exec };
 
 struct section_header
 {
     uint32_t name_offset;
     section_type type;
-    section_flags flags;
+    util::bitset64 flags;
     uint64_t addr;
     uint64_t offset;
     uint64_t size;
@@ -102,5 +90,3 @@ struct section_header
 } __attribute__ ((packed));
 
 } // namespace elf
-
-is_bitfield(elf::section_flags);

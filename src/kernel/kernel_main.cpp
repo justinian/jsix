@@ -54,7 +54,7 @@ kernel_main(bootproto::args *args)
     bsp_late_init();
 
     using bootproto::boot_flags;
-    bool enable_test = util::bits::has(args->flags, boot_flags::test);
+    bool enable_test = args->flags.get(boot_flags::test);
     syscall_initialize(enable_test);
 
     device_manager &devices = device_manager::get();
@@ -95,12 +95,15 @@ load_init_server(bootproto::program &program, uintptr_t modules_address)
 
     vm_space &space = p->space();
     for (const auto &sect : program.sections) {
-        vm_flags flags =
-            ((sect.type && section_flags::execute) ? vm_flags::exec : vm_flags::none) |
-            ((sect.type && section_flags::write) ? vm_flags::write : vm_flags::none);
+        util::bitset32 flags = util::bitset32::of(vm_flags::exact);
+        if (sect.type.get(section_flags::execute))
+            flags.set(vm_flags::exec);
+
+        if (sect.type.get(section_flags::write))
+            flags.set(vm_flags::write);
 
         obj::vm_area *vma = new obj::vm_area_fixed(sect.phys_addr, sect.size, flags);
-        space.add(sect.virt_addr, vma, obj::vm_flags::exact);
+        space.add(sect.virt_addr, vma, flags);
     }
 
     uint64_t iopl = (3ull << 12);

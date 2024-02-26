@@ -94,7 +94,7 @@ load_image(image_list::item_type &img, j6::proto::vfs::client &vfs)
         // TODO: way to remap VMA as read-only if there's no write flag on
         // the segment
         unsigned long flags = j6_vm_flag_exact | j6_vm_flag_write;
-        if (seg.flags && elf::segment_flags::exec)
+        if (seg.flags.get(elf::segment_flags::exec))
             flags |= j6_vm_flag_exec;
 
         uintptr_t start = file.base() + seg.offset;

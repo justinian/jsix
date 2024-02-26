@@ -22,6 +22,9 @@ static constexpr uint8_t tss_index       = 6; // Note that this takes TWO GDT en
 static util::no_construct<GDT> __g_bsp_gdt_storage;
 GDT &g_bsp_gdt = __g_bsp_gdt_storage.value;
 
+static constexpr util::bitset8 ring3 =  util::bitset8::of( GDT::type::ring1, GDT::type::ring2 );
+static constexpr util::bitset8 rw =     util::bitset8::of( GDT::type::read_write );
+static constexpr util::bitset8 rwx =    util::bitset8::of( GDT::type::read_write, GDT::type::execute );
 
 GDT::GDT(TSS *tss) :
     m_tss(tss)
@@ -32,13 +35,13 @@ GDT::GDT(TSS *tss) :
     m_ptr.base = &m_entries[0];
 
     // Kernel CS/SS - always 64bit
-    set(kern_cs_index, 0, 0xfffff, true, type::read_write | type::execute);
-    set(kern_ss_index, 0, 0xfffff, true, type::read_write);
+    set(kern_cs_index, 0, 0xfffff, true, rwx);
+    set(kern_ss_index, 0, 0xfffff, true, rw);
 
     // User CS32/SS/CS64 - layout expected by SYSRET
-    set(user_cs32_index, 0, 0xfffff, false, type::ring3 | type::read_write | type::execute);
-    set(user_ss_index,   0, 0xfffff, true,  type::ring3 | type::read_write);
-    set(user_cs64_index, 0, 0xfffff, true,  type::ring3 | type::read_write | type::execute);
+    set(user_cs32_index, 0, 0xfffff, false, ring3 | rwx);
+    set(user_ss_index,   0, 0xfffff, true,  ring3 | rw);
+    set(user_cs64_index, 0, 0xfffff, true,  ring3 | rwx);
 
     set_tss(tss);
 }
@@ -61,7 +64,7 @@ GDT::install() const
 }
 
 void
-GDT::set(uint8_t i, uint32_t base, uint64_t limit, bool is64, type t)
+GDT::set(uint8_t i, uint32_t base, uint64_t limit, bool is64, util::bitset8 t)
 {
     m_entries[i].limit_low = limit & 0xffff;
     m_entries[i].size = (limit >> 16) & 0xf;
@@ -71,7 +74,9 @@ GDT::set(uint8_t i, uint32_t base, uint64_t limit, bool is64, type t)
     m_entries[i].base_mid = (base >> 16) & 0xff;
     m_entries[i].base_high = (base >> 24) & 0xff;
 
-    m_entries[i].type = t | type::system | type::present;
+    static constexpr util::bitset8 sp = util::bitset8::of( type::system, type::present );
+    m_entries[i].type = t;
+    m_entries[i].type |= sp;
 }
 
 struct tss_descriptor
@@ -79,7 +84,7 @@ struct tss_descriptor
     uint16_t limit_low;
     uint16_t base_00;
     uint8_t base_16;
-    GDT::type type;
+    util::bitset8 type;
     uint8_t size;
     uint8_t base_24;
     uint32_t base_32;
@@ -102,11 +107,9 @@ GDT::set_tss(TSS *tss)
     tssd.base_32 = (base >> 32) & 0xffffffff;
     tssd.reserved = 0;
 
-    tssd.type =
-        type::accessed |
-        type::execute |
-        type::ring3 |
-        type::present;
+    static constexpr util::bitset8 tss_mark =
+        util::bitset8::of(type::accessed, type::execute, type::present);
+    tssd.type = ring3 | tss_mark;
 
     memcpy(&m_entries[tss_index], &tssd, sizeof(tss_descriptor));
 }

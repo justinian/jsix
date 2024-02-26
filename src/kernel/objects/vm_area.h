@@ -6,8 +6,8 @@
 #include <stdint.h>
 
 #include <j6/cap_flags.h>
+#include <util/bitset.h>
 #include <util/vector.h>
-#include <util/enum_bitfields.h>
 
 #include "block_allocator.h"
 #include "objects/kobject.h"
@@ -17,16 +17,15 @@ class vm_space;
 
 namespace obj {
 
-enum class vm_flags : uint32_t
+enum class vm_flags
 {
 #define VM_FLAG(name, v) name = v,
 #include <j6/tables/vm_flags.inc>
 #undef VM_FLAG
-    driver_mask     = 0x00ff'ffff, ///< flags allowed via syscall for drivers
-    user_mask       = 0x000f'ffff, ///< flags allowed via syscall for non-drivers
 };
-is_bitfield(vm_flags);
 
+inline constexpr util::bitset32 vm_driver_mask = 0x00ff'ffff; ///< flags allowed via syscall for drivers
+inline constexpr util::bitset32 vm_user_mask   = 0x000f'ffff; ///< flags allowed via syscall for non-drivers
 
 /// Virtual memory areas allow control over memory allocation
 class vm_area :
@@ -40,7 +39,7 @@ public:
     /// Constructor.
     /// \arg size  Initial virtual size of the memory area
     /// \arg flags Flags for this memory area
-    vm_area(size_t size, vm_flags flags = vm_flags::none);
+    vm_area(size_t size, util::bitset32 flags = 0);
 
     virtual ~vm_area();
 
@@ -48,7 +47,7 @@ public:
     inline size_t size() const { return m_size; }
 
     /// Get the flags set for this area
-    inline vm_flags flags() const { return m_flags; }
+    inline util::bitset32 flags() const { return m_flags; }
 
     /// Track that this area was added to a vm_space
     /// \arg space  The space to add this area to
@@ -83,7 +82,7 @@ protected:
     bool can_resize(size_t size);
 
     size_t m_size;
-    vm_flags m_flags;
+    util::bitset32 m_flags;
     util::vector<vm_space*> m_spaces;
 
     // Initial static space for m_spaces - most areas will never grow
@@ -103,7 +102,7 @@ public:
     /// \arg start Starting physical address of this area
     /// \arg size  Size of the physical memory area
     /// \arg flags Flags for this memory area
-    vm_area_fixed(uintptr_t start, size_t size, vm_flags flags = vm_flags::none);
+    vm_area_fixed(uintptr_t start, size_t size, util::bitset32 flags = 0);
     virtual ~vm_area_fixed();
 
     virtual size_t resize(size_t size) override;
@@ -122,7 +121,7 @@ public:
     /// Constructor.
     /// \arg size  Initial virtual size of the memory area
     /// \arg flags Flags for this memory area
-    vm_area_open(size_t size, vm_flags flags);
+    vm_area_open(size_t size, util::bitset32 flags);
     virtual ~vm_area_open();
 
     virtual bool get_page(uintptr_t offset, uintptr_t &phys, bool alloc = true) override;
@@ -144,7 +143,7 @@ public:
     /// Constructor.
     /// \arg size  Initial virtual size of the memory area
     /// \arg flags Flags for this memory area
-    vm_area_untracked(size_t size, vm_flags flags);
+    vm_area_untracked(size_t size, util::bitset32 flags);
     virtual ~vm_area_untracked();
 
     virtual bool add_to(vm_space *space) override;
@@ -166,7 +165,7 @@ public:
         uintptr_t start,
         size_t sec_pages,
         size_t size,
-        vm_flags flags);
+        util::bitset32 flags);
 
     virtual ~vm_area_guarded();
 
@@ -194,7 +193,7 @@ public:
     /// \arg size  Virtual size of the ring buffer. Note that
     ///            the VMA size will be double this value.
     /// \arg flags Flags for this memory area
-    vm_area_ring(size_t size, vm_flags flags);
+    vm_area_ring(size_t size, util::bitset32 flags);
     virtual ~vm_area_ring();
 
     virtual bool get_page(uintptr_t offset, uintptr_t &phys, bool alloc = true) override;

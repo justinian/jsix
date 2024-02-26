@@ -9,7 +9,7 @@ namespace obj {
 
 using mem::frame_size;
 
-vm_area::vm_area(size_t size, vm_flags flags) :
+vm_area::vm_area(size_t size, util::bitset32 flags) :
     m_size {size},
     m_flags {flags},
     m_spaces {m_vector_static, 0, static_size},
@@ -62,7 +62,7 @@ vm_area::can_resize(size_t size)
     return true;
 }
 
-vm_area_fixed::vm_area_fixed(uintptr_t start, size_t size, vm_flags flags) :
+vm_area_fixed::vm_area_fixed(uintptr_t start, size_t size, util::bitset32 flags) :
     m_start {start},
     vm_area {size, flags}
 {
@@ -70,7 +70,7 @@ vm_area_fixed::vm_area_fixed(uintptr_t start, size_t size, vm_flags flags) :
 
 vm_area_fixed::~vm_area_fixed()
 {
-    if (m_flags && vm_flags::mmio)
+    if (m_flags.get(vm_flags::mmio))
         return;
 
     size_t pages = mem::page_count(m_size);
@@ -94,7 +94,7 @@ vm_area_fixed::get_page(uintptr_t offset, uintptr_t &phys, bool alloc)
     return true;
 }
 
-vm_area_untracked::vm_area_untracked(size_t size, vm_flags flags) :
+vm_area_untracked::vm_area_untracked(size_t size, util::bitset32 flags) :
     vm_area {size, flags}
 {
 }
@@ -127,7 +127,7 @@ vm_area_untracked::add_to(vm_space *space)
 }
 
 
-vm_area_open::vm_area_open(size_t size, vm_flags flags) :
+vm_area_open::vm_area_open(size_t size, util::bitset32 flags) :
     m_mapped {nullptr},
     vm_area {size, flags}
 {
@@ -154,7 +154,7 @@ vm_area_open::add_existing(uintptr_t offset, uintptr_t phys)
 }
 
 
-vm_area_guarded::vm_area_guarded(uintptr_t start, size_t buf_pages, size_t size, vm_flags flags) :
+vm_area_guarded::vm_area_guarded(uintptr_t start, size_t buf_pages, size_t size, util::bitset32 flags) :
     m_pages {buf_pages + 1}, // Sections are N+1 pages for the leading guard page
     m_stacks {start, m_pages*mem::frame_size},
     vm_area_open {size, flags}
@@ -191,7 +191,7 @@ vm_area_guarded::get_page(uintptr_t offset, uintptr_t &phys, bool alloc)
     return vm_area_open::get_page(offset, phys, alloc);
 }
 
-vm_area_ring::vm_area_ring(size_t size, vm_flags flags) :
+vm_area_ring::vm_area_ring(size_t size, util::bitset32 flags) :
     vm_area_open {size * 2, flags},
     m_bufsize {size}
 {

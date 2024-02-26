@@ -22,7 +22,7 @@ read_string(util::buffer &data)
 static void
 read_descriptor(descriptor &e, util::buffer &data)
 {
-    e.flags = static_cast<desc_flags>(*util::read<uint16_t>(data));
+    e.flags = util::bitset16 {*util::read<uint16_t>(data)};
     e.path = read_string(data);
 }
 

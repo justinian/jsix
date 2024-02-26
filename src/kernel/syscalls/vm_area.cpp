@@ -14,8 +14,8 @@ namespace syscalls {
 j6_status_t
 vma_create(j6_handle_t *self, size_t size, uint32_t flags)
 {
-    vm_flags f = vm_flags::user_mask & flags;
-    if (util::bits::has(f, vm_flags::ring))
+    util::bitset32 f = flags & vm_user_mask;
+    if (f.get(vm_flags::ring))
         construct_handle<vm_area_ring>(self, size, f);
     else
         construct_handle<vm_area_open>(self, size, f);
@@ -26,8 +26,8 @@ j6_status_t
 vma_create_map(j6_handle_t *self, size_t size, uintptr_t *base, uint32_t flags)
 {
     vm_area *a = nullptr;
-    vm_flags f = vm_flags::user_mask & flags;
-    if (util::bits::has(f, vm_flags::ring))
+    util::bitset32 f = flags & vm_user_mask;
+    if (f.get(vm_flags::ring))
         a = construct_handle<vm_area_ring>(self, size, f);
     else
         a = construct_handle<vm_area_open>(self, size, f);
@@ -40,7 +40,7 @@ j6_status_t
 vma_map(vm_area *self, process *proc, uintptr_t *base, uint32_t flags)
 {
     vm_space &space = proc ? proc->space() : process::current().space();
-    vm_flags f = vm_flags::user_mask & flags;
+    util::bitset32 f = flags & vm_user_mask;
     *base = space.add(*base, self, f);
     return *base ? j6_status_ok : j6_err_collision;
 }

@@ -57,8 +57,11 @@ start(cpu_data &bsp, void *kpml4)
     // Copy the startup code somwhere the real mode trampoline can run
     uintptr_t addr = 0x8000; // TODO: find a valid address, rewrite addresses
     isr vector = static_cast<isr>(addr >> 12);
-    obj::vm_area *vma = new obj::vm_area_fixed(addr, 0x1000, vm_flags::write);
-    vm_space::kernel_space().add(addr, vma, obj::vm_flags::exact);
+
+    constexpr util::bitset32 flags = util::bitset32::of(vm_flags::write, vm_flags::exact);
+    obj::vm_area *vma = new obj::vm_area_fixed(addr, 0x1000, flags);
+    vm_space::kernel_space().add(addr, vma, flags);
+
     memcpy(
         reinterpret_cast<void*>(addr),
         reinterpret_cast<void*>(&ap_startup),
@@ -67,7 +70,7 @@ start(cpu_data &bsp, void *kpml4)
     size_t free_stack_count = 0;
 
     lapic &apic = *bsp.apic;
-    lapic::ipi mode = lapic::ipi::init | lapic::ipi::level | lapic::ipi::assert;
+    util::bitset32 mode = lapic::ipi_init + lapic::ipi_flags::level + lapic::ipi_flags::assert;
     apic.send_ipi_broadcast(mode, false, static_cast<isr>(0));
 
     for (uint8_t id : ids) {
@@ -90,7 +93,7 @@ start(cpu_data &bsp, void *kpml4)
         size_t current_count = ap_startup_count;
         log::verbose(logs::boot, "Starting AP %d: stack %llx", cpu->index, stack_end);
 
-        lapic::ipi startup = lapic::ipi::startup | lapic::ipi::assert;
+        util::bitset32 startup = lapic::ipi_sipi + lapic::ipi_flags::assert;
 
         apic.send_ipi(startup, vector, id);
         for (unsigned i = 0; i < 20; ++i) {
