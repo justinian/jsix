@@ -2,12 +2,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <arch/memory.h>
 #include <j6/cap_flags.h>
 #include <j6/channel.hh>
 #include <j6/errors.h>
 #include <j6/flags.h>
 #include <j6/init.h>
 #include <j6/protocols/service_locator.hh>
+#include <j6/ring_buffer.hh>
 #include <j6/syscalls.h>
 #include <j6/sysconf.h>
 #include <j6/syslog.hh>
@@ -64,8 +66,10 @@ main(int argc, const char **argv)
     serial_port com1 {COM1, in_buf_size, com1_in, out_buf_size, com1_out};
     serial_port com2 {COM2, in_buf_size, com2_in, out_buf_size, com2_out};
 
-    static constexpr size_t buffer_size = 512;
-    char buffer[buffer_size];
+    static constexpr size_t buffer_pages = 1;
+    j6::ring_buffer buffer {buffer_pages};
+    if (!buffer.valid())
+        return 128;
 
     j6_handle_t slp = j6_find_init_handle(j6::proto::sl::id);
     if (slp == j6_handle_invalid)
@@ -87,17 +91,13 @@ main(int argc, const char **argv)
         return 6;
 
     while (true) {
-        size_t size = buffer_size;
-        while (true) {
-            result = cout->receive(buffer, &size, 0);
-            if (result != j6_status_ok)
-                break;
+        size_t size = buffer.free();
+        cout->receive(buffer.write_ptr(), &size, 0);
+        buffer.commit(size);
+        //j6::syslog(j6::logs::srv, j6::log_level::spam, "uart driver: got %d bytes from channel", size);
 
-            j6::syslog(j6::logs::srv, j6::log_level::spam, "uart driver: got %d bytes from channel", size);
-            com1.write(buffer, size);
-        }
-        if (result != j6_status_would_block)
-            j6::syslog(j6::logs::srv, j6::log_level::error, "uart driver: error %lx receiving from channel", result);
+        size = com1.write(buffer.read_ptr(), buffer.used());
+        buffer.consume(size);
 
         uint64_t signals = 0;
         result = j6_event_wait(event, &signals, 500);
@@ -110,7 +110,7 @@ main(int argc, const char **argv)
             j6::syslog(j6::logs::srv, j6::log_level::error, "uart driver: error %lx waiting for irq", result);
             continue;
         } else {
-            j6::syslog(j6::logs::srv, j6::log_level::verbose, "uart driver: irq signals: %lx", signals);
+            j6::syslog(j6::logs::srv, j6::log_level::spam, "uart driver: irq signals: %lx", signals);
         }
 
         if (signals & (1<<0))
@@ -122,4 +122,3 @@ main(int argc, const char **argv)
     j6::syslog(j6::logs::srv, j6::log_level::error, "uart driver somehow got to the end of main");
     return 0;
 }
-

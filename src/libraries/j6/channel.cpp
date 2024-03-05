@@ -125,8 +125,10 @@ channel::receive(void *buffer, size_t *size, bool block)
 {
     j6::scoped_lock lock {m_header->mutex};
     while (!m_header->read_avail()) {
-        if (!block)
+        if (!block) {
+            *size = 0;
             return j6_status_would_block;
+        }
 
         lock.release();
         m_header->read_waiting.wait();
