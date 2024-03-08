@@ -1,0 +1,254 @@
+/* custom.css - jsix version */
+
+:root {
+    --background-color: #181820;
+    --link-color: #7070e0;
+    --link-hover-color: #9090ff;
+    --text-color: #3d3d3d;
+    --text-literal-color: #d26a98;
+}
+.wy-nav-side {
+  background: var(--background-color);
+}
+
+@media screen and (min-width: 1100px) {
+  .wy-nav-content-wrap {
+      background: var(--background-color);
+  }
+}
+
+a {
+  color: var(--link-color);
+}
+
+a:hover {
+  color: var(--link-hover-color);
+}
+
+a:visited {
+  color: var(--link-color);
+}
+
+.rst-content {
+  color: var(--text-color);
+}
+
+.rst-content code.literal {
+  color: var(--text-literal-color);
+}
+
+.rst-content tt.literal {
+  color: var(--text-literal-color);
+}
+
+.rst-content .note {
+  color: #003274;
+  background: #ccddf3;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.rst-content .note .admonition-title {
+  display: none;
+}
+
+.rst-content .warning {
+  color: #605000;
+  background: #fcf4cc;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.rst-content .warning .admonition-title {
+  display: none;
+}
+
+.rst-content .highlight {
+  background: #f5f5f5;
+}
+
+.wy-side-scroll {
+  background-color: var(--background-color);
+}
+
+.wy-side-nav-search {
+  background-color: var(--background-color);
+}
+
+.wy-side-nav-search input[type="text"] {
+  width: 100%;
+  border-radius: 0px;
+  padding: 6px 12px;
+  border-color: var(--background-color);
+}
+
+.wy-menu-vertical a {
+  font-size: 100%;
+  color: #d9d9d9;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+  background-color: inherit;
+}
+
+.wy-menu-vertical a:hover {
+  background-color: unset;
+  opacity: 1;
+}
+
+.wy-menu-vertical li.current > a {
+  background-color: var(--background-color);
+  color: white;
+}
+
+.wy-menu-vertical li.current > a span.toctree-expand {
+  display: block;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+.wy-menu-vertical li.current > a span.toctree-expand:before {
+  display: block;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+.wy-menu-vertical li.current > a span.toctree-expand:hover {
+  color: white;
+}
+
+.wy-menu-vertical li.current > a:hover {
+  background-color: var(--background-color);
+  color: white;
+}
+
+.wy-menu-vertical li.current > a:hover span.toctree-expand {
+  color: white;
+}
+
+.wy-menu-vertical .toctree-l1 {
+  opacity: 0.5;
+}
+
+.wy-menu-vertical .toctree-l1:hover {
+  opacity: 1;
+  background-color: inherit;
+}
+
+.wy-menu-vertical li.toctree-l1.current {
+  opacity: 1;
+  background-color: inherit;
+}
+
+.wy-menu-vertical li.toctree-l1.current > a {
+  border: 0px;
+}
+
+.wy-menu-vertical .toctree-l2:hover {
+  background-color: #566673;
+}
+
+.wy-menu-vertical li.toctree-l2.current > a {
+  background-color: #566673;
+  color: white;
+}
+
+.wy-menu-vertical li.toctree-l2.current li.toctree-l3 > a {
+  background-color: #e4e7ea;
+  color: #838383;
+}
+
+.wy-menu-vertical li.toctree-l2.current li.toctree-l3 > a:hover {
+  color: var(--text-color);
+}
+
+.wy-menu-vertical li.toctree-l2.current li.toctree-l3 > a:hover span.toctree-expand {
+  color: var(--text-color);
+}
+
+.wy-menu-vertical li.toctree-l2.current li.toctree-l3.current > a {
+  color: var(--text-color);
+}
+
+.wy-menu-vertical li.toctree-l2 a {
+  border: 0px;
+  background-color: #566673;
+  color: #d9d9d9;
+}
+
+.wy-menu-vertical li.toctree-l2 a span.toctree-expand {
+  display: block;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+.wy-menu-vertical li.toctree-l2 a span.toctree-expand:before {
+  display: block;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+.wy-menu-vertical li.toctree-l2 a span.toctree-expand:hover {
+  color: white;
+}
+
+.wy-menu-vertical li.toctree-l2 a:hover {
+  color: white;
+  background-color: #566673;
+}
+
+.wy-menu-vertical li.toctree-l2 a:hover span.toctree-expand {
+  color: white;
+}
+
+.wy-menu-vertical li.toctree-l3.current > a {
+  background-color: #e4e7ea;
+  color: #838383;
+}
+
+.wy-menu-vertical li.toctree-l3.current li.toctree-l4 > a {
+  background-color: #e4e7ea;
+  color: #838383;
+}
+
+.wy-menu-vertical li.toctree-l3.current li.toctree-l4.current > a {
+  color: var(--text-color);
+}
+
+.wy-nav-top {
+  background-color: var(--background-color);
+}
+
+.btn {
+  display: inline-block;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-color);
+  text-align: center;
+  text-decoration: none;
+  vertical-align: middle;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  background-color: transparent;
+  border: 1px solid transparent;
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+  border-radius: 0;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  box-shadow: unset;
+}
+
+.btn-neutral {
+  background: unset !important;
+  color: #838383 !important;
+}
+
+.btn-neutral:active {
+  padding: 0.375rem 0.75rem;
+  box-shadow: unset;
+}

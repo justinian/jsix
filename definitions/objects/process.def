@@ -1,7 +1,7 @@
 import "objects/object.def"
 
-# Processes are a collection of handles and a virtual memory
-# space inside which threads are run.
+# A ``process`` object represents a process running on the system, and allows
+# control over the threads, handles, and virtual memory space of that process.
 
 object process : object {
     uid 0c69ee0b7502ba31

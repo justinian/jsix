@@ -7,3 +7,5 @@ pure-cdb == 4
 pyzstd == 0.15
 pyelftools
 iced-x86
+sphinx
+renku-sphinx-theme

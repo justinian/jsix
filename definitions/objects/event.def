@@ -1,3 +1,6 @@
+# An ``event`` is a simple synchronization object. It contains up to 64 signals
+# that threads can wait for and signal in parallel.
+
 object event : object {
     uid f441e03da5516b1a
 

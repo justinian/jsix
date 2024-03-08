@@ -1,4 +1,6 @@
-# The base type of all kernel-exposed objects
+# All kernel-exposed objects inherit from the base ``object`` type, so the
+# ``object`` syscalls can be used with any object's handle.
+
 object object [virtual] {
     uid 667f61fb2cd57bb4
     cname kobject

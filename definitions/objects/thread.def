@@ -1,3 +1,7 @@
+# A ``thread`` object represents a thread of execution within a process running
+# on the system. The actual thread does not need to be currently running to
+# hold a handle to it.
+
 object thread : object {
     uid 11f23e593d5761bd
 

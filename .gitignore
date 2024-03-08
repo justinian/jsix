@@ -16,3 +16,4 @@ compile_commands.json
 buddy_allocs.txt
 frame_allocs.txt
 heap_allocs.txt
+/docs/_build

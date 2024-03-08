@@ -1,5 +1,6 @@
-# The system object represents a handle to kernel functionality
-# needed by drivers and other priviledged services
+# The singular ``system`` object represents a handle to kernel functionality
+# needed by drivers and other priviledged services.
+
 object system : object {
     uid fa72506a2cf71a30
 

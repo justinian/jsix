@@ -1,5 +1,9 @@
 import "objects/process.def"
 
+# A ``vma`` object represents a single virtual memory area, which may be shared
+# between several processes. A process having a handle to a ``vma`` does not
+# necessarily mean that it is mapped into that process' virtual memory space.
+
 object vma : object {
     uid d6a12b63b3ed3937
     cname vm_area
