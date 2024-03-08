@@ -70,7 +70,6 @@ The jsix kernel is quite far along now, but the userland systems are still lacki
    :maxdepth: 1
    :caption: Site Contents:
 
-   index
    syscall_interface
 
 
