@@ -44,6 +44,11 @@ interface syscalls [syscall] {
         param mask uint32                        # The capability bitmask
     }
 
+    # Close the handle to an object
+    function handle_close {
+        param hnd ref object [handle] # The handle to close
+    }
+
     # Block waiting on a futex
     function futex_wait [static] {
         param address uint32*  # Address of the futex value

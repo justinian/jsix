@@ -32,4 +32,13 @@ handle_clone(j6_handle_t orig, j6_handle_t *clone, uint32_t mask)
     return j6_status_ok;
 }
 
+
+j6_status_t
+handle_close(j6_handle_t hnd)
+{
+    process &p = process::current();
+    p.remove_handle(hnd);
+    return j6_status_ok;
+}
+
 } // namespace syscalls

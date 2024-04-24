@@ -79,7 +79,7 @@ channel::create(size_t tx_size, size_t rx_size)
     uintptr_t rx_addr = create_channel_vma(rx_vma, rx_size);
     if (!rx_addr) {
         j6_vma_unmap(tx_vma, 0);
-        // TODO: Close TX handle
+        j6_handle_close(tx_vma);
         return nullptr;
     }
 
@@ -109,7 +109,7 @@ channel::open(const channel_def &def)
     result = j6_vma_map(def.rx, 0, &rx_addr, 0);
     if (result != j6_status_ok) {
         j6_vma_unmap(def.tx, 0);
-        // TODO: Close TX handle
+        j6_handle_close(def.tx);
         syslog(j6::logs::ipc, j6::log_level::error, "Failed to map channel VMA. Error: %lx", result);
         return nullptr;
     }
