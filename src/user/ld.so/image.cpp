@@ -283,7 +283,7 @@ image_list::load(j6_handle_t vfs_mb, uintptr_t addr)
             return;
         }
 
-        j6::syslog(j6::logs::app, j6::log_level::verbose, "Loaded %s at base address 0x%x", img->name, img->base);
+        j6::syslog(j6::logs::app, j6::log_level::verbose, "Loaded %s at offset 0x%lx", img->name, img->base);
         addr = (addr & ~0xffffull) + 0x10000;
 
         // Find the DT_NEEDED entries

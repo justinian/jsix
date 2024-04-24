@@ -1,4 +1,3 @@
-#include <stddef.h>
 #include <stdint.h>
 
 #include <j6/memutils.h>

@@ -1,0 +1,14 @@
+---
+location: jsix
+init: srv.init
+initrd:
+  name: initrd.dat
+  format: zstd
+panic:
+  - panic.serial
+services:
+  - srv.logger
+drivers:
+  - drv.uart
+libs:
+  - ld.so

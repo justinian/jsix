@@ -35,16 +35,17 @@ mailbox_call(
         uint64_t *tag,
         void *in_data,
         size_t *data_len,
-        size_t data_in_len,
+        size_t data_size,
         j6_handle_t *in_handles,
-        size_t *handles_count)
+        size_t *handles_count,
+        size_t handles_size)
 {
     thread &cur = thread::current();
 
-    util::buffer data {in_data, data_in_len};
+    util::buffer data {in_data, *data_len};
     util::counted<j6_handle_t> handles {in_handles, *handles_count};
 
-    ipc::message message(*tag, data, handles);
+    ipc::message_ptr message = new ipc::message {*tag, data, handles};
     cur.set_message_data(util::move(message));
 
     j6_status_t s = self->call();
@@ -52,19 +53,20 @@ mailbox_call(
         return s;
 
     message = cur.get_message_data();
+    util::counted<j6_handle_t> msg_handles = message->handles();
+    util::buffer msg_data = message->data();
 
-    if (message.handles) {
-        for (unsigned i = 0; i < message.handles.count; ++i)
-            process::current().add_handle(message.handles[i]);
+    if (message->handle_count) {
+        for (unsigned i = 0; i < msg_handles.count; ++i)
+            process::current().add_handle(msg_handles[i]);
     }
 
-    *tag = message.tag;
-    *data_len = *data_len > message.data.count ? message.data.count : *data_len;
-    memcpy(in_data, message.data.pointer, *data_len);
+    *tag = message->tag;
+    *data_len = data_size > msg_data.count ? msg_data.count : data_size;
+    memcpy(in_data, msg_data.pointer, *data_len);
 
-    size_t handles_min = *handles_count > message.handles.count ? message.handles.count : *handles_count;
-    *handles_count = handles_min;
-    memcpy(in_handles, message.handles.pointer, handles_min * sizeof(j6_handle_t));
+    *handles_count = handles_size > msg_handles.count ? msg_handles.count : handles_size;
+    memcpy(in_handles, msg_handles.pointer, *handles_count * sizeof(j6_handle_t));
 
     return j6_status_ok;
 }
@@ -75,18 +77,20 @@ mailbox_respond(
         uint64_t *tag,
         void *in_data,
         size_t *data_len,
-        size_t data_in_len,
+        size_t data_size,
         j6_handle_t *in_handles,
         size_t *handles_count,
+        size_t handles_size,
         uint64_t *reply_tag,
         uint64_t flags)
 {
-    util::buffer data {in_data, data_in_len};
+    util::buffer data {in_data, *data_len};
     util::counted<j6_handle_t> handles {in_handles, *handles_count};
 
-    ipc::message message(*tag, data, handles);
+    ipc::message_ptr message;
 
     if (*reply_tag) {
+        message = new ipc::message {*tag, data, handles};
         j6_status_t s = self->reply(*reply_tag, util::move(message));
         if (s != j6_status_ok)
             return s;
@@ -97,18 +101,20 @@ mailbox_respond(
     if (s != j6_status_ok)
         return s;
 
-    if (message.handles) {
-        for (unsigned i = 0; i < message.handles.count; ++i)
-            process::current().add_handle(message.handles[i]);
+    util::counted<j6_handle_t> msg_handles = message->handles();
+    util::buffer msg_data = message->data();
+
+    if (msg_handles) {
+        for (unsigned i = 0; i < msg_handles.count; ++i)
+            process::current().add_handle(msg_handles[i]);
     }
 
-    *tag = message.tag;
-    *data_len = *data_len > message.data.count ? message.data.count : *data_len;
-    memcpy(in_data, message.data.pointer, *data_len);
+    *tag = message->tag;
+    *data_len = data_size > msg_data.count ? msg_data.count : data_size;
+    memcpy(in_data, msg_data.pointer, *data_len);
 
-    size_t handles_min = *handles_count > message.handles.count ? message.handles.count : *handles_count;
-    *handles_count = handles_min;
-    memcpy(in_handles, message.handles.pointer, handles_min * sizeof(j6_handle_t));
+    *handles_count = handles_size > msg_handles.count ? msg_handles.count : handles_size;
+    memcpy(in_handles, msg_handles.pointer, *handles_count * sizeof(j6_handle_t));
 
     return j6_status_ok;
 }

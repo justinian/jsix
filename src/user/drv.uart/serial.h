@@ -6,14 +6,17 @@
 #include <util/bip_buffer.h>
 #include <util/spinlock.h>
 
+namespace j6 {
+    class channel;
+}
+
 class serial_port
 {
 public:
     /// Constructor.
-    /// \arg port   The IO address of the serial port
-    serial_port(uint16_t port,
-            size_t in_buffer_len, uint8_t *in_buffer,
-            size_t out_buffer_len, uint8_t *out_buffer);
+    /// \arg port     The IO address of the serial port
+    /// \art channel  The channel to send bytes over
+    serial_port(uint16_t port, j6::channel &channel);
 
     size_t write(const char *str, size_t len);
     char read();
@@ -24,8 +27,7 @@ public:
 private:
     bool m_writing;
     uint16_t m_port;
-    util::bip_buffer m_out_buffer;
-    util::bip_buffer m_in_buffer;
+    j6::channel &m_chan;
     util::spinlock m_lock;
 
     void do_read();

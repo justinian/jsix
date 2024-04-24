@@ -72,5 +72,6 @@ ldso_init(j6_arg_header *stack_args, uintptr_t *got)
     all_images.push_back(&target_image);
     all_images.load(vfs, arg_loader->start_addr);
 
+    j6::syslog(j6::logs::app, j6::log_level::verbose, "ld.so finished, jumping to entrypoint");
     return arg_loader->entrypoint + arg_loader->image_base;
 }

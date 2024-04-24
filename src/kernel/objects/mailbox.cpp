@@ -60,14 +60,13 @@ mailbox::call()
 }
 
 j6_status_t
-mailbox::receive(ipc::message &data, reply_tag_t &reply_tag, bool block)
+mailbox::receive(ipc::message_ptr &data, reply_tag_t &reply_tag, bool block)
 {
     if (closed())
         return j6_status_closed;
 
     thread &current = thread::current();
     thread *caller = nullptr;
-
 
     while (true) {
         caller = m_callers.pop_next();
@@ -86,7 +85,6 @@ mailbox::receive(ipc::message &data, reply_tag_t &reply_tag, bool block)
             return s;
     }
 
-
     util::scoped_lock lock {m_reply_lock};
     reply_tag = ++m_next_reply_tag;
     m_reply_map.insert({ reply_tag, caller });
@@ -100,7 +98,7 @@ mailbox::receive(ipc::message &data, reply_tag_t &reply_tag, bool block)
 }
 
 j6_status_t
-mailbox::reply(reply_tag_t reply_tag, ipc::message &&data)
+mailbox::reply(reply_tag_t reply_tag, ipc::message_ptr data)
 {
     if (closed())
         return j6_status_closed;

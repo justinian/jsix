@@ -1,0 +1,9 @@
+# vim: ft=python
+
+module("6s",
+    targets = [ "user" ],
+    deps = [ "libc" ],
+    description = "j6 shell",
+    sources = [
+        "main.cpp",
+    ])

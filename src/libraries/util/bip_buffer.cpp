@@ -8,27 +8,37 @@
 
 namespace util {
 
-bip_buffer::bip_buffer() :
-        m_start_a(0),
-        m_start_b(0),
-        m_size_a(0),
-        m_size_b(0),
-        m_size_r(0),
-        m_buffer_size(0),
-        m_buffer(nullptr)
-    {}
+bip_buffer::bip_buffer(size_t size) :
+    m_start_a {0},
+    m_start_b {0},
+    m_size_a  {0},
+    m_size_b  {0},
+    m_size_r  {0},
+    m_buffer_size {size - sizeof(bip_buffer)}
+{}
 
-bip_buffer::bip_buffer(uint8_t *buffer, size_t size) :
-        m_start_a(0),
-        m_start_b(0),
-        m_size_a(0),
-        m_size_b(0),
-        m_size_r(0),
-        m_buffer_size(size),
-        m_buffer(buffer)
-    {}
+size_t
+bip_buffer::write_available() const
+{
+    scoped_lock lock {m_lock};
 
-size_t bip_buffer::reserve(size_t size, void **area)
+    if (m_size_r) {
+        return 0;
+    }
+
+    if (m_size_b) {
+        // If B exists, we're appending there. Get space between
+        // the end of B and start of A.
+        return m_start_a - m_start_b - m_size_b;
+    } else {
+        // B doesn't exist, check the space both before and after A.
+        size_t remaining = m_buffer_size - m_start_a - m_size_a;
+        return (m_start_a > remaining) ? m_start_a : remaining;
+    }
+}
+
+size_t
+bip_buffer::reserve(size_t size, uint8_t **area)
 {
     scoped_lock lock {m_lock};
 
@@ -84,7 +94,7 @@ void bip_buffer::commit(size_t size)
     m_start_r = m_size_r = 0;
 }
 
-size_t bip_buffer::get_block(void **area) const
+size_t bip_buffer::get_block(uint8_t const **area) const
 {
     scoped_lock lock {m_lock};
 

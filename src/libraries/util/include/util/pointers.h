@@ -4,6 +4,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <util/basic_types.h>
 
 namespace util {
 
@@ -90,6 +91,47 @@ public:
 private:
     T *m_t;
     size_t m_off;
+};
+
+
+template <typename T>
+class unique_ptr
+{
+public:
+    unique_ptr() : m_value {nullptr} {}
+    unique_ptr(T *p) : m_value {p} {}
+    unique_ptr(unique_ptr &&o) { *this = util::move(o); }
+
+    ~unique_ptr() { delete m_value; }
+
+    unique_ptr & operator=(unique_ptr &&o) {
+        if (o.m_value == m_value) return *this;
+        delete m_value;
+
+        m_value = o.m_value;
+        o.m_value = nullptr;
+        return *this;
+    }
+
+    unique_ptr(const unique_ptr &) = delete;
+    unique_ptr & operator=(const unique_ptr &) = delete;
+
+    T* get() { return m_value; }
+    const T* get() const { return m_value; }
+    operator bool() const { return m_value; }
+    bool empty() const { return m_value = nullptr; }
+
+    T* operator->() { return m_value; }
+    const T operator->() const { return m_value; }
+
+    T operator*() { return *m_value; }
+    const T operator*() const { return *m_value; }
+
+    operator T*() { return m_value; }
+    operator const T*() const { return m_value; }
+
+private:
+    T *m_value = nullptr;
 };
 
 } // namespace util

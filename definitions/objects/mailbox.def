@@ -20,8 +20,9 @@ object mailbox : object {
     method call [cap:send] {
         param tag uint64 [inout]
         param data buffer [optional inout]
-        param data_in_len size  # number of bytes in data used for input
+        param data_size size  # number of total bytes in data buffer
         param handles ref object [optional inout handle list]
+        param handles_size size  # total size of handles buffer
     }
 
     # Respond to a message sent using call, and wait for another
@@ -31,8 +32,9 @@ object mailbox : object {
     method respond [cap:receive] {
         param tag uint64 [inout]
         param data buffer [optional inout]
-        param data_in_len size  # number of bytes in data used for input
+        param data_size size  # number of total bytes in data buffer
         param handles ref object [optional inout handle list]
+        param handles_size size  # total size of handles buffer
         param reply_tag uint64 [inout]
         param flags uint64
     }

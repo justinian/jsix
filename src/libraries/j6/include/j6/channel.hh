@@ -10,41 +10,66 @@
 #include <j6/types.h>
 #include <util/api.h>
 
+namespace util {
+    class bip_buffer;
+}
+
 namespace j6 {
+
+/// Descriptor of VMAs for a channel.
+struct channel_def
+{
+    j6_handle_t tx;
+    j6_handle_t rx;
+};
+
+struct channel_memory_area;
 
 class API channel
 {
 public:
-    /// Create a new channel of the given size.
-    static channel * create(size_t size);
+    /// Create a new channel.
+    /// \arg tx_size  Size of the transmit buffer (sending from this thread)
+    /// \arg rx_size  Size of the receive buffer (sending from remote thread),
+    ///               or 0 for equal sized buffers.
+    static channel * create(size_t tx_size, size_t rx_size = 0);
 
-    /// Open an existing channel for which we have a VMA handle
-    static channel * open(j6_handle_t vma);
+    /// Open an existing channel for which we have VMA handles
+    static channel * open(const channel_def &def);
 
-    /// Send data into the channel.
-    /// \arg buffer  The buffer from which to read data
-    /// \arg len     The number of bytes to read from `buffer`
-    /// \arg block   If true, block this thread if there aren't `len` bytes of space available
-    j6_status_t send(const void *buffer, size_t len, bool block = true);
+    /// Reserve an area of the output buffer for a write.
+    /// \arg size  Requested size, in bytes
+    /// \arg area  [out] Pointer to returned area
+    /// \arg block If true, block this thread until there are size bytes free
+    /// \returns   Size of returned area, in bytes, or 0 on failure
+    size_t reserve(size_t size, uint8_t **area, bool block = true);
 
-    /// Read data out of the channel.
-    /// \arg buffer  The buffer to receive channel data
-    /// \arg size    [in] The size of `buffer` [out] the amount read into `buffer`
-    /// \arg block   If true, block this thread if there is no data to read yet
-    j6_status_t receive(void *buffer, size_t *size, bool block = true);
+    /// Commit a pending write started by reserve()
+    /// \arg size  Amount of data used, in bytes
+    void commit(size_t size);
 
-    /// Get the VMA handle for sharing with other processes
-    j6_handle_t handle() const { return m_vma; }
+    /// Get a pointer to a block of data in the buffer.
+    /// \arg area  [out] Pointer to the retuned area
+    /// \arg block If true, block this thread until there is data available
+    /// \returns   Size of the returned area, in bytes
+    size_t get_block(uint8_t const **area, bool block = true) const;
+
+    /// Mark a number of bytes as consumed, freeing buffer space
+    /// \arg size  Number of bytes to consume
+    void consume(size_t size);
+
+    /// Get the channel_def for creating the remote end
+    inline channel_def remote_def() const { return {m_def.rx, m_def.tx}; }
 
 private:
-    struct header;
+    channel(
+        const channel_def &def,
+        channel_memory_area &tx,
+        channel_memory_area &rx);
 
-    channel(j6_handle_t vma, header *h);
-
-    j6_handle_t m_vma;
-
-    size_t m_size;
-    header *m_header;
+    channel_def m_def;
+    channel_memory_area &m_tx;
+    channel_memory_area &m_rx;
 };
 
 } // namespace j6

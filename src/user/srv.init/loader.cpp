@@ -12,6 +12,7 @@
 #include <j6/syslog.hh>
 #include <util/xoroshiro.h>
 
+#include "j6/types.h"
 #include "j6romfs.h"
 #include "loader.h"
 
@@ -192,6 +193,10 @@ load_program(
         const module *arg)
 {
     j6::syslog(j6::logs::srv, j6::log_level::info, "Loading program '%s' into new process", path);
+    j6_handle_t proc = create_process(sys, slp, vfs);
+    if (proc == j6_handle_invalid)
+        return false;
+
     util::buffer program_data = load_file(fs, path);
     if (!program_data.pointer)
         return false;
@@ -200,15 +205,16 @@ load_program(
 
     bool dyn = program_elf.type() == elf::filetype::shared;
     uintptr_t program_image_base = 0;
-    if (dyn)
+    if (dyn) {
         program_image_base = (rng.next() & 0xffe0 + 16) << 20;
+        j6::syslog(j6::logs::srv, j6::log_level::info, "  Image %s offset: 0x%lx", path, program_image_base);
+    }
 
     if (!program_elf.valid(dyn ? elf::filetype::shared : elf::filetype::executable)) {
         j6::syslog(j6::logs::srv, j6::log_level::error, "error loading '%s': ELF is invalid", path);
         return false;
     }
 
-    j6_handle_t proc = create_process(sys, slp, vfs);
     uintptr_t eop = load_program_into(proc, program_elf, program_image_base, path);
     if (!eop)
         return false;
@@ -273,6 +279,7 @@ load_program(
             if (seg.type == elf::segment_type::interpreter) {
                 const char *ldso_path = reinterpret_cast<const char*>(program_elf.base() + seg.offset);
                 util::buffer ldso_data = load_file(fs, ldso_path);
+                j6::syslog(j6::logs::srv, j6::log_level::info, "  Image %s offset: 0x%lx", ldso_path, ldso_image_base);
                 if (!ldso_data.pointer)
                     return false;
 

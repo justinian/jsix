@@ -1,4 +1,6 @@
+#include <util/new.h>
 #include <string.h>
+#include <j6/channel.hh>
 #include "io.h"
 #include "serial.h"
 
@@ -18,13 +20,10 @@ constexpr uint16_t MSR = 6;
 constexpr uint16_t DLL = 0; // DLAB == 1
 constexpr uint16_t DLH = 1; // DLAB == 1
 
-serial_port::serial_port(uint16_t port,
-        size_t in_buffer_len, uint8_t *in_buffer,
-        size_t out_buffer_len, uint8_t *out_buffer) :
-    m_writing(false),
-    m_port(port),
-    m_out_buffer(out_buffer, out_buffer_len),
-    m_in_buffer(in_buffer, in_buffer_len)
+serial_port::serial_port(uint16_t port, j6::channel &channel) :
+    m_writing {false},
+    m_port {port},
+    m_chan {channel}
 {
     outb(port + IER, 0x00);  // Disable all interrupts
     outb(port + LCR, 0x80);  // Enable the Divisor Latch Access Bit
@@ -56,10 +55,8 @@ serial_port::handle_interrupt()
                 break;
 
             case 1: // Transmit buffer empty
-                do_write();
-                break;
-
             case 2: // Received data available
+                do_write();
                 do_read();
                 break;
 
@@ -78,14 +75,15 @@ serial_port::do_read()
 {
     size_t used = 0;
     uint8_t *data = nullptr;
-    size_t avail = m_in_buffer.reserve(fifo_size, reinterpret_cast<void**>(&data));
+
+    size_t avail = m_chan.reserve(fifo_size, &data, false);
 
     while (used < avail && read_ready(m_port)) {
         *data++ = inb(m_port);
         used++;
     }
 
-    m_in_buffer.commit(used);
+    m_chan.commit(used);
 }
 
 void
@@ -93,12 +91,12 @@ serial_port::do_write()
 {
     util::scoped_lock lock {m_lock};
 
-    uint8_t *data = nullptr;
-    size_t n = m_out_buffer.get_block(reinterpret_cast<void**>(&data));
+    uint8_t const *data = nullptr;
+    size_t n = m_chan.get_block(&data, false);
 
     m_writing = (n > 0);
     if (!m_writing) {
-        m_out_buffer.consume(0);
+        m_chan.consume(0);
         return;
     }
 
@@ -113,7 +111,7 @@ serial_port::do_write()
         outb(m_port, data[i]);
     }
 
-    m_out_buffer.consume(n);
+    m_chan.consume(n);
 }
 
 void
@@ -125,11 +123,11 @@ serial_port::handle_error(uint16_t reg, uint8_t value)
 char
 serial_port::read()
 {
-    uint8_t *data = nullptr;
-    size_t n = m_in_buffer.get_block(reinterpret_cast<void**>(&data));
+    uint8_t const *data = nullptr;
+    size_t n = m_chan.get_block(&data);
     if (!n) return 0;
     char c = *data;
-    m_in_buffer.consume(1);
+    m_chan.consume(1);
     return c;
 }
 
@@ -137,10 +135,10 @@ size_t
 serial_port::write(const char *c, size_t len)
 {
     uint8_t *data = nullptr;
-    size_t avail = m_out_buffer.reserve(len, reinterpret_cast<void**>(&data));
+    size_t avail = m_chan.reserve(len, &data);
 
     memcpy(data, c, avail);
-    m_out_buffer.commit(avail);
+    m_chan.commit(avail);
 
     if (!m_writing)
         do_write();

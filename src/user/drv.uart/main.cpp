@@ -51,6 +51,32 @@ main(int argc, const char **argv)
     if (result != j6_status_ok)
         return result;
 
+    static constexpr size_t buffer_pages = 1;
+    j6::ring_buffer in_buffer {buffer_pages};
+    if (!in_buffer.valid())
+        return 128;
+
+    j6::ring_buffer out_buffer {buffer_pages};
+    if (!out_buffer.valid())
+        return 129;
+
+    j6_handle_t slp = j6_find_init_handle(j6::proto::sl::id);
+    if (slp == j6_handle_invalid)
+        return 1;
+
+    j6::channel *cout = j6::channel::create(0x2000);
+    if (!cout)
+        return 2;
+
+    uint64_t proto_id = "jsix.protocol.stream.ouput"_id;
+    j6::channel_def chan = cout->remote_def();
+    j6::proto::sl::client slp_client {slp};
+
+    j6_handle_t chan_handles[2] = {chan.tx, chan.rx};
+    result = slp_client.register_service(proto_id, {chan_handles, 2});
+    if (result != j6_status_ok)
+        return 4;
+
     result = j6_event_create(&event);
     if (result != j6_status_ok)
         return result;
@@ -63,46 +89,15 @@ main(int argc, const char **argv)
     if (result != j6_status_ok)
         return result;
 
-    serial_port com1 {COM1, in_buf_size, com1_in, out_buf_size, com1_out};
-    serial_port com2 {COM2, in_buf_size, com2_in, out_buf_size, com2_out};
-
-    static constexpr size_t buffer_pages = 1;
-    j6::ring_buffer buffer {buffer_pages};
-    if (!buffer.valid())
-        return 128;
-
-    j6_handle_t slp = j6_find_init_handle(j6::proto::sl::id);
-    if (slp == j6_handle_invalid)
-        return 1;
-
-    j6::channel *cout = j6::channel::create(0x2000);
-    if (!cout)
-        return 2;
-
-    uint64_t proto_id = "jsix.protocol.stream.ouput"_id;
-    uint64_t handle = cout->handle();
-    j6::proto::sl::client slp_client {slp};
-    result = slp_client.register_service(proto_id, handle);
-    if (result != j6_status_ok)
-        return 4;
-
-    result = j6_system_request_iopl(g_handle_sys, 3);
-    if (result != j6_status_ok)
-        return 6;
+    serial_port com1 {COM1, *cout};
+    //serial_port com2 {COM2, *cout};
 
     while (true) {
-        size_t size = buffer.free();
-        cout->receive(buffer.write_ptr(), &size, 0);
-        buffer.commit(size);
-        //j6::syslog(j6::logs::srv, j6::log_level::spam, "uart driver: got %d bytes from channel", size);
-
-        size = com1.write(buffer.read_ptr(), buffer.used());
-        buffer.consume(size);
-
         uint64_t signals = 0;
         result = j6_event_wait(event, &signals, 500);
         if (result == j6_err_timed_out) {
-            com1.do_write();
+            com1.handle_interrupt();
+            //com2.handle_interrupt();
             continue;
         }
 
@@ -114,7 +109,7 @@ main(int argc, const char **argv)
         }
 
         if (signals & (1<<0))
-            com2.handle_interrupt();
+            //com2.handle_interrupt();
         if (signals & (1<<1))
             com1.handle_interrupt();
     }

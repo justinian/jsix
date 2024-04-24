@@ -21,7 +21,7 @@ client::load_file(char *path, j6_handle_t &vma, size_t &size)
         return j6_err_invalid_arg;
 
     uint64_t tag = j6_proto_vfs_load;
-    size_t handle_count = 1;
+    size_t handle_count = 0;
     vma = j6_handle_invalid;
 
     // Always need to send a big enough buffer for a status code
@@ -38,12 +38,12 @@ client::load_file(char *path, j6_handle_t &vma, size_t &size)
 
     j6_status_t s = j6_mailbox_call(m_service, &tag,
         data, &data_len, path_len,
-        &vma, &handle_count);
+        &vma, &handle_count, 1);
 
     if (s != j6_status_ok)
         return s;
 
-    if (tag == j6_proto_vfs_file) {
+    if (tag == j6_proto_vfs_file && handle_count == 1) {
         size = 0;
 
         // Get the size into `size`

@@ -13,16 +13,15 @@ client::client(j6_handle_t slp_mb) :
 }
 
 j6_status_t
-client::register_service(uint64_t proto_id, j6_handle_t handle)
+client::register_service(uint64_t proto_id, util::counted<j6_handle_t> handles)
 {
     uint64_t tag = j6_proto_sl_register;
-    size_t handle_count = 1;
     size_t data = proto_id;
     size_t data_size = sizeof(proto_id);
 
     j6_status_t s = j6_mailbox_call(m_service, &tag,
         &data, &data_size, data_size,
-        &handle, &handle_count);
+        handles.pointer, &handles.count, handles.count);
 
     if (s != j6_status_ok)
         return s;
@@ -34,27 +33,31 @@ client::register_service(uint64_t proto_id, j6_handle_t handle)
 }
 
 j6_status_t
-client::lookup_service(uint64_t proto_id, j6_handle_t &handle)
+client::lookup_service(uint64_t proto_id, util::counted<j6_handle_t> &handles)
 {
     uint64_t tag = j6_proto_sl_find;
-    size_t handle_count = 1;
     size_t data = proto_id;
     size_t data_size = sizeof(proto_id);
-    handle = j6_handle_invalid;
+    size_t handles_size = handles.count;
+    handles.count = 0;
 
     j6::syslog(j6::logs::proto, j6::log_level::verbose, "Looking up service for %x", proto_id);
     j6_status_t s = j6_mailbox_call(m_service, &tag,
         &data, &data_size, data_size,
-        &handle, &handle_count);
+        handles.pointer, &handles.count, handles_size);
 
-    if (s != j6_status_ok)
+    if (s != j6_status_ok) {
+        j6::syslog(j6::logs::proto, j6::log_level::error, "Received error %lx trying to call service lookup", s);
         return s;
+    }
 
     if (tag == j6_proto_sl_result)
-        return j6_status_ok; // handle is already in `handle`
+        return j6_status_ok; // handles are already in `handles`
 
-    else if (tag == j6_proto_base_status)
+    else if (tag == j6_proto_base_status) {
+        j6::syslog(j6::logs::proto, j6::log_level::warn, "Received status %lx from service lookup", data);
         return data; // contains a status
+    }
 
     return j6_err_unexpected;
 }

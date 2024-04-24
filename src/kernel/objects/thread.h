@@ -121,8 +121,8 @@ public:
     /// \returns  The clock time at which to wake. 0 for no timeout.
     inline uint64_t wake_timeout() const { return m_wake_timeout; }
 
-    void set_message_data(ipc::message &&md);
-    ipc::message && get_message_data();
+    inline void set_message_data(ipc::message_ptr md) { m_message = util::move(md); }
+    inline ipc::message_ptr get_message_data() { return util::move(m_message); }
 
     inline bool has_state(state s) const {
         return __atomic_load_n(reinterpret_cast<const uint8_t*>(&m_state), __ATOMIC_ACQUIRE) &
@@ -196,7 +196,7 @@ private:
     uint64_t m_wake_value;
     uint64_t m_wake_timeout;
 
-    ipc::message m_message;
+    ipc::message_ptr m_message;
 
     wait_queue m_join_queue;
 };

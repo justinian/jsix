@@ -12,138 +12,177 @@
 #include <j6/syscalls.h>
 #include <j6/syslog.hh>
 #include <util/spinlock.h>
+#include <util/bip_buffer.h>
+#include <util/new.h>
 
 namespace j6 {
 
-static uintptr_t channel_addr = 0x6000'0000;
-static util::spinlock addr_spinlock;
-
-struct channel::header
+struct channel_memory_area
 {
-    size_t size;
-    size_t read_index;
-    size_t write_index;
-
-    mutex mutex;
-    condition read_waiting;
-    condition write_waiting;
-
-    uint8_t data[0];
-
-    inline const void* read_at() const { return &data[read_index & (size - 1)]; }
-    inline void* write_at()            { return &data[write_index & (size - 1)]; }
-
-    inline size_t read_avail() const   { return write_index - read_index; }
-    inline size_t write_avail() const  { return size - read_avail(); }
-
-    inline void consume(size_t n)      { read_index += n; }
-    inline void commit(size_t n)       { write_index += n; }
+    j6::mutex mutex;
+    j6::condition waiting;
+    util::bip_buffer buf;
 };
 
-channel *
-channel::create(size_t size)
+
+static bool
+check_channel_size(size_t s)
 {
-    j6_status_t result;
-    j6_handle_t vma = j6_handle_invalid;
-
-    if (size < arch::frame_size || (size & (size - 1)) != 0) {
-        syslog(j6::logs::ipc, j6::log_level::error, "Bad channel size: %lx", size);
-        return nullptr;
+    if (s < arch::frame_size || (s & (s - 1)) != 0) {
+        syslog(j6::logs::ipc, j6::log_level::error, "Bad channel size: %lx", s);
+        return false;
     }
+    return true;
+}
 
-    util::scoped_lock lock {addr_spinlock};
-    uintptr_t addr = channel_addr;
-    channel_addr += size * 2; // account for ring buffer virtual space doubling
-    lock.release();
 
-    result = j6_vma_create_map(&vma, size, &addr, j6_vm_flag_write|j6_vm_flag_ring);
+static uintptr_t
+create_channel_vma(j6_handle_t &vma, size_t size)
+{
+    uintptr_t addr = 0;
+    j6_status_t result = j6_vma_create_map(&vma, size, &addr, j6_vm_flag_write);
     if (result != j6_status_ok) {
         syslog(j6::logs::ipc, j6::log_level::error, "Failed to create channel VMA. Error: %lx", result);
+        return 0;
+    }
+    syslog(j6::logs::ipc, j6::log_level::verbose, "Created channel VMA at 0x%lx size 0x%lx", addr, size);
+    return addr;
+}
+
+
+static void
+init_channel_memory_area(channel_memory_area *area, size_t size)
+{
+    new (&area->mutex) j6::mutex;
+    new (&area->waiting) j6::condition;
+    new (&area->buf) util::bip_buffer {size - sizeof(*area)};
+}
+
+
+channel *
+channel::create(size_t tx_size, size_t rx_size)
+{
+    if (!rx_size)
+        rx_size = tx_size;
+
+    if (!check_channel_size(tx_size) || !check_channel_size(rx_size))
+        return nullptr;
+
+    j6_status_t result;
+    j6_handle_t tx_vma = j6_handle_invalid;
+    j6_handle_t rx_vma = j6_handle_invalid;
+
+    uintptr_t tx_addr = create_channel_vma(tx_vma, tx_size);
+    if (!tx_addr)
+        return nullptr;
+
+    uintptr_t rx_addr = create_channel_vma(rx_vma, rx_size);
+    if (!rx_addr) {
+        j6_vma_unmap(tx_vma, 0);
+        // TODO: Close TX handle
         return nullptr;
     }
 
-    header *h = reinterpret_cast<header*>(addr);
-    memset(h, 0, sizeof(*h));
-    h->size = size;
+    channel_memory_area *tx = reinterpret_cast<channel_memory_area*>(tx_addr);
+    channel_memory_area *rx = reinterpret_cast<channel_memory_area*>(rx_addr);
+    init_channel_memory_area(tx, tx_size);
+    init_channel_memory_area(rx, rx_size);
 
-    return new channel {vma, h};
+    j6::syslog(logs::ipc, log_level::info, "Created new channel with handles {%x, %x}", tx_vma, rx_vma);
+
+    return new channel {{tx_vma, rx_vma}, *tx, *rx};
 }
 
 channel *
-channel::open(j6_handle_t vma)
+channel::open(const channel_def &def)
 {
     j6_status_t result;
 
-    util::scoped_lock lock {addr_spinlock};
-    uintptr_t addr = channel_addr;
-
-    result = j6_vma_map(vma, 0, &addr, 0);
+    uintptr_t tx_addr = 0;
+    result = j6_vma_map(def.tx, 0, &tx_addr, 0);
     if (result != j6_status_ok) {
         syslog(j6::logs::ipc, j6::log_level::error, "Failed to map channel VMA. Error: %lx", result);
         return nullptr;
     }
 
-    header *h = reinterpret_cast<header*>(addr);
-    channel_addr += h->size;
-    lock.release();
+    uintptr_t rx_addr = 0;
+    result = j6_vma_map(def.rx, 0, &rx_addr, 0);
+    if (result != j6_status_ok) {
+        j6_vma_unmap(def.tx, 0);
+        // TODO: Close TX handle
+        syslog(j6::logs::ipc, j6::log_level::error, "Failed to map channel VMA. Error: %lx", result);
+        return nullptr;
+    }
 
-    return new channel {vma, h};
+    channel_memory_area *tx = reinterpret_cast<channel_memory_area*>(tx_addr);
+    channel_memory_area *rx = reinterpret_cast<channel_memory_area*>(rx_addr);
+
+    j6::syslog(logs::ipc, log_level::info, "Opening existing channel with handles {%x:0x%lx, %x:0x%lx}", def.tx, tx, def.rx, rx);
+    return new channel { def, *tx, *rx };
 }
 
-channel::channel(j6_handle_t vma, header *h) :
-    m_vma {vma},
-    m_size {h->size},
-    m_header {h}
+channel::channel(
+        const channel_def &def,
+        channel_memory_area &tx,
+        channel_memory_area &rx) :
+    m_def {def},
+    m_tx {tx},
+    m_rx {rx}
 {
 }
 
-j6_status_t
-channel::send(const void *buffer, size_t len, bool block)
+
+size_t
+channel::reserve(size_t size, uint8_t **area, bool block)
 {
-    if (len > m_header->size)
+    if (size > m_tx.buf.buffer_size())
         return j6_err_insufficient;
 
-    j6::scoped_lock lock {m_header->mutex};
-    while (m_header->write_avail() < len) {
-        if (!block)
-            return j6_status_would_block;
-
+    j6::scoped_lock lock {m_tx.mutex};
+    while (m_tx.buf.write_available() < size) {
+        if (!block) return 0;
         lock.release();
-        m_header->write_waiting.wait();
+        m_tx.waiting.wait();
         lock.acquire();
     }
 
-    memcpy(m_header->write_at(), buffer, len);
-    m_header->commit(len);
-    m_header->read_waiting.wake();
-
-    return j6_status_ok;
+    return m_tx.buf.reserve(size, area);
 }
 
-j6_status_t
-channel::receive(void *buffer, size_t *size, bool block)
+void
+channel::commit(size_t size)
 {
-    j6::scoped_lock lock {m_header->mutex};
-    while (!m_header->read_avail()) {
-        if (!block) {
-            *size = 0;
-            return j6_status_would_block;
-        }
+    j6::syslog(logs::ipc, log_level::spam,
+        "Sending %d bytes to channel on {%x}", size, m_def.tx);
+    j6::scoped_lock lock {m_tx.mutex};
+    m_tx.buf.commit(size);
+    if (size)
+        m_tx.waiting.wake();
+}
+
+size_t
+channel::get_block(uint8_t const **area, bool block) const
+{
+    j6::scoped_lock lock {m_rx.mutex};
+    while (!m_rx.buf.size()) {
+        if (!block) return 0;
 
         lock.release();
-        m_header->read_waiting.wait();
+        m_rx.waiting.wait();
         lock.acquire();
     }
 
-    size_t avail = m_header->read_avail();
-    size_t read = *size > avail ? avail : *size;
+    return m_rx.buf.get_block(area);
+}
 
-    memcpy(buffer, m_header->read_at(), read);
-    m_header->consume(read);
-    m_header->write_waiting.wake();
-
-    *size = read;
-    return j6_status_ok;
+void
+channel::consume(size_t size)
+{
+    j6::syslog(logs::ipc, log_level::spam,
+        "Read %d bytes from channel on {%x}", size, m_def.rx);
+    m_rx.buf.consume(size);
+    if (size)
+        m_rx.waiting.wake();
 }
 
 } // namespace j6

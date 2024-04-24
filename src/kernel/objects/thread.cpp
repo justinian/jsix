@@ -111,9 +111,6 @@ thread::wake_only()
     set_state(state::ready);
 }
 
-void thread::set_message_data(ipc::message &&md) { m_message = util::move(md); }
-ipc::message && thread::get_message_data() { return util::move(m_message); }
-
 void
 thread::exit()
 {

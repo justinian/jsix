@@ -32,9 +32,13 @@ handle_load_request(j6romfs::fs &fs, const char *path, j6_handle_t &vma)
 void
 sanitize(char *s, size_t len)
 {
-    if (len >= buffer_size) len--;
+    if (!s) return;
+    if (len >= buffer_size)
+        len = buffer_size - 1;
+
     for (size_t i = 0; i < len; ++i)
-        if (!s || !*s) return;
+        if (!s[i]) return;
+
     s[len] = 0;
 }
 
@@ -44,17 +48,18 @@ initfs_start(j6romfs::fs &fs, j6_handle_t mb)
     uint64_t tag = 0;
     
     char *buffer = new char [buffer_size];
-    size_t out_len = buffer_size;
+    size_t out_len = 0;
 
     uint64_t reply_tag = 0;
 
-    size_t handles_count = 1;
+    static constexpr size_t max_handles = 1;
+    size_t handles_count = 0;
     j6_handle_t give_handle = j6_handle_invalid;
     uint64_t proto_id;
 
     j6_status_t s = j6_mailbox_respond(mb, &tag,
-            buffer, &out_len, 0,
-            &give_handle, &handles_count,
+            buffer, &out_len, buffer_size,
+            &give_handle, &handles_count, max_handles,
             &reply_tag, j6_flag_block);
 
     while (initfs_running) {
@@ -63,8 +68,6 @@ initfs_start(j6romfs::fs &fs, j6_handle_t mb)
             return;
         }
 
-        size_t data_out = 0;
-
         switch (tag) {
         case j6_proto_vfs_load:
             sanitize(buffer, out_len);
@@ -72,23 +75,25 @@ initfs_start(j6romfs::fs &fs, j6_handle_t mb)
             if (s != j6_status_ok) {
                 tag = j6_proto_base_status;
                 *reinterpret_cast<j6_status_t*>(buffer) = s;
-                data_out = sizeof(j6_status_t);
+                out_len = sizeof(j6_status_t);
                 break;
             }
+            handles_count = 1;
             tag = j6_proto_vfs_file;
             break;
 
         default:
             tag = j6_proto_base_status;
             *reinterpret_cast<j6_status_t*>(buffer) = j6_err_invalid_arg;
-            data_out = sizeof(j6_status_t);
+            out_len = sizeof(j6_status_t);
             give_handle = j6_handle_invalid;
+            handles_count = 0;
         }
 
         out_len = buffer_size;
         s = j6_mailbox_respond(mb, &tag,
-                buffer, &out_len, data_out,
-                &give_handle, &handles_count,
+                buffer, &out_len, buffer_size,
+                &give_handle, &handles_count, max_handles,
                 &reply_tag, j6_flag_block);
     }
 }
