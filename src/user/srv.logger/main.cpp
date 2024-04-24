@@ -7,6 +7,7 @@
 #include <j6/errors.h>
 #include <j6/flags.h>
 #include <j6/init.h>
+#include <j6/memutils.h>
 #include <j6/protocols/service_locator.hh>
 #include <j6/syscalls.h>
 #include <j6/sysconf.h>
@@ -44,7 +45,10 @@ print_header(j6::channel *cout)
             "\e[38;5;21mjsix OS\e[38;5;8m %d.%d.%d (%07x) booting...\e[0m\r\n",
             version_major, version_minor, version_patch, version_git);
 
-    cout->send(stringbuf, len);
+    uint8_t *outp = nullptr;
+    cout->reserve(len, &outp, true);
+    memcpy(outp, stringbuf, len);
+    cout->commit(len);
 }
 
 void
@@ -86,7 +90,12 @@ log_pump_proc(j6::channel *cout)
                 "\e[38;5;%dm%5lx %7s %7s: %.*s\e[38;5;0m\r\n",
                 level_color, seen, area_name, level_name,
                 message_len, e->message);
-        cout->send(stringbuf, len+1);
+
+        ++len; // Account for trailing 0
+        uint8_t *outp = nullptr;
+        cout->reserve(len, &outp, true);
+        memcpy(outp, stringbuf, len);
+        cout->commit(len);
     }
 }
 
@@ -103,25 +112,24 @@ main(int argc, const char **argv)
     if (g_handle_sys == j6_handle_invalid)
         return 2;
 
-    j6_handle_t cout_vma = j6_handle_invalid;
-
     uint64_t proto_id = "jsix.protocol.stream.ouput"_id;
     j6::proto::sl::client slp_client {slp};
 
+    j6_handle_t chan_handles[2];
+    util::counted<j6_handle_t> handles {chan_handles, 2};
+
     for (unsigned i = 0; i < 100; ++i) {
-        j6_status_t s = slp_client.lookup_service(proto_id, cout_vma);
-        if (s == j6_status_ok &&
-            cout_vma != j6_handle_invalid)
+        j6_status_t s = slp_client.lookup_service(proto_id, handles);
+        if (s == j6_status_ok && handles.count)
             break;
 
-        cout_vma = j6_handle_invalid;
         j6_thread_sleep(10000); // 10ms
     }
 
-    if (cout_vma == j6_handle_invalid)
+    if (!handles.count)
         return 3;
 
-    j6::channel *cout = j6::channel::open(cout_vma);
+    j6::channel *cout = j6::channel::open({chan_handles[0], chan_handles[1]});
     if (!cout)
         return 4;
 
