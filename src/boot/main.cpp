@@ -105,7 +105,7 @@ load_resources(
 
     if (!has_panic) {
         for (const descriptor &d : bc.panics()) {
-            if (d.flags.get(desc_flags::graphical)) {
+            if (!d.flags.get(desc_flags::graphical)) {
                 panic = loader::load_file(disk, d.path);
                 has_panic = true;
                 break;
