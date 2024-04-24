@@ -86,8 +86,6 @@ vm_space::add(uintptr_t base, obj::vm_area *area, util::bitset32 flags)
     if (!base)
         base = min_auto_address;
 
-    uintptr_t end = base + area->size();
-
     //TODO: optimize find/insert
     bool exact = flags.get(vm_flags::exact);
     for (size_t i = 0; i < m_areas.count(); ++i) {
@@ -96,6 +94,7 @@ vm_space::add(uintptr_t base, obj::vm_area *area, util::bitset32 flags)
         if (base >= aend)
             continue;
 
+        uintptr_t end = base + area->size();
         if (end <= a.base)
             break;
         else if (exact)
