@@ -91,27 +91,29 @@ serial_port::do_write()
 {
     util::scoped_lock lock {m_lock};
 
-    uint8_t const *data = nullptr;
-    size_t n = m_chan.get_block(&data, false);
+    while (true) {
+        uint8_t const *data = nullptr;
+        size_t n = m_chan.get_block(&data, false);
 
-    m_writing = (n > 0);
-    if (!m_writing) {
-        m_chan.consume(0);
-        return;
-    }
-
-    if (n > fifo_size)
-        n = fifo_size;
-
-    for (size_t i = 0; i < n; ++i) {
-        if (!write_ready(m_port)) {
-            n = i;
-            break;
+        m_writing = (n > 0);
+        if (!m_writing) {
+            m_chan.consume(0);
+            return;
         }
-        outb(m_port, data[i]);
-    }
 
-    m_chan.consume(n);
+        if (n > fifo_size)
+            n = fifo_size;
+
+        for (size_t i = 0; i < n; ++i) {
+            if (!write_ready(m_port)) {
+                n = i;
+                break;
+            }
+            outb(m_port, data[i]);
+        }
+
+        m_chan.consume(n);
+    }
 }
 
 void

@@ -96,7 +96,8 @@ main(int argc, const char **argv)
         uint64_t signals = 0;
         result = j6_event_wait(event, &signals, 500);
         if (result == j6_err_timed_out) {
-            com1.handle_interrupt();
+            com1.do_read();
+            com1.do_write();
             //com2.handle_interrupt();
             continue;
         }

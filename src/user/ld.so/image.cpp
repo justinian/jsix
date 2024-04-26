@@ -317,7 +317,7 @@ image::parse_rela_table(const util::counted<const rela> &table, image_list &ctx)
             break;
 
         default:
-            j6::syslog(j6::logs::app, j6::log_level::verbose, "Unknown rela relocation type %d in %s", rel.type, name);
+            j6::syslog(j6::logs::app, j6::log_level::error, "Unknown rela relocation type %d in %s", rel.type, name);
             exit(126);
             break;
         }

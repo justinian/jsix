@@ -37,17 +37,13 @@ gather_command(j6::channel &cout, j6::ring_buffer &buf)
         while (i < n) {
             start[i] = input[i];
             outp[i] = input[i];
-            j6::syslog(j6::logs::app, j6::log_level::spam, "Read: %x", start[i]);
             if (start[i++] == '\r') {
                 newline = true;
                 break;
             }
         }
 
-        size_t written = i;
-        if (newline)
-            outp[written++] = '\n';
-        cout.commit(written);
+        cout.commit(i);
         cout.consume(i);
 
         if (newline)

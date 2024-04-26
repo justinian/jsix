@@ -23,6 +23,7 @@ public:
 
     void handle_interrupt();
     void do_write();
+    void do_read();
 
 private:
     bool m_writing;
@@ -30,6 +31,5 @@ private:
     j6::channel &m_chan;
     util::spinlock m_lock;
 
-    void do_read();
     void handle_error(uint16_t reg, uint8_t value);
 };
