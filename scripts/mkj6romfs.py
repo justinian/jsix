@@ -101,7 +101,7 @@ def add_dir(path, files, dirs, inode_data, dir_inodes, output, compress):
     # Don't use more room for compression than
     # the original file
     if comp_size >= uncomp_size:
-        compressed = uncompressed
+        uncompressed = compressed
         comp_size = uncomp_size
 
     output.write(uncompressed)
