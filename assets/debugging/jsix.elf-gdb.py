@@ -501,6 +501,18 @@ class LinkedListPrinter:
         return self.items
 
 
+class IsRunning(gdb.Function):
+    def __init__(self):
+        super(IsRunning, self).__init__("is_running")
+
+    def invoke(self):
+        inferior = gdb.selected_inferior()
+        return \
+            inferior is not None and \
+            inferior.is_valid() and \
+            len(inferior.threads()) > 0
+
+
 def build_pretty_printers():
     pp = gdb.printing.RegexpCollectionPrettyPrinter("jsix")
     pp.add_printer("cap table", '^cap_table$', CapTablePrinter)
@@ -520,9 +532,10 @@ GetThreadsCommand()
 PrintProfilesCommand()
 DumpLogCommand()
 ShowCurrentProcessCommand()
+IsRunning()
 
 gdb.execute("display/i $rip")
-gdb.execute("define hook-quit\nkill\nend")
+gdb.execute("define hook-quit\nif $is_running()\n  kill\nend\nend")
 if not gdb.selected_inferior().was_attached:
     gdb.execute("add-symbol-file build/panic.serial.elf")
     gdb.execute("target remote :1234")
