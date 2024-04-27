@@ -1,0 +1,11 @@
+# vim: ft=python
+
+module("edit",
+    kind = "lib",
+    deps = [ "j6", "libc" ],
+    sources = [
+        "line.cpp",
+    ],
+    public_headers = [
+        "edit/line.h",
+    ])

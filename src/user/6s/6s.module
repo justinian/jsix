@@ -2,7 +2,7 @@
 
 module("6s",
     targets = [ "user" ],
-    deps = [ "libc" ],
+    deps = [ "libc", "edit" ],
     description = "j6 shell",
     sources = [
         "main.cpp",

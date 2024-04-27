@@ -152,12 +152,13 @@ channel::reserve(size_t size, uint8_t **area, bool block)
 void
 channel::commit(size_t size)
 {
-    j6::syslog(logs::ipc, log_level::spam,
-        "Sending %d bytes to channel on {%x}", size, m_def.tx);
     j6::scoped_lock lock {m_tx.mutex};
     m_tx.buf.commit(size);
-    if (size)
-        m_tx.waiting.wake();
+    if (!size) return;
+
+    m_tx.waiting.wake();
+    j6::syslog(logs::ipc, log_level::spam,
+        "Sending %d bytes to channel on {%x}", size, m_def.tx);
 }
 
 size_t
@@ -178,11 +179,13 @@ channel::get_block(uint8_t const **area, bool block) const
 void
 channel::consume(size_t size)
 {
+    j6::scoped_lock lock {m_tx.mutex};
+    m_rx.buf.consume(size);
+    if (!size) return;
+
+    m_rx.waiting.wake();
     j6::syslog(logs::ipc, log_level::spam,
         "Read %d bytes from channel on {%x}", size, m_def.rx);
-    m_rx.buf.consume(size);
-    if (size)
-        m_rx.waiting.wake();
 }
 
 } // namespace j6
