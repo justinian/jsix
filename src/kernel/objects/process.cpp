@@ -46,7 +46,7 @@ process::create_kernel_process(page_table *pml4)
 }
 
 void
-process::exit(int32_t code)
+process::exit(int64_t code)
 {
     if (m_state == state::exited)
         return;

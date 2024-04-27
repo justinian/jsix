@@ -42,7 +42,7 @@ public:
 
     /// Terminate this process.
     /// \arg code   The return code to exit with.
-    void exit(int32_t code);
+    void exit(int64_t code);
 
     /// Get the process' virtual memory space
     vm_space & space() { return m_space; }
@@ -95,7 +95,7 @@ private:
     // This constructor is called by create_kernel_process
     process(page_table *kpml4);
 
-    int32_t m_return_code;
+    int64_t m_return_code;
 
     vm_space m_space;
 

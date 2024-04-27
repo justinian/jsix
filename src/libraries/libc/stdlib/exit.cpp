@@ -21,7 +21,7 @@ size_t quick_exit_count = 0;
 atexit_item quick_exit_array[max_atexit];
 
 [[noreturn]] inline void
-exit_with_callbacks(int status, atexit_item *cbs, size_t count)
+exit_with_callbacks(long status, atexit_item *cbs, size_t count)
 {
     for (size_t i = count - 1; i < count; --i) {
         atexit_item &item = cbs[i];
@@ -61,13 +61,13 @@ int at_quick_exit( void (*func)(void) )
 }
 
 void
-exit(int status)
+exit(long status)
 {
     exit_with_callbacks(status, atexit_array, atexit_count);
 }
 
 void
-quick_exit(int status)
+quick_exit(long status)
 {
     exit_with_callbacks(status, quick_exit_array, quick_exit_count);
 }
@@ -75,11 +75,11 @@ quick_exit(int status)
 void
 abort()
 {
-    _Exit(INT32_MIN);
+    _Exit(INT64_MIN);
 }
 
 void
-_Exit( int status )
+_Exit( long status )
 {
     j6_process_exit(status);
 }

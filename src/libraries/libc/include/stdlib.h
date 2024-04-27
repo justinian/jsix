@@ -66,10 +66,10 @@ void* pvalloc(size_t);
 _Noreturn void abort( void );
 int atexit( void (*func)(void) );
 int at_quick_exit( void (*func)(void) );
-_Noreturn void exit( int status );
-_Noreturn void _Exit( int status );
+_Noreturn void exit( long status );
+_Noreturn void _Exit( long status );
 char *getenv( const char *name );
-_Noreturn void quick_exit( int status );
+_Noreturn void quick_exit( long status );
 int system( const char *string );
 
 // Searching and sorting utilities

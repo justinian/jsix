@@ -29,10 +29,10 @@ process_kill(process *self)
 }
 
 j6_status_t
-process_exit(int32_t status)
+process_exit(int64_t status)
 {
     process &p = process::current();
-    log::info(logs::task, "Process <%02lx> exiting with code %d", p.obj_id(), status);
+    log::info(logs::task, "Process <%02lx> exiting with code %#lx", p.obj_id(), status);
 
     p.exit(status);
 

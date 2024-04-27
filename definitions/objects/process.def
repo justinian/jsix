@@ -19,7 +19,7 @@ object process : object {
 
     # Stop all threads and exit the current process
     method exit [static noreturn] {
-        param result int32    # The result to retrun to the parent process
+        param result int64    # The result to retrun to the parent process
     }
 
     # Give the given process a handle that points to the same
