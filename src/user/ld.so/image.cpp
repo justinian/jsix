@@ -17,6 +17,8 @@
 extern "C" void _ldso_plt_lookup();
 extern image_list all_images;
 
+// From crt0, which ld.so also links
+extern void __run_ctor_list(uintptr_t start, uintptr_t end);
 
 // Can't use strcmp because it's from another library, and
 // this needs to be used as part of relocation or symbol lookup
@@ -327,15 +329,28 @@ image::parse_rela_table(const util::counted<const rela> &table, image_list &ctx)
 void
 image::relocate(image_list &ctx)
 {
-    if (relocated)
-        return;
+    if (!relocated) {
+        parse_rela_table(dynrel, ctx);
+        parse_rela_table(jmprel, ctx);
 
-    parse_rela_table(dynrel, ctx);
-    parse_rela_table(jmprel, ctx);
+        got[1] = reinterpret_cast<uintptr_t>(this);
+        got[2] = reinterpret_cast<uintptr_t>(&_ldso_plt_lookup);
+        relocated = true;
+    }
 
-    got[1] = reinterpret_cast<uintptr_t>(this);
-    got[2] = reinterpret_cast<uintptr_t>(&_ldso_plt_lookup);
-    relocated = true;
+    if (!ctors) {
+        uintptr_t pre_init_start = lookup("__preinit_array_start");
+        uintptr_t pre_init_end = lookup("__preinit_array_end");
+        if (pre_init_start && pre_init_end)
+            __run_ctor_list(pre_init_start, pre_init_end);
+
+        uintptr_t init_start = lookup("__init_array_start");
+        uintptr_t init_end = lookup("__init_array_end");
+        if (init_start && init_end)
+            __run_ctor_list(init_start, init_end);
+
+        ctors = true;
+    }
 }
 
 image_list::item_type *

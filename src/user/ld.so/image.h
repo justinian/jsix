@@ -28,6 +28,7 @@ struct image
     gnu_hash_table const *gnu_hash = nullptr;
 
     bool relocated = false;
+    bool ctors = false;
 
     /// Look up a string table entry in this image's string table.
     const char * string(unsigned index) const {

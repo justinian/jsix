@@ -5,6 +5,52 @@ extern exit
 extern __init_libj6
 extern __init_libc
 
+extern __preinit_array_start
+extern __preinit_array_end
+extern __init_array_start
+extern __init_array_end
+
+global __run_ctor_list:function hidden (__run_ctor_list.end - __run_ctor_list)
+__run_ctor_list:
+    push rbp
+    mov rbp, rsp
+
+    push rbx
+    push r12
+    mov rbx, rdi
+    mov r12, rsi
+.start:
+    cmp rbx, r12
+    je .fin
+    mov rax, [rbx]
+    call rax
+    add rbx, 8
+    jmp .start
+.fin:
+
+    pop r12
+    pop rbx
+    pop rbp
+    ret
+.end:
+
+global __run_global_ctors:function hidden (__run_global_ctors.end - __run_global_ctors)
+__run_global_ctors:
+    push rbp
+    mov rbp, rsp
+
+    lea rdi, [rel __preinit_array_start]
+    lea rsi, [rel __preinit_array_end]
+    call __run_ctor_list
+    lea rdi, [rel __init_array_start]
+    lea rsi, [rel __init_array_end]
+    call __run_ctor_list
+
+    pop rbp
+    ret
+.end:
+
+
 ; Put the address of the given symbol in rax
 ; This macro is the same as in util/got.inc,
 ; but crt0 can't have a dep on libutil
@@ -30,6 +76,8 @@ _libc_crt0_start:
 
     lookup_GOT __init_libc
     call rax
+
+    call __run_global_ctors
 
     mov rdi, 0
     mov rsi, rsp
