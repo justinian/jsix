@@ -11,6 +11,8 @@
 #include <j6/types.h>
 #include <edit/line.h>
 
+#include "commands.h"
+
 extern "C" {
     int main(int, const char **);
 }
@@ -111,14 +113,14 @@ handle_command(edit::source &s, const char *command, size_t len)
     if (len == 0)
         return;
 
-    if (strncmp(command, "help", len) == 0) {
-        s.write("help", 4);
-        s.write("\r\n", 2);
-        s.write("version", 7);
-        s.write("\r\n", 2);
-    } else if (!strncmp(command, "version", len)) {
-        static const char *version = GIT_VERSION;
-        s.write(version, strlen(version));
-        s.write("\r\n", 2);
+    for (unsigned i = 0; i < g_builtins_count; ++i) {
+        builtin &cmd = g_builtins[i];
+        if (strncmp(command, cmd.name(), len) == 0) {
+            cmd.run(s);
+            return;
+        }
     }
+
+    static const char unknown[] = "\x1b[1;33mUnknown command.\x1b[0m\r\n";
+    s.write(unknown, sizeof(unknown)-1);
 }
