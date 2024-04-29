@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include <j6/channel.hh>
 #include <j6/init.h>
 #include <j6/errors.h>
@@ -17,6 +19,17 @@ j6_handle_t g_handle_sys = j6_handle_invalid;
 
 const char prompt[] = "\x1b[1;32mj6> \x1b[0m";
 static constexpr size_t prompt_len = sizeof(prompt) - 1;
+
+const char greeting[] = "\x1b[2J\x1b[H\x1b[1;30m\
+\r\n Welcome to the \x1b[34mjsix\x1b[30m Operating System!\
+\r\n \
+\r\n This is the \x1b[34m6s\x1b[30m command shell, type `\x1b[4;33mhelp\x1b[0;1;30m`\
+\r\n for a list of commands.\
+\r\n\r\n\x1b[0m";
+
+static constexpr size_t greeting_len = sizeof(greeting) - 1;
+
+void handle_command(edit::source &s, const char *command, size_t len);
 
 class channel_source :
     public edit::source
@@ -52,13 +65,6 @@ main(int argc, const char **argv)
     if (g_handle_sys == j6_handle_invalid)
         return 1;
 
-    /*
-    static constexpr size_t buffer_pages = 1;
-    j6::ring_buffer in_buffer {buffer_pages};
-    if (!in_buffer.valid())
-        return 2;
-    */
-
     j6_handle_t slp = j6_find_init_handle(j6::proto::sl::id);
     if (slp == j6_handle_invalid)
         return 3;
@@ -90,8 +96,29 @@ main(int argc, const char **argv)
     static constexpr size_t bufsize = 256;
     char buffer [bufsize];
 
+    source.write(greeting, greeting_len);
+
     while (true) {
         size_t len = editor.read(buffer, bufsize, prompt, prompt_len);
-        j6::syslog(j6::logs::app, j6::log_level::info, "Command: %s", buffer);
+        handle_command(source, buffer, len);
+    }
+}
+
+void
+handle_command(edit::source &s, const char *command, size_t len)
+{
+    j6::syslog(j6::logs::app, j6::log_level::info, "Command: %s", command);
+    if (len == 0)
+        return;
+
+    if (strncmp(command, "help", len) == 0) {
+        s.write("help", 4);
+        s.write("\r\n", 2);
+        s.write("version", 7);
+        s.write("\r\n", 2);
+    } else if (!strncmp(command, "version", len)) {
+        static const char *version = GIT_VERSION;
+        s.write(version, strlen(version));
+        s.write("\r\n", 2);
     }
 }
