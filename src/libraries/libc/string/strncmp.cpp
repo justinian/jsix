@@ -16,7 +16,9 @@ int strncmp(const char *s1, const char *s2, size_t n) {
     char const * c1 = s1;
     char const * c2 = s2;
 
-    while (n && *c1 && *c2 && *c1++ == *c2++) n--;
+    while (n && *c1 && *c2 && *c1 == *c2) {
+        n--; c1++; c2++;
+    }
 
     if (!n || *c1 == *c2) return 0;
     if (!*c2 || *c1 > *c2) return 1;
