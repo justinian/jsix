@@ -7,34 +7,28 @@
 
 namespace edit {
 
+class API source
+{
+public:
+    virtual size_t read(char const **data) = 0;
+    virtual void consume(size_t size) = 0;
+    virtual void write(char const *data, size_t len) = 0;
+};
+
+
 class API line
 {
 public:
-    line(const char *prompt = nullptr, size_t propmt_len = 0);
+    line(source &s);
     ~line();
 
-    /// Feed input from the terminal keyboard in.
-    /// \arg data  Data from the keyboard
-    /// \arg len   Length of data in bytes
-    /// \retruns   Number of bytes consumed
-    size_t input(char const *data, size_t len);
-
-    /// Get output to be sent to the terminal screen.
-    /// \arg data  [out] Data to be written to the screen
-    /// \returns   Number of bytes from data to be written
-    size_t output(char const **data);
+    /// Get a finished line from the editor.
+    size_t read(char *buffer, size_t size, char const *prompt = nullptr, size_t prompt_len = 0);
 
 private:
     size_t parse_command(char const *data, size_t len);
 
-    char *m_buf;
-
-    size_t m_in;
-    size_t m_out;
-    size_t m_prefix;
-
-    char const *m_tmp_out;
-    size_t m_tmp_out_len;
+    source &m_source;
 };
 
 } // namespace edit

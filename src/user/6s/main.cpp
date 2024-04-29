@@ -18,57 +18,29 @@ j6_handle_t g_handle_sys = j6_handle_invalid;
 const char prompt[] = "\x1b[1;32mj6> \x1b[0m";
 static constexpr size_t prompt_len = sizeof(prompt) - 1;
 
-const char query[] = "\x1b[6n";
-static constexpr size_t query_len = sizeof(prompt) - 1;
-
-size_t
-gather_command(j6::channel &cout, j6::ring_buffer &buf)
+class channel_source :
+    public edit::source
 {
-    size_t total_len = buf.used();
+public:
+    channel_source(j6::channel &chan) : m_chan {chan} {}
 
-    while (true) {
-        size_t size = buf.free();
-        char *start = buf.write_ptr();
-
-        uint8_t const *input = nullptr;
-        size_t n = cout.get_block(&input);
-        if (n > size) n = size;
-
-        uint8_t *outp = nullptr;
-        cout.reserve(n, &outp, true);
-
-        size_t i = 0;
-        bool newline = false;
-        bool eof = false;
-        while (i < n) {
-            start[i] = input[i];
-            outp[i] = input[i];
-            if (start[i] == 0x1b)
-                outp[i] = 'E';
-            if (start[i] == 4)
-                eof = true;
-
-            if (start[i++] == '\r') {
-                newline = true;
-                break;
-            }
-        }
-
-        cout.commit(i);
-        cout.consume(i);
-
-        if (eof) {
-            cout.reserve(query_len, &outp, true);
-            memcpy(outp, query, query_len);
-            cout.commit(query_len);
-        }
-
-        if (newline)
-            return total_len + i;
-
-        total_len += size;
+    size_t read(char const **data) override {
+        return m_chan.get_block(reinterpret_cast<uint8_t const**>(data));
     }
-}
+
+    void consume(size_t size) override { return m_chan.consume(size); }
+
+    void write(char const *data, size_t len) override {
+        uint8_t *outp;
+        m_chan.reserve(len, &outp);
+        memcpy(outp, data, len);
+        m_chan.commit(len);
+    }
+
+private:
+    j6::channel &m_chan;
+};
+
 
 int
 main(int argc, const char **argv)
@@ -112,25 +84,14 @@ main(int argc, const char **argv)
     if (!cout)
         return 5;
 
-    edit::line editor {prompt, prompt_len};
+    channel_source source {*cout};
+    edit::line editor {source};
+
+    static constexpr size_t bufsize = 256;
+    char buffer [bufsize];
 
     while (true) {
-        uint8_t *outb = nullptr;
-        char const *inc = nullptr;
-        size_t len = editor.output(&inc);
-        while (len) {
-            cout->reserve(len, &outb, true);
-            memcpy(outb, inc, len);
-            cout->commit(len);
-            len = editor.output(&inc);
-        }
-
-        char *outc = nullptr;
-        uint8_t const *inb = nullptr;
-        len = cout->get_block(&inb);
-        if (len) {
-            len = editor.input(reinterpret_cast<const char*>(inb), len);
-            cout->consume(len);
-        }
+        size_t len = editor.read(buffer, bufsize, prompt, prompt_len);
+        j6::syslog(j6::logs::app, j6::log_level::info, "Command: %s", buffer);
     }
 }
