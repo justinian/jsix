@@ -66,6 +66,7 @@ ldso_init(j6_arg_header *stack_args, uintptr_t *got)
     image_list::item_type target_image;
     target_image.base = arg_loader->image_base;
     target_image.got = arg_loader->got;
+    target_image.ctors = true; // crt0 will call the ctors
     target_image.read_dyn_table(
         reinterpret_cast<const dyn_entry*>(arg_loader->got[0] + arg_loader->image_base));
 
