@@ -23,3 +23,5 @@ int memcmp(const void *s1, const void *s2, size_t n) {
     return -1;
 }
 
+extern "C" int bcmp(const void *s1, const void *s2, size_t n)
+    __attribute__ ((weak, alias ("memcmp")));
