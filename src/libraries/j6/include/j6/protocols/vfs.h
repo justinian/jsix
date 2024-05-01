@@ -8,4 +8,6 @@ enum j6_proto_vfs_tag
 {
     j6_proto_vfs_load = j6_proto_base_first_proto_id,
     j6_proto_vfs_file,
+    j6_proto_vfs_get_tag,
+    j6_proto_vfs_tag,
 };

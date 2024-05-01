@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <j6/flags.h>
 #include <j6/errors.h>
+#include <j6/memutils.h>
 #include <j6/protocols/vfs.h>
 #include <j6/syscalls.h>
 #include <j6/syslog.hh>
@@ -10,6 +11,9 @@
 
 static uint64_t initfs_running = 1;
 static constexpr size_t buffer_size = 2048;
+
+static char fs_tag[] = "init";
+static constexpr size_t fs_tag_len = sizeof(fs_tag) - 1;
 
 j6_status_t
 handle_load_request(j6romfs::fs &fs, const char *path, j6_handle_t &vma)
@@ -82,6 +86,14 @@ initfs_start(j6romfs::fs &fs, j6_handle_t mb)
             tag = j6_proto_vfs_file;
             break;
 
+        case j6_proto_vfs_get_tag:
+            out_len = fs_tag_len;
+            handles_count = 0;
+            tag = j6_proto_vfs_tag;
+            memcpy(buffer, fs_tag, fs_tag_len);
+            break;
+
+
         default:
             tag = j6_proto_base_status;
             *reinterpret_cast<j6_status_t*>(buffer) = j6_err_invalid_arg;
@@ -90,7 +102,6 @@ initfs_start(j6romfs::fs &fs, j6_handle_t mb)
             handles_count = 0;
         }
 
-        out_len = buffer_size;
         s = j6_mailbox_respond(mb, &tag,
                 buffer, &out_len, buffer_size,
                 &give_handle, &handles_count, max_handles,

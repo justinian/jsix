@@ -7,4 +7,5 @@ module("6s",
     sources = [
         "commands.cpp",
         "main.cpp",
+        "shell.cpp",
     ])

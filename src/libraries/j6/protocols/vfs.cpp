@@ -1,3 +1,4 @@
+#include "j6/types.h"
 #include <j6/errors.h>
 #include <j6/protocols/vfs.hh>
 #include <j6/syscalls.h>
@@ -9,6 +10,11 @@ namespace j6::proto::vfs {
 
 client::client(j6_handle_t vfs_mb) :
     m_service {vfs_mb}
+{
+}
+
+client::client(const client& c) :
+    m_service {c.m_service}
 {
 }
 
@@ -60,6 +66,32 @@ client::load_file(char *path, j6_handle_t &vma, size_t &size)
     return j6_err_unexpected;
 }
 
+
+j6_status_t
+client::get_tag(char *tag, size_t &len)
+{
+    if (len < sizeof(j6_status_t))
+        return j6_err_insufficient;
+
+    uint64_t message_tag = j6_proto_vfs_get_tag;
+    size_t handle_count = 0;
+
+    size_t in_len = 0;
+    j6_status_t s = j6_mailbox_call(m_service, &message_tag,
+        tag, &in_len, len, nullptr, &handle_count, 0);
+
+    if (s != j6_status_ok)
+        return s;
+
+    if (message_tag == j6_proto_base_status)
+        return *reinterpret_cast<j6_status_t*>(tag); // contains a status
+
+    if (message_tag != j6_proto_vfs_tag)
+        return j6_err_unexpected;
+
+    len = in_len;
+    return j6_status_ok; // data is now in `tag` and `len`
+}
 
 } // namespace j6::proto::vfs
 #endif // __j6kernel

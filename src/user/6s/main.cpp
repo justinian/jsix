@@ -11,13 +11,13 @@
 #include <j6/types.h>
 #include <edit/line.h>
 
-#include "commands.h"
+#include "shell.h"
 
 extern "C" {
     int main(int, const char **);
 }
 
-j6_handle_t g_handle_sys = j6_handle_invalid;
+//j6_handle_t g_handle_sys = j6_handle_invalid;
 
 const char prompt[] = "\x1b[1;32mj6> \x1b[0m";
 static constexpr size_t prompt_len = sizeof(prompt) - 1;
@@ -31,7 +31,6 @@ const char greeting[] = "\x1b[2J\x1b[H\x1b[1;30m\
 
 static constexpr size_t greeting_len = sizeof(greeting) - 1;
 
-void handle_command(edit::source &s, const char *command, size_t len);
 
 class channel_source :
     public edit::source
@@ -47,9 +46,13 @@ public:
 
     void write(char const *data, size_t len) override {
         uint8_t *outp;
-        m_chan.reserve(len, &outp);
-        memcpy(outp, data, len);
-        m_chan.commit(len);
+        while (len) {
+            size_t size = m_chan.reserve(len, &outp);
+            size_t n = len < size ? len : size;
+            memcpy(outp, data, n);
+            m_chan.commit(n);
+            len -= n;
+        }
     }
 
 private:
@@ -63,13 +66,19 @@ main(int argc, const char **argv)
     j6_handle_t event = j6_handle_invalid;
     j6_status_t result = j6_status_ok;
 
+    /*
     g_handle_sys = j6_find_init_handle(0);
     if (g_handle_sys == j6_handle_invalid)
         return 1;
+    */
 
     j6_handle_t slp = j6_find_init_handle(j6::proto::sl::id);
     if (slp == j6_handle_invalid)
         return 3;
+
+    j6_handle_t vfs = j6_find_init_handle(j6::proto::vfs::id);
+    if (vfs == j6_handle_invalid)
+        return 4;
 
     uint64_t proto_id = "jsix.protocol.stream.ouput"_id;
     j6::proto::sl::client slp_client {slp};
@@ -95,6 +104,9 @@ main(int argc, const char **argv)
     channel_source source {*cout};
     edit::line editor {source};
 
+    shell sh { source };
+    sh.add_filesystem(vfs);
+
     static constexpr size_t bufsize = 256;
     char buffer [bufsize];
 
@@ -102,25 +114,6 @@ main(int argc, const char **argv)
 
     while (true) {
         size_t len = editor.read(buffer, bufsize, prompt, prompt_len);
-        handle_command(source, buffer, len);
+        sh.handle_command(buffer, len);
     }
-}
-
-void
-handle_command(edit::source &s, const char *command, size_t len)
-{
-    j6::syslog(j6::logs::app, j6::log_level::info, "Command: %s", command);
-    if (len == 0)
-        return;
-
-    for (unsigned i = 0; i < g_builtins_count; ++i) {
-        builtin &cmd = g_builtins[i];
-        if (strncmp(command, cmd.name(), len) == 0) {
-            cmd.run(s);
-            return;
-        }
-    }
-
-    static const char unknown[] = "\x1b[1;33mUnknown command.\x1b[0m\r\n";
-    s.write(unknown, sizeof(unknown)-1);
 }

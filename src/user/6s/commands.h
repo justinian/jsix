@@ -2,15 +2,12 @@
 
 #include <stddef.h>
 
-namespace edit {
-    class source;
-}
-
+struct shell;
 
 class builtin
 {
 public:
-    using runf = void (*)(edit::source &);
+    using runf = void (*)(shell &);
 
     builtin(const char *name, const char *desc, runf func) :
         m_name {name}, m_desc {desc}, m_func {func} {}
@@ -18,7 +15,7 @@ public:
     const char * name() const { return m_name; }
     const char * description() const { return m_desc; }
 
-    void run(edit::source &s) { m_func(s); }
+    void run(shell &s) { m_func(s); }
 
 private:
     const char *m_name;
