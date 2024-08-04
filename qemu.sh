@@ -41,7 +41,7 @@ while true; do
         -r | --remote)
             shift
             vnchost="${1:-${VNCHOST:-"localhost:5500"}}"
-            gfx="-vnc ${vnchost},reverse"
+            gfx="-vnc ${vnchost},reverse=on"
             vga=""
             shift
             ;;
@@ -117,13 +117,13 @@ if [[ -n $TMUX ]]; then
             tmux split-window -h -l $log_width "$debugcon_cmd"
             tmux last-pane
         fi
-        tmux split-window -l 10 "sleep 1; telnet localhost 45454"
+        tmux split-window -l 10 "sleep 1; nc localhost 45454"
     fi
 elif [[ $DESKTOP_SESSION = "i3" ]]; then
     if [[ -n $debug ]]; then
         i3-msg exec i3-sensible-terminal -- -e "gdb ${debugtarget}" &
     else
-        i3-msg exec i3-sensible-terminal -- -e 'telnet localhost 45454' &
+        i3-msg exec i3-sensible-terminal -- -e 'nc localhost 45454' &
     fi
 fi
 
