@@ -10,4 +10,10 @@
   * file, You can obtain one at https://mozilla.org/MPL/2.0/.
   */
 
-#error setjmp.h is not yet implemented.
+#include <stdint.h>
+#include <stdnoreturn.h>
+
+typedef uint64_t jmp_buf[9];
+
+int setjmp(jmp_buf env);
+_Noreturn void longjmp(jmp_buf env, int val);
