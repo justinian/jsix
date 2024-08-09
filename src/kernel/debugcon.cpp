@@ -44,7 +44,7 @@ void
 output(j6_log_entry *entry)
 {
     char buffer [256];
-    size_t dlen = util::format({buffer, sizeof(buffer)}, "\e[38;5;%dm%7s %7s\e[38;5;14m|\e[38;5;%dm ",
+    size_t dlen = util::format({buffer, sizeof(buffer)}, "\e[38;5;%dm%7s %7s\e[38;5;14m\u2502\e[38;5;%dm ",
             level_colors[entry->severity],
             area_names[entry->area],
             level_names[entry->severity],
