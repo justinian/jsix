@@ -12,39 +12,42 @@
 extern "C" {
 #endif
 
-#ifdef __cplusplus
-#define add_header(name) \
-    static constexpr j6_arg_type type_id = j6_arg_type_ ## name; \
-    j6_arg_header header;
-#else
-#define add_header(name) \
-    j6_arg_header header;
-#endif
+enum j6_aux_type {
+    // The SysV ABI-specified aux vector types
+    j6_aux_null,        // AT_NULL
+    j6_aux_ignore,      // AT_IGNORE
+    j6_aux_execfd,      // AD_EXECFD - File descriptor of the exe to load
+    j6_aux_phdr,        // AD_PHDR   - Program headers pointer for the exe to load
+    j6_aux_phent,       // AD_PHENT  - Size of a program header entry
+    j6_aux_phnum,       // AD_PHNUM  - Number of program header entries
+    j6_aux_pagesz,      // AD_PAGESZ - System page size
+    j6_aux_base,        // AD_BASE   - Base address of dynamic loader
+    j6_aux_flags,       // AD_FLAGS  - Flags
+    j6_aux_entry,       // AD_ENTRY  - Entrypoint for the exe to load
+    j6_aux_notelf,      // AD_NOTELF - If non-zero, this program is not ELF
+    j6_aux_uid,         // AD_UID    - User ID
+    j6_aux_euid,        // AD_EUID   - Effective User ID
+    j6_aux_gid,         // AD_GID    - Group ID
+    j6_aux_egid,        // AD_EGID   - Effective Group ID
 
-enum j6_arg_type {
-    j6_arg_type_none,
-    j6_arg_type_sysv_init,
-    j6_arg_type_loader,
-    j6_arg_type_driver,
-    j6_arg_type_handles,
+    j6_aux_start = 0xf000,
+    j6_aux_handles,     // Pointer to a j6_arg_handles structure
+    j6_aux_device,      // Pointer to a j6_arg_driver structure
+    j6_aux_loader,      // Pointer to a j6_arg_loader structure
 };
 
-struct j6_arg_header
+struct j6_aux
 {
-    uint32_t size;
-    uint16_t type;
-    uint16_t reserved;
-    j6_arg_header *next;
-};
-
-struct j6_arg_none
-{
-    add_header(none);
+    uint64_t type;
+    union {
+        uint64_t value;
+        void *pointer;
+        void (*func)();
+    };
 };
 
 struct j6_arg_loader
 {
-    add_header(loader);
     uintptr_t loader_base;
     uintptr_t image_base;
     uintptr_t *got;
@@ -54,8 +57,8 @@ struct j6_arg_loader
 
 struct j6_arg_driver
 {
-    add_header(driver);
     uint64_t device;
+    uint32_t size;
     uint8_t data [0];
 };
 
@@ -67,32 +70,13 @@ struct j6_arg_handle_entry
 
 struct j6_arg_handles
 {
-    add_header(handles);
     size_t nhandles;
     j6_arg_handle_entry handles[0];
 };
 
-struct j6_init_args
-{
-    uint64_t argv[2];
-    j6_arg_header *args;
-};
-
-
-/// Find the first handle of the given type held by this process
-j6_handle_t API j6_find_first_handle(j6_object_type obj_type);
-
 /// Find the first handle tagged with the given proto in the process init args
 j6_handle_t API j6_find_init_handle(uint64_t proto);
-
-/// Get the init args
-const j6_init_args * j6_get_init_args();
-
-/// Drivers may use driver_main instead of main
-int driver_main(unsigned, const char **, const char **, const j6_init_args *);
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
-
-#undef add_header

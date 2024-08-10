@@ -31,6 +31,9 @@ main(int argc, const char **argv, const char **env)
 {
     j6_status_t s;
 
+    // argv[0] is not a char* for init, but the modules pointer
+    uintptr_t modules_addr = reinterpret_cast<uintptr_t>(argv[0]);
+
     j6_handle_t slp_mb = j6_handle_invalid;
     j6_handle_t slp_mb_child = j6_handle_invalid;
 
@@ -42,7 +45,22 @@ main(int argc, const char **argv, const char **env)
 
     j6::syslog(j6::logs::srv, j6::log_level::info, "srv.init starting");
 
-    sys = j6_find_first_handle(j6_object_type_system);
+    // Since we had no parent to set up a j6_arg_handles object,
+    // ask the kernel for our handles and look in that list for
+    // the system handle.
+    static constexpr size_t num_init_handles = 16;
+    j6_handle_descriptor handles[num_init_handles];
+    size_t num_handles = num_init_handles;
+    s = j6_handle_list(handles, &num_handles);
+    if (s != j6_status_ok)
+        return s;
+
+    for (unsigned i = 0; i < num_handles; ++i) {
+        if (handles[i].type == j6_object_type_system) {
+            sys = handles[i].handle;
+            break;
+        }
+    }
     if (sys == j6_handle_invalid)
         return 1;
 
@@ -73,9 +91,6 @@ main(int argc, const char **argv, const char **env)
             j6_cap_object_clone);
     if (s != j6_status_ok)
         return s;
-
-    const j6_init_args *initp = j6_get_init_args();
-    uintptr_t modules_addr = initp->argv[0];
 
     std::vector<const module*> mods;
     load_modules(modules_addr, sys, 0, mods);

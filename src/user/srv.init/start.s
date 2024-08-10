@@ -19,11 +19,17 @@ _start:
     ; stack in BSS and assign that to be init's first stack
     mov rsp, init_stack_top
 
-    ; Push a fake j6_arg_none
-    push 0x00       ; pad for 16-byte alignment
-    push 0x00       ; no next arg
-    push 0x10       ; size 16 bytes, type 0 (none)
-    push rsp
+    ; Push fake initial stack
+    push 0x00       ; stack sentinel (16 bytes)
+    push 0x00       ;
+    push 0x00       ; alignment padding
+    push 0x00       ; auxv sentinel (16 bytes)
+    push 0x00       ;
+    push 0x00       ; envp sentinel (8 bytes)
+    push 0x00       ; argv sentinel (8 bytes)
+    push rsi        ; argv[1] -- for init, not actually a char*
+    push rdi        ; argv[0] -- for init, not actually a char*
+    push 0x02       ; argc
 
     jmp _libc_crt0_start
 .end:

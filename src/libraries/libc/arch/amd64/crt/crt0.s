@@ -71,12 +71,13 @@ global _libc_crt0_start:function (_libc_crt0_start.end - _libc_crt0_start)
 
 _start:
 _libc_crt0_start:
-    mov rdx, [rsp]      ; grab args pointer
+    mov r15, rsp        ; grab initial stack pointer
 
     push 0              ; Add null frame
     push 0
     mov rbp, rsp
 
+    mov rdi, r15
     lookup_GOT __init_libj6 
     call rax
     mov rbx, rax
@@ -86,8 +87,9 @@ _libc_crt0_start:
 
     call __run_global_ctors
 
-    mov rdi, 0
-    mov rsi, rsp
+    mov rdi, [r15]
+    mov rsi, r15
+    add rsi, 8
     mov rdx, 0    ; TODO: actually parse stack for argc, argv, envp
     mov rcx, rbx
     lookup_GOT main
