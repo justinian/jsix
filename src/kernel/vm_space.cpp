@@ -250,10 +250,10 @@ vm_space::clear(const obj::vm_area &vma, uintptr_t offset, size_t count, bool fr
 
         if (flags & page_flags::present) {
             e = 0;
-            if (flags & page_flags::accessed) {
-                auto *addr = reinterpret_cast<const uint8_t *>(it.vaddress());
-                asm ( "invlpg %0" :: "m"(*addr) : "memory" );
-            }
+
+            auto *addr = reinterpret_cast<const uint8_t *>(it.vaddress());
+            asm ( "invlpg %0" :: "m"(*addr) : "memory" );
+
             if (free_count && phys == free_start + (free_count * frame_size)) {
                 ++free_count;
             } else {
