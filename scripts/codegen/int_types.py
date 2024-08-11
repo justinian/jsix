@@ -1,18 +1,5 @@
 import cog
 
-supported_architectures = {
-    "amd64": "__amd64__",
-}
-
-def arch_includes(header):
-    prefix = "if"
-    for arch, define in supported_architectures.items():
-        cog.outl(f"#{prefix} defined({define})")
-        cog.outl(f"#include <__j6libc/arch/{arch}/{header}>")
-        prefix = "elif"
-    cog.outl("#endif")
-
-
 int_widths = (8, 16, 32, 64)
 int_mods = ("fast", "least")
 

@@ -12,9 +12,9 @@
 
 
 /**[[[cog code generation
-from j6libc import arch_includes
+from codegen import arch_includes
 
-arch_includes("errno.h")
+arch_includes("errno.h", root="__j6libc")
 
 ]]]*/
 /*[[[end]]]*/

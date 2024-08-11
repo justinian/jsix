@@ -12,7 +12,7 @@
 
 /**[[[cog code generation
 import cog
-from j6libc import definition, int_widths, int_mods
+from codegen.int_types import definition, int_widths, int_mods
 
 for width in int_widths:
     definition("typedef", f"__INT{width}_TYPE__",  f"int{width}_t;")
