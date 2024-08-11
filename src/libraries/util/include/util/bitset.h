@@ -53,6 +53,14 @@ public:
 
     template <typename T>
     __attribute__ ((always_inline))
+    inline bitset & set(T i, bool value) {
+        if (value) set(i);
+        else clear(i);
+        return *this;
+    }
+
+    template <typename T>
+    __attribute__ ((always_inline))
     inline bitset & clear(T i) {
         m_bits &= ~bit(i);
         return *this;
