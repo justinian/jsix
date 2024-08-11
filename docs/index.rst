@@ -71,6 +71,8 @@ The jsix kernel is quite far along now, but the userland systems are still lacki
    :caption: Site Contents:
 
    syscall_interface
+   kernel_memory
+   process_initialization
 
 
 * :ref:`genindex`

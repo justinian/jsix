@@ -1,5 +1,5 @@
 .. jsix syscall interface.
-.. Automatically update from the definition files using cog!
+.. Automatically updated from the definition files using cog!
 
 .. [[[cog code generation
 .. from textwrap import indent
@@ -14,11 +14,11 @@
 .. ]]]
 .. [[[end]]] (checksum: d41d8cd98f00b204e9800998ecf8427e)
 
-The jsix syscall interface
-==========================
+Syscall interface
+=================
 
 The jsix kernel's syscall design is based around object handles. Object handles
-are also a collections capabilities, encoding certain rights over the object
+are also a collection of capabilities, encoding certain rights over the object
 they reference.
 
 Very few syscalls in jsix can be made without some handle, and most of them are
@@ -133,7 +133,7 @@ as shared memory channels, but more flexible.
 
    :param self: Handle to the mailbox object
 
-.. cpp:function:: j6_result_t j6_mailbox_call (j6_handle_t self, uint64_t * tag, void * data, size_t * data_len, size_t data_in_len, j6_handle_t * handles, size_t * handles_count)
+.. cpp:function:: j6_result_t j6_mailbox_call (j6_handle_t self, uint64_t * tag, void * data, size_t * data_len, size_t data_size, j6_handle_t * handles, size_t * handles_count, size_t handles_size)
 
    Send a message to the reciever, and block until a response is
    sent. Note that getting this response does not require the
@@ -144,10 +144,11 @@ as shared memory channels, but more flexible.
    :param self: Handle to the mailbox object
    :param tag: *[inout]* Undocumented
    :param data: *[optional, inout]* Undocumented
-   :param data_in_len:  number of bytes in data used for input
+   :param data_size:  number of total bytes in data buffer
    :param handles: *[optional, inout, handle, list]* Undocumented
+   :param handles_size:  total size of handles buffer
 
-.. cpp:function:: j6_result_t j6_mailbox_respond (j6_handle_t self, uint64_t * tag, void * data, size_t * data_len, size_t data_in_len, j6_handle_t * handles, size_t * handles_count, uint64_t * reply_tag, uint64_t flags)
+.. cpp:function:: j6_result_t j6_mailbox_respond (j6_handle_t self, uint64_t * tag, void * data, size_t * data_len, size_t data_size, j6_handle_t * handles, size_t * handles_count, size_t handles_size, uint64_t * reply_tag, uint64_t flags)
 
    Respond to a message sent using call, and wait for another
    message to arrive. Note that this does not require the send
@@ -159,8 +160,9 @@ as shared memory channels, but more flexible.
    :param self: Handle to the mailbox object
    :param tag: *[inout]* Undocumented
    :param data: *[optional, inout]* Undocumented
-   :param data_in_len:  number of bytes in data used for input
+   :param data_size:  number of total bytes in data buffer
    :param handles: *[optional, inout, handle, list]* Undocumented
+   :param handles_size:  total size of handles buffer
    :param reply_tag: *[inout]* Undocumented
    :param flags:  Undocumented
 
@@ -185,7 +187,7 @@ control over the threads, handles, and virtual memory space of that process.
 
    :param self: Handle to the process object
 
-.. cpp:function:: j6_result_t j6_process_exit (int32_t result)
+.. cpp:function:: j6_result_t j6_process_exit (int64_t result)
 
    Stop all threads and exit the current process
 
@@ -353,7 +355,7 @@ necessarily mean that it is mapped into that process' virtual memory space.
    :param self: Handle to the vma object
    :param size: *[inout]* New size for the VMA, or 0 to query the current size without changing
 
-.. [[[end]]] (checksum: fe448e541c009a1bcf8bdc44f4760e32)
+.. [[[end]]] (checksum: cb17f54e443d1d3b85995870f3e8dbf2)
 
 Non-object syscalls
 -------------------
@@ -411,6 +413,12 @@ either do not require an object handle, or operate generically on handles.
    :param clone: *[out]* The new handle
    :param mask:  The capability bitmask
 
+.. cpp:function:: j6_result_t j6_handle_close (j6_handle_t hnd)
+
+   Close the handle to an object
+
+   :param hnd: *[handle]* The handle to close
+
 .. cpp:function:: j6_result_t j6_futex_wait (const uint32_t * address, uint32_t current, uint64_t timeout)
 
    Block waiting on a futex
@@ -432,5 +440,5 @@ either do not require an object handle, or operate generically on handles.
 
    :param exit_code:  Undocumented
 
-.. [[[end]]] (checksum: b8b12e99a4a00c99b3859f05000a7bfd)
+.. [[[end]]] (checksum: 0b9d051972abcbb6de408f411331785f)
 

@@ -1,29 +1,38 @@
 ---
 - name: linear
+  desc: Linearly-mapped physical memory
   size: 64T
   shared: true
 
 - name: bitmap
+  desc: Used/free page tracking bitmap
   size: 1T
   shared: true
 
 - name: heapmap
+  desc: Kernel heap accounting structures
   size: 32G
 
 - name: heap
+  desc: Kernel heap
   size: 32G
 
 - name: capsmap
+  desc: Capabilities accounting structures
   size: 32G
 
 - name: caps
+  desc: Capabilities
   size: 32G
 
 - name: stacks
+  desc: Kernel thread stacks
   size: 64G
 
 - name: buffers
+  desc: Kernel buffers
   size: 64G
 
 - name: logs
+  desc: Kernel logs circular buffer
   size: 2G
