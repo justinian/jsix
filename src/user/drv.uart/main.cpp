@@ -20,7 +20,7 @@
 #include "serial.h"
 
 extern "C" {
-    int main(int, const char **);
+    int main(int, const char **, const char **envp);
 }
 
 j6_handle_t g_handle_sys = j6_handle_invalid;
@@ -36,7 +36,7 @@ uint8_t com2_out[out_buf_size];
 constexpr uintptr_t stack_top = 0xf80000000;
 
 int
-main(int argc, const char **argv)
+main(int argc, const char **argv, const char **envp)
 {
     j6::syslog(j6::logs::srv, j6::log_level::info, "uart driver starting");
 

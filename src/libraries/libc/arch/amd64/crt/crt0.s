@@ -87,11 +87,16 @@ _libc_crt0_start:
 
     call __run_global_ctors
 
+    ; argc
     mov rdi, [r15]
+
+    ; argv
     mov rsi, r15
     add rsi, 8
-    mov rdx, 0    ; TODO: actually parse stack for argc, argv, envp
-    mov rcx, rbx
+
+    ; envp
+    lea rdx, [rsi + rdi*8 + 8]
+
     lookup_GOT main
     call rax
 

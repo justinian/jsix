@@ -71,6 +71,8 @@ public:
     }
 
     void build() {
+        *push<uint64_t, 16>() = 0;
+
         if ((m_argv.count() + m_envp.count()) % 2 == 0)
             *push<uint64_t>() = 0; // Pad for 16-byte alignment
 
@@ -267,6 +269,9 @@ load_program(
         reinterpret_cast<uint8_t*>(stack_addr + stack_size),
         stack_top,
     };
+
+    stack.add_arg(path);
+    stack.add_env("jsix_version", GIT_VERSION);
 
     static constexpr size_t nhandles = 3;
     static constexpr size_t handles_extra = 3 * sizeof(j6_arg_handle_entry);
