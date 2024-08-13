@@ -86,7 +86,7 @@ load_init_server(bootproto::program &program, uintptr_t modules_address)
     using bootproto::section_flags;
     using obj::vm_flags;
 
-    obj::process *p = new obj::process;
+    obj::process *p = new obj::process {"srv.init"};
 
     j6_handle_t sys_handle =
         g_cap_table.create(&obj::system::get(), obj::system::init_caps);

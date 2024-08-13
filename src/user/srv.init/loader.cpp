@@ -192,10 +192,10 @@ give_handle(j6_handle_t proc, j6_handle_t h, const char *name)
 }
 
 static j6_handle_t
-create_process(j6_handle_t sys, j6_handle_t slp, j6_handle_t vfs)
+create_process(j6_handle_t sys, j6_handle_t slp, j6_handle_t vfs, const char *path)
 {
     j6_handle_t proc = j6_handle_invalid;
-    j6_status_t res = j6_process_create(&proc);
+    j6_status_t res = j6_process_create(&proc, path);
     if (res != j6_status_ok) {
         j6::syslog(j6::logs::srv, j6::log_level::error, "error loading program: creating process: %lx", res);
         return j6_handle_invalid;
@@ -231,7 +231,7 @@ load_program(
         const module *arg)
 {
     j6::syslog(j6::logs::srv, j6::log_level::info, "Loading program '%s' into new process", path);
-    j6_handle_t proc = create_process(sys, slp, vfs);
+    j6_handle_t proc = create_process(sys, slp, vfs, path);
     if (proc == j6_handle_invalid)
         return false;
 

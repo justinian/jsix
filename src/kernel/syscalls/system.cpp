@@ -23,9 +23,10 @@ using system = class ::system;
 j6_status_t
 log(uint8_t area, uint8_t severity, const char *message)
 {
+    const char *name = process::current().name();
     thread &th = thread::current();
     log::log(static_cast<logs>(area), static_cast<log::level>(severity),
-        "<%02lx:%02lx>: %s", th.parent().obj_id(), th.obj_id(), message);
+        "<%02lx:%02lx> %s: %s", th.parent().obj_id(), th.obj_id(), name, message);
     return j6_status_ok;
 }
 

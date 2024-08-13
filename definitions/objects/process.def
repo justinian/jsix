@@ -12,7 +12,9 @@ object process : object {
     ]
 
     # Create a new empty process
-    method create [constructor]
+    method create [constructor] {
+        param name string
+    }
 
     # Stop all threads and exit the given process
     method kill [destructor cap:kill]

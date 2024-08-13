@@ -10,9 +10,9 @@ using namespace obj;
 namespace syscalls {
 
 j6_status_t
-process_create(j6_handle_t *self)
+process_create(j6_handle_t *self, const char *path)
 {
-    process *p = construct_handle<process>(self);
+    process *p = construct_handle<process>(self, path);
     log::info(logs::task, "Process <%02lx> created", p->obj_id());
     return j6_status_ok;
 }

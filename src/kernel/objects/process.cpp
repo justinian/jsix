@@ -1,3 +1,4 @@
+#include <j6/memutils.h>
 #include <util/no_construct.h>
 
 #include "kassert.h"
@@ -18,10 +19,18 @@ obj::process &g_kernel_process = __g_kernel_process_storage.value;
 
 namespace obj {
 
-process::process() :
+process::process(const char *name) :
     kobject {kobject::type::process},
     m_state {state::running}
 {
+    if constexpr(__use_process_names) {
+        memset(m_name, 0, sizeof(m_name));
+        if (name) {
+            static constexpr size_t charlen = sizeof(m_name) - 1;
+            for (size_t i = 0; i < charlen && name[i]; ++i)
+                m_name[i] = name[i];
+        }
+    }
 }
 
 // The "kernel process"-only constructor
@@ -30,6 +39,11 @@ process::process(page_table *kpml4) :
     m_space {kpml4},
     m_state {state::running}
 {
+    if constexpr(__use_process_names) {
+        static constexpr char kernel[] = "KERNEL";
+        memcpy(m_name, kernel, sizeof(kernel));
+        memset(m_name + sizeof(kernel), 0, sizeof(m_name) - sizeof(kernel));
+    }
 }
 
 process::~process()

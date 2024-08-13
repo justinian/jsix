@@ -2,12 +2,51 @@
 
 #include "cpu.h"
 #include "display.h"
+#include "kernel.dir/memory.h"
 #include "objects/process.h"
 #include "objects/thread.h"
 #include "serial.h"
 #include "symbol_table.h"
 
 namespace panicking {
+
+template <typename T> inline bool
+check_pointer(T p)
+{
+    static constexpr uint64_t large_flag = (1<<7);
+    static constexpr uint64_t pointer_mask = 0x0000fffffffff000;
+    static constexpr uintptr_t canon_mask = 0xffff800000000000;
+
+    uintptr_t addr = reinterpret_cast<uintptr_t>(p);
+
+    uintptr_t canon_bits = addr & canon_mask;
+    if (canon_bits && canon_bits != canon_mask)
+        return false;
+
+    uintptr_t pml4 = 0;
+    asm volatile ( "mov %%cr3, %0" : "=r" (pml4) );
+    pml4 += mem::linear_offset;
+
+    uint64_t *table = reinterpret_cast<uint64_t*>(pml4);
+    unsigned shift = 39;
+
+    while (table) {
+        unsigned index = (addr >> shift) & 0x1ffull;
+        uint64_t entry = table[index];
+
+        if ((entry & 0x1) == 0)
+            return false;
+
+        if ((entry & large_flag) || shift <= 12)
+            return true;
+
+        uint64_t next = (entry & pointer_mask) + mem::linear_offset;
+        table = reinterpret_cast<uint64_t*>(next);
+        shift -= 9;
+    }
+
+    return false;
+}
 
 const char *clear = "\e[0m\n";
 
@@ -40,23 +79,17 @@ print_cpu(serial_port &out, cpu_data &cpu)
 {
     uint32_t process = cpu.process ? cpu.process->obj_id() : 0;
     uint32_t thread = cpu.thread ? cpu.thread->obj_id() : 0;
+    const char *name = cpu.process ? cpu.process->name() : "<Unknown>";
 
     out.write("\n \e[0;31m==[ CPU: ");
 
     char buffer[64];
-    util::format({buffer, sizeof(buffer)}, "%4d <%02lx:%02lx>",
-            cpu.id + 1, process, thread);
+    size_t len = util::format({buffer, sizeof(buffer)}, "%4d <%02lx:%02lx> ]: %s ",
+            cpu.id + 1, process, thread, name);
     out.write(buffer);
 
-    out.write(" ]=============================================================\n");
-}
-
-template <typename T> inline bool
-canonical(T p)
-{
-    static constexpr uintptr_t mask = 0xffff800000000000;
-    uintptr_t addr = reinterpret_cast<uintptr_t>(p);
-    return (addr & mask) == mask || (addr & mask) == 0;
+    for (size_t i = 0; i < (74-len); ++i) out.write("=");
+    out.write("\n");
 }
 
 void
@@ -65,18 +98,26 @@ print_callstack(serial_port &out, symbol_table &syms, frame const *fp)
     char message[512];
     unsigned count = 0;
 
-    while (canonical(fp) && fp && fp->return_addr) {
-        char const *name = syms.find_symbol(fp->return_addr);
+    while (fp && check_pointer(fp)) {
+        const uintptr_t ret = fp->return_addr;
+        char const *name = ret ? syms.find_symbol(ret) : "<END>";
         if (!name)
-            name = canonical(fp->return_addr) ? "<unknown>" : "<corrupt>";
+            name = check_pointer(fp->return_addr) ? "<unknown>" : "<unmapped>";
 
         util::format({message, sizeof(message)},
-            " \e[0;33mframe %2d: <0x%016lx> \e[1;33m%s\n",
-            count++, fp->return_addr, name);
+            " \e[0;33mframe %2d: <0x%016lx> <0x%016lx> \e[1;33m%s\n",
+            count++, fp, fp->return_addr, name);
 
         out.write(message);
+
+        if (!ret) return;
         fp = fp->prev;
     }
+
+    const char *result = fp ? " <inaccessible>" : "";
+    util::format({message, sizeof(message)}, " \e[0mfinal     <0x%016lx>%s\n",
+            fp, result);
+    out.write(message);
 }
 
 static void

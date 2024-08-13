@@ -13,6 +13,14 @@
 
 namespace obj {
 
+static constexpr bool __use_process_names =
+#ifdef __jsix_config_debug
+    true;
+#else
+    false;
+#endif
+
+
 class process :
     public kobject
 {
@@ -32,7 +40,7 @@ public:
     static constexpr kobject::type type = kobject::type::process;
 
     /// Constructor.
-    process();
+    process(const char *name);
 
     /// Destructor.
     virtual ~process();
@@ -46,6 +54,9 @@ public:
 
     /// Get the process' virtual memory space
     vm_space & space() { return m_space; }
+
+    /// Get the debugging name of the process
+    const char *name() { if constexpr(__use_process_names) return m_name; else return nullptr; }
 
     /// Create a new thread in this process
     /// \args rsp3      If non-zero, sets the ring3 stack pointer to this value
@@ -107,6 +118,15 @@ private:
 
     enum class state : uint8_t { running, exited };
     state m_state;
+
+    static constexpr size_t max_name_len =
+#ifdef __jsix_config_debug
+        32;
+#else
+        0;
+#endif
+
+    char m_name[max_name_len];
 };
 
 } // namespace obj
