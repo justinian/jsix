@@ -10,7 +10,7 @@ namespace obj {
 using mem::frame_size;
 
 vm_area::vm_area(size_t size, util::bitset32 flags) :
-    m_size {size},
+    m_size {mem::page_count(size) * mem::frame_size},
     m_flags {flags},
     m_spaces {m_vector_static, 0, static_size},
     kobject {kobject::type::vma}
@@ -34,6 +34,10 @@ void
 vm_area::remove_from(vm_space *space)
 {
     m_spaces.remove_swap(space);
+
+    // If we were keeping this space around after its refcount
+    // dropped to zero because it was mapped, check if we should
+    // clean it up now.
     if (!m_spaces.count() && !handle_count())
         delete this;
 }
