@@ -1,6 +1,7 @@
 #include <j6/memutils.h>
 #include <arch/memory.h>
 
+#include "apic.h"
 #include "kassert.h"
 #include "frame_allocator.h"
 #include "logger.h"
@@ -81,7 +82,7 @@ vm_space::kernel_space()
 }
 
 uintptr_t
-vm_space::add(uintptr_t base, obj::vm_area *area, util::bitset32 flags)
+vm_space::add(uintptr_t base, obj::vm_area *new_area, util::bitset32 flags)
 {
     if (!base)
         base = min_auto_address;
@@ -89,23 +90,23 @@ vm_space::add(uintptr_t base, obj::vm_area *area, util::bitset32 flags)
     //TODO: optimize find/insert
     bool exact = flags.get(vm_flags::exact);
     for (size_t i = 0; i < m_areas.count(); ++i) {
-        const vm_space::area &a = m_areas[i];
-        uintptr_t aend = a.base + a.area->size();
-        if (base >= aend)
+        const vm_space::area &cur = m_areas[i];
+        uintptr_t cur_end = cur.base + cur.area->size();
+        if (base >= cur_end)
             continue;
 
-        uintptr_t end = base + area->size();
-        if (end <= a.base)
+        uintptr_t end = base + new_area->size();
+        if (end <= cur.base)
             break;
         else if (exact)
             return 0;
         else
-            base = aend;
+            base = cur_end;
     }
 
-    m_areas.sorted_insert({base, area});
-    area->add_to(this);
-    area->handle_retain();
+    m_areas.sorted_insert({base, new_area});
+    new_area->add_to(this);
+    new_area->handle_retain();
     return base;
 }
 
@@ -266,6 +267,9 @@ vm_space::clear(const obj::vm_area &vma, uintptr_t offset, size_t count, bool fr
 
         ++it;
     }
+
+    current_cpu().apic->send_ipi_broadcast(
+        lapic::ipi_fixed, false, isr::ipiShootdown);
 
     if (free && free_count)
         fa.free(free_start, free_count);

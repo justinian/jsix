@@ -21,6 +21,7 @@ constexpr uintptr_t apic_eoi_addr = 0xfee000b0 + mem::linear_offset;
 extern "C" {
     void isr_handler(cpu_state*);
     void irq_handler(cpu_state*);
+    void _reload_cr3();
 }
 
 uint8_t
@@ -185,6 +186,11 @@ isr_handler(cpu_state *regs)
 
     case isr::ipiSchedule:
         scheduler::get().schedule();
+        break;
+
+    case isr::ipiShootdown:
+        // TODO: Real shootdown algorithm
+        _reload_cr3();
         break;
 
     default:

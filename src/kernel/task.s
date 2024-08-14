@@ -91,3 +91,10 @@ _current_gsbase:
 	mov rax, [gs:CPU_DATA.self]
 	ret
 .end:
+
+global _reload_cr3: function hidden (_reload_cr3.end - _reload_cr3)
+_reload_cr3:
+    mov rax, cr3
+    mov cr3, rax
+    ret
+.end:
