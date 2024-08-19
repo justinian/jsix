@@ -5,10 +5,11 @@
 #include <stdarg.h>
 #include <stdint.h>
 
+#include <j6/types.h>
 #include <util/counted.h>
 #include <util/spinlock.h>
 
-#include "objects/event.h"
+#include "wait_queue.h"
 
 enum class logs : uint8_t {
 #define LOG(name, lvl) name,

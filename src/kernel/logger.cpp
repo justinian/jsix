@@ -4,8 +4,6 @@
 
 #include "kassert.h"
 #include "logger.h"
-#include "objects/system.h"
-#include "objects/thread.h"
 
 // The logger is initialized _before_ global constructors are called,
 // so that we can start log output immediately. Keep its constructor
