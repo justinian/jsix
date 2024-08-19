@@ -1,0 +1,14 @@
+# vim: ft=python
+
+module("pci",
+    kind = "lib",
+    deps = [ "libc", "util" ],
+    sources = [
+        "device.cpp",
+        "group.cpp",
+    ],
+    public_headers = [
+        "pci/bus_addr.h",
+        "pci/device.h",
+        "pci/group.h",
+    ])

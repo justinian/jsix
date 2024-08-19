@@ -16,6 +16,15 @@ inline T* offset_pointer(T* input, ptrdiff_t offset) {
     return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(input) + offset);
 }
 
+/// Get the offset from ptr1 to ptr2.
+/// \arg ptr1  The base pointer
+/// \arg ptr2  The offset pointer
+/// \returns   Offset from pt1 to ptr2
+template <typename T, typename U>
+inline ptrdiff_t get_offset(T* ptr1, U* ptr2) {
+    return reinterpret_cast<const char*>(ptr2) - reinterpret_cast<const char*>(ptr1);
+}
+
 /// Return a pointer with the given bits masked out
 /// \arg input The original pointer
 /// \arg mask  A bitmask of bits to clear from p

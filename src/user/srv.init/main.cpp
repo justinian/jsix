@@ -10,11 +10,14 @@
 #include <j6/thread.hh>
 #include <j6/types.h>
 
+#include <acpi/acpi.h>
 #include <bootproto/acpi.h>
 #include <bootproto/init.h>
 #include <bootproto/devices/framebuffer.h>
+#include <pci/config.h>
+#include <pci/group.h>
 
-#include "acpi.h"
+#include "device_manager.h"
 #include "initfs.h"
 #include "j6romfs.h"
 #include "loader.h"
@@ -24,7 +27,10 @@
 using bootproto::module;
 using bootproto::module_type;
 
-constexpr uintptr_t stack_top = 0xf80000000;
+inline constexpr uintptr_t stack_top = 0xf80000000;
+inline constexpr j6_vm_flags mmio_flags = (j6_vm_flags)(j6_vm_flag_write | j6_vm_flag_mmio);
+
+void load_acpi(j6_handle_t sys, const bootproto::module *mod);
 
 int
 main(int argc, const char **argv, const char **env)
@@ -141,7 +147,11 @@ main(int argc, const char **argv, const char **env)
     j6::thread vfs_thread {[=, &initrd](){ initfs_start(initrd, vfs_mb); }, stack_top};
     j6_status_t result = vfs_thread.start();
 
-    load_acpi(sys, acpi_module);
+    // Load ACPI into device_manager
+    const bootproto::acpi *acpi = acpi_module->data<bootproto::acpi>();
+    map_phys(sys, acpi->region.pointer, acpi->region.count);
+
+    device_manager dm {sys, acpi->root};
 
     load_program("/jsix/drivers/drv.uart.elf", initrd, sys_child, slp_mb_child, vfs_mb_child);
 
@@ -156,6 +166,8 @@ main(int argc, const char **argv, const char **env)
         }
     }
 
+    auto ahci_drives = dm.find_devices(1, 6, 1);
+
     initrd.for_each("/jsix/services",
             [=](const j6romfs::inode *in, const char *name) {
         if (in->type != j6romfs::inode_type::file)
@@ -169,4 +181,3 @@ main(int argc, const char **argv, const char **env)
     service_locator_start(slp_mb);
     return 0;
 }
-

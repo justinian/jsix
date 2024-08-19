@@ -21,6 +21,7 @@ struct table_header
     uint32_t creator_revision;
 
     bool validate() const { return util::checksum(this, length) == 0; }
+    bool validate(uint32_t sig) const { return type == sig && validate(); }
 } __attribute__ ((packed));
 
 

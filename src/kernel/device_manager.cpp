@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <util/misc.h> // for checksum
 #include <util/pointers.h>
-#include <arch/acpi/tables.h>
+#include <acpi/tables.h>
 
 #include "kassert.h"
 #include "apic.h"

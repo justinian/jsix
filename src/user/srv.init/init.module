@@ -2,18 +2,17 @@
 
 init = module("srv.init",
     targets = [ "init" ],
-    deps = [ "libc", "elf", "bootproto", "zstd" ],
+    deps = [ "libc", "elf", "bootproto", "zstd", "acpi", "pci" ],
     static = True,
     description = "Init server",
     ld_script = "init.ld",
     sources = [
-        "acpi.cpp",
+        "device_manager.cpp",
         "initfs.cpp",
         "j6romfs.cpp",
         "loader.cpp",
         "main.cpp",
         "modules.cpp",
-        "pci.cpp",
         "service_locator.cpp",
         "start.s",
     ])

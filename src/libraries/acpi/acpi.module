@@ -1,0 +1,12 @@
+# vim: ft=python
+
+module("acpi",
+    kind = "lib",
+    deps = [ "util", "j6" ],
+    sources = [
+        "acpi.cpp",
+    ],
+    public_headers = [
+        "acpi/acpi.h",
+        "acpi/tables.h",
+    ])
