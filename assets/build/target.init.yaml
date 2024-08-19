@@ -21,6 +21,7 @@ ccflags: [
 cxxflags: [
   "-fno-exceptions",
   "-fno-rtti",
+  "-isystem", "${source_root}/sysroot/include/c++/v1",
 ]
 
 ldflags: [
