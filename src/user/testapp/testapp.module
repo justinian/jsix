@@ -1,7 +1,7 @@
 # vim: ft=python
 
 module("testapp",
-    targets = [ "user" ],
+    target = "user",
     deps = [ "libc" ],
     description = "Testbed app",
     sources = [

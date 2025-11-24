@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-def generate(output, config, manifest):
+def generate(output, config, arch, manifest):
     from os import makedirs
     from glob import iglob
     from pathlib import Path
-    from bonnibel.module import Module
+    from bonnibel.module import Module, ModuleList
     from bonnibel.project import Project
 
     root = Path(__file__).parent.resolve()
@@ -18,16 +18,17 @@ def generate(output, config, manifest):
         str(root / "external/*.module"),
     ]
 
-    modules = {}
+    modules = ModuleList(arch)
     for source in sources:
         for modfile in iglob(source, recursive=True):
-            path = Path(modfile).parent
+            modfile = Path(modfile)
+            path = modfile.parent
 
             def module_init(name, **kwargs):
                 if not "root" in kwargs:
                     kwargs["root"] = path
                 m = Module(name, modfile, **kwargs)
-                modules[m.name] = m
+                modules.add(m)
                 return m
 
             glo = {
@@ -36,18 +37,16 @@ def generate(output, config, manifest):
                 "build_root": output,
                 "module_root": path,
                 "config": config,
+                "arch": arch,
             }
             code = compile(open(modfile, 'r').read(), modfile, "exec")
 
             loc = {}
             exec(code, glo, loc)
 
-    Module.update(modules)
-
     makedirs(output.resolve(), exist_ok=True)
-    project.generate(root, output, modules, config, manifest)
-    for mod in modules.values():
-        mod.generate(output)
+    project.generate(root, output, modules, config, arch, manifest)
+    modules.generate(output)
 
 if __name__ == "__main__":
     import sys
@@ -57,18 +56,25 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     from bonnibel import BonnibelError
 
+    default_arch = "amd64"
+
     p = ArgumentParser(description="Generate jsix build files")
     p.add_argument("--manifest", "-m", metavar="FILE", default="assets/manifests/default.yaml",
             help="File to use as the system manifest")
-    p.add_argument("--config", "-c", metavar="NAME", default="debug",
+    p.add_argument("--conf", "-c", metavar="NAME", default="debug",
             help="Configuration to build (eg, 'debug' or 'release')")
-    p.add_argument("output", metavar="DIR", default="build", nargs='?',
+    p.add_argument("--arch", "-a", metavar="NAME", default=default_arch,
+            help="Architecture to build (eg, 'amd64' or 'linux')")
+    p.add_argument("--verbose", "-v", action='count', default=0,
+            help="More verbose log output")
+    p.add_argument("output", metavar="DIR", default=None, nargs='?',
             help="Where to create the build root")
 
     args = p.parse_args()
 
+    output = args.output or f"build.{args.arch}"
     try:
-        generate(args.output, args.config, args.manifest)
+        generate(output, args.conf, args.arch, args.manifest)
 
     except BonnibelError as be:
         import sys

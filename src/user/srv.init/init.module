@@ -1,7 +1,7 @@
 # vim: ft=python
 
 init = module("srv.init",
-    targets = [ "init" ],
+    target = "init",
     deps = [ "libc", "elf", "bootproto", "zstd", "acpi", "pci" ],
     static = True,
     description = "Init server",

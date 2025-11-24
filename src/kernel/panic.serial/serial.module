@@ -1,7 +1,7 @@
 # vim: ft=python
 
 panic = module("panic.serial",
-    targets = [ "kernel" ],
+    target = "kernel",
     deps = [ "util", "elf", "kernel" ],
     static = True,
     includes = [ ".." ],

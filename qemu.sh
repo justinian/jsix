@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 root=$(dirname $0)
-build="${root}/build"
+build="${root}/build.amd64"
 assets="${root}/assets"
 
 no_build=""

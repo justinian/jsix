@@ -43,10 +43,10 @@ def _make_ninja_config(outfile, config, files):
             build.variable(k, v)
 
  
-def generate_configs(root, output, config, targets, kinds):
+def generate_configs(root, output, buildconfig, arch, targets, kinds):
 
-    assets = root / "assets" / "build"
-    base = ["global.yaml", f"config.{config}.yaml"]
+    assets = root / "assets" / "build" / arch
+    base = ["global.yaml", f"config.{buildconfig}.yaml"]
 
     depfiles = set()
 

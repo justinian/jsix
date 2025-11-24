@@ -1,7 +1,7 @@
 # vim: ft=python
 
 module("srv.logger",
-    targets = [ "user" ],
+    target = "user",
     deps = [ "libc" ],
     description = "Logging server",
     sources = [

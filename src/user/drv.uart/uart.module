@@ -1,7 +1,7 @@
 # vim: ft=python
 
 module("drv.uart",
-    targets = [ "user" ],
+    target = "user",
     deps = [ "libc", "util" ],
     description = "UART driver",
     drivers = [ "pc.uart" ],

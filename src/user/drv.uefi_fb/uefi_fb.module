@@ -1,7 +1,7 @@
 # vim: ft=python
 
 module("drv.uefi_fb",
-    targets = [ "user" ],
+    target = "user",
     deps = [ "libc", "bootproto" ],
     description = "UEFI framebuffer driver",
     drivers = [ "uefi.fb" ],

@@ -37,9 +37,15 @@ class Manifest:
         self.drivers = [self.__build_entry(modules, i)
                 for i in config.get("drivers", tuple())]
 
-        libs = set(config.get("libs", tuple()))
-        libs.update(self.__libdeps([modules[e.module] for e in self.services]))
-        libs.update(self.__libdeps([modules[e.module] for e in self.drivers]))
+        def get_libdeps(names):
+            libmods = modules.get_mods(names)
+            deps = modules.all_deps(libmods, stop_at_static=True)
+            deps = [m.name for m in deps if m.kind == "lib"]
+            return deps
+
+        libs = set(get_libdeps(config.get("libs", tuple())))
+        libs.update(get_libdeps([e.module for e in self.services]))
+        libs.update(get_libdeps([e.module for e in self.drivers]))
 
         self.libs = [self.__build_entry(modules, i)
                 for i in libs]
@@ -79,13 +85,6 @@ class Manifest:
                 raise BonnibelError(f"Manifest specifies unknown flag '{f}'")
 
         return Manifest.Entry(name, target, mod.get_output(), flags)
-
-    def __libdeps(self, modules):
-        deps = set([m.name for m in modules if m.kind == "lib"])
-        for m in modules:
-            if m.static: continue
-            deps.update(self.__libdeps(m.depmods))
-        return deps
 
     def add_data(self, output, desc, flags=tuple()):
         e = Manifest.Entry(None, None, output, flags)

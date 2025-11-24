@@ -1,7 +1,7 @@
 # vim: ft=python
 
 module("6s",
-    targets = [ "user" ],
+    target = "user",
     deps = [ "libc", "edit" ],
     description = "j6 shell",
     sources = [

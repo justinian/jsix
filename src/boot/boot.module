@@ -3,7 +3,7 @@
 boot = module("boot",
     kind = "exe",
     outfile = "boot.efi",
-    targets = [ "boot" ],
+    target = "boot",
     deps = [ "cpu", "elf", "util", "bootproto" ],
     static = True,
     sources = [

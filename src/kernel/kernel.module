@@ -3,7 +3,7 @@
 kernel = module("kernel",
     default = True,
     basename = "jsix",
-    targets = [ "kernel" ],
+    target = "kernel",
     description = "jsix kernel",
     deps = [ "util", "cpu", "bootproto", "j6", "acpi" ],
     static = True,

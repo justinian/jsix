@@ -1,7 +1,7 @@
 # vim: ft=python
 
 module("test_runner",
-    targets = [ "user" ],
+    target = "user",
     deps = [ "libc", "util" ],
     description = "Unit test runner",
     sources = [

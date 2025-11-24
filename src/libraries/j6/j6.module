@@ -14,10 +14,14 @@ j6 = module("j6",
         "protocols/service_locator.cpp",
         "protocols/vfs.cpp",
         "ring_buffer.cpp",
-        "syscalls.s.cog",
         "sysconf.cpp.cog",
         "syslog.cpp",
     ],
+    arch_source = {
+        "amd64": [
+            "syscalls.s.cog",
+        ],
+    },
     public_headers = [
         "j6/cap_flags.h.cog",
         "j6/channel.hh",
