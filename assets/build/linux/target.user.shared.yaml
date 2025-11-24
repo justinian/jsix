@@ -1,0 +1,7 @@
+---
+ccflags: [
+]
+
+ldflags: [
+  "-shared",
+]

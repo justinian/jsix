@@ -6,6 +6,7 @@ boot = module("boot",
     target = "boot",
     deps = [ "cpu", "elf", "util", "bootproto" ],
     static = True,
+    skip_arches = [ "linux" ],
     sources = [
         "allocator.cpp",
         "bootconfig.cpp",

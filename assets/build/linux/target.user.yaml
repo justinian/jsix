@@ -1,0 +1,33 @@
+---
+asflags: []
+
+ccflags: [
+  "--target=x86_64-jsix-elf",
+  "-fno-omit-frame-pointer",
+  "-fno-stack-protector",
+
+  "-fvisibility=hidden",
+  "-fvisibility-inlines-hidden",
+
+  "-D__ELF__",
+  "-D__jsix__",
+  "-U__linux",
+  "-U__linux__",
+
+  "--sysroot='${source_root}/sysroot'",
+  "-fpic",
+]
+
+cxxflags: [
+  "-fno-exceptions",
+  "-fno-rtti",
+  ]
+
+ldflags: [
+  "-m", "elf_x86_64",
+  "--sysroot='${source_root}/sysroot'",
+  "--no-eh-frame-hdr",
+  "-L", "${source_root}/sysroot/lib",
+  "-z", "separate-code",
+  "--no-dependent-libraries",
+]

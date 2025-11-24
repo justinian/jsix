@@ -8,6 +8,7 @@ kernel = module("kernel",
     deps = [ "util", "cpu", "bootproto", "j6", "acpi" ],
     static = True,
     ld_script = "kernel.ld",
+    skip_arches = [ "linux" ],
     sources = [
         "apic.cpp",
         "kassert.cpp",

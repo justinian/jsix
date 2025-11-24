@@ -7,6 +7,7 @@ panic = module("panic.serial",
     includes = [ ".." ],
     description = "Serial panic handler",
     ld_script = "panic.serial.ld",
+    skip_arches = [ "linux" ],
     sources = [
         "display.cpp",
         "entry.s",

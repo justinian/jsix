@@ -1,0 +1,16 @@
+---
+
+ccflags: [
+  "-fpie"
+]
+
+ldflags: [
+  "-pie",
+  "-rpath", "${target_dir}",
+  "--dynamic-linker", "/lib64/ld-linux-x86-64.so.2",
+  "--push-state", "--as-needed", "-Bstatic", "-lc++", "-lc++abi", "-lunwind", "--pop-state",
+]
+
+libs: [
+  "${target_dir}/crt0.o",
+]
