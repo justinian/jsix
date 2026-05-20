@@ -197,9 +197,8 @@ class Project:
             fatroot_content.append(initrd)
 
             build.build(
-                rule = "makefat",
+                rule = "makedisk",
                 outputs = ["${build_root}/jsix.img"],
-                inputs = ["${source_root}/assets/diskbase.img"],
                 implicit = fatroot_content + [bootloader],
                 variables = {"name": "jsix.img"},
                 )

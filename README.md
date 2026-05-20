@@ -123,12 +123,10 @@ Other build dependencies:
 * [clang][]: the C/C++ compiler
 * [nasm][]: the assembler
 * [lld][]: the linker
-* [mtools][]: for creating the FAT image
 
 [clang]:    https://clang.llvm.org
 [nasm]:     https://www.nasm.us
 [lld]:      https://lld.llvm.org
-[mtools]:   https://www.gnu.org/software/mtools/
 
 The `configure` script has some Python dependencies - these can be installed via
 `pip`, though doing so in a python virtual environment is recommended.
@@ -138,7 +136,7 @@ A Debian 11 (Bullseye) system can be configured with the necessary build
 dependencies by running the following commands from the jsix repository root:
 
 ```bash
-sudo apt install clang lld nasm mtools python3-pip python3-venv
+sudo apt install clang lld nasm python3-pip python3-venv
 python3 -m venv ./venv
 source venv/bin/activate
 pip install -r requirements.txt
