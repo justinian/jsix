@@ -5,6 +5,7 @@ ld: "${source_root}/sysroot/bin/ld.lld"
 ar: ar
 nasm: nasm
 objcopy: objcopy
+cog: "uvx --from cogapp cog"
 
 ccflags: [
   "-I${source_root}/src/include",

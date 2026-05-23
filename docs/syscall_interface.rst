@@ -12,7 +12,7 @@
 .. def caplist(caps):
 ..   return ', '.join([f"``{c}``" for c in caps])
 .. ]]]
-.. [[[end]]] (checksum: d41d8cd98f00b204e9800998ecf8427e)
+.. [[[end]]] (sum: 1B2M2Y8Asg)
 
 Syscall interface
 =================
@@ -173,11 +173,12 @@ control over the threads, handles, and virtual memory space of that process.
 
 :capabilites:  ``kill``, ``create_thread``
 
-.. cpp:function:: j6_result_t j6_process_create (j6_handle_t *self)
+.. cpp:function:: j6_result_t j6_process_create (j6_handle_t *self, const char * name)
 
    Create a new empty process
 
    :param self: *[out]* Handle to the new process object
+   :param name:  Undocumented
 
 .. cpp:function:: j6_result_t j6_process_kill (j6_handle_t self)
 
@@ -355,7 +356,7 @@ necessarily mean that it is mapped into that process' virtual memory space.
    :param self: Handle to the vma object
    :param size: *[inout]* New size for the VMA, or 0 to query the current size without changing
 
-.. [[[end]]] (checksum: cb17f54e443d1d3b85995870f3e8dbf2)
+.. [[[end]]] (sum: 7iLUKfp7BI)
 
 Non-object syscalls
 -------------------
@@ -440,5 +441,5 @@ either do not require an object handle, or operate generically on handles.
 
    :param exit_code:  Undocumented
 
-.. [[[end]]] (checksum: 0b9d051972abcbb6de408f411331785f)
+.. [[[end]]] (sum: C50FGXKry7)
 

@@ -1,4 +1,11 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+#
+# /// script
+# requires-python = ">=3.14"
+# dependencies = [
+#     "pyzstd>=0.19.1",
+# ]
+# ///
 #
 # Generate a j6romfs image from a given directory.
 

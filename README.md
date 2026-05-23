@@ -123,24 +123,21 @@ Other build dependencies:
 * [clang][]: the C/C++ compiler
 * [nasm][]: the assembler
 * [lld][]: the linker
+* [uv][]: for the python tooling
 
 [clang]:    https://clang.llvm.org
 [nasm]:     https://www.nasm.us
 [lld]:      https://lld.llvm.org
-
-The `configure` script has some Python dependencies - these can be installed via
-`pip`, though doing so in a python virtual environment is recommended.
-Installing via `pip` will also install `ninja`.
+[uv]:       https://docs.astral.sh/uv
 
 A Debian 11 (Bullseye) system can be configured with the necessary build
 dependencies by running the following commands from the jsix repository root:
 
 ```bash
-sudo apt install clang lld nasm python3-pip python3-venv
-python3 -m venv ./venv
-source venv/bin/activate
-pip install -r requirements.txt
-peru sync
+sudo apt install clang lld nasm
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# uv can also be installed via pipx if you don't like curl|sh:
+# pipx install uv
 ```
 
 ### Setting up the sysroot

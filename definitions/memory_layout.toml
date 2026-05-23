@@ -1,0 +1,46 @@
+[[region]]
+name = "linear"
+desc = "Linearly-mapped physical memory"
+size = "64 TiB"
+shared = true
+
+[[region]]
+name = "bitmap"
+desc = "Used/free page tracking bitmap"
+size = "1 TiB"
+shared = true
+
+[[region]]
+name = "heapmap"
+desc = "Kernel heap accounting structures"
+size = "32 GiB"
+
+[[region]]
+name = "heap"
+desc = "Kernel heap"
+size = "32 GiB"
+
+[[region]]
+name = "capsmap"
+desc = "Capabilities accounting structures"
+size = "32 GiB"
+
+[[region]]
+name = "caps"
+desc = "Capabilities"
+size = "32 GiB"
+
+[[region]]
+name = "stacks"
+desc = "Kernel thread stacks"
+size = "64 GiB"
+
+[[region]]
+name = "buffers"
+desc = "Kernel buffers"
+size = "64 GiB"
+
+[[region]]
+name = "logs"
+desc = "Kernel logs circular buffer"
+size = "2 GiB"

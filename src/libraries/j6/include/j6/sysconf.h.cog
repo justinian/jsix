@@ -13,9 +13,9 @@
 #include <util/api.h>
 
 /*[[[cog code generation
-from os.path import join
-from sysconf import Sysconf
-sc = Sysconf(join(definitions_path, "sysconf.yaml"))
+from pathlib import Path
+from jsix.sysconf import load_sysconf
+address, vars = load_sysconf(Path(definitions_path) / "sysconf.toml")
 ]]]*/
 ///[[[end]]]
 
@@ -26,7 +26,7 @@ extern "C" {
 enum j6_sysconf_arg
 {
     /*[[[cog code generation
-    for var in sc.vars:
+    for var in vars:
         cog.outl(f"j6sc_{var.name},")
     ]]]*/
     ///[[[end]]]

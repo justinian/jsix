@@ -35,7 +35,7 @@ rule compile.s
   deps = gcc
 
 rule parse.cog
-  command = cog -o $out -d -D target=$target $cogflags $in
+  command = $cog -o $out -d -D target=$target $cogflags $in
   description = Parsing [$target]:$name
 
 rule exe

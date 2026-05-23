@@ -8,12 +8,12 @@ namespace bootproto {
 namespace mem {
 
 /*[[[cog code generation
-from os.path import join
-from memory import Layout
+from pathlib import Path
+from jsix.memory import layout
 
-layout = Layout(join(definitions_path, "memory_layout.yaml"))
+regions = layout(Path(definitions_path) / "memory_layout.toml")
 
-for region in layout.regions:
+for region in regions:
     if region.shared:
         cog.outl(f"constexpr uintptr_t {region.name}_offset = 0x{region.start:x};")
 

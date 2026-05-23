@@ -5,18 +5,18 @@
 /// Kernel-side implementation of sysconf struct
 
 /*[[[cog code generation
-from os.path import join
-from sysconf import Sysconf
-sc = Sysconf(join(definitions_path, "sysconf.yaml"))
+from pathlib import Path
+from jsix.sysconf import load_sysconf
+address, vars = load_sysconf(Path(definitions_path) / "sysconf.toml")
 
-cog.outl(f"constexpr uintptr_t sysconf_user_address = {sc.address:#x};")
+cog.outl(f"constexpr uintptr_t sysconf_user_address = {address:#x};")
 ]]]*/
 ///[[[end]]]
 
 struct system_config
 {
     /*[[[cog code generation
-    for var in sc.vars:
+    for var in vars:
         cog.outl(f"{var.type:10} {var.section}_{var.name};")
     ]]]*/
     ///[[[end]]]

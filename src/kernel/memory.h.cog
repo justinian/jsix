@@ -2,7 +2,7 @@
 // vim: ft=cpp
 
 /// \file memory.h
-/// Import memory layout constants necessary for boot
+/// Kernel memory allocation, helper functions, and constants
 
 #include <stddef.h>
 #include <stdint.h>
@@ -36,18 +36,18 @@ constexpr unsigned kernel_stack_pages = 2;
 constexpr unsigned kernel_buffer_pages = 16;
 
 /*[[[cog code generation
-from os.path import join
-from memory import Layout
+from pathlib import Path
+from jsix.memory import layout
 
-layout = Layout(join(definitions_path, "memory_layout.yaml"))
-l = max([len(r.name) for r in layout.regions])
+regions = layout(Path(definitions_path) / "memory_layout.toml")
+l = max([len(r.name) for r in regions])
 
-for region in layout.regions:
+for region in regions:
     cog.outl(f"constexpr size_t {region.name:>{l}}_size = {region.size:#14x};")
 
 cog.outl("")
 
-for region in layout.regions:
+for region in regions:
     cog.outl(f"constexpr uintptr_t {region.name:>{l}}_offset = {region.start:#x};")
 
 ]]]*/

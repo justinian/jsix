@@ -291,9 +291,9 @@ class DumpLogCommand(gdb.Command):
     def __init__(self):
         super().__init__("j6log", gdb.COMMAND_DATA)
 
-        from memory import Layout
-        layout = Layout("definitions/memory_layout.yaml")
-        for region in layout.regions:
+        from jsix.memory import layout
+        regions = layout("definitions/memory_layout.toml")
+        for region in regions:
             if region.name == "logs":
                 self.base_addr = region.start
                 break

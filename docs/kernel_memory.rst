@@ -2,13 +2,13 @@
 .. Automatically updated from the definition files using cog!
 
 .. [[[cog code generation
-.. from os.path import join
-.. from memory import Layout, unit
+.. from pathlib import Path
+.. from jsix.memory import layout, to_units
 ..
-.. layout = Layout(join(definitions_path, "memory_layout.yaml"))
-.. l = max([len(r.name) for r in layout.regions])
+.. regions = layout(Path(definitions_path) / "memory_layout.toml")
+.. l = max([len(r.name) for r in regions])
 .. ]]]
-.. [[[end]]] (checksum: d41d8cd98f00b204e9800998ecf8427e)
+.. [[[end]]] (sum: 1B2M2Y8Asg)
 
 Kernel memory
 =============
@@ -20,8 +20,8 @@ but aren't explicitly randomized.)
 .. [[[cog code generation
 .. line_size = 128 * 1024**3  # Each line represents up to 32 GiB
 .. max_lines = 32
-.. totals = sum([r.size for r in layout.regions])
-.. remain = unit((128 * 1024**4) - totals)
+.. totals = sum([r.size for r in regions])
+.. remain = to_units((128 * 1024**4) - totals)
 ..
 .. def split(val):
 ..    return f"0x {val >> 48:04x} {(val >> 32) & 0xffff:04x} {(val >> 16) & 0xffff:04x} {val & 0xffff:04x}"
@@ -31,8 +31,8 @@ but aren't explicitly randomized.)
 .. cog.outl(f"| | Address                     | Size     | Use                                   |")
 .. cog.outl(f"+=+=============================+==========+=======================================+")
 ..
-.. for region in layout.regions:
-..     cog.outl(f"| | ``{split(region.start)}``  | {unit(region.size):>8} | {region.desc:37} |")
+.. for region in regions:
+..     cog.outl(f"| | ``{split(region.start)}``  | {to_units(region.size):>8} | {region.desc:37} |")
 ..     lines = min(max_lines, region.size // line_size)
 ..     for i in range(1, lines):
 ..         cog.outl(f"+-+                             |          |                                       |")
@@ -133,35 +133,19 @@ but aren't explicitly randomized.)
 +-+                             |          |                                       |
 | |                             |          |                                       |
 +-+-----------------------------+----------+---------------------------------------+
-| | ``0x ffff be00 0000 0000``  |    1 TiB | Per-page state tracking structures    |
-+-+                             |          |                                       |
-| |                             |          |                                       |
-+-+                             |          |                                       |
-| |                             |          |                                       |
-+-+                             |          |                                       |
-| |                             |          |                                       |
-+-+                             |          |                                       |
-| |                             |          |                                       |
-+-+                             |          |                                       |
-| |                             |          |                                       |
-+-+                             |          |                                       |
-| |                             |          |                                       |
-+-+                             |          |                                       |
-| |                             |          |                                       |
+| | ``0x ffff bef8 0000 0000``  |   32 GiB | Kernel heap accounting structures     |
 +-+-----------------------------+----------+---------------------------------------+
-| | ``0x ffff bdf8 0000 0000``  |   32 GiB | Kernel heap accounting structures     |
+| | ``0x ffff bef0 0000 0000``  |   32 GiB | Kernel heap                           |
 +-+-----------------------------+----------+---------------------------------------+
-| | ``0x ffff bdf0 0000 0000``  |   32 GiB | Kernel heap                           |
+| | ``0x ffff bee8 0000 0000``  |   32 GiB | Capabilities accounting structures    |
 +-+-----------------------------+----------+---------------------------------------+
-| | ``0x ffff bde8 0000 0000``  |   32 GiB | Capabilities accounting structures    |
+| | ``0x ffff bee0 0000 0000``  |   32 GiB | Capabilities                          |
 +-+-----------------------------+----------+---------------------------------------+
-| | ``0x ffff bde0 0000 0000``  |   32 GiB | Capabilities                          |
+| | ``0x ffff bed0 0000 0000``  |   64 GiB | Kernel thread stacks                  |
 +-+-----------------------------+----------+---------------------------------------+
-| | ``0x ffff bdd0 0000 0000``  |   64 GiB | Kernel thread stacks                  |
+| | ``0x ffff bec0 0000 0000``  |   64 GiB | Kernel buffers                        |
 +-+-----------------------------+----------+---------------------------------------+
-| | ``0x ffff bdc0 0000 0000``  |   64 GiB | Kernel buffers                        |
-+-+-----------------------------+----------+---------------------------------------+
-| | ``0x ffff bdbf 8000 0000``  |    2 GiB | Kernel logs circular buffer           |
+| | ``0x ffff bebf 8000 0000``  |    2 GiB | Kernel logs circular buffer           |
 +-+-----------------------------+----------+---------------------------------------+
 | |  ...                        |          |                                       |
 +-+-----------------------------+----------+---------------------------------------+
@@ -169,9 +153,9 @@ but aren't explicitly randomized.)
 +-+-----------------------------+----------+---------------------------------------+
 
 
-Un-reserved virtual memory address space in the higher half: 61 TiB
+Un-reserved virtual memory address space in the higher half: 62.7 TiB
 
-.. [[[end]]] (checksum: 8c336cc8151beba1a79c8d3b653f1109)
+.. [[[end]]] (sum: bCC5/j6vqL)
 
 * :ref:`genindex`
 * :ref:`search`
