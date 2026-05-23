@@ -189,7 +189,7 @@ class Project:
                 rule = "makeinitrd",
                 outputs = [initrd],
                 inputs = [str(initrdroot)],
-                implicit = initrd_content + ["${source_root}/scripts/mkj6romfs.py"],
+                implicit = initrd_content + ["${source_root}/scripts/make_initrd.py"],
                 variables = {"format": manifest.initrd["format"]},
             )
             build.newline()

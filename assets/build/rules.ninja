@@ -68,7 +68,7 @@ rule makest
 
 rule makeinitrd
     description = Creating $name
-    command = ${source_root}/scripts/mkj6romfs.py -c $format $in $out
+    command = ${source_root}/scripts/make_initrd.py -c $format $in $out
 
 rule makedisk
     description = Creating $name
